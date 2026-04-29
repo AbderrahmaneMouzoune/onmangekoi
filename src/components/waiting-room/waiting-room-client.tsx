@@ -11,7 +11,7 @@ import { ParticipantList } from '@/components/waiting-room/participant-list'
 import { useWaitingRoom } from '@/hooks/use-waiting-room'
 import { launchSessionAction } from '@/lib/actions/sessions'
 
-import type { Session } from '@/data-access/models/database'
+import type { Session } from '@/data-access/models'
 import type { ParticipantWithProfile } from '@/data-access/sessions'
 
 interface Props {

@@ -1,22 +1,6 @@
-import { redirect } from 'next/navigation'
-
 import { PseudoForm } from '@/components/pseudo-setup/pseudo-form'
-import { getProfile } from '@/data-access/profile'
-import { createServerClient } from '@/data-access/supabase'
 
-export default async function SetupPage() {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect('/')
-
-  const profile = await getProfile(supabase, user.id)
-  if (profile && profile.pseudo !== 'Anonyme') {
-    redirect('/sessions/new')
-  }
-
+export default function SetupPage() {
   return (
     <div className="flex min-h-svh items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-8">

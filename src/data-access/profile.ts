@@ -1,4 +1,5 @@
-import type { Database, Profile } from './models/database'
+import type { Profile } from './models'
+import type { Database } from './models/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function getProfile(

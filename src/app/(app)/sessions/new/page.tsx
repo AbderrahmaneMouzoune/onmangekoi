@@ -10,6 +10,7 @@ export default async function NewSessionPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Filet de sécurité — normalement garanti par le middleware
   if (!user) redirect('/setup')
 
   const [lists, restaurants] = await Promise.all([

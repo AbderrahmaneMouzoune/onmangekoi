@@ -1,4 +1,5 @@
-import type { Database, List, Restaurant } from './models/database'
+import type { List, Restaurant } from './models'
+import type { Database } from './models/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type ListWithRestaurants = List & {

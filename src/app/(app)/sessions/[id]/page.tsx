@@ -15,6 +15,7 @@ export default async function SessionPage({ params }: Props) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Filet de sécurité — normalement garanti par le middleware
   if (!user) redirect('/setup')
 
   const [session, participants] = await Promise.all([

@@ -1,4 +1,5 @@
-import type { Database, Session, SessionParticipant } from './models/database'
+import type { Session, SessionParticipant } from './models'
+import type { Database } from './models/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type ParticipantWithProfile = SessionParticipant & {
