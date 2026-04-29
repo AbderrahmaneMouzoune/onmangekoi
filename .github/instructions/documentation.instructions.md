@@ -28,7 +28,6 @@ Applique les conventions globales de `../copilot-instructions.md` à tout le cod
 
 - Tenir le `README.md` à jour avec les instructions de setup (variables d'env, commandes de démarrage)
 - Documenter les choix d'architecture non triviaux dans un commentaire en tête du fichier concerné
-- Les migrations Prisma importantes méritent un commentaire dans le fichier de migration
 
 ## Types
 

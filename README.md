@@ -174,8 +174,7 @@ Vue host : liste des participants + avancement en temps réel (X/Y ont terminé)
 | --------------- | -------------------------------------------------------------------- |
 | Frontend        | Next.js (React) — mobile-first                                       |
 | Backend         | Next.js API Routes                                                   |
-| ORM             | Prisma                                                               |
-| Base de données | PostgreSQL                                                           |
+| Base de données | Supabase (PostgreSQL géré)                                           |
 | Temps réel      | Supabase Realtime (avancement des votes en live)                     |
 | Auth            | Sessions anonymes via cookie + compte optionnel (email/mot de passe) |
 | Déploiement     | Vercel + Supabase                                                    |

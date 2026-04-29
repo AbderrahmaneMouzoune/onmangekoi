@@ -38,11 +38,11 @@ Applique les conventions globales de `../copilot-instructions.md` à tout le cod
 - Réutilise les composants shadcn/ui — n'en crée pas de personnalisés si un équivalent existe
 - Mobile-first : pense d'abord aux petits écrans, utilise les breakpoints `sm:`, `md:`, `lg:`
 
-## Prisma & Base de données
+## Supabase & Base de données
 
-- Toutes les requêtes Prisma vivent dans `lib/db/` — jamais directement dans les composants ou les Route Handlers
-- Utilise des requêtes paramétrées — jamais de concaténation de chaînes pour les queries
-- Gère les erreurs Prisma explicitement ; ne laisse pas les erreurs de DB remonter brutes au client
+- Toutes les requêtes Supabase vivent dans `lib/db/` — jamais directement dans les composants ou les Route Handlers
+- Utilise toujours le client Supabase côté serveur (`createServerClient`) dans les Server Actions et Route Handlers — jamais le client browser pour des opérations sensibles
+- Gère les erreurs Supabase explicitement (`error` retourné par le client) ; ne laisse pas les erreurs de DB remonter brutes au client
 
 ## Server Actions
 

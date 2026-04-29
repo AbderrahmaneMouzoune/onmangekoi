@@ -10,7 +10,7 @@ Applique les conventions globales de `../copilot-instructions.md` à tout le cod
 ## Stratégie de test
 
 - **Tests unitaires** : logique métier pure dans `lib/utils/`, calcul des scores, helpers
-- **Tests d'intégration** : Server Actions, Route Handlers, interactions avec Prisma
+- **Tests d'intégration** : Server Actions, Route Handlers, interactions avec Supabase
 - **Tests E2E** : flows critiques complets (créer une liste, lancer une session, voter, voir les résultats)
 
 ## Principes généraux
@@ -41,5 +41,5 @@ Applique les conventions globales de `../copilot-instructions.md` à tout le cod
 ## Ce qu'on ne teste pas
 
 - Les détails d'implémentation internes des composants
-- Le code généré par Prisma ou shadcn/ui
+- Le code généré par shadcn/ui
 - Les styles CSS / Tailwind

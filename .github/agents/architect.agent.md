@@ -27,7 +27,7 @@ Tu es un architecte technique senior pour **onmangekoi**. Tu analyses, planifies
 ## Sorties typiques
 
 - Plans d'implémentation phased (étapes, dépendances, risques)
-- Schémas de modèles Prisma ou contrats de types TypeScript
+- Schémas de tables Supabase ou contrats de types TypeScript
 - Diagrammes de flux de données (textuels/Mermaid)
 - Recommandations pour les décisions techniques avec pros/cons
 
@@ -36,4 +36,4 @@ Tu es un architecte technique senior pour **onmangekoi**. Tu analyses, planifies
 - Zéro friction : pas d'inscription obligatoire
 - Mobile-first : toutes les décisions impactent d'abord l'expérience mobile
 - Temps réel via Supabase Realtime pour le suivi des votes
-- Déploiement Vercel + Supabase PostgreSQL
+- Déploiement Vercel + Supabase

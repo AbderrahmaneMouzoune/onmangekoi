@@ -1,7 +1,7 @@
 ---
 
 applyTo: "\*\*"
-description: "Standards de sécurité OWASP pour onmangekoi — Next.js, Prisma, PostgreSQL"
+description: "Standards de sécurité OWASP pour onmangekoi — Next.js, Supabase"
 
 ---
 
@@ -31,7 +31,7 @@ Applique les conventions globales de `../copilot-instructions.md` à tout le cod
 
 ## Injection & XSS
 
-- Utiliser Prisma avec des requêtes paramétrées — jamais de string interpolation dans les queries SQL
+- Utiliser le client Supabase avec des requêtes paramétrées — jamais de string interpolation dans les queries SQL
 - Ne jamais utiliser `dangerouslySetInnerHTML` avec du contenu non sanitisé
 - Valider et assainir tout contenu utilisateur avant rendu HTML
 

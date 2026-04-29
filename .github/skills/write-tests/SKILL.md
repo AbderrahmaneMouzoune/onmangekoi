@@ -17,7 +17,7 @@ Demande les informations suivantes si non précisées :
 
 - Nommer les tests de façon descriptive : `should [action] when [context]`
 - Suivre la structure AAA : Arrange / Act / Assert
-- Mocker les dépendances externes (Prisma, Supabase, cookies) — pas la logique métier
+- Mocker les dépendances externes (Supabase, cookies) — pas la logique métier
 - Co-localiser les tests avec le code : `calculateScore.test.ts` à côté de `calculateScore.ts`
 - Pour les tests E2E : tester les flows critiques MVP sur mobile (viewport 375px)
 - Couvrir les cas edge du domaine métier : jokers déjà utilisés, session fermée, liste vide

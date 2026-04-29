@@ -15,8 +15,7 @@ Le principe : créer une liste de restaurants favoris, lancer une session, parta
 | Frontend        | Next.js (App Router) + React + TypeScript                        |
 | Styling         | Tailwind CSS + shadcn/ui                                         |
 | Backend         | Next.js API Routes + Server Actions                              |
-| ORM             | Prisma                                                           |
-| Base de données | PostgreSQL                                                       |
+| Base de données | Supabase (PostgreSQL géré)                                       |
 | Temps réel      | Supabase Realtime                                                |
 | Auth            | Sessions anonymes via cookie + compte optionnel (email/password) |
 | Déploiement     | Vercel + Supabase                                                |
@@ -47,7 +46,7 @@ components/
   [feature]/     # Composants par fonctionnalité
 lib/
   actions/       # Server Actions
-  db/            # Prisma client et queries
+  db/            # Supabase client et queries
   utils/         # Utilitaires partagés
 hooks/           # Custom hooks
 types/           # TypeScript types globaux
