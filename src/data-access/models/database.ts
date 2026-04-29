@@ -28,6 +28,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
       restaurants: {
         Row: {
@@ -60,6 +61,7 @@ export interface Database {
           image_url?: string | null
           created_at?: string
         }
+        Relationships: []
       }
       lists: {
         Row: {
@@ -89,6 +91,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
       list_restaurants: {
         Row: {
@@ -106,6 +109,22 @@ export interface Database {
           restaurant_id?: string
           added_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'list_restaurants_list_id_fkey'
+            columns: ['list_id']
+            isOneToOne: false
+            referencedRelation: 'lists'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'list_restaurants_restaurant_id_fkey'
+            columns: ['restaurant_id']
+            isOneToOne: false
+            referencedRelation: 'restaurants'
+            referencedColumns: ['id']
+          },
+        ]
       }
       sessions: {
         Row: {
@@ -113,6 +132,7 @@ export interface Database {
           name: string
           host_id: string
           invite_token: string
+          invite_code: string
           status: SessionStatus
           created_at: string
           launched_at: string | null
@@ -123,6 +143,7 @@ export interface Database {
           name: string
           host_id: string
           invite_token?: string
+          invite_code?: string
           status?: SessionStatus
           created_at?: string
           launched_at?: string | null
@@ -133,11 +154,13 @@ export interface Database {
           name?: string
           host_id?: string
           invite_token?: string
+          invite_code?: string
           status?: SessionStatus
           created_at?: string
           launched_at?: string | null
           closed_at?: string | null
         }
+        Relationships: []
       }
       session_restaurants: {
         Row: {
@@ -158,6 +181,22 @@ export interface Database {
           restaurant_id?: string
           position?: number
         }
+        Relationships: [
+          {
+            foreignKeyName: 'session_restaurants_session_id_fkey'
+            columns: ['session_id']
+            isOneToOne: false
+            referencedRelation: 'sessions'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'session_restaurants_restaurant_id_fkey'
+            columns: ['restaurant_id']
+            isOneToOne: false
+            referencedRelation: 'restaurants'
+            referencedColumns: ['id']
+          },
+        ]
       }
       session_participants: {
         Row: {
@@ -187,6 +226,22 @@ export interface Database {
           superlike_used?: boolean
           super_dislike_used?: boolean
         }
+        Relationships: [
+          {
+            foreignKeyName: 'session_participants_session_id_fkey'
+            columns: ['session_id']
+            isOneToOne: false
+            referencedRelation: 'sessions'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'session_participants_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
       }
       votes: {
         Row: {
@@ -213,8 +268,12 @@ export interface Database {
           value?: -2 | 0 | 1 | 2
           created_at?: string
         }
+        Relationships: []
       }
     }
+    Views: Record<string, never>
+    Functions: Record<string, never>
+    CompositeTypes: Record<string, never>
     Enums: {
       session_status: SessionStatus
     }
