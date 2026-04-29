@@ -1,6 +1,6 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -162,7 +162,7 @@
    3. TOKENS SÉMANTIQUES — MODE SOMBRE
    ================================================================ */
 .dark,
-[data-theme="dark"] {
+[data-theme='dark'] {
   /* --- Marque --- */
   --color-primary: var(--primitive-chili-500);
   --color-primary-press: var(--primitive-chili-600);
@@ -246,7 +246,7 @@
     @apply bg-background text-foreground;
   }
   button:not(:disabled),
-  [role="button"]:not(:disabled) {
+  [role='button']:not(:disabled) {
     cursor: pointer;
   }
   html {
