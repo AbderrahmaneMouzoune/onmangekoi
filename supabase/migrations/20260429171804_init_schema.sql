@@ -165,15 +165,6 @@ create policy "sessions: host full access"
   using (auth.uid() = host_id)
   with check (auth.uid() = host_id);
 
-create policy "sessions: participants read"
-  on public.sessions for select
-  using (
-    exists (
-      select 1 from public.session_participants
-      where session_id = id and profile_id = auth.uid()
-    )
-  );
-
 create policy "sessions: invite_token join (insert participant)"
   on public.sessions for select
   using (true); -- lecture via invite_token autorisée pour tous (token opaque)
@@ -204,15 +195,6 @@ create policy "session_restaurants: host can manage"
     )
   );
 
-create policy "session_restaurants: participants read"
-  on public.session_restaurants for select
-  using (
-    exists (
-      select 1 from public.session_participants
-      where session_id = session_restaurants.session_id and profile_id = auth.uid()
-    )
-  );
-
 -- ─── SESSION_PARTICIPANTS ────────────────────────────────────
 create table public.session_participants (
   id                    uuid        primary key default gen_random_uuid(),
@@ -238,6 +220,26 @@ create policy "session_participants: host reads all in session"
     exists (
       select 1 from public.sessions
       where id = session_id and host_id = auth.uid()
+    )
+  );
+
+-- Policies déplacées ici car elles référencent session_participants
+create policy "sessions: participants read"
+  on public.sessions for select
+  using (
+    exists (
+      select 1 from public.session_participants
+      where session_id = id and profile_id = auth.uid()
+    )
+  );
+
+create policy "session_restaurants: participants read"
+  on public.session_restaurants for select
+  using (
+    exists (
+      select 1 from public.session_participants
+      where session_id = session_restaurants.session_id
+        and profile_id = auth.uid()
     )
   );
 
