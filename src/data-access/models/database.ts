@@ -1,6 +1,6 @@
 /**
  * Types générés manuellement depuis la migration init_schema.
- * À régénérer avec `supabase gen types typescript --local > types/database.ts`
+ * À régénérer avec `supabase gen types typescript --local > src/data-access/models/database.ts`
  * une fois Docker lancé et `supabase start` exécuté.
  */
 
