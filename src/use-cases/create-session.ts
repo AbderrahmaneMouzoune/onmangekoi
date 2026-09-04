@@ -1,35 +1,26 @@
-import { getRestaurantsByListIds } from '@/data-access/restaurants'
-import {
-  createSession,
-  createSessionRestaurants,
-  createHostParticipant,
-} from '@/data-access/sessions'
-import { createServerClient } from '@/data-access/supabase'
+import { getRestaurantIdsForLists } from '@/data-access/lists'
+import { createSession } from '@/data-access/sessions'
+import { AppError } from '@/lib/errors'
 
-import type { Session } from '@/data-access/models/database'
+import type { Session } from '@/data-access/models'
+import type { Database } from '@/data-access/models/database'
 import type { CreateSessionInput } from '@/lib/schemas/session'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-export type CreateSessionResult = {
-  session: Session
-}
-
+/**
+ * Résout les restaurants depuis les listes choisies + la sélection directe,
+ * dédoublonne en conservant l'ordre, puis délègue à la RPC transactionnelle.
+ */
 export async function createSessionUseCase(
-  userId: string,
+  supabase: SupabaseClient<Database>,
   input: CreateSessionInput
-): Promise<CreateSessionResult> {
-  const supabase = await createServerClient()
+): Promise<Session> {
+  const fromLists = await getRestaurantIdsForLists(supabase, input.listIds)
+  const restaurantIds = [...new Set([...fromLists, ...input.restaurantIds])]
 
-  // Résolution des restos depuis les listes + sélection directe, avec déduplication
-  const fromLists = await getRestaurantsByListIds(supabase, input.listIds)
-  const allRestaurantIds = [...new Set([...fromLists.map((r) => r.id), ...input.restaurantIds])]
-
-  if (allRestaurantIds.length === 0) {
-    throw new Error('La session doit contenir au moins un restaurant')
+  if (restaurantIds.length === 0) {
+    throw new AppError('Sélectionne au moins un restaurant.')
   }
 
-  const session = await createSession(supabase, { name: input.name, hostId: userId })
-  await createSessionRestaurants(supabase, session.id, allRestaurantIds)
-  await createHostParticipant(supabase, session.id, userId)
-
-  return { session }
+  return createSession(supabase, { name: input.name, restaurantIds })
 }

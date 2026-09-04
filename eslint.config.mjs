@@ -1,23 +1,20 @@
 import { defineConfig, globalIgnores } from 'eslint/config'
 import nextVitals from 'eslint-config-next/core-web-vitals'
 import nextTs from 'eslint-config-next/typescript'
-import importPlugin from 'eslint-plugin-import'
 import prettier from 'eslint-config-prettier'
+import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript'
+import importX from 'eslint-plugin-import-x'
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    files: ['**/*.ts', '**/*.tsx'],
+    files: ['**/*.ts', '**/*.tsx', '**/*.mjs'],
     plugins: {
-      import: importPlugin,
+      'import-x': importX,
     },
     settings: {
-      'import/resolver': {
-        typescript: {
-          alwaysTryTypes: true,
-        },
-      },
+      'import-x/resolver-next': [createTypeScriptImportResolver({ alwaysTryTypes: true })],
     },
     rules: {
       '@typescript-eslint/no-unused-vars': [
@@ -25,10 +22,11 @@ const eslintConfig = defineConfig([
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
         },
       ],
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/consistent-type-imports': [
         'error',
         {
@@ -36,7 +34,7 @@ const eslintConfig = defineConfig([
           fixStyle: 'inline-type-imports',
         },
       ],
-      'import/order': [
+      'import-x/order': [
         'error',
         {
           groups: ['builtin', 'external', 'internal', ['parent', 'sibling'], 'index', 'type'],
@@ -47,7 +45,8 @@ const eslintConfig = defineConfig([
           },
         },
       ],
-      'import/no-duplicates': 'error',
+      'import-x/no-duplicates': 'error',
+      'import-x/no-cycle': 'error',
     },
   },
   {
@@ -58,17 +57,18 @@ const eslintConfig = defineConfig([
     },
   },
   prettier,
-  // Override default ignores of eslint-config-next.
   globalIgnores([
     'node_modules/**',
-    'dist/**',
-    'coverage/**',
-    '.turbo/**',
-    // Default ignores of eslint-config-next:
     '.next/**',
     'out/**',
     'build/**',
+    'dist/**',
+    'coverage/**',
+    '.turbo/**',
+    'playwright-report/**',
+    'test-results/**',
     'next-env.d.ts',
+    '.agents/**',
   ]),
 ])
 

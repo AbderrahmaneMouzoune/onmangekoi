@@ -103,19 +103,19 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          pseudo: string
+          pseudo: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           id: string
-          pseudo: string
+          pseudo?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
-          pseudo?: string
+          pseudo?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -332,7 +332,155 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_restaurant_to_shared_list: {
+        Args: { p_restaurant_id: string; p_token: string }
+        Returns: undefined
+      }
+      close_session: {
+        Args: { p_session_id: string }
+        Returns: {
+          closed_at: string | null
+          created_at: string
+          host_id: string
+          id: string
+          invite_code: string
+          invite_token: string
+          launched_at: string | null
+          name: string
+          status: Database['public']['Enums']['session_status']
+        }
+      }
+      copy_shared_list: {
+        Args: { p_name?: string | null; p_token: string }
+        Returns: {
+          created_at: string
+          id: string
+          is_collaborative: boolean
+          name: string
+          owner_id: string
+          share_token: string
+          updated_at: string
+        }
+      }
+      create_session: {
+        Args: { p_name: string; p_restaurant_ids: string[] }
+        Returns: {
+          closed_at: string | null
+          created_at: string
+          host_id: string
+          id: string
+          invite_code: string
+          invite_token: string
+          launched_at: string | null
+          name: string
+          status: Database['public']['Enums']['session_status']
+        }
+      }
+      generate_invite_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      is_session_host: {
+        Args: { p_session_id: string }
+        Returns: boolean
+      }
+      is_session_participant: {
+        Args: { p_session_id: string }
+        Returns: boolean
+      }
+      join_session: {
+        Args: { p_identifier: string }
+        Returns: {
+          closed_at: string | null
+          created_at: string
+          host_id: string
+          id: string
+          invite_code: string
+          invite_token: string
+          launched_at: string | null
+          name: string
+          status: Database['public']['Enums']['session_status']
+        }
+      }
+      launch_session: {
+        Args: { p_session_id: string }
+        Returns: {
+          closed_at: string | null
+          created_at: string
+          host_id: string
+          id: string
+          invite_code: string
+          invite_token: string
+          launched_at: string | null
+          name: string
+          status: Database['public']['Enums']['session_status']
+        }
+      }
+      list_by_share_token: {
+        Args: { p_token: string }
+        Returns: {
+          id: string
+          is_collaborative: boolean
+          name: string
+          owner_pseudo: string | null
+          restaurant_count: number
+        }[]
+      }
+      list_restaurants_by_share_token: {
+        Args: { p_token: string }
+        Returns: {
+          address: string | null
+          city: string | null
+          created_at: string
+          cuisine_type: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+        }[]
+      }
+      raise_omk: {
+        Args: { p_code: string }
+        Returns: undefined
+      }
+      session_preview: {
+        Args: { p_identifier: string }
+        Returns: {
+          host_pseudo: string | null
+          id: string
+          name: string
+          participant_count: number
+          restaurant_count: number
+          status: Database['public']['Enums']['session_status']
+        }[]
+      }
+      session_results: {
+        Args: { p_session_id: string }
+        Returns: {
+          cuisine_type: string | null
+          description: string | null
+          dislikes: number
+          image_url: string | null
+          likes: number
+          name: string
+          rank: number
+          restaurant_id: string
+          restaurant_position: number
+          score: number
+          session_restaurant_id: string
+          super_dislikes: number
+          superlikes: number
+          votes_count: number
+        }[]
+      }
+      shares_session_with: {
+        Args: { p_profile_id: string }
+        Returns: boolean
+      }
+      submit_vote: {
+        Args: { p_session_id: string; p_session_restaurant_id: string; p_value: number }
+        Returns: undefined
+      }
     }
     Enums: {
       session_status: 'waiting' | 'voting' | 'closed'
@@ -351,12 +499,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -376,13 +524,12 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+    keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -401,13 +548,12 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+    keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -426,13 +572,12 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    keyof DefaultSchema['Enums'] | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -443,13 +588,12 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    keyof DefaultSchema['CompositeTypes'] | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

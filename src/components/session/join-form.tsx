@@ -3,48 +3,41 @@
 import { useActionState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Spinner } from '@/components/ui/spinner'
 import { joinSessionAction } from '@/lib/actions/sessions'
 
-interface Props {
-  initialError?: string
-}
-
-export function JoinForm({ initialError }: Props) {
+export function JoinForm({ initialError }: { initialError?: string }) {
   const [state, formAction, isPending] = useActionState(joinSessionAction, null)
 
   return (
-    <div className="space-y-6">
-      {initialError && (
-        <p className="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
-          {initialError}
+    <form action={formAction} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="identifier">Code ou lien d’invitation</Label>
+        <Input
+          id="identifier"
+          name="identifier"
+          placeholder="A3F 9B2"
+          required
+          autoFocus
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          aria-invalid={state?.error ? true : undefined}
+          className="h-14 font-mono text-2xl tracking-[0.25em] uppercase placeholder:tracking-[0.25em]"
+        />
+        <p className="text-xs text-muted-foreground">
+          Le code à 6 caractères, ou le lien complet collé tel quel.
         </p>
-      )}
+      </div>
 
-      <form action={formAction} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="identifier">Code ou lien d&apos;invitation</Label>
-          <Input
-            id="identifier"
-            name="identifier"
-            placeholder="Ex: A3F9B2"
-            required
-            autoFocus
-            autoCapitalize="characters"
-            className="font-mono text-lg tracking-widest uppercase"
-          />
-          <p className="text-xs text-muted-foreground">
-            Saisis le code à 6 caractères ou colle le lien complet.
-          </p>
-        </div>
+      <FormMessage error={state?.error ?? initialError} />
 
-        {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
-
-        <Button type="submit" disabled={isPending} className="w-full">
-          {isPending ? 'Vérification...' : 'Rejoindre'}
-        </Button>
-      </form>
-    </div>
+      <Button type="submit" size="lg" disabled={isPending} className="w-full">
+        {isPending ? <Spinner /> : 'Rejoindre'}
+      </Button>
+    </form>
   )
 }

@@ -6,8 +6,8 @@ export async function getProfile(
   supabase: SupabaseClient<Database>,
   userId: string
 ): Promise<Profile | null> {
-  const { data, error } = await supabase.from('profiles').select().eq('id', userId).single()
-  if (error) return null
+  const { data, error } = await supabase.from('profiles').select().eq('id', userId).maybeSingle()
+  if (error) throw error
   return data
 }
 
