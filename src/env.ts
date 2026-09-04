@@ -3,9 +3,17 @@ import { z } from 'zod'
 
 /**
  * Variables d'environnement validées au démarrage.
- * `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` remplace l'ancien nom `ANON_KEY`
- * (nomenclature Supabase actuelle) ; la valeur reste la clé publique du projet.
+ *
+ * - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` est le nom actuel de la clé publique
+ *   Supabase ; l'ancien `NEXT_PUBLIC_SUPABASE_ANON_KEY` reste accepté pour ne pas
+ *   casser les environnements déjà configurés (même valeur).
+ * - `NEXT_PUBLIC_SITE_URL` sert aux liens d'invitation et aux métadonnées ; sur
+ *   Vercel, on retombe sur l'URL de production du projet si elle n'est pas définie.
  */
+const vercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : undefined
+
 export const env = createEnv({
   server: {},
   client: {
@@ -15,8 +23,9 @@ export const env = createEnv({
   },
   runtimeEnv: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? vercelProductionUrl,
   },
   emptyStringAsUndefined: true,
 })
