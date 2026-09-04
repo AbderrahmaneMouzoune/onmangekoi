@@ -95,6 +95,20 @@ e2e/                     Playwright
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.
 - Les messages d'erreur Postgres ne remontent jamais tels quels : seuls les codes métier `omk:*` sont traduits.
 
+## Déployer (Vercel + Supabase cloud)
+
+1. Créer un projet Supabase, puis pousser le schéma : `supabase link --project-ref <ref>` et `supabase db push` (migrations, RLS, RPC, seed).
+2. Dans Supabase → Authentication → URL Configuration : ajouter `https://<domaine>/auth/confirm` aux _Redirect URLs_ (compte optionnel).
+3. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
+
+| Variable                               | Valeur                                                     |
+| -------------------------------------- | ---------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | URL du projet (Project Settings → API)                     |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | clé _publishable_ (l'ancienne _anon_ est acceptée aussi)   |
+| `NEXT_PUBLIC_SITE_URL`                 | optionnel — à défaut, l'URL de production Vercel est prise |
+
+Le build échoue volontairement si `NEXT_PUBLIC_SUPABASE_URL` ou la clé manque (`src/env.ts`) : mieux vaut un build rouge qu'une app déployée qui ne parle à aucune base.
+
 ## Hors scope (v1)
 
 - Réservation / intégration TheFork, OpenTable
