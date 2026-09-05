@@ -3,6 +3,7 @@ import { ImageResponse } from 'next/og'
 import { OgCard } from '@/components/og/og-card'
 import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
+import { parseInviteIdentifier } from '@/domain/share'
 import { countLabel, displayPseudo } from '@/lib/format'
 
 export const size = { width: 1200, height: 630 }
@@ -12,10 +13,14 @@ export const alt = 'Invitation à voter sur onmangekoi'
 export default async function InviteOpenGraphImage({
   params,
 }: {
-  params: Promise<{ token: string }>
+  params: Promise<{ code: string }>
 }) {
-  const [{ token }, supabase] = await Promise.all([params, createServerClient()])
-  const preview = await getSessionPreview(supabase, decodeURIComponent(token)).catch(() => null)
+  const [{ code }, supabase] = await Promise.all([params, createServerClient()])
+  const identifier = parseInviteIdentifier(code)
+  const preview =
+    identifier.kind === 'invalid'
+      ? null
+      : await getSessionPreview(supabase, identifier.value).catch(() => null)
 
   return new ImageResponse(
     preview ? (

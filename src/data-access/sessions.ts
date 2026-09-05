@@ -1,5 +1,7 @@
 import { cache } from 'react'
 
+import { parseSessionParam } from '@/domain/share'
+
 import type {
   ParticipantWithProfile,
   Session,
@@ -75,16 +77,39 @@ export async function deleteSession(
 
 // ─── Lectures (sous RLS : participant uniquement) ───────────────
 
+async function findSession(
+  supabase: SupabaseClient<Database>,
+  column: 'id' | 'invite_code',
+  value: string
+): Promise<Session | null> {
+  const { data, error } = await supabase.from('sessions').select().eq(column, value).maybeSingle()
+  if (error) throw error
+  return data
+}
+
 /** Session par id — mémoïsée par requête : page et `generateMetadata` partagent l'appel. */
 export const getSessionById = cache(
-  async (supabase: SupabaseClient<Database>, sessionId: string): Promise<Session | null> => {
-    const { data, error } = await supabase
-      .from('sessions')
-      .select()
-      .eq('id', sessionId)
-      .maybeSingle()
-    if (error) throw error
-    return data
+  async (supabase: SupabaseClient<Database>, sessionId: string): Promise<Session | null> =>
+    findSession(supabase, 'id', sessionId)
+)
+
+/** Session par code d'invitation (le code lisible qui identifie l'URL). */
+export const getSessionByCode = cache(
+  async (supabase: SupabaseClient<Database>, inviteCode: string): Promise<Session | null> =>
+    findSession(supabase, 'invite_code', inviteCode)
+)
+
+/**
+ * Session visée par un paramètre d'URL : son code d'invitation aujourd'hui,
+ * un uuid pour les liens d'avant. Mémoïsée par requête, comme les deux autres.
+ */
+export const getSessionByParam = cache(
+  async (supabase: SupabaseClient<Database>, param: string): Promise<Session | null> => {
+    const identifier = parseSessionParam(param)
+    if (identifier.kind === 'invalid') return null
+    return identifier.kind === 'id'
+      ? getSessionById(supabase, identifier.value)
+      : getSessionByCode(supabase, identifier.value)
   }
 )
 

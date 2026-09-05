@@ -1,35 +1,36 @@
 import { notFound, redirect } from 'next/navigation'
-import { z } from 'zod'
 
 import { PageHeader } from '@/components/layout/page-header'
 import { ListEditor } from '@/components/lists/list-editor'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
-import { getListWithRestaurants } from '@/data-access/lists'
+import { getListByParam } from '@/data-access/lists'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
 import { listShareUrl } from '@/lib/site'
 
 /**
- * Contenu de `/lists/[id]` : identifiant de route + données de la personne
+ * Contenu de `/lists/[code]` : code de route + données de la personne
  * connectée, donc entièrement dynamique. Seul le catalogue de restaurants
  * arrive du cache partagé.
  */
-export async function ListDetail({ params }: { params: Promise<{ id: string }> }) {
-  const [{ id }, supabase, user] = await Promise.all([
+export async function ListDetail({ params }: { params: Promise<{ code: string }> }) {
+  const [{ code }, supabase, user] = await Promise.all([
     params,
     createServerClient(),
     getCurrentUser(),
   ])
-  if (!z.uuid().safeParse(id).success) notFound()
-  if (!user) redirect(router.setup(router.list(id)))
+  if (!user) redirect(router.setup(router.list(code)))
 
   const [list, initialPage] = await Promise.all([
-    getListWithRestaurants(supabase, id),
+    getListByParam(supabase, code),
     getRestaurantCatalogPage(),
   ])
   if (!list) notFound()
+
+  const canonical = router.list(list)
+  if (`/lists/${code}` !== canonical) redirect(canonical)
 
   return (
     <>
@@ -42,7 +43,7 @@ export async function ListDetail({ params }: { params: Promise<{ id: string }> }
         key={list.updated_at}
         list={list}
         initialPage={initialPage}
-        shareUrl={listShareUrl(list.share_code, list.name)}
+        shareUrl={listShareUrl(list)}
       />
     </>
   )
