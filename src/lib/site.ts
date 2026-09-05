@@ -17,12 +17,12 @@ export function absoluteUrl(path: string): string {
   return `${siteUrl()}${normalized}`
 }
 
-/** Lien d'invitation lisible : `https://…/join/dej-du-lundi-7K3M9P`. */
+/** Lien d'invitation : `https://…/join/7K3M9P`. */
 export function inviteUrl(session: SessionTarget): string {
   return absoluteUrl(router.joinInvite(session))
 }
 
-/** Lien de partage d'une liste : `https://…/l/restos-du-bureau-7K3M9P2QWX`. */
+/** Lien de partage d'une liste : `https://…/l/7K3M9P2QWX`. */
 export function listShareUrl(list: ListTarget): string {
   return absoluteUrl(router.sharedList(list))
 }

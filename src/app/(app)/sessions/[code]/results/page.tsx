@@ -23,33 +23,33 @@ import { cn } from '@/lib/utils'
 import type { Metadata } from 'next'
 
 interface Props {
-  params: Promise<{ slug: string }>
+  params: Promise<{ code: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const [{ slug }, supabase] = await Promise.all([params, createServerClient()])
-  const session = await getSessionByParam(supabase, slug).catch(() => null)
+  const [{ code }, supabase] = await Promise.all([params, createServerClient()])
+  const session = await getSessionByParam(supabase, code).catch(() => null)
   return {
     title: session ? `Classement · ${session.name}` : 'Classement',
     robots: { index: false },
   }
 }
 
-/** Classement : `/sessions/dej-du-lundi-7K3M9P/results`. */
+/** Classement : `/sessions/7K3M9P/results`. */
 export default async function ResultsPage({ params }: Props) {
-  const [{ slug }, supabase, user] = await Promise.all([
+  const [{ code }, supabase, user] = await Promise.all([
     params,
     createServerClient(),
     getCurrentUser(),
   ])
-  if (!user) redirect(router.setup(router.sessionResults(slug)))
+  if (!user) redirect(router.setup(router.sessionResults(code)))
 
-  const session = await getSessionByParam(supabase, slug)
+  const session = await getSessionByParam(supabase, code)
   if (!session) notFound()
   if (session.status !== 'closed') redirect(router.session(session))
 
   const canonical = router.sessionResults(session)
-  if (`/sessions/${slug}/results` !== canonical) redirect(canonical)
+  if (`/sessions/${code}/results` !== canonical) redirect(canonical)
 
   // Les deux lectures restantes sont indépendantes.
   const [results, participants] = await Promise.all([

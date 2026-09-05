@@ -10,11 +10,9 @@ describe('router', () => {
     expect(router.home()).toBe('/')
     expect(router.join()).toBe('/join')
     expect(router.joinInvite('A3F9B2')).toBe('/join/A3F9B2')
-    expect(router.session('dej-du-lundi-7K3M9P')).toBe('/sessions/dej-du-lundi-7K3M9P')
-    expect(router.sessionResults('dej-du-lundi-7K3M9P')).toBe(
-      '/sessions/dej-du-lundi-7K3M9P/results'
-    )
-    expect(router.list('restos-du-bureau-7K3M9P2QWX')).toBe('/lists/restos-du-bureau-7K3M9P2QWX')
+    expect(router.session('7K3M9P')).toBe('/sessions/7K3M9P')
+    expect(router.sessionResults('7K3M9P')).toBe('/sessions/7K3M9P/results')
+    expect(router.list('7K3M9P2QWX')).toBe('/lists/7K3M9P2QWX')
     expect(router.authConfirm()).toBe('/auth/confirm')
     expect(router.account({ auth: 'expired' })).toBe('/account?auth=expired')
   })
@@ -26,20 +24,17 @@ describe('router', () => {
     expect(router.login('/lists')).toBe('/login?next=%2Flists')
   })
 
-  it('should name sessions after their code, slug decorative', () => {
-    const session = { name: 'Déj du lundi', invite_code: '7K3M9P' }
-    expect(router.session(session)).toBe('/sessions/dej-du-lundi-7K3M9P')
-    expect(router.sessionResults(session)).toBe('/sessions/dej-du-lundi-7K3M9P/results')
-    expect(router.joinInvite(session)).toBe('/join/dej-du-lundi-7K3M9P')
-    expect(router.session({ name: '!!!', invite_code: '7K3M9P' })).toBe('/sessions/7K3M9P')
+  it('should address a session by its invite code, never by its id', () => {
+    const session = { id: 'ffffffff-0000-4000-8000-000000000000', invite_code: '7K3M9P' }
+    expect(router.session(session)).toBe('/sessions/7K3M9P')
+    expect(router.sessionResults(session)).toBe('/sessions/7K3M9P/results')
+    expect(router.joinInvite(session)).toBe('/join/7K3M9P')
   })
 
-  it('should build human-friendly list links, slug optional', () => {
-    const list = { name: 'Restos du bureau', share_code: '7K3M9P2QWX' }
-    expect(router.list(list)).toBe('/lists/restos-du-bureau-7K3M9P2QWX')
-    expect(router.sharedList(list)).toBe('/l/restos-du-bureau-7K3M9P2QWX')
-    expect(router.sharedList({ share_code: '7K3M9P2QWX' })).toBe('/l/7K3M9P2QWX')
-    expect(router.sharedList({ name: '!!!', share_code: '7K3M9P2QWX' })).toBe('/l/7K3M9P2QWX')
+  it('should address a list by its share code, never by its id', () => {
+    const list = { id: 'ffffffff-0000-4000-8000-000000000000', share_code: '7K3M9P2QWX' }
+    expect(router.list(list)).toBe('/lists/7K3M9P2QWX')
+    expect(router.sharedList(list)).toBe('/l/7K3M9P2QWX')
   })
 })
 

@@ -100,7 +100,7 @@ export const getSessionByCode = cache(
 )
 
 /**
- * Session visée par un paramètre d'URL : `dej-du-lundi-7K3M9P` aujourd'hui,
+ * Session visée par un paramètre d'URL : son code d'invitation aujourd'hui,
  * un uuid pour les liens d'avant. Mémoïsée par requête, comme les deux autres.
  */
 export const getSessionByParam = cache(

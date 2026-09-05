@@ -1,9 +1,9 @@
 -- ============================================================
 -- onmangekoi — liens d'invitation lisibles
 -- ============================================================
---   Le lien d'invitation passe de `/join/<token 32 hex>` à
---   `/join/dej-du-lundi-7K3M9P` : c'est le code court qui identifie la
---   session, comme à l'oral et dans le QR code.
+--   Le lien d'invitation passe de `/join/<token 32 hex>` à `/join/7K3M9P` :
+--   c'est le code court qui identifie la session, celui qu'on se dit à voix
+--   haute et qu'on met dans le QR code.
 --
 --   Conséquence sur `session_preview` : le robot qui déplie le lien dans une
 --   conversation (WhatsApp, Slack, iMessage…) n'est pas authentifié. Sans lui

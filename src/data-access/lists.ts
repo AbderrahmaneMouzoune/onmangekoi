@@ -67,9 +67,9 @@ export const getListByShareCode = cache(
 )
 
 /**
- * Liste visée par un paramètre d'URL : `restos-du-bureau-7K3M9P2QWX`
- * aujourd'hui, un uuid pour les liens d'avant. La RLS ne rend visible que
- * les listes du propriétaire, comme pour une lecture par id.
+ * Liste visée par un paramètre d'URL : son code de partage aujourd'hui, un
+ * uuid pour les liens d'avant. La RLS ne rend visible que les listes du
+ * propriétaire, comme pour une lecture par id.
  */
 export const getListByParam = cache(
   async (

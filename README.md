@@ -38,15 +38,15 @@ Les règles (jokers, session en cours, participant, restaurant valide) sont vér
 
 ## URLs, codes et liens de partage
 
-Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **son nom suivi de son code court**.
+Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **son code court**, celui qu'on se dit à voix haute.
 
-| Route                    | Exemple                                 | Qui la voit                   |
-| ------------------------ | --------------------------------------- | ----------------------------- |
-| Salle de session         | `/sessions/dej-du-lundi-7K3M9P`         | participants                  |
-| Classement               | `/sessions/dej-du-lundi-7K3M9P/results` | participants                  |
-| Invitation (lien + QR)   | `/join/dej-du-lundi-7K3M9P`             | qui reçoit le lien ou le code |
-| Liste, côté propriétaire | `/lists/restos-du-bureau-H4V2Q8ZX0M`    | propriétaire                  |
-| Liste partagée           | `/l/restos-du-bureau-H4V2Q8ZX0M`        | qui reçoit le lien            |
+| Route                    | Exemple                    | Qui la voit                   |
+| ------------------------ | -------------------------- | ----------------------------- |
+| Salle de session         | `/sessions/7K3M9P`         | participants                  |
+| Classement               | `/sessions/7K3M9P/results` | participants                  |
+| Invitation (lien + QR)   | `/join/7K3M9P`             | qui reçoit le lien ou le code |
+| Liste, côté propriétaire | `/lists/H4V2Q8ZX0M`        | propriétaire                  |
+| Liste partagée           | `/l/H4V2Q8ZX0M`            | qui reçoit le lien            |
 
 | Objet   | Code          | Forme         |
 | ------- | ------------- | ------------- |
@@ -55,7 +55,7 @@ Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **s
 
 Les codes utilisent l'alphabet **Crockford base32** (`0-9`, `A-Z` sans `I`, `L`, `O`, `U`) : pas de lettre ambiguë à l'oral ni à l'écrit. La saisie est tolérante — minuscules, espaces, tirets, `I`/`L` lus comme `1`, `O` comme `0` — et un lien collé entier est accepté.
 
-Le texte devant le code est **purement décoratif** : seul le code final identifie la ressource, donc renommer ne casse aucun lien. Chaque page redirige vers sa forme canonique — un nom changé, un slug tapé de travers ou un ancien lien (uuid de session ou de liste, jeton hexadécimal de partage) retombent sur l'URL lisible du moment.
+Chaque page redirige vers sa forme canonique : un code tapé en minuscules ou avec des tirets, comme un ancien lien (uuid de session ou de liste, jeton hexadécimal de partage, `/l/<slug>-<CODE>`), retombe sur l'URL du moment. Rien de ce qui a déjà été partagé ne casse.
 
 Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché par le host.
 
@@ -100,12 +100,12 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ```
 src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join/[invite], sessions/[slug], lists/[slug], l/[slug], account, auth)
+src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], account, auth)
 src/components/          ui/ (primitives) · layout/ · session/ · lists/ · account/ · restaurants/
 src/data-access/         requêtes Supabase, un module par table + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / onboarding)
 src/lib/actions/         Server Actions (validation Zod, auth, erreurs typées)
-src/lib/                 schémas, Crockford, slug + code (`slugWithCode` / `codeFromSlug`), share/invite (parsing), site (URL absolues), qr, erreurs
+src/lib/                 schémas, Crockford (`codeFromSegment`), share/invite (parsing), site (URL absolues), qr, erreurs
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results)
 e2e/                     Playwright

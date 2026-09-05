@@ -17,36 +17,36 @@ import { inviteUrl } from '@/lib/site'
 import type { Metadata } from 'next'
 
 interface Props {
-  params: Promise<{ slug: string }>
+  params: Promise<{ code: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const [{ slug }, supabase] = await Promise.all([params, createServerClient()])
-  const session = await getSessionByParam(supabase, slug).catch(() => null)
+  const [{ code }, supabase] = await Promise.all([params, createServerClient()])
+  const session = await getSessionByParam(supabase, code).catch(() => null)
   return { title: session?.name ?? 'Session', robots: { index: false } }
 }
 
 /**
- * Salle de session : `/sessions/dej-du-lundi-7K3M9P`. Le slug est décoratif,
- * seul le code d'invitation compte ; les anciens liens en uuid restent valides
- * et sont redirigés vers la forme lisible.
+ * Salle de session : `/sessions/7K3M9P` — le code d'invitation, celui qu'on se
+ * dit à voix haute. Les anciens liens en uuid restent valides et sont
+ * redirigés vers cette forme.
  */
 export default async function SessionPage({ params }: Props) {
-  const [{ slug }, supabase, user] = await Promise.all([
+  const [{ code }, supabase, user] = await Promise.all([
     params,
     createServerClient(),
     getCurrentUser(),
   ])
-  if (!user) redirect(router.setup(router.session(slug)))
+  if (!user) redirect(router.setup(router.session(code)))
 
   // Résoudre le code coûte une lecture avant les autres, qui ont besoin de l'id.
   // Sous RLS, un non-participant ne voit rien : la session revient nulle.
-  const session = await getSessionByParam(supabase, slug)
+  const session = await getSessionByParam(supabase, code)
   if (!session) notFound()
   if (session.status === 'closed') redirect(router.sessionResults(session))
 
   const canonical = router.session(session)
-  if (`/sessions/${slug}` !== canonical) redirect(canonical)
+  if (`/sessions/${code}` !== canonical) redirect(canonical)
 
   // Les trois lectures restantes sont indépendantes : un seul aller-retour.
   const [participants, restaurants, votes] = await Promise.all([

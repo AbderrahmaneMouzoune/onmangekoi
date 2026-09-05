@@ -70,13 +70,14 @@ Toutes les URL de l'app sont construites via `router.*()` dans `src/config/route
 
 Les codes d'invitation (6) et de partage de liste (10) sont en Crockford base32 : `src/lib/crockford.ts` normalise la saisie côté client, `public.normalize_crockford` fait de même en base.
 
-Toutes les ressources s'adressent par `<slug>-<CODE>` (`/sessions/dej-du-lundi-7K3M9P`, `/lists/restos-du-bureau-H4V2Q8ZX0M`, `/l/…`, `/join/…`), jamais par uuid :
+Toutes les ressources s'adressent par leur code (`/sessions/7K3M9P`, `/lists/H4V2Q8ZX0M`, `/l/…`, `/join/…`), jamais par uuid :
 
-- `slugWithCode(nom, code)` compose le segment, `codeFromSlug(segment, longueur)` en ressort le code (`src/lib/slug.ts`) ;
-- `parseSessionParam` / `parseListParam` (`src/lib/share.ts`) rendent `{ kind: 'code' | 'id' | 'invalid' }` : `id` couvre les anciens liens en uuid, que la page redirige vers la forme lisible ;
+- `codeFromSegment(segment, longueur)` (`src/lib/crockford.ts`) lit le code d'un segment d'URL ; il tolère la saisie humaine et les anciens liens décorés d'un slug (`restos-du-bureau-H4V2Q8ZX0M`) ;
+- `parseSessionParam` / `parseListParam` (`src/lib/share.ts`) rendent `{ kind: 'code' | 'id' | 'invalid' }` : `id` couvre les anciens liens en uuid, que la page redirige vers la forme courte ;
+- `router.session(session)` / `router.list(list)` prennent la ligne et non l'id : une URL ne peut pas se construire sans son code ;
 - côté données, `getSessionByParam` et `getListByParam` choisissent la colonne (`invite_code` / `share_code` ou `id`). La RLS filtre exactement comme pour une lecture par id : le code dans l'URL n'ouvre aucun accès.
 
-Comme le passage à `router.session(session)` prend la ligne et non l'id, une action qui ne connaît qu'un uuid invalide la route entière : `revalidatePath(ROUTE_PATTERNS.list, 'page')`.
+Une action qui ne connaît qu'un uuid ne peut donc pas viser une page précise : elle invalide la route entière avec `revalidatePath(ROUTE_PATTERNS.list, 'page')`.
 
 ## Valider les migrations sans Supabase
 

@@ -19,12 +19,12 @@ import { cn } from '@/lib/utils'
 import type { Metadata } from 'next'
 
 interface Props {
-  params: Promise<{ slug: string }>
+  params: Promise<{ code: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const [{ slug }, supabase] = await Promise.all([params, createServerClient()])
-  const identifier = parseSharedListParam(slug)
+  const [{ code }, supabase] = await Promise.all([params, createServerClient()])
+  const identifier = parseSharedListParam(code)
   if (identifier.kind === 'invalid') return { title: 'Liste partagée' }
   const preview = await getSharedListPreview(supabase, identifier.value).catch(() => null)
   if (!preview) return { title: 'Liste partagée' }
@@ -36,18 +36,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /**
- * Liste partagée : `/l/restos-du-bureau-7K3M9P2QWX`. Le slug est décoratif,
- * seul le code compte ; les anciens liens `/l/<token 32 hex>` restent valides.
+ * Liste partagée : `/l/7K3M9P2QWX`. Les anciens liens — décorés d'un slug
+ * (`/l/restos-du-bureau-7K3M9P2QWX`) ou à jeton 32 hex — restent valides et
+ * sont redirigés vers cette forme.
  */
 export default async function SharedListPage({ params }: Props) {
-  const [{ slug }, supabase, user] = await Promise.all([
+  const [{ code }, supabase, user] = await Promise.all([
     params,
     createServerClient(),
     getCurrentUser(),
   ])
-  const identifier = parseSharedListParam(slug)
+  const identifier = parseSharedListParam(code)
   if (identifier.kind === 'invalid') notFound()
-  if (!user) redirect(router.setup(router.sharedList(slug)))
+  if (!user) redirect(router.setup(router.sharedList(code)))
 
   // Quatre lectures indépendantes en parallèle.
   const [preview, restaurants, initialPage, isOwner] = await Promise.all([
@@ -58,9 +59,9 @@ export default async function SharedListPage({ params }: Props) {
   ])
   if (!preview) notFound()
 
-  // Lien canonique lisible (l'ancien token redirige vers la nouvelle forme)
+  // Forme canonique : le code seul (slug ou ancien token redirigés)
   const canonical = router.sharedList(preview)
-  if (`/l/${slug}` !== canonical) redirect(canonical)
+  if (`/l/${code}` !== canonical) redirect(canonical)
 
   return (
     <Shell>

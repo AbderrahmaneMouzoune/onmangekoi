@@ -71,7 +71,6 @@ export async function renameListAction(_prev: FormState, formData: FormData): Pr
     return { error: toUserMessage(error) }
   }
 
-  // Le slug suit le nom : c'est toute la route dynamique qu'on invalide.
   revalidatePath(ROUTE_PATTERNS.list, 'page')
   revalidatePath(ROUTE_PATTERNS.sharedList, 'page')
   revalidatePath(router.lists())

@@ -13,10 +13,10 @@ export const alt = 'Invitation à voter sur onmangekoi'
 export default async function InviteOpenGraphImage({
   params,
 }: {
-  params: Promise<{ invite: string }>
+  params: Promise<{ code: string }>
 }) {
-  const [{ invite }, supabase] = await Promise.all([params, createServerClient()])
-  const identifier = parseInviteIdentifier(invite)
+  const [{ code }, supabase] = await Promise.all([params, createServerClient()])
+  const identifier = parseInviteIdentifier(code)
   const preview =
     identifier.kind === 'invalid'
       ? null
