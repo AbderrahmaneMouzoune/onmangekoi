@@ -155,8 +155,11 @@ export type Database = {
           cuisine_type: string | null
           description: string | null
           id: string
-          image_url: string | null
+          location: Json | null
           name: string
+          opening_hours: Json | null
+          photo_url: string | null
+          website: string | null
         }
         Insert: {
           address?: string | null
@@ -165,8 +168,11 @@ export type Database = {
           cuisine_type?: string | null
           description?: string | null
           id?: string
-          image_url?: string | null
+          location?: Json | null
           name: string
+          opening_hours?: Json | null
+          photo_url?: string | null
+          website?: string | null
         }
         Update: {
           address?: string | null
@@ -175,8 +181,11 @@ export type Database = {
           cuisine_type?: string | null
           description?: string | null
           id?: string
-          image_url?: string | null
+          location?: Json | null
           name?: string
+          opening_hours?: Json | null
+          photo_url?: string | null
+          website?: string | null
         }
         Relationships: []
       }
@@ -511,8 +520,11 @@ export type Database = {
           cuisine_type: string | null
           description: string | null
           id: string
-          image_url: string | null
+          location: Json | null
           name: string
+          opening_hours: Json | null
+          photo_url: string | null
+          website: string | null
         }[]
         SetofOptions: {
           from: '*'
@@ -549,12 +561,16 @@ export type Database = {
       session_results: {
         Args: { p_session_id: string }
         Returns: {
+          address: string
+          city: string
           cuisine_type: string
           description: string
           dislikes: number
-          image_url: string
           likes: number
+          location: Json
           name: string
+          opening_hours: Json
+          photo_url: string
           rank: number
           restaurant_id: string
           restaurant_position: number
@@ -563,6 +579,7 @@ export type Database = {
           super_dislikes: number
           superlikes: number
           votes_count: number
+          website: string
         }[]
       }
       shares_session_with: { Args: { p_profile_id: string }; Returns: boolean }

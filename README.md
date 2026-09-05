@@ -59,6 +59,24 @@ Chaque page redirige vers sa forme canonique : un code tapé en minuscules ou av
 
 Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché par le host.
 
+## Fiche restaurant
+
+Chaque restaurant peut porter une photo, une adresse, un site, des coordonnées et des horaires. Tout est optionnel : sans la donnée, le bloc concerné disparaît au lieu de s'afficher vide.
+
+| Colonne          | Forme                                                                                 | Usage                                            |
+| ---------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `photo_url`      | HTTPS, hôte autorisé                                                                  | fond de la carte de vote, vignette du classement |
+| `address`/`city` | texte                                                                                 | ligne d'adresse, repli du lien d'itinéraire      |
+| `website`        | HTTP(S)                                                                               | bouton « Le site » sur le gagnant                |
+| `location`       | `{"lat": number, "lng": number}`                                                      | lien d'itinéraire et mini-carte du gagnant       |
+| `opening_hours`  | `{"timezone"?: string, "periods": [{"day": 0-6, "open": "HH:MM", "close": "HH:MM"}]}` | badge « ouvert / fermé » sur la carte de vote    |
+
+`day` suit `Date#getDay` (0 = dimanche) ; une période dont la fermeture précède l'ouverture passe minuit (`22:00 → 02:00`), y compris par-dessus la fin de semaine. Le fuseau est celui du restaurant quand il est connu, celui du visiteur sinon. Les formes `jsonb` sont validées en base (`is_geo_point`, `is_opening_hours`) **et** à la lecture : une donnée importée reste une donnée externe.
+
+Les images distantes ne sont chargées que depuis les hôtes de `ALLOWED_IMAGE_HOSTS` (`src/lib/images.ts`), synchronisés avec `images.remotePatterns` de `next.config.mjs` — un test échoue si les deux listes divergent. Une URL hors liste n'est pas rendue plutôt que de faire échouer `next/image`. La carte visible du deck charge sa photo en `priority`, celle du dessous en `lazy`.
+
+La mini-carte du gagnant est un bloc de 2×2 tuiles [OpenStreetMap](https://www.openstreetmap.org/copyright) et un repère positionné en pourcentage : pas de clé d'API, pas de JavaScript de cartographie. L'attribution ODbL est affichée sous la carte.
+
 ## Stack
 
 | Couche     | Choix                                                                                    |
@@ -105,11 +123,12 @@ src/app/                 routes App Router (setup, login, join/[code], sessions/
 src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · account/ · restaurants/ · onboarding/
 src/data-access/         requêtes Supabase, un module par table + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / voter / onboarding)
-src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, schemas/ (Zod)
+src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, horaires, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
-src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr
+src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
+                         images (hôtes autorisés), maps (itinéraire, tuiles)
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
-src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`
+src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results), purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright

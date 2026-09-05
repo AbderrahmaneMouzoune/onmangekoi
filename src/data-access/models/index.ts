@@ -4,6 +4,8 @@
  */
 import type { Database } from './database'
 
+export type { Json } from './database'
+
 type Tables = Database['public']['Tables']
 type Functions = Database['public']['Functions']
 
@@ -18,7 +20,7 @@ export type ListRestaurant = Tables['list_restaurants']['Row']
 
 export type SessionStatus = Database['public']['Enums']['session_status']
 
-// Les deux types suivants réparent ce que le générateur ne peut pas déduire :
+// Les types suivants réparent ce que le générateur ne peut pas déduire :
 // une colonne de `returns table (...)` ne porte aucune information `NOT NULL`,
 // donc tout en ressort non nul. La correction vit ici et non dans
 // `database.ts`, qui doit rester identique à la sortie de `bun run db:types`
@@ -33,17 +35,28 @@ export type SessionPreview = Omit<
   'host_pseudo'
 > & { host_pseudo: string | null }
 
+export type SharedListPreview = Functions['list_by_share_token']['Returns'][number]
+
 /**
- * `cuisine_type`, `description` et `image_url` viennent de `restaurants`, où
- * elles sont nullables ; `session_results` les remonte telles quelles.
+ * Colonnes que `session_results` recopie de `restaurants`, toutes nullables en
+ * base. La fiche restaurant s'appuie dessus pour masquer proprement une donnée
+ * absente : une photo, une adresse ou des horaires qu'on n'a pas.
  */
+type ResultRestaurantColumns =
+  | 'address'
+  | 'city'
+  | 'cuisine_type'
+  | 'description'
+  | 'location'
+  | 'opening_hours'
+  | 'photo_url'
+  | 'website'
+
 export type SessionResultRow = Omit<
   Functions['session_results']['Returns'][number],
-  'cuisine_type' | 'description' | 'image_url'
+  ResultRestaurantColumns
 > &
-  Pick<Restaurant, 'cuisine_type' | 'description' | 'image_url'>
-
-export type SharedListPreview = Functions['list_by_share_token']['Returns'][number]
+  Pick<Restaurant, ResultRestaurantColumns>
 
 /** Participant avec le profil joint (pseudo) */
 export type ParticipantWithProfile = SessionParticipant & {
