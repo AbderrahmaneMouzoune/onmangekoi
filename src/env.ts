@@ -36,6 +36,12 @@ export const env = createEnv({
   server: {
     /** Calculée : voir `resolveSiteUrl`. Sert aux liens d'invitation et aux métadonnées. */
     SITE_URL: z.url(),
+    /**
+     * Clé Places API (New). Optionnelle : sans elle, l'import Google est
+     * simplement absent de l'interface, le reste de l'app fonctionne. Jamais
+     * préfixée `NEXT_PUBLIC_` — elle ne doit pas atteindre le navigateur.
+     */
+    GOOGLE_PLACES_API_KEY: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.url(),
@@ -52,6 +58,7 @@ export const env = createEnv({
   },
   runtimeEnv: {
     SITE_URL: resolveSiteUrl(),
+    GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,

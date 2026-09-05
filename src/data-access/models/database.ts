@@ -152,6 +152,7 @@ export type Database = {
           address: string | null
           city: string | null
           created_at: string
+          created_by: string | null
           cuisine_type: string | null
           description: string | null
           id: string
@@ -159,12 +160,16 @@ export type Database = {
           name: string
           opening_hours: Json | null
           photo_url: string | null
+          place_id: string | null
+          price_level: number | null
+          source: string
           website: string | null
         }
         Insert: {
           address?: string | null
           city?: string | null
           created_at?: string
+          created_by?: string | null
           cuisine_type?: string | null
           description?: string | null
           id?: string
@@ -172,12 +177,16 @@ export type Database = {
           name: string
           opening_hours?: Json | null
           photo_url?: string | null
+          place_id?: string | null
+          price_level?: number | null
+          source?: string
           website?: string | null
         }
         Update: {
           address?: string | null
           city?: string | null
           created_at?: string
+          created_by?: string | null
           cuisine_type?: string | null
           description?: string | null
           id?: string
@@ -185,9 +194,20 @@ export type Database = {
           name?: string
           opening_hours?: Json | null
           photo_url?: string | null
+          place_id?: string | null
+          price_level?: number | null
+          source?: string
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'restaurants_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
       }
       session_participants: {
         Row: {
@@ -411,6 +431,38 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_manual_restaurant: {
+        Args: {
+          p_address?: string
+          p_city?: string
+          p_cuisine_type?: string
+          p_name: string
+          p_price_level?: number
+        }
+        Returns: {
+          address: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          cuisine_type: string | null
+          description: string | null
+          id: string
+          location: Json | null
+          name: string
+          opening_hours: Json | null
+          photo_url: string | null
+          place_id: string | null
+          price_level: number | null
+          source: string
+          website: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'restaurants'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_session: {
         Args: { p_name: string; p_restaurant_ids: string[] }
         Returns: {
@@ -451,6 +503,32 @@ export type Database = {
           to: 'lists'
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      find_similar_restaurants: {
+        Args: { p_limit?: number; p_name: string }
+        Returns: {
+          address: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          cuisine_type: string | null
+          description: string | null
+          id: string
+          location: Json | null
+          name: string
+          opening_hours: Json | null
+          photo_url: string | null
+          place_id: string | null
+          price_level: number | null
+          source: string
+          website: string | null
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'restaurants'
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       generate_invite_code: { Args: never; Returns: string }
@@ -517,6 +595,7 @@ export type Database = {
           address: string | null
           city: string | null
           created_at: string
+          created_by: string | null
           cuisine_type: string | null
           description: string | null
           id: string
@@ -524,6 +603,9 @@ export type Database = {
           name: string
           opening_hours: Json | null
           photo_url: string | null
+          place_id: string | null
+          price_level: number | null
+          source: string
           website: string | null
         }[]
         SetofOptions: {
@@ -590,6 +672,44 @@ export type Database = {
           p_value: number
         }
         Returns: undefined
+      }
+      upsert_restaurant_from_place: {
+        Args: {
+          p_address?: string
+          p_city?: string
+          p_cuisine_type?: string
+          p_description?: string
+          p_location?: Json
+          p_name: string
+          p_opening_hours?: Json
+          p_photo_url?: string
+          p_place_id: string
+          p_price_level?: number
+          p_website?: string
+        }
+        Returns: {
+          address: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          cuisine_type: string | null
+          description: string | null
+          id: string
+          location: Json | null
+          name: string
+          opening_hours: Json | null
+          photo_url: string | null
+          place_id: string | null
+          price_level: number | null
+          source: string
+          website: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'restaurants'
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {

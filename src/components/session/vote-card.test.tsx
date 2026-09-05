@@ -21,6 +21,10 @@ function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
     location: null,
     opening_hours: null,
     created_at: '2026-09-05T10:00:00Z',
+    created_by: null,
+    source: 'seed',
+    price_level: null,
+    place_id: null,
     ...overrides,
   }
 }

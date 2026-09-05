@@ -23,6 +23,7 @@ cp .env.local.example .env.local
 | `NEXT_PUBLIC_SUPABASE_URL`             | `http://127.0.0.1:54321` (affichée par `supabase start`)                                |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | la _publishable key_ (ou l'ancienne _anon key_)                                         |
 | `NEXT_PUBLIC_SITE_URL`                 | optionnelle — `http://localhost:3000` par défaut ; déduite des variables Vercel en prod |
+| `GOOGLE_PLACES_API_KEY`                | optionnelle — active l'onglet « Google » du sélecteur de restos (serveur uniquement)    |
 | `NEXT_PUBLIC_POSTHOG_KEY`              | optionnelle — **à laisser vide en local** : sans elle, aucune mesure n'est chargée      |
 | `NEXT_PUBLIC_POSTHOG_HOST`             | optionnelle — `https://eu.i.posthog.com` par défaut                                     |
 
@@ -84,11 +85,39 @@ Toutes les ressources s'adressent par leur code (`/sessions/7K3M9P`, `/lists/H4V
 
 Une action qui ne connaît qu'un uuid ne peut donc pas viser une page précise : elle invalide la route entière avec `revalidatePath(ROUTE_PATTERNS.list, 'page')`.
 
+Sans `GOOGLE_PLACES_API_KEY`, l'import Google est simplement absent de l'interface : rien d'autre ne change, et aucun test n'en dépend. Pour l'essayer en local, créer une clé dans Google Cloud avec l'API « Places API (New) » activée, puis la restreindre à cette seule API.
+
+Les restaurants ajoutés depuis l'app portent `source = 'manual'` et `created_by` ; la RPC `create_manual_restaurant` pose les deux et les policies RLS empêchent de les contourner. `find_similar_restaurants` sert l'avertissement de doublon (pg_trgm, seuil 0.45). Les restos importés de Google portent `source = 'google'` et un `place_id` unique : `upsert_restaurant_from_place` est idempotente, la rejouer ne crée jamais de seconde ligne.
+
 ## Valider les migrations sans Supabase
 
 Les fonctions et policies peuvent être validées sur un PostgreSQL 16 nu en recréant le minimum de l'environnement Supabase (rôles `anon` / `authenticated`, schéma `auth` avec `auth.uid()` et une table `auth.users`, extensions `pgcrypto` et `pg_trgm` dans le schéma `extensions`, publication `supabase_realtime`). C'est ce qui a servi à tester les RPC de vote et de classement, puis les scénarios ci-dessus.
 
 Le shim doit rester fidèle sur les points qui piègent : `auth.users.id` n'a **pas** de valeur par défaut — c'est GoTrue qui la fournit —, et `auth.identities` exige `provider_id` et `identity_data`. Un shim plus permissif fait passer un scénario qui échouera sur la vraie base.
+
+**Rejouer sur une base vide ne suffit pas.** Une contrainte `CHECK` ajoutée sur
+une colonne qui porte déjà des lignes est validée à l'ajout : une seule ligne
+non conforme fait échouer la migration entière, en production et nulle part
+ailleurs. Deux contraintes de `restaurants` sont dans ce cas —
+`restaurants_photo_url_https` (l'ancienne `image_url`) et
+`restaurants_name_length` — et sont donc posées `not valid` : elles
+contraignent toute écriture future sans rejeter l'existant, sans muter aucune
+donnée. Pour les rendre strictes une fois les données propres :
+
+```sql
+alter table public.restaurants validate constraint restaurants_photo_url_https;
+alter table public.restaurants validate constraint restaurants_name_length;
+```
+
+Le réflexe, avant de pousser une migration : l'appliquer par paliers sur une
+base **peuplée** (comptes, listes, session close avec ses votes), pas seulement
+sur une base neuve. C'est le seul moyen de voir ce genre d'échec avant le
+déploiement.
+
+Deux pièges de plus, rencontrés en rejouant `supabase/tests` :
+
+- `auth.uid()` lit **deux** réglages, pas un : la claim isolée `request.jwt.claim.sub` et l'objet complet `request.jwt.claims` (`::jsonb ->> 'sub'`). Les scénarios utilisent la seconde forme ; un shim qui n'accepte que la première fait échouer `delete_my_account()` sur `omk:not_authenticated`, ce qui ressemble à un bug du code alors que c'est le shim.
+- `auth.users` porte bien plus que les colonnes utilisées par les migrations : les scénarios insèrent aussi `instance_id`, `aud`, `role`, `updated_at`. Il faut les déclarer, sinon le scénario s'arrête à l'insertion.
 
 ## Entretien
 
@@ -140,5 +169,7 @@ bun run db:test
 | Accès et portabilité (art. 20) | `/account/export` → RPC `export_my_data()` | Un JSON assemblé en base, filtré sur `auth.uid()`, téléchargé à la demande                               |
 | Effacement (art. 17)           | « Mon compte » → RPC `delete_my_account()` | Profil, listes et compte auth supprimés ; votes des sessions closes conservés en agrégat mais anonymisés |
 | Information                    | `/legal/privacy`                           | Données conservées, durées, sous-traitants                                                               |
+
+L'export couvre le compte, le profil, les listes, les sessions hébergées, les participations avec leurs votes, et les restaurants ajoutés par la personne (`contributed_restaurants`). **Toute nouvelle colonne rattachée à `auth.uid()` doit y être ajoutée** : c'est ce qu'a demandé `restaurants.created_by`, dont la migration `20260905150000` redéfinit `export_my_data()` pour cette seule clé.
 
 Les deux RPC ne prennent aucun paramètre : leur périmètre est toujours `auth.uid()`. Elles sont `security definer` parce qu'elles touchent `auth.users`, et doivent donc appartenir à un rôle autorisé sur ce schéma — `postgres`, celui qui joue les migrations.

@@ -67,9 +67,15 @@ as $$
   );
 $$;
 
+-- `photo_url` est l'ancienne `image_url` : elle porte des lignes déjà en base,
+-- et une seule URL non-HTTPS y ferait échouer la migration. `not valid`
+-- contraint toute écriture future sans rejeter l'existant — les trois
+-- contraintes suivantes portent sur des colonnes neuves, donc vides, et
+-- n'ont pas ce besoin. Une fois les données propres :
+--   alter table public.restaurants validate constraint restaurants_photo_url_https;
 alter table public.restaurants
   add constraint restaurants_photo_url_https
-    check (photo_url is null or photo_url ~ '^https://'),
+    check (photo_url is null or photo_url ~ '^https://') not valid,
   add constraint restaurants_website_http
     check (website is null or website ~ '^https?://'),
   add constraint restaurants_location_shape

@@ -1,9 +1,12 @@
 'use client'
 
-import { RiCheckLine, RiCloseLine, RiSearchLine } from '@remixicon/react'
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { RiAddLine, RiCheckLine, RiCloseLine, RiSearchLine } from '@remixicon/react'
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from 'react'
 
 import { searchRestaurantsAction } from '@/actions/restaurants'
+import { AddRestaurantForm } from '@/components/restaurants/add-restaurant-form'
+import { GooglePlacesResults } from '@/components/restaurants/google-places-results'
+import { useRestaurantSources } from '@/components/restaurants/restaurant-sources'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -40,6 +43,10 @@ export function RestaurantPicker({
   const [error, setError] = useState<string | null>(null)
   const [isSearching, startSearch] = useTransition()
   const [isLoadingMore, startLoadMore] = useTransition()
+  const [isAdding, setIsAdding] = useState(false)
+  const sources = useRestaurantSources()
+  const [source, setSource] = useState<'base' | 'google'>('base')
+  const tabId = useId()
   /** Cache des restaurants vus, pour afficher les sélectionnés même hors résultats */
   const [known, setKnown] = useState<Map<string, Restaurant>>(
     () => new Map(initialPage.items.map((r) => [r.id, r]))
@@ -96,6 +103,24 @@ export function RestaurantPicker({
     onChange(selected.has(id) ? value.filter((v) => v !== id) : [...value, id])
   }
 
+  /**
+   * Resto tout juste ajouté (ou doublon existant retenu à sa place) : il
+   * rejoint les résultats en tête et devient sélectionné immédiatement, sans
+   * attendre une nouvelle recherche.
+   */
+  function addAndSelect(restaurant: Restaurant) {
+    remember([restaurant])
+    setPage((prev) =>
+      prev.items.some((item) => item.id === restaurant.id)
+        ? prev
+        : { ...prev, items: [restaurant, ...prev.items] }
+    )
+    if (!locked.has(restaurant.id) && !selected.has(restaurant.id)) {
+      onChange([...value, restaurant.id])
+    }
+    setIsAdding(false)
+  }
+
   const selectedRestaurants = value
     .map((id) => known.get(id))
     .filter((r): r is Restaurant => Boolean(r))
@@ -121,6 +146,35 @@ export function RestaurantPicker({
         {isSearching && <Spinner className="absolute top-1/2 right-3.5 -translate-y-1/2" />}
       </div>
 
+      {sources.google && (
+        <div role="tablist" aria-label="Source des restaurants" className="flex gap-1.5">
+          {(
+            [
+              ['base', 'Base'],
+              ['google', 'Google'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              id={`${tabId}-tab-${key}`}
+              aria-selected={source === key}
+              aria-controls={`${tabId}-panel`}
+              onClick={() => setSource(key)}
+              className={cn(
+                'h-9 rounded-md px-3 text-sm font-semibold transition-colors',
+                source === key
+                  ? 'bg-brand-soft text-brand-hover'
+                  : 'text-muted-foreground hover:bg-surface-2 hover:text-ink'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {selectedRestaurants.length > 0 && (
         <ul className="flex flex-wrap gap-1.5" aria-label="Restaurants sélectionnés">
           {selectedRestaurants.map((restaurant) => (
@@ -139,77 +193,124 @@ export function RestaurantPicker({
         </ul>
       )}
 
-      {error && (
-        <p role="alert" className="text-sm text-veto">
-          {error}
-        </p>
-      )}
-
-      <ul
-        className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line"
-        aria-label="Résultats"
+      <div
+        className="flex flex-col gap-3"
+        id={`${tabId}-panel`}
+        role={sources.google ? 'tabpanel' : undefined}
+        aria-labelledby={sources.google ? `${tabId}-tab-${source}` : undefined}
       >
-        {page.items.length === 0 && !isSearching && (
-          <li className="px-3 py-6 text-center text-sm text-muted-foreground">{emptyLabel}</li>
-        )}
-        {page.items.map((restaurant) => {
-          const isLocked = locked.has(restaurant.id)
-          const isSelected = isLocked || selected.has(restaurant.id)
-          return (
-            <li key={restaurant.id}>
-              <button
+        {source === 'google' ? (
+          <GooglePlacesResults query={debouncedQuery} onImported={addAndSelect} />
+        ) : (
+          <>
+            {isAdding ? (
+              <AddRestaurantForm
+                defaultName={query.trim()}
+                onAdded={addAndSelect}
+                onCancel={() => setIsAdding(false)}
+              />
+            ) : (
+              <Button
                 type="button"
-                role="checkbox"
-                aria-checked={isSelected}
-                aria-disabled={isLocked || undefined}
-                onClick={() => toggle(restaurant.id)}
-                className={cn(
-                  'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors',
-                  isSelected ? 'bg-brand-soft' : 'hover:bg-surface-2',
-                  isLocked && 'cursor-default opacity-70'
-                )}
+                variant="ghost"
+                size="sm"
+                className="self-start"
+                onClick={() => setIsAdding(true)}
               >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    'flex size-5 shrink-0 items-center justify-center rounded-full border',
-                    isSelected ? 'border-brand bg-brand text-on-brand' : 'border-line-strong'
-                  )}
-                >
-                  {isSelected && <RiCheckLine className="size-3.5" />}
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-sm font-medium">{restaurant.name}</span>
-                  {restaurant.description && (
-                    <span className="truncate text-xs text-muted-foreground">
-                      {restaurant.description}
-                    </span>
-                  )}
-                </span>
-                {restaurant.cuisine_type && (
-                  <span className="shrink-0 font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
-                    {restaurant.cuisine_type}
-                  </span>
-                )}
-              </button>
-            </li>
-          )
-        })}
-        {page.hasMore && (
-          <li className="p-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="w-full"
-              onClick={loadMore}
-              disabled={isLoadingMore}
+                <RiAddLine aria-hidden="true" />
+                Ajouter un resto
+              </Button>
+            )}
+
+            {error && (
+              <p role="alert" className="text-sm text-veto">
+                {error}
+              </p>
+            )}
+
+            <ul
+              className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line"
+              aria-label="Résultats"
             >
-              {isLoadingMore ? <Spinner /> : 'Afficher plus'}
-            </Button>
-          </li>
+              {page.items.length === 0 && !isSearching && (
+                <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  {emptyLabel}
+                  {!isAdding && (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        onClick={() => setIsAdding(true)}
+                        className="font-semibold text-brand underline-offset-4 hover:underline"
+                      >
+                        Ajoute-le
+                      </button>
+                      .
+                    </>
+                  )}
+                </li>
+              )}
+              {page.items.map((restaurant) => {
+                const isLocked = locked.has(restaurant.id)
+                const isSelected = isLocked || selected.has(restaurant.id)
+                return (
+                  <li key={restaurant.id}>
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      aria-disabled={isLocked || undefined}
+                      onClick={() => toggle(restaurant.id)}
+                      className={cn(
+                        'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors',
+                        isSelected ? 'bg-brand-soft' : 'hover:bg-surface-2',
+                        isLocked && 'cursor-default opacity-70'
+                      )}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          'flex size-5 shrink-0 items-center justify-center rounded-full border',
+                          isSelected ? 'border-brand bg-brand text-on-brand' : 'border-line-strong'
+                        )}
+                      >
+                        {isSelected && <RiCheckLine className="size-3.5" />}
+                      </span>
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-sm font-medium">{restaurant.name}</span>
+                        {restaurant.description && (
+                          <span className="truncate text-xs text-muted-foreground">
+                            {restaurant.description}
+                          </span>
+                        )}
+                      </span>
+                      {restaurant.cuisine_type && (
+                        <span className="shrink-0 font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
+                          {restaurant.cuisine_type}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                )
+              })}
+              {page.hasMore && (
+                <li className="p-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full"
+                    onClick={loadMore}
+                    disabled={isLoadingMore}
+                  >
+                    {isLoadingMore ? <Spinner /> : 'Afficher plus'}
+                  </Button>
+                </li>
+              )}
+            </ul>
+          </>
         )}
-      </ul>
+      </div>
     </div>
   )
 }
