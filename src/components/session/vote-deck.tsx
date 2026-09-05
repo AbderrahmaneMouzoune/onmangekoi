@@ -7,6 +7,8 @@ import { VoteCard } from '@/components/session/vote-card'
 import { VoteControls } from '@/components/session/vote-controls'
 import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
+import { voteActionByValue } from '@/domain/vote'
+import { captureEvent } from '@/lib/analytics/client'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant, SessionRestaurantWithRestaurant } from '@/data-access/models'
@@ -95,10 +97,32 @@ export function VoteDeck({
         }
         setVotedIds((prev) => new Set(prev).add(current.id))
         busy.current = false
+
+        // `recorded` distingue un vote réellement enregistré d'une carte déjà
+        // votée que la base fait simplement passer.
+        if (result.data.recorded) {
+          captureEvent('vote_submitted', {
+            session_id: sessionId,
+            value,
+            kind: voteActionByValue(value)?.kind ?? 'no',
+            position: done + 1,
+            restaurant_count: total,
+          })
+        }
+
         if (result.data.finished) finish()
       }, EXIT_MS)
     },
-    [current, leaving, sessionId, finish, initialSuperlikeUsed, initialSuperDislikeUsed]
+    [
+      current,
+      leaving,
+      sessionId,
+      finish,
+      initialSuperlikeUsed,
+      initialSuperDislikeUsed,
+      done,
+      total,
+    ]
   )
 
   // Clavier : ← bof, → ça me va

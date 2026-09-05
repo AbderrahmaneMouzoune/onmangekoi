@@ -5,6 +5,7 @@ import { LinkEmailForm } from '@/components/account/link-email-form'
 import { SetPasswordForm } from '@/components/account/set-password-form'
 import { SignOutButton } from '@/components/account/sign-out-button'
 import { UpdatePseudoForm } from '@/components/account/update-pseudo-form'
+import { AnalyticsPreference } from '@/components/analytics/analytics-preference'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { FormMessage } from '@/components/ui/form-message'
@@ -109,6 +110,8 @@ export async function AccountDetails({
           </li>
         </ol>
       </section>
+
+      <AnalyticsPreference />
 
       <div className="flex justify-center pt-2">
         <SignOutButton isAnonymous={isAnonymous} />

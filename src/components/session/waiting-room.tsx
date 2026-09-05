@@ -84,6 +84,7 @@ export function WaitingRoom({
 
       {isHost && (
         <InviteCard
+          sessionId={session.id}
           inviteCode={session.invite_code}
           inviteUrl={inviteUrl}
           sessionName={session.name}
