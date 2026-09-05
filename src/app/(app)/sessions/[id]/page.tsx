@@ -11,8 +11,8 @@ import {
 } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { getMyVotes } from '@/data-access/votes'
+import { SessionIdSchema } from '@/domain/schemas/session'
 import { qrCodeSvg } from '@/lib/qr'
-import { SessionIdSchema } from '@/lib/schemas/session'
 import { inviteUrl } from '@/lib/site'
 
 import type { Metadata } from 'next'
