@@ -1,6 +1,7 @@
 import { PageHeader } from '@/components/layout/page-header'
 import { Shell } from '@/components/layout/shell'
 import { JoinForm } from '@/components/session/join-form'
+import { router } from '@/config/router.config'
 
 import type { Metadata } from 'next'
 
@@ -11,9 +12,9 @@ export default function JoinPage() {
     <Shell>
       <PageHeader
         eyebrow="Rejoindre"
-        title="Entre le code"
-        description="Le host te l’a dit à voix haute ou envoyé en lien."
-        back={{ href: '/', label: 'Accueil' }}
+        title="Scanne ou entre le code"
+        description="Le host te montre son QR code, te dit le code, ou t’envoie le lien."
+        back={{ href: router.home(), label: 'Accueil' }}
       />
       <JoinForm />
     </Shell>

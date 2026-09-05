@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Shell } from '@/components/layout/shell'
 import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { router } from '@/config/router.config'
 import { cn } from '@/lib/utils'
 
 export default function NotFound() {
@@ -14,7 +15,7 @@ export default function NotFound() {
         title="Cette page n’est pas au menu"
         description="Le lien est peut-être périmé, ou la session a été supprimée."
         action={
-          <Link href="/" className={cn(buttonVariants())}>
+          <Link href={router.home()} className={cn(buttonVariants())}>
             Retour à l’accueil
           </Link>
         }

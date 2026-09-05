@@ -30,9 +30,10 @@ test.describe('Session de vote complète', () => {
     await expect(host).toHaveURL(/\/sessions\/[0-9a-f-]{36}$/)
     await expect(host.getByRole('heading', { name: 'E2E lunch' })).toBeVisible()
 
-    const code = (await host.getByText(/^[A-Z0-9]{3} [A-Z0-9]{3}$/).textContent())?.replace(' ', '')
-    expect(code).toMatch(/^[A-Z0-9]{6}$/)
+    const code = await host.getByTestId('invite-code').getAttribute('data-code')
+    expect(code).toMatch(/^[0-9A-HJKMNP-TV-Z]{6}$/)
     const sessionUrl = host.url()
+    await expect(host.getByRole('img', { name: /QR code du lien/i })).toBeVisible()
 
     // 2. Invité : lien → onboarding → salle d'attente
     await guest.goto('/join')

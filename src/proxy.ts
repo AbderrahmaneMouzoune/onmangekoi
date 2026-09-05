@@ -1,8 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+import { router } from '@/config/router.config'
 import { env } from '@/env'
-import { buildSetupUrl, isProtectedPath } from '@/lib/routing'
+import { isProtectedPath } from '@/lib/routing'
 
 /**
  * Proxy Next.js (ex-middleware) :
@@ -45,10 +46,9 @@ export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
 
   if (!isAuthenticated && isProtectedPath(pathname)) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/setup'
-    url.search = buildSetupUrl(`${pathname}${search}`).search
-    const redirect = NextResponse.redirect(url)
+    const redirect = NextResponse.redirect(
+      new URL(router.setup(`${pathname}${search}`), request.url)
+    )
     response.cookies.getAll().forEach(({ name, value, ...options }) => {
       redirect.cookies.set(name, value, options)
     })
@@ -58,6 +58,11 @@ export async function proxy(request: NextRequest) {
   return response
 }
 
+/**
+ * Next exige un littéral ici (analyse statique) : la liste doit couvrir
+ * `PROTECTED_PREFIXES` de `config/router.config.ts` — un test unitaire
+ * (`router.config.test.ts`) vérifie qu'ils restent alignés.
+ */
 export const config = {
   matcher: [
     '/setup',

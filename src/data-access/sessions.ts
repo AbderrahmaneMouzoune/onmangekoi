@@ -1,3 +1,5 @@
+import { cache } from 'react'
+
 import type {
   ParticipantWithProfile,
   Session,
@@ -73,14 +75,18 @@ export async function deleteSession(
 
 // ─── Lectures (sous RLS : participant uniquement) ───────────────
 
-export async function getSessionById(
-  supabase: SupabaseClient<Database>,
-  sessionId: string
-): Promise<Session | null> {
-  const { data, error } = await supabase.from('sessions').select().eq('id', sessionId).maybeSingle()
-  if (error) throw error
-  return data
-}
+/** Session par id — mémoïsée par requête : page et `generateMetadata` partagent l'appel. */
+export const getSessionById = cache(
+  async (supabase: SupabaseClient<Database>, sessionId: string): Promise<Session | null> => {
+    const { data, error } = await supabase
+      .from('sessions')
+      .select()
+      .eq('id', sessionId)
+      .maybeSingle()
+    if (error) throw error
+    return data
+  }
+)
 
 export async function getSessionParticipants(
   supabase: SupabaseClient<Database>,
@@ -124,14 +130,17 @@ export async function getMySessions(
   }))
 }
 
-export async function getSessionPreview(
-  supabase: SupabaseClient<Database>,
-  identifier: string
-): Promise<SessionPreview | null> {
-  const { data, error } = await supabase.rpc('session_preview', { p_identifier: identifier })
-  if (error) throw error
-  return data[0] ?? null
-}
+/** Aperçu par token ou code — mémoïsé par requête (page, métadonnées, image OG). */
+export const getSessionPreview = cache(
+  async (
+    supabase: SupabaseClient<Database>,
+    identifier: string
+  ): Promise<SessionPreview | null> => {
+    const { data, error } = await supabase.rpc('session_preview', { p_identifier: identifier })
+    if (error) throw error
+    return data[0] ?? null
+  }
+)
 
 export async function getSessionResults(
   supabase: SupabaseClient<Database>,

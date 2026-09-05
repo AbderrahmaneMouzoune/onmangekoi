@@ -1,3 +1,5 @@
+import { cache } from 'react'
+
 import type {
   List,
   ListSummary,
@@ -25,26 +27,29 @@ export async function getListsByOwner(
   }))
 }
 
-export async function getListWithRestaurants(
-  supabase: SupabaseClient<Database>,
-  listId: string
-): Promise<ListWithRestaurants | null> {
-  const { data, error } = await supabase
-    .from('lists')
-    .select('*, list_restaurants(added_at, restaurants(*))')
-    .eq('id', listId)
-    .maybeSingle()
-  if (error) throw error
-  if (!data) return null
+/** Liste avec ses restaurants — mémoïsée par requête (page + métadonnées). */
+export const getListWithRestaurants = cache(
+  async (
+    supabase: SupabaseClient<Database>,
+    listId: string
+  ): Promise<ListWithRestaurants | null> => {
+    const { data, error } = await supabase
+      .from('lists')
+      .select('*, list_restaurants(added_at, restaurants(*))')
+      .eq('id', listId)
+      .maybeSingle()
+    if (error) throw error
+    if (!data) return null
 
-  const { list_restaurants, ...list } = data
-  const restaurants = [...list_restaurants]
-    .sort((a, b) => a.added_at.localeCompare(b.added_at))
-    .map((row) => row.restaurants)
-    .filter((restaurant): restaurant is Restaurant => restaurant !== null)
+    const { list_restaurants, ...list } = data
+    const restaurants = [...list_restaurants]
+      .sort((a, b) => a.added_at.localeCompare(b.added_at))
+      .map((row) => row.restaurants)
+      .filter((restaurant): restaurant is Restaurant => restaurant !== null)
 
-  return { ...list, restaurants }
-}
+    return { ...list, restaurants }
+  }
+)
 
 /** Ids de restaurants contenus dans les listes données (dédoublonnés, ordre d'ajout). */
 export async function getRestaurantIdsForLists(
@@ -68,6 +73,26 @@ export async function getRestaurantIdsForLists(
     }
   }
   return ids
+}
+
+/** Listes du propriétaire avec les ids de restaurants (formulaire de session). */
+export type ListWithRestaurantIds = List & { restaurant_ids: string[] }
+
+export async function getListsWithRestaurantIds(
+  supabase: SupabaseClient<Database>,
+  ownerId: string
+): Promise<ListWithRestaurantIds[]> {
+  const { data, error } = await supabase
+    .from('lists')
+    .select('*, list_restaurants(restaurant_id)')
+    .eq('owner_id', ownerId)
+    .order('updated_at', { ascending: false })
+  if (error) throw error
+
+  return data.map(({ list_restaurants, ...list }) => ({
+    ...list,
+    restaurant_ids: list_restaurants.map((row) => row.restaurant_id),
+  }))
 }
 
 export async function createList(
@@ -129,69 +154,73 @@ export async function removeRestaurantFromList(
   if (error) throw error
 }
 
-// ─── Listes partagées (RPC, token = droit d'accès) ──────────────
+// ─── Listes partagées ────────────────────────────────────────────
+// `identifier` = code de partage Crockford (10) ou ancien token (32 hex).
+// La résolution est faite en base par `find_list_by_share`.
 
-export async function getSharedListPreview(
-  supabase: SupabaseClient<Database>,
-  token: string
-): Promise<SharedListPreview | null> {
-  const { data, error } = await supabase.rpc('list_by_share_token', { p_token: token })
-  if (error) throw error
-  return data[0] ?? null
-}
+/** Aperçu d'une liste partagée — mémoïsé par requête (page + métadonnées). */
+export const getSharedListPreview = cache(
+  async (
+    supabase: SupabaseClient<Database>,
+    identifier: string
+  ): Promise<SharedListPreview | null> => {
+    const { data, error } = await supabase.rpc('list_by_share_token', { p_token: identifier })
+    if (error) throw error
+    return data[0] ?? null
+  }
+)
 
 export async function getSharedListRestaurants(
   supabase: SupabaseClient<Database>,
-  token: string
+  identifier: string
 ): Promise<Restaurant[]> {
   const { data, error } = await supabase.rpc('list_restaurants_by_share_token', {
-    p_token: token,
+    p_token: identifier,
   })
   if (error) throw error
   return data
 }
 
-export async function addRestaurantToSharedList(
+/** Id de la liste si elle appartient à l'utilisateur courant (RLS), sinon null. */
+export async function getOwnedListIdByShare(
   supabase: SupabaseClient<Database>,
-  token: string,
-  restaurantId: string
-): Promise<void> {
-  const { error } = await supabase.rpc('add_restaurant_to_shared_list', {
-    p_token: token,
-    p_restaurant_id: restaurantId,
-  })
+  identifier: { kind: 'code' | 'token'; value: string }
+): Promise<string | null> {
+  const column = identifier.kind === 'code' ? 'share_code' : 'share_token'
+  const { data, error } = await supabase
+    .from('lists')
+    .select('id')
+    .eq(column, identifier.value)
+    .maybeSingle()
   if (error) throw error
+  return data?.id ?? null
+}
+
+export async function addRestaurantsToSharedList(
+  supabase: SupabaseClient<Database>,
+  identifier: string,
+  restaurantIds: string[]
+): Promise<void> {
+  await Promise.all(
+    restaurantIds.map(async (restaurantId) => {
+      const { error } = await supabase.rpc('add_restaurant_to_shared_list', {
+        p_token: identifier,
+        p_restaurant_id: restaurantId,
+      })
+      if (error) throw error
+    })
+  )
 }
 
 export async function copySharedList(
   supabase: SupabaseClient<Database>,
-  token: string,
+  identifier: string,
   name?: string
 ): Promise<List> {
   const { data, error } = await supabase.rpc('copy_shared_list', {
-    p_token: token,
+    p_token: identifier,
     p_name: name ?? null,
   })
   if (error) throw error
   return data
-}
-
-/** Listes du propriétaire avec les ids de restaurants (formulaire de session). */
-export type ListWithRestaurantIds = List & { restaurant_ids: string[] }
-
-export async function getListsWithRestaurantIds(
-  supabase: SupabaseClient<Database>,
-  ownerId: string
-): Promise<ListWithRestaurantIds[]> {
-  const { data, error } = await supabase
-    .from('lists')
-    .select('*, list_restaurants(restaurant_id)')
-    .eq('owner_id', ownerId)
-    .order('updated_at', { ascending: false })
-  if (error) throw error
-
-  return data.map(({ list_restaurants, ...list }) => ({
-    ...list,
-    restaurant_ids: list_restaurants.map((row) => row.restaurant_id),
-  }))
 }

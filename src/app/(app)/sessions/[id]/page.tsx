@@ -2,6 +2,8 @@ import { notFound, redirect } from 'next/navigation'
 
 import { Shell } from '@/components/layout/shell'
 import { SessionRoom } from '@/components/session/session-room'
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
 import {
   getSessionById,
   getSessionParticipants,
@@ -9,7 +11,7 @@ import {
 } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { getMyVotes } from '@/data-access/votes'
-import { setupHref } from '@/lib/routing'
+import { qrCodeSvg } from '@/lib/qr'
 import { SessionIdSchema } from '@/lib/schemas/session'
 import { inviteUrl } from '@/lib/site'
 
@@ -20,39 +22,39 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params
+  const [{ id }, supabase] = await Promise.all([params, createServerClient()])
   if (!SessionIdSchema.safeParse(id).success) return { title: 'Session' }
-  const supabase = await createServerClient()
   const session = await getSessionById(supabase, id).catch(() => null)
   return { title: session?.name ?? 'Session', robots: { index: false } }
 }
 
 export default async function SessionPage({ params }: Props) {
-  const { id } = await params
+  const [{ id }, supabase, user] = await Promise.all([
+    params,
+    createServerClient(),
+    getCurrentUser(),
+  ])
   if (!SessionIdSchema.safeParse(id).success) notFound()
+  if (!user) redirect(router.setup(router.session(id)))
 
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect(setupHref(`/sessions/${id}`))
-
-  // Sous RLS, la session n'est visible que par ses participants :
-  // un non-participant obtient null et part sur la page d'invitation.
-  const session = await getSessionById(supabase, id)
-  if (!session) notFound()
-
-  if (session.status === 'closed') redirect(`/sessions/${id}/results`)
-
-  const [participants, restaurants, votes] = await Promise.all([
+  // Les quatre lectures sont indépendantes : un seul aller-retour de latence.
+  // Sous RLS, un non-participant obtient une session null et repart sur le join.
+  const [session, participants, restaurants, votes] = await Promise.all([
+    getSessionById(supabase, id),
     getSessionParticipants(supabase, id),
     getSessionRestaurants(supabase, id),
     getMyVotes(supabase, id),
   ])
 
+  if (!session) notFound()
+  if (session.status === 'closed') redirect(router.sessionResults(id))
   if (!participants.some((p) => p.profile_id === user.id)) {
-    redirect(`/join/${session.invite_token}`)
+    redirect(router.joinInvite(session.invite_token))
   }
+
+  const url = inviteUrl(session.invite_token)
+  const isHost = session.host_id === user.id
+  const qrSvg = isHost && session.status === 'waiting' ? await qrCodeSvg(url) : null
 
   return (
     <Shell>
@@ -62,7 +64,8 @@ export default async function SessionPage({ params }: Props) {
         restaurants={restaurants}
         myVotedIds={votes.map((vote) => vote.session_restaurant_id)}
         meId={user.id}
-        inviteUrl={inviteUrl(session.invite_token)}
+        inviteUrl={url}
+        qrSvg={qrSvg}
       />
     </Shell>
   )

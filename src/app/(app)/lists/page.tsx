@@ -7,10 +7,11 @@ import { Shell } from '@/components/layout/shell'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
 import { getListsByOwner } from '@/data-access/lists'
 import { createServerClient } from '@/data-access/supabase/server'
 import { countLabel, relativeDate } from '@/lib/format'
-import { setupHref } from '@/lib/routing'
 import { cn } from '@/lib/utils'
 
 import type { Metadata } from 'next'
@@ -18,11 +19,8 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = { title: 'Mes listes' }
 
 export default async function ListsPage() {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect(setupHref('/lists'))
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  if (!user) redirect(router.setup(router.lists()))
 
   const lists = await getListsByOwner(supabase, user.id)
 
@@ -32,9 +30,9 @@ export default async function ListsPage() {
         eyebrow="Favoris"
         title="Mes listes"
         description="Des restos prêts à importer dans une session."
-        back={{ href: '/', label: 'Accueil' }}
+        back={{ href: router.home(), label: 'Accueil' }}
         action={
-          <Link href="/lists/new" className={cn(buttonVariants({ size: 'sm' }))}>
+          <Link href={router.listNew()} className={cn(buttonVariants({ size: 'sm' }))}>
             <RiAddLine aria-hidden="true" />
             Nouvelle
           </Link>
@@ -47,7 +45,7 @@ export default async function ListsPage() {
           title="Aucune liste pour l’instant"
           description="Regroupe les restos du bureau, du quartier, du vendredi soir… et importe-les en un clic."
           action={
-            <Link href="/lists/new" className={cn(buttonVariants())}>
+            <Link href={router.listNew()} className={cn(buttonVariants())}>
               Créer ma première liste
             </Link>
           }
@@ -57,7 +55,7 @@ export default async function ListsPage() {
           {lists.map((list) => (
             <li key={list.id}>
               <Link
-                href={`/lists/${list.id}`}
+                href={router.list(list.id)}
                 className="flex items-center justify-between gap-3 rounded-lg bg-surface p-4 ring-1 ring-line transition-colors hover:bg-surface-2"
               >
                 <div className="flex min-w-0 flex-col gap-0.5">

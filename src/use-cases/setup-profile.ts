@@ -17,8 +17,10 @@ export async function setupProfileUseCase(
   } = await supabase.auth.getUser()
 
   if (user) {
-    await updatePseudo(supabase, user.id, pseudo)
-    await supabase.auth.updateUser({ data: { pseudo } })
+    await Promise.all([
+      updatePseudo(supabase, user.id, pseudo),
+      supabase.auth.updateUser({ data: { pseudo } }),
+    ])
     return { userId: user.id }
   }
 

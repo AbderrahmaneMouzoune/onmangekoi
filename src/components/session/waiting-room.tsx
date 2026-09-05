@@ -28,6 +28,7 @@ interface WaitingRoomProps {
   meId: string
   isHost: boolean
   inviteUrl: string
+  qrSvg: string | null
   restaurantCount: number
   connection: ConnectionState
   onLaunched: (session: Session) => void
@@ -39,6 +40,7 @@ export function WaitingRoom({
   meId,
   isHost,
   inviteUrl,
+  qrSvg,
   restaurantCount,
   connection,
   onLaunched,
@@ -89,6 +91,7 @@ export function WaitingRoom({
           inviteCode={session.invite_code}
           inviteUrl={inviteUrl}
           sessionName={session.name}
+          qrSvg={qrSvg}
         />
       )}
 

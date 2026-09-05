@@ -7,6 +7,7 @@ import { FinishedPanel } from '@/components/session/finished-panel'
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
 import { VoteDeck } from '@/components/session/vote-deck'
 import { WaitingRoom } from '@/components/session/waiting-room'
+import { router } from '@/config/router.config'
 import { useSessionRoom } from '@/hooks/use-session-room'
 
 import type {
@@ -22,6 +23,8 @@ interface SessionRoomProps {
   myVotedIds: string[]
   meId: string
   inviteUrl: string
+  /** QR code SVG du lien d'invitation, rendu côté serveur (host, salle d'attente) */
+  qrSvg: string | null
 }
 
 /**
@@ -35,8 +38,9 @@ export function SessionRoom({
   myVotedIds,
   meId,
   inviteUrl,
+  qrSvg,
 }: SessionRoomProps) {
-  const router = useRouter()
+  const navigation = useRouter()
   const { session, participants, connection, refresh, setSession } = useSessionRoom({
     sessionId: initialSession.id,
     initialSession,
@@ -53,9 +57,9 @@ export function SessionRoom({
 
   useEffect(() => {
     if (session.status === 'closed') {
-      router.replace(`/sessions/${session.id}/results`)
+      navigation.replace(router.sessionResults(session.id))
     }
-  }, [session.status, session.id, router])
+  }, [session.status, session.id, navigation])
 
   const handleFinished = useCallback(() => {
     setFinishedLocally(true)
@@ -79,6 +83,7 @@ export function SessionRoom({
           meId={meId}
           isHost={isHost}
           inviteUrl={inviteUrl}
+          qrSvg={qrSvg}
           restaurantCount={restaurants.length}
           connection={connection}
           onLaunched={setSession}

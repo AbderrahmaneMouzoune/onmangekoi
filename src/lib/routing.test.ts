@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildSetupUrl, isProtectedPath, sanitizeNextPath, setupHref } from './routing'
+import { isProtectedPath, sanitizeNextPath } from './routing'
 
 describe('isProtectedPath', () => {
   it('should protect session, join, list and account routes', () => {
@@ -38,18 +38,5 @@ describe('sanitizeNextPath', () => {
     expect(sanitizeNextPath(null, '/lists')).toBe('/lists')
     expect(sanitizeNextPath('', '/lists')).toBe('/lists')
     expect(sanitizeNextPath(`/${'a'.repeat(600)}`)).toBe('/')
-  })
-})
-
-describe('buildSetupUrl / setupHref', () => {
-  it('should encode the destination in next=', () => {
-    expect(setupHref('/join/abc')).toBe('/setup?next=%2Fjoin%2Fabc')
-    expect(buildSetupUrl('/join/abc').search).toBe('?next=%2Fjoin%2Fabc')
-  })
-
-  it('should omit next for the home page or unsafe values', () => {
-    expect(setupHref('/')).toBe('/setup')
-    expect(setupHref(undefined)).toBe('/setup')
-    expect(setupHref('https://evil.com')).toBe('/setup')
   })
 })

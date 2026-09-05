@@ -11,6 +11,11 @@ describe('normalizeInviteInput', () => {
     expect(normalizeInviteInput('A3F-9B2')).toEqual({ kind: 'code', value: 'A3F9B2' })
   })
 
+  it('should forgive the Crockford confusables (I/L → 1, O → 0)', () => {
+    expect(normalizeInviteInput('a3f9bo')).toEqual({ kind: 'code', value: 'A3F9B0' })
+    expect(normalizeInviteInput('IL0O12')).toEqual({ kind: 'code', value: '110012' })
+  })
+
   it('should accept a 32-hex token', () => {
     expect(normalizeInviteInput(TOKEN.toUpperCase())).toEqual({ kind: 'token', value: TOKEN })
   })
@@ -32,8 +37,8 @@ describe('normalizeInviteInput', () => {
   })
 
   it('should flag anything else as invalid', () => {
-    expect(normalizeInviteInput('')).toEqual({ kind: 'invalid', value: '' })
-    expect(normalizeInviteInput('ABC')).toEqual({ kind: 'invalid', value: 'ABC' })
+    expect(normalizeInviteInput('').kind).toBe('invalid')
+    expect(normalizeInviteInput('ABC').kind).toBe('invalid')
     expect(normalizeInviteInput('https://onmangekoi.app/').kind).toBe('invalid')
     expect(normalizeInviteInput('ZZZZZZZ').kind).toBe('invalid')
   })

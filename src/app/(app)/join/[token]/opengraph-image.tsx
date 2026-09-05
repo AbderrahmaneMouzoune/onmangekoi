@@ -14,9 +14,8 @@ export default async function InviteOpenGraphImage({
 }: {
   params: Promise<{ token: string }>
 }) {
-  const { token } = await params
-  const supabase = await createServerClient()
-  const preview = await getSessionPreview(supabase, token).catch(() => null)
+  const [{ token }, supabase] = await Promise.all([params, createServerClient()])
+  const preview = await getSessionPreview(supabase, decodeURIComponent(token)).catch(() => null)
 
   return new ImageResponse(
     preview ? (

@@ -5,7 +5,7 @@
 ## Le principe
 
 1. Tu choisis des restaurants — dans la base, ou dans une de tes **listes** de favoris
-2. Tu lances une **session**, tu envoies le code ou le lien au groupe
+2. Tu lances une **session**, tu envoies le code ou le lien au groupe — ou tu fais scanner le **QR code**
 3. Chacun vote dans son coin, carte par carte : **bof** · **ça me va** · **coup de cœur** · **veto**
 4. Quand tout le monde a voté (ou que le host clôture), le **classement** s'affiche
 
@@ -36,11 +36,23 @@ Les règles (jokers, session en cours, participant, restaurant valide) sont vér
 | Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)              |
 | Rejoindre           | Impossible une fois le vote lancé ; un participant existant retrouve sa session |
 
+## Codes et liens de partage
+
+| Objet   | Forme                            | Exemple                                          |
+| ------- | -------------------------------- | ------------------------------------------------ |
+| Session | code de 6 caractères + lien + QR | `7K3 M9P` · `/join/<token>`                      |
+| Liste   | code de 10 caractères + lien     | `H4V2Q-8ZX0M` · `/l/restos-du-bureau-H4V2Q8ZX0M` |
+
+Les codes utilisent l'alphabet **Crockford base32** (`0-9`, `A-Z` sans `I`, `L`, `O`, `U`) : pas de lettre ambiguë à l'oral ni à l'écrit. La saisie est tolérante — minuscules, espaces, tirets, `I`/`L` lus comme `1`, `O` comme `0` — et un lien collé entier est accepté. Le segment texte des liens de liste est purement décoratif : seul le code final compte, et l'URL est canonicalisée si le nom change. Les anciens liens à jeton hexadécimal restent valides.
+
+Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché par le host.
+
 ## Stack
 
 | Couche     | Choix                                                                      |
 | ---------- | -------------------------------------------------------------------------- |
 | Frontend   | Next.js 16 (App Router, Turbopack, `proxy.ts`) · React 19 · TypeScript     |
+| Routage    | `src/config/router.config.ts` — toutes les URL construites au même endroit |
 | UI         | Tailwind CSS 4 · Base UI · Remix Icon · charte « L'ardoise »               |
 | Données    | Supabase (PostgreSQL 17, RLS, RPC `security definer`)                      |
 | Temps réel | Supabase Realtime (Postgres Changes, resync au retour au premier plan)     |
@@ -74,13 +86,14 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ## Architecture
 
 ```
-proxy.ts                 rafraîchit la session, protège les routes (redirige vers /setup?next=…)
-src/app/                 routes App Router (setup, login, join, sessions, lists, l, account, auth)
+src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
+src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
+src/app/                 routes App Router (setup, login, join, sessions, lists, l/[slug], account, auth)
 src/components/          ui/ (primitives) · layout/ · session/ · lists/ · account/ · restaurants/
 src/data-access/         requêtes Supabase, un module par table + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / onboarding)
 src/lib/actions/         Server Actions (validation Zod, auth, erreurs typées)
-src/lib/                 schémas, routage sûr, normalisation d'invitation, erreurs, format
+src/lib/                 schémas, Crockford, slug, share/invite (parsing), site (URL absolues), qr, erreurs
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results)
 e2e/                     Playwright
@@ -91,7 +104,8 @@ e2e/                     Playwright
 - **Aucune table n'est lisible en `using (true)`.** Les tokens et codes d'invitation ne se résolvent que via des fonctions `security definer` qui prennent le secret en argument et renvoient uniquement la ligne visée.
 - **Toutes les écritures métier passent par des RPC** transactionnelles (`create_session`, `join_session`, `launch_session`, `submit_vote`, `close_session`) qui revérifient les règles côté base.
 - Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat.
-- Les codes d'invitation font 6 caractères sur un alphabet de 32 symboles sans ambiguïté (≈ 1 milliard de combinaisons), générés avec reprise sur collision.
+- Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision.
+- Les pages sont rendues avec des chargements parallèles (`Promise.all`) et les lectures par requête sont dédupliquées via `React.cache` (`getCurrentUser`, `getProfile`, `getSessionById`…).
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.
 - Les messages d'erreur Postgres ne remontent jamais tels quels : seuls les codes métier `omk:*` sont traduits.
 
@@ -101,19 +115,21 @@ e2e/                     Playwright
 2. Dans Supabase → Authentication → URL Configuration : ajouter `https://<domaine>/auth/confirm` aux _Redirect URLs_ (compte optionnel).
 3. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
 
-| Variable                               | Valeur                                                     |
-| -------------------------------------- | ---------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`             | URL du projet (Project Settings → API)                     |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | clé _publishable_ (l'ancienne _anon_ est acceptée aussi)   |
-| `NEXT_PUBLIC_SITE_URL`                 | optionnel — à défaut, l'URL de production Vercel est prise |
+| Variable                               | Valeur                                                   |
+| -------------------------------------- | -------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | URL du projet (Project Settings → API)                   |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | clé _publishable_ (l'ancienne _anon_ est acceptée aussi) |
+| `NEXT_PUBLIC_SITE_URL`                 | optionnel — surcharge explicite (domaine personnalisé)   |
+
+L'URL publique (`env.SITE_URL`, côté serveur) est résolue dans cet ordre : `NEXT_PUBLIC_SITE_URL` si définie et non locale, sinon les variables système Vercel — `VERCEL_PROJECT_PRODUCTION_URL` en production, `VERCEL_BRANCH_URL` / `VERCEL_URL` en preview — et enfin `http://localhost:3000` en développement. Un `localhost` copié par erreur dans les variables Vercel est ignoré.
 
 Le build échoue volontairement si `NEXT_PUBLIC_SUPABASE_URL` ou la clé manque (`src/env.ts`) : mieux vaut un build rouge qu'une app déployée qui ne parle à aucune base.
+
+## Roadmap
+
+Les évolutions envisagées (import Google Places, filtres, anti-fatigue, notifications, PWA, i18n, RGPD…) sont suivies dans les [issues GitHub](https://github.com/AbderrahmaneMouzoune/onmangekoi/issues).
 
 ## Hors scope (v1)
 
 - Réservation / intégration TheFork, OpenTable
-- Anti-fatigue (détection des restaurants récurrents)
-- Notifications push
 - Commentaires ou avis
-- Filtres (régime, distance, budget)
-- Import Google Places (roadmap)

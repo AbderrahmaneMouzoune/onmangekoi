@@ -10,10 +10,11 @@ import { Shell } from '@/components/layout/shell'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { FormMessage } from '@/components/ui/form-message'
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
 import { getProfile } from '@/data-access/profile'
 import { createServerClient } from '@/data-access/supabase/server'
 import { displayPseudo } from '@/lib/format'
-import { setupHref } from '@/lib/routing'
 
 import type { Metadata } from 'next'
 
@@ -30,12 +31,12 @@ const AUTH_MESSAGES: Record<string, { error?: string; success?: string }> = {
 }
 
 export default async function AccountPage({ searchParams }: Props) {
-  const { auth } = await searchParams
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect(setupHref('/account'))
+  const [{ auth }, supabase, user] = await Promise.all([
+    searchParams,
+    createServerClient(),
+    getCurrentUser(),
+  ])
+  if (!user) redirect(router.setup(router.account()))
 
   const profile = await getProfile(supabase, user.id)
   const pseudo = displayPseudo(profile?.pseudo)
@@ -47,7 +48,11 @@ export default async function AccountPage({ searchParams }: Props) {
 
   return (
     <Shell>
-      <PageHeader eyebrow="Compte" title="Mon compte" back={{ href: '/', label: 'Accueil' }} />
+      <PageHeader
+        eyebrow="Compte"
+        title="Mon compte"
+        back={{ href: router.home(), label: 'Accueil' }}
+      />
 
       <FormMessage error={authMessage?.error} success={authMessage?.success} />
 

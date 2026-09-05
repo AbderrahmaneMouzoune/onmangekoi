@@ -38,7 +38,7 @@ Applique les conventions globales de `../copilot-instructions.md` à tout le cod
 ## Next.js spécifique
 
 - Protéger les Server Actions avec une vérification d'authentification explicite
-- Le `middleware.ts` couvre `/api/` et les routes protégées
+- Le `src/proxy.ts` couvre les routes protégées (préfixes listés dans `src/config/router.config.ts`)
 - Ne jamais sérialiser des objets DB complets vers les Client Components (choisir uniquement les champs nécessaires)
 - Utiliser `NEXT_PUBLIC_` uniquement pour les URLs publiques non sensibles
 

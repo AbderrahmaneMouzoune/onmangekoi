@@ -1,31 +1,52 @@
 import { createEnv } from '@t3-oss/env-nextjs'
 import { z } from 'zod'
 
+const LOCAL_HOST = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i
+
 /**
- * Variables d'environnement validées au démarrage.
- *
- * - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` est le nom actuel de la clé publique
- *   Supabase ; l'ancien `NEXT_PUBLIC_SUPABASE_ANON_KEY` reste accepté pour ne pas
- *   casser les environnements déjà configurés (même valeur).
- * - `NEXT_PUBLIC_SITE_URL` sert aux liens d'invitation et aux métadonnées ; sur
- *   Vercel, on retombe sur l'URL de production du projet si elle n'est pas définie.
+ * URL publique du site, sans jamais retomber sur localhost en production.
+ * Ordre de résolution :
+ *  1. `NEXT_PUBLIC_SITE_URL` si elle est définie et n'est pas une URL locale
+ *     alors qu'on tourne sur Vercel (garde-fou contre une variable copiée
+ *     depuis `.env.local`) ;
+ *  2. sur Vercel, l'URL fournie par la plateforme : domaine de production en
+ *     `production`, URL de branche ou de déploiement en `preview` ;
+ *  3. `http://localhost:3000` en développement.
  */
-const vercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-  : undefined
+function resolveSiteUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+  const onVercel = Boolean(process.env.VERCEL)
+
+  if (explicit && !(onVercel && LOCAL_HOST.test(explicit))) return explicit
+
+  if (onVercel) {
+    const production = process.env.VERCEL_PROJECT_PRODUCTION_URL
+    const branch = process.env.VERCEL_BRANCH_URL
+    const deployment = process.env.VERCEL_URL
+    if (process.env.VERCEL_ENV === 'production' && production) return `https://${production}`
+    if (branch) return `https://${branch}`
+    if (deployment) return `https://${deployment}`
+    if (production) return `https://${production}`
+  }
+
+  return explicit ?? 'http://localhost:3000'
+}
 
 export const env = createEnv({
-  server: {},
+  server: {
+    /** Calculée : voir `resolveSiteUrl`. Sert aux liens d'invitation et aux métadonnées. */
+    SITE_URL: z.url(),
+  },
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.url(),
+    /** Nom actuel de la clé publique Supabase ; l'ancien `NEXT_PUBLIC_SUPABASE_ANON_KEY` reste accepté. */
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
-    NEXT_PUBLIC_SITE_URL: z.url().default('http://localhost:3000'),
   },
   runtimeEnv: {
+    SITE_URL: resolveSiteUrl(),
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? vercelProductionUrl,
   },
   emptyStringAsUndefined: true,
 })

@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
 import { updatePseudo } from '@/data-access/profile'
 import { createServerClient } from '@/data-access/supabase/server'
 import { toUserMessage } from '@/lib/errors'
@@ -28,8 +30,8 @@ export async function setupProfileAction(_prev: FormState, formData: FormData): 
     return { error: toUserMessage(error, 'Impossible d’enregistrer le pseudo. Réessaie.') }
   }
 
-  revalidatePath('/', 'layout')
-  redirect(sanitizeNextPath(parsed.data.next, '/'))
+  revalidatePath(router.home(), 'layout')
+  redirect(sanitizeNextPath(parsed.data.next, router.home()))
 }
 
 export async function updatePseudoAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -38,19 +40,18 @@ export async function updatePseudoAction(_prev: FormState, formData: FormData): 
     return { error: parsed.error.issues[0]?.message ?? 'Pseudo invalide' }
   }
 
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
   if (!user) return { error: 'Tu dois d’abord choisir un pseudo.' }
 
   try {
-    await updatePseudo(supabase, user.id, parsed.data.pseudo)
-    await supabase.auth.updateUser({ data: { pseudo: parsed.data.pseudo } })
+    await Promise.all([
+      updatePseudo(supabase, user.id, parsed.data.pseudo),
+      supabase.auth.updateUser({ data: { pseudo: parsed.data.pseudo } }),
+    ])
   } catch (error) {
     return { error: toUserMessage(error, 'Impossible de modifier le pseudo.') }
   }
 
-  revalidatePath('/', 'layout')
+  revalidatePath(router.home(), 'layout')
   return { success: 'Pseudo mis à jour.' }
 }

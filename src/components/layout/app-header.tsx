@@ -4,20 +4,19 @@ import { Brand } from '@/components/layout/brand'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { Avatar } from '@/components/ui/avatar'
 import { buttonVariants } from '@/components/ui/button'
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
 import { getProfile } from '@/data-access/profile'
 import { createServerClient } from '@/data-access/supabase/server'
 import { displayPseudo } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 /**
- * En-tête de l'application. Server Component : lit l'utilisateur courant
- * (une requête, sous RLS) et affiche le pseudo ou l'entrée vers l'onboarding.
+ * En-tête de l'application. Server Component : l'utilisateur et le profil sont
+ * mémoïsés par requête, donc partagés avec la page sans appel supplémentaire.
  */
 export async function AppHeader() {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
   const profile = user ? await getProfile(supabase, user.id) : null
 
   return (
@@ -28,7 +27,7 @@ export async function AppHeader() {
           <ThemeToggle />
           {user ? (
             <Link
-              href="/account"
+              href={router.account()}
               className={cn(
                 buttonVariants({ variant: 'ghost', size: 'sm' }),
                 'gap-2 rounded-full pr-3 pl-1'
@@ -39,7 +38,7 @@ export async function AppHeader() {
             </Link>
           ) : (
             <Link
-              href="/setup"
+              href={router.setup()}
               className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}
             >
               Choisir un pseudo

@@ -5,6 +5,8 @@ import { AppHeader } from '@/components/layout/app-header'
 import { Shell } from '@/components/layout/shell'
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
 import { buttonVariants } from '@/components/ui/button'
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
 import { getListsByOwner } from '@/data-access/lists'
 import { getMySessions } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
@@ -22,7 +24,7 @@ const STEPS = [
   {
     icon: RiLinkM,
     title: 'Partage le lien',
-    text: 'Un code à dire à voix haute, ou un lien à coller dans la conversation.',
+    text: 'Un code à dire à voix haute, un QR code à montrer, ou un lien à coller.',
   },
   {
     icon: RiGroupLine,
@@ -32,10 +34,7 @@ const STEPS = [
 ] as const
 
 export default async function HomePage() {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
 
   const [sessions, lists] = user
     ? await Promise.all([getMySessions(supabase), getListsByOwner(supabase, user.id)])
@@ -57,12 +56,15 @@ export default async function HomePage() {
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Link href="/sessions/new" className={cn(buttonVariants({ size: 'lg' }), 'sm:flex-1')}>
+            <Link
+              href={router.sessionNew()}
+              className={cn(buttonVariants({ size: 'lg' }), 'sm:flex-1')}
+            >
               Créer une session
               <RiArrowRightLine aria-hidden="true" />
             </Link>
             <Link
-              href="/join"
+              href={router.join()}
               className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'sm:flex-1')}
             >
               J’ai un code
@@ -72,17 +74,15 @@ export default async function HomePage() {
 
         {user && sessions.length > 0 && (
           <section className="flex flex-col gap-3">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-lg font-bold">Tes sessions</h2>
-            </div>
+            <h2 className="text-lg font-bold">Tes sessions</h2>
             <ul className="flex flex-col gap-2">
               {sessions.map((session) => (
                 <li key={session.id}>
                   <Link
                     href={
                       session.status === 'closed'
-                        ? `/sessions/${session.id}/results`
-                        : `/sessions/${session.id}`
+                        ? router.sessionResults(session.id)
+                        : router.session(session.id)
                     }
                     className="flex items-center justify-between gap-3 rounded-lg bg-surface p-4 ring-1 ring-line transition-colors hover:bg-surface-2"
                   >
@@ -105,13 +105,16 @@ export default async function HomePage() {
           <section className="flex flex-col gap-3">
             <div className="flex items-baseline justify-between">
               <h2 className="text-lg font-bold">Tes listes</h2>
-              <Link href="/lists" className="text-sm font-medium text-brand hover:underline">
+              <Link
+                href={router.lists()}
+                className="text-sm font-medium text-brand hover:underline"
+              >
                 Tout voir
               </Link>
             </div>
             {lists.length === 0 ? (
               <Link
-                href="/lists/new"
+                href={router.listNew()}
                 className="flex items-center justify-between rounded-lg border border-dashed border-line-strong p-4 text-sm text-ink-2 hover:bg-surface-2"
               >
                 <span>Crée ta première liste de favoris</span>
@@ -122,7 +125,7 @@ export default async function HomePage() {
                 {lists.slice(0, 6).map((list) => (
                   <li key={list.id}>
                     <Link
-                      href={`/lists/${list.id}`}
+                      href={router.list(list.id)}
                       className="inline-flex items-center gap-2 rounded-full bg-surface px-3.5 py-2 text-sm font-medium ring-1 ring-line hover:bg-surface-2"
                     >
                       {list.name}

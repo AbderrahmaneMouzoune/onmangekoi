@@ -2,19 +2,21 @@
 
 import { RiShareForwardLine } from '@remixicon/react'
 
+import { InviteCode } from '@/components/session/invite-code'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/copy-button'
 import { useCanShare } from '@/hooks/use-can-share'
-import { formatInviteCode } from '@/lib/invite'
 
 interface InviteCardProps {
   inviteCode: string
-  /** URL absolue calculée côté serveur (NEXT_PUBLIC_SITE_URL) */
+  /** URL absolue calculée côté serveur (variables Vercel ou NEXT_PUBLIC_SITE_URL) */
   inviteUrl: string
   sessionName: string
+  /** QR code SVG du lien, généré côté serveur */
+  qrSvg: string | null
 }
 
-export function InviteCard({ inviteCode, inviteUrl, sessionName }: InviteCardProps) {
+export function InviteCard({ inviteCode, inviteUrl, sessionName, qrSvg }: InviteCardProps) {
   const canShare = useCanShare()
 
   async function share() {
@@ -34,18 +36,34 @@ export function InviteCard({ inviteCode, inviteUrl, sessionName }: InviteCardPro
       aria-labelledby="invite-title"
       className="flex flex-col gap-5 rounded-lg chalkboard p-5"
     >
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-3">
         <p
           id="invite-title"
           className="font-mono text-[0.7rem] tracking-[0.12em] text-chalk-muted uppercase"
         >
           Code d’invitation
         </p>
-        <p className="font-mono text-[2.75rem] leading-none font-semibold tracking-[0.18em] tabular">
-          {formatInviteCode(inviteCode)}
+        <InviteCode code={inviteCode} />
+        <p className="text-sm text-chalk-muted">
+          À dire à voix haute (majuscules et tirets sans importance), à faire scanner, ou à envoyer
+          en lien.
         </p>
-        <p className="text-sm text-chalk-muted">À dire à voix haute, ou à envoyer en lien.</p>
       </div>
+
+      {qrSvg && (
+        <div className="flex items-center gap-4 rounded-md bg-chalk/6 p-3">
+          <div
+            aria-label="QR code du lien d’invitation"
+            role="img"
+            className="size-28 shrink-0 [&>svg]:size-full"
+            dangerouslySetInnerHTML={{ __html: qrSvg }}
+          />
+          <p className="text-sm text-chalk-muted">
+            Les autres scannent ce QR code avec l’appareil photo de leur téléphone, ou depuis « J’ai
+            un code » dans l’app.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <CopyButton value={inviteCode} label="Copier le code" variant="chalk" />

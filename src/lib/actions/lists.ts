@@ -2,10 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { z } from 'zod'
 
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
 import {
-  addRestaurantToSharedList,
   addRestaurantsToList,
+  addRestaurantsToSharedList,
   copySharedList,
   createList,
   deleteList,
@@ -14,20 +17,15 @@ import {
 } from '@/data-access/lists'
 import { createServerClient } from '@/data-access/supabase/server'
 import { toUserMessage } from '@/lib/errors'
-import {
-  CreateListSchema,
-  ListRestaurantSchema,
-  SharedListActionSchema,
-  UpdateListSchema,
-} from '@/lib/schemas/list'
+import { CreateListSchema, SharedListActionSchema, UpdateListSchema } from '@/lib/schemas/list'
 
 import type { ActionResult, FormState } from './types'
 
+const SHARED_LIST_PAGE = '/l/[slug]'
+const RestaurantIdsSchema = z.array(z.uuid()).min(1).max(100)
+
 async function requireUser() {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
   return { supabase, user }
 }
 
@@ -52,8 +50,8 @@ export async function createListAction(_prev: FormState, formData: FormData): Pr
     return { error: toUserMessage(error) }
   }
 
-  revalidatePath('/lists')
-  redirect(`/lists/${listId}`)
+  revalidatePath(router.lists())
+  redirect(router.list(listId))
 }
 
 export async function renameListAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -74,8 +72,8 @@ export async function renameListAction(_prev: FormState, formData: FormData): Pr
     return { error: toUserMessage(error) }
   }
 
-  revalidatePath(`/lists/${parsed.data.listId}`)
-  revalidatePath('/lists')
+  revalidatePath(router.list(parsed.data.listId))
+  revalidatePath(router.lists())
   return { success: 'Liste renommée.' }
 }
 
@@ -97,7 +95,7 @@ export async function setListCollaborativeAction(
     return { ok: false, error: toUserMessage(error) }
   }
 
-  revalidatePath(`/lists/${parsed.data.listId}`)
+  revalidatePath(router.list(parsed.data.listId))
   return { ok: true, data: undefined }
 }
 
@@ -114,27 +112,29 @@ export async function deleteListAction(listId: string): Promise<ActionResult> {
     return { ok: false, error: toUserMessage(error) }
   }
 
-  revalidatePath('/lists')
-  redirect('/lists')
+  revalidatePath(router.lists())
+  redirect(router.lists())
 }
 
-export async function addRestaurantToListAction(
+/** Ajoute plusieurs restaurants en un seul aller-retour. */
+export async function addRestaurantsToListAction(
   listId: string,
-  restaurantId: string
+  restaurantIds: string[]
 ): Promise<ActionResult> {
-  const parsed = ListRestaurantSchema.safeParse({ listId, restaurantId })
-  if (!parsed.success) return { ok: false, error: 'Requête invalide' }
+  const parsedId = z.uuid().safeParse(listId)
+  const parsedIds = RestaurantIdsSchema.safeParse(restaurantIds)
+  if (!parsedId.success || !parsedIds.success) return { ok: false, error: 'Requête invalide' }
 
   const { supabase, user } = await requireUser()
   if (!user) return { ok: false, error: 'Non authentifié' }
 
   try {
-    await addRestaurantsToList(supabase, parsed.data.listId, [parsed.data.restaurantId])
+    await addRestaurantsToList(supabase, parsedId.data, parsedIds.data)
   } catch (error) {
     return { ok: false, error: toUserMessage(error) }
   }
 
-  revalidatePath(`/lists/${parsed.data.listId}`)
+  revalidatePath(router.list(parsedId.data))
   return { ok: true, data: undefined }
 }
 
@@ -142,7 +142,10 @@ export async function removeRestaurantFromListAction(
   listId: string,
   restaurantId: string
 ): Promise<ActionResult> {
-  const parsed = ListRestaurantSchema.safeParse({ listId, restaurantId })
+  const parsed = z.object({ listId: z.uuid(), restaurantId: z.uuid() }).safeParse({
+    listId,
+    restaurantId,
+  })
   if (!parsed.success) return { ok: false, error: 'Requête invalide' }
 
   const { supabase, user } = await requireUser()
@@ -154,34 +157,34 @@ export async function removeRestaurantFromListAction(
     return { ok: false, error: toUserMessage(error) }
   }
 
-  revalidatePath(`/lists/${parsed.data.listId}`)
+  revalidatePath(router.list(parsed.data.listId))
   return { ok: true, data: undefined }
 }
 
+/** Ajoute plusieurs restaurants à une liste partagée (collaborative) en parallèle. */
 export async function addToSharedListAction(
-  token: string,
-  restaurantId: string
+  identifier: string,
+  restaurantIds: string[]
 ): Promise<ActionResult> {
-  const parsed = SharedListActionSchema.safeParse({ token, restaurantId })
-  if (!parsed.success || !parsed.data.restaurantId) {
-    return { ok: false, error: 'Requête invalide' }
-  }
+  const parsed = SharedListActionSchema.safeParse({ identifier })
+  const parsedIds = RestaurantIdsSchema.safeParse(restaurantIds)
+  if (!parsed.success || !parsedIds.success) return { ok: false, error: 'Requête invalide' }
 
   const { supabase, user } = await requireUser()
   if (!user) return { ok: false, error: 'Non authentifié' }
 
   try {
-    await addRestaurantToSharedList(supabase, parsed.data.token, parsed.data.restaurantId)
+    await addRestaurantsToSharedList(supabase, parsed.data.identifier, parsedIds.data)
   } catch (error) {
     return { ok: false, error: toUserMessage(error) }
   }
 
-  revalidatePath(`/l/${parsed.data.token}`)
+  revalidatePath(SHARED_LIST_PAGE, 'page')
   return { ok: true, data: undefined }
 }
 
-export async function copySharedListAction(token: string): Promise<ActionResult> {
-  const parsed = SharedListActionSchema.safeParse({ token })
+export async function copySharedListAction(identifier: string): Promise<ActionResult> {
+  const parsed = SharedListActionSchema.safeParse({ identifier })
   if (!parsed.success) return { ok: false, error: 'Lien invalide' }
 
   const { supabase, user } = await requireUser()
@@ -189,12 +192,12 @@ export async function copySharedListAction(token: string): Promise<ActionResult>
 
   let listId: string
   try {
-    const list = await copySharedList(supabase, parsed.data.token)
+    const list = await copySharedList(supabase, parsed.data.identifier)
     listId = list.id
   } catch (error) {
     return { ok: false, error: toUserMessage(error) }
   }
 
-  revalidatePath('/lists')
-  redirect(`/lists/${listId}`)
+  revalidatePath(router.lists())
+  redirect(router.list(listId))
 }

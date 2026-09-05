@@ -68,6 +68,7 @@ export type Database = {
           is_collaborative: boolean
           name: string
           owner_id: string
+          share_code: string
           share_token: string
           updated_at: string
         }
@@ -77,6 +78,7 @@ export type Database = {
           is_collaborative?: boolean
           name: string
           owner_id: string
+          share_code?: string
           share_token?: string
           updated_at?: string
         }
@@ -86,6 +88,7 @@ export type Database = {
           is_collaborative?: boolean
           name?: string
           owner_id?: string
+          share_code?: string
           share_token?: string
           updated_at?: string
         }
@@ -358,9 +361,31 @@ export type Database = {
           is_collaborative: boolean
           name: string
           owner_id: string
+          share_code: string
           share_token: string
           updated_at: string
         }
+      }
+      crockford_code: {
+        Args: { p_length: number }
+        Returns: string
+      }
+      find_list_by_share: {
+        Args: { p_identifier: string }
+        Returns: {
+          created_at: string
+          id: string
+          is_collaborative: boolean
+          name: string
+          owner_id: string
+          share_code: string
+          share_token: string
+          updated_at: string
+        }
+      }
+      generate_share_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       create_session: {
         Args: { p_name: string; p_restaurant_ids: string[] }
@@ -424,6 +449,7 @@ export type Database = {
           name: string
           owner_pseudo: string | null
           restaurant_count: number
+          share_code: string
         }[]
       }
       list_restaurants_by_share_token: {
@@ -438,6 +464,10 @@ export type Database = {
           image_url: string | null
           name: string
         }[]
+      }
+      normalize_crockford: {
+        Args: { p_input: string }
+        Returns: string
       }
       raise_omk: {
         Args: { p_code: string }

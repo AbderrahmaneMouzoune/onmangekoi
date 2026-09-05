@@ -1,9 +1,10 @@
+import { PROTECTED_PREFIXES } from '@/config/router.config'
+
 /**
  * Helpers de routage partagés entre le proxy, les actions et les pages.
- * Purs, sans dépendance Next : testables unitairement.
+ * Purs, sans dépendance Next : testables unitairement. Les URLs elles-mêmes
+ * vivent dans `config/router.config.ts`.
  */
-
-const PROTECTED_PREFIXES = ['/sessions', '/join', '/lists', '/l', '/account'] as const
 
 export function isProtectedPath(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
@@ -23,17 +24,4 @@ export function sanitizeNextPath(candidate: string | null | undefined, fallback 
   if (/[\r\n]/.test(value)) return fallback
   if (value.length > 512) return fallback
   return value
-}
-
-export function buildSetupUrl(next?: string | null): { pathname: string; search: string } {
-  const safe = next ? sanitizeNextPath(next, '') : ''
-  const params = new URLSearchParams()
-  if (safe && safe !== '/') params.set('next', safe)
-  const search = params.toString()
-  return { pathname: '/setup', search: search ? `?${search}` : '' }
-}
-
-export function setupHref(next?: string | null): string {
-  const { pathname, search } = buildSetupUrl(next)
-  return `${pathname}${search}`
 }

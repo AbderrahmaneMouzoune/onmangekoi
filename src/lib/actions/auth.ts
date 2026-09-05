@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
 import { createServerClient } from '@/data-access/supabase/server'
 import { sanitizeNextPath } from '@/lib/routing'
 import { LinkEmailSchema, LoginSchema, SetPasswordSchema } from '@/lib/schemas/auth'
@@ -21,15 +23,16 @@ export async function linkEmailAction(_prev: FormState, formData: FormData): Pro
     return { error: parsed.error.issues[0]?.message ?? 'Email invalide' }
   }
 
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
   if (!user) return { error: 'Tu dois d’abord choisir un pseudo.' }
 
   const { error } = await supabase.auth.updateUser(
     { email: parsed.data.email },
-    { emailRedirectTo: absoluteUrl('/auth/confirm?next=/account') }
+    {
+      emailRedirectTo: absoluteUrl(
+        `${router.authConfirm()}?next=${encodeURIComponent(router.account())}`
+      ),
+    }
   )
   if (error) {
     return {
@@ -37,7 +40,7 @@ export async function linkEmailAction(_prev: FormState, formData: FormData): Pro
     }
   }
 
-  revalidatePath('/account')
+  revalidatePath(router.account())
   return {
     success: `Un email de confirmation a été envoyé à ${parsed.data.email}. Ouvre le lien pour valider.`,
   }
@@ -53,10 +56,7 @@ export async function setPasswordAction(_prev: FormState, formData: FormData): P
     return { error: parsed.error.issues[0]?.message ?? 'Mot de passe invalide' }
   }
 
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
   if (!user) return { error: 'Non authentifié' }
   if (user.is_anonymous || !user.email_confirmed_at) {
     return { error: 'Confirme d’abord ton adresse email.' }
@@ -67,7 +67,7 @@ export async function setPasswordAction(_prev: FormState, formData: FormData): P
     return { error: humanizeAuthError(error.message, 'Impossible de définir le mot de passe.') }
   }
 
-  revalidatePath('/account')
+  revalidatePath(router.account())
   return { success: 'Mot de passe enregistré. Tu peux te connecter depuis un autre appareil.' }
 }
 
@@ -90,15 +90,15 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
     return { error: humanizeAuthError(error.message, 'Email ou mot de passe incorrect.') }
   }
 
-  revalidatePath('/', 'layout')
-  redirect(sanitizeNextPath(parsed.data.next, '/'))
+  revalidatePath(router.home(), 'layout')
+  redirect(sanitizeNextPath(parsed.data.next, router.home()))
 }
 
 export async function signOutAction(): Promise<void> {
   const supabase = await createServerClient()
   await supabase.auth.signOut()
-  revalidatePath('/', 'layout')
-  redirect('/')
+  revalidatePath(router.home(), 'layout')
+  redirect(router.home())
 }
 
 function humanizeAuthError(message: string, fallback: string): string {
@@ -112,5 +112,8 @@ function humanizeAuthError(message: string, fallback: string): string {
   }
   if (lower.includes('password should be')) return 'Le mot de passe est trop faible.'
   if (lower.includes('email not confirmed')) return 'Confirme d’abord ton adresse email.'
+  if (lower.includes('anonymous sign-ins are disabled')) {
+    return 'Les connexions anonymes sont désactivées sur ce projet.'
+  }
   return fallback
 }

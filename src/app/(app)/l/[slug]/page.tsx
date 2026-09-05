@@ -7,26 +7,30 @@ import { Shell } from '@/components/layout/shell'
 import { SharedListActions } from '@/components/lists/shared-list-actions'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
-import { getSharedListPreview, getSharedListRestaurants } from '@/data-access/lists'
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
+import {
+  getOwnedListIdByShare,
+  getSharedListPreview,
+  getSharedListRestaurants,
+} from '@/data-access/lists'
 import { searchRestaurants } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
 import { countLabel, displayPseudo } from '@/lib/format'
-import { setupHref } from '@/lib/routing'
+import { parseSharedListParam } from '@/lib/share'
 import { cn } from '@/lib/utils'
 
 import type { Metadata } from 'next'
 
 interface Props {
-  params: Promise<{ token: string }>
+  params: Promise<{ slug: string }>
 }
 
-const TOKEN = /^[a-f0-9]{32}$/i
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { token } = await params
-  if (!TOKEN.test(token)) return { title: 'Liste partagée' }
-  const supabase = await createServerClient()
-  const preview = await getSharedListPreview(supabase, token).catch(() => null)
+  const [{ slug }, supabase] = await Promise.all([params, createServerClient()])
+  const identifier = parseSharedListParam(slug)
+  if (identifier.kind === 'invalid') return { title: 'Liste partagée' }
+  const preview = await getSharedListPreview(supabase, identifier.value).catch(() => null)
   if (!preview) return { title: 'Liste partagée' }
   return {
     title: preview.name,
@@ -35,25 +39,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+/**
+ * Liste partagée : `/l/restos-du-bureau-7K3M9P2QWX`. Le slug est décoratif,
+ * seul le code compte ; les anciens liens `/l/<token 32 hex>` restent valides.
+ */
 export default async function SharedListPage({ params }: Props) {
-  const { token } = await params
-  if (!TOKEN.test(token)) notFound()
+  const [{ slug }, supabase, user] = await Promise.all([
+    params,
+    createServerClient(),
+    getCurrentUser(),
+  ])
+  const identifier = parseSharedListParam(slug)
+  if (identifier.kind === 'invalid') notFound()
+  if (!user) redirect(router.setup(`/l/${slug}`))
 
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect(setupHref(`/l/${token}`))
-
-  const preview = await getSharedListPreview(supabase, token)
+  // Quatre lectures indépendantes en parallèle.
+  const [preview, restaurants, initialPage, ownedListId] = await Promise.all([
+    getSharedListPreview(supabase, identifier.value),
+    getSharedListRestaurants(supabase, identifier.value),
+    searchRestaurants(supabase),
+    getOwnedListIdByShare(supabase, identifier),
+  ])
   if (!preview) notFound()
 
-  const [restaurants, initialPage, ownedList] = await Promise.all([
-    getSharedListRestaurants(supabase, token),
-    searchRestaurants(supabase),
-    supabase.from('lists').select('id').eq('id', preview.id).maybeSingle(),
-  ])
-  const isOwner = Boolean(ownedList.data)
+  // Lien canonique lisible (l'ancien token redirige vers la nouvelle forme)
+  const canonical = router.sharedList(preview.share_code, preview.name)
+  if (`/l/${slug}` !== canonical) redirect(canonical)
+
+  const isOwner = Boolean(ownedListId)
 
   return (
     <Shell>
@@ -61,7 +74,7 @@ export default async function SharedListPage({ params }: Props) {
         eyebrow={`Liste de ${displayPseudo(preview.owner_pseudo)}`}
         title={preview.name}
         description={countLabel(restaurants.length, 'resto')}
-        back={{ href: '/', label: 'Accueil' }}
+        back={{ href: router.home(), label: 'Accueil' }}
         action={
           preview.is_collaborative ? (
             <Badge variant="brand">
@@ -72,8 +85,11 @@ export default async function SharedListPage({ params }: Props) {
         }
       />
 
-      {isOwner && (
-        <Link href={`/lists/${preview.id}`} className={cn(buttonVariants({ variant: 'outline' }))}>
+      {isOwner && ownedListId && (
+        <Link
+          href={router.list(ownedListId)}
+          className={cn(buttonVariants({ variant: 'outline' }))}
+        >
           C’est ta liste — la modifier
         </Link>
       )}
@@ -108,7 +124,7 @@ export default async function SharedListPage({ params }: Props) {
       )}
 
       <SharedListActions
-        token={token}
+        identifier={preview.share_code}
         isCollaborative={preview.is_collaborative}
         isOwner={isOwner}
         existingIds={restaurants.map((r) => r.id)}

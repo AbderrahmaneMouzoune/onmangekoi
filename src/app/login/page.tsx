@@ -5,8 +5,9 @@ import { LoginForm } from '@/components/account/login-form'
 import { Brand } from '@/components/layout/brand'
 import { Shell } from '@/components/layout/shell'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
-import { createServerClient } from '@/data-access/supabase/server'
-import { sanitizeNextPath, setupHref } from '@/lib/routing'
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
+import { sanitizeNextPath } from '@/lib/routing'
 
 import type { Metadata } from 'next'
 
@@ -17,13 +18,8 @@ interface Props {
 }
 
 export default async function LoginPage({ searchParams }: Props) {
-  const { next: rawNext } = await searchParams
-  const next = sanitizeNextPath(rawNext, '/')
-
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [{ next: rawNext }, user] = await Promise.all([searchParams, getCurrentUser()])
+  const next = sanitizeNextPath(rawNext, router.home())
   if (user && !user.is_anonymous) redirect(next)
 
   return (
@@ -41,11 +37,11 @@ export default async function LoginPage({ searchParams }: Props) {
           </p>
         </div>
 
-        <LoginForm next={next !== '/' ? next : undefined} />
+        <LoginForm next={next !== router.home() ? next : undefined} />
 
         <p className="text-center text-sm text-muted-foreground">
           Pas de compte ? Il n’en faut pas :{' '}
-          <Link href={setupHref(next)} className="font-medium text-brand hover:underline">
+          <Link href={router.setup(next)} className="font-medium text-brand hover:underline">
             choisis juste un pseudo
           </Link>
           .

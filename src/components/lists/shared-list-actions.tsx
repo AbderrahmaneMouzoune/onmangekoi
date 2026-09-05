@@ -12,7 +12,8 @@ import { addToSharedListAction, copySharedListAction } from '@/lib/actions/lists
 import type { RestaurantPage } from '@/data-access/restaurants'
 
 interface SharedListActionsProps {
-  token: string
+  /** Code de partage de la liste */
+  identifier: string
   isCollaborative: boolean
   isOwner: boolean
   existingIds: string[]
@@ -20,7 +21,7 @@ interface SharedListActionsProps {
 }
 
 export function SharedListActions({
-  token,
+  identifier,
   isCollaborative,
   isOwner,
   existingIds,
@@ -34,7 +35,7 @@ export function SharedListActions({
   function copy() {
     setError(null)
     startTransition(async () => {
-      const result = await copySharedListAction(token)
+      const result = await copySharedListAction(identifier)
       if (!result.ok) setError(result.error)
     })
   }
@@ -42,12 +43,11 @@ export function SharedListActions({
   function addSelected() {
     setError(null)
     startTransition(async () => {
-      for (const id of pickerIds) {
-        const result = await addToSharedListAction(token, id)
-        if (!result.ok) {
-          setError(result.error)
-          return
-        }
+      // Un seul aller-retour pour tous les restaurants sélectionnés
+      const result = await addToSharedListAction(identifier, pickerIds)
+      if (!result.ok) {
+        setError(result.error)
+        return
       }
       setPickerIds([])
       setAdding(false)

@@ -12,12 +12,13 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { TwoStepButton } from '@/components/ui/two-step-button'
 import {
-  addRestaurantToListAction,
+  addRestaurantsToListAction,
   deleteListAction,
   removeRestaurantFromListAction,
   renameListAction,
   setListCollaborativeAction,
 } from '@/lib/actions/lists'
+import { groupCode } from '@/lib/crockford'
 import { countLabel } from '@/lib/format'
 import { LIST_NAME_MAX } from '@/lib/schemas/list'
 import { cn } from '@/lib/utils'
@@ -58,12 +59,11 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
     if (pickerIds.length === 0) return
     setError(null)
     startTransition(async () => {
-      for (const id of pickerIds) {
-        const result = await addRestaurantToListAction(list.id, id)
-        if (!result.ok) {
-          setError(result.error)
-          return
-        }
+      // Un seul aller-retour pour tous les restaurants sélectionnés
+      const result = await addRestaurantsToListAction(list.id, pickerIds)
+      if (!result.ok) {
+        setError(result.error)
+        return
       }
       setPickerIds([])
       setAdding(false)
@@ -124,6 +124,14 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
             Toute personne avec le lien peut voir la liste
             {isCollaborative ? ' et y ajouter des restos' : ''}.
           </p>
+        </div>
+        <div className="flex items-center justify-between gap-3 rounded-md bg-surface-2 px-3 py-2">
+          <span className="font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
+            Code
+          </span>
+          <span className="font-mono text-base font-semibold tracking-[0.15em] tabular">
+            {groupCode(list.share_code, 5)}
+          </span>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <CopyButton

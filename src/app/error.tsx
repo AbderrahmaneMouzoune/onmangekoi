@@ -7,6 +7,7 @@ import { useEffect } from 'react'
 import { Shell } from '@/components/layout/shell'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { router } from '@/config/router.config'
 import { cn } from '@/lib/utils'
 
 export default function ErrorPage({
@@ -33,7 +34,7 @@ export default function ErrorPage({
               <RiRefreshLine aria-hidden="true" />
               Réessayer
             </Button>
-            <Link href="/" className={cn(buttonVariants({ variant: 'outline' }))}>
+            <Link href={router.home()} className={cn(buttonVariants({ variant: 'outline' }))}>
               Accueil
             </Link>
           </div>

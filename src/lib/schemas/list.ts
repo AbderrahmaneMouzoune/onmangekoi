@@ -19,18 +19,14 @@ export const UpdateListSchema = z.object({
   isCollaborative: z.boolean().optional(),
 })
 
-export const ListRestaurantSchema = z.object({
-  listId: z.uuid(),
-  restaurantId: z.uuid(),
-})
+/** Code de partage Crockford (10) ou ancien token (32 hex), déjà normalisé. */
+export const ShareIdentifierSchema = z
+  .string()
+  .trim()
+  .regex(/^(?:[0-9A-HJKMNP-TV-Z]{10}|[a-f0-9]{32})$/, 'Lien invalide')
 
 export const SharedListActionSchema = z.object({
-  token: z
-    .string()
-    .trim()
-    .regex(/^[a-f0-9]{32}$/i, 'Lien invalide'),
-  restaurantId: z.uuid().optional(),
-  name: ListNameSchema.optional(),
+  identifier: ShareIdentifierSchema,
 })
 
 export type CreateListInput = z.infer<typeof CreateListSchema>

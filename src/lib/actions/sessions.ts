@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
 import { closeSession, deleteSession, launchSession, leaveSession } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { toUserMessage } from '@/lib/errors'
@@ -14,10 +16,7 @@ import type { ActionResult, FormState } from './types'
 import type { Session } from '@/data-access/models'
 
 async function requireUser() {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
   return { supabase, user }
 }
 
@@ -45,8 +44,8 @@ export async function createSessionAction(
     return { error: toUserMessage(error) }
   }
 
-  revalidatePath('/')
-  redirect(`/sessions/${sessionId}`)
+  revalidatePath(router.home())
+  redirect(router.session(sessionId))
 }
 
 export async function joinSessionAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -66,8 +65,8 @@ export async function joinSessionAction(_prev: FormState, formData: FormData): P
     return { error: toUserMessage(error) }
   }
 
-  revalidatePath('/')
-  redirect(`/sessions/${sessionId}`)
+  revalidatePath(router.home())
+  redirect(router.session(sessionId))
 }
 
 export async function launchSessionAction(sessionId: string): Promise<ActionResult<Session>> {
@@ -79,7 +78,7 @@ export async function launchSessionAction(sessionId: string): Promise<ActionResu
 
   try {
     const session = await launchSession(supabase, id.data)
-    revalidatePath(`/sessions/${id.data}`)
+    revalidatePath(router.session(id.data))
     return { ok: true, data: session }
   } catch (error) {
     return { ok: false, error: toUserMessage(error) }
@@ -95,7 +94,7 @@ export async function closeSessionAction(sessionId: string): Promise<ActionResul
 
   try {
     const session = await closeSession(supabase, id.data)
-    revalidatePath(`/sessions/${id.data}`)
+    revalidatePath(router.session(id.data))
     return { ok: true, data: session }
   } catch (error) {
     return { ok: false, error: toUserMessage(error) }
@@ -115,8 +114,8 @@ export async function leaveSessionAction(sessionId: string): Promise<ActionResul
     return { ok: false, error: toUserMessage(error) }
   }
 
-  revalidatePath('/')
-  redirect('/')
+  revalidatePath(router.home())
+  redirect(router.home())
 }
 
 export async function deleteSessionAction(sessionId: string): Promise<ActionResult> {
@@ -132,6 +131,6 @@ export async function deleteSessionAction(sessionId: string): Promise<ActionResu
     return { ok: false, error: toUserMessage(error) }
   }
 
-  revalidatePath('/')
-  redirect('/')
+  revalidatePath(router.home())
+  redirect(router.home())
 }

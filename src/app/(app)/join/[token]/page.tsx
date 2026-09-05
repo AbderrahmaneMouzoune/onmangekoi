@@ -5,11 +5,12 @@ import { redirect } from 'next/navigation'
 import { Shell } from '@/components/layout/shell'
 import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
 import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { toUserMessage } from '@/lib/errors'
 import { displayPseudo } from '@/lib/format'
-import { setupHref } from '@/lib/routing'
 import { cn } from '@/lib/utils'
 import { joinSessionUseCase } from '@/use-cases/join-session'
 
@@ -20,9 +21,8 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { token } = await params
-  const supabase = await createServerClient()
-  const preview = await getSessionPreview(supabase, token).catch(() => null)
+  const [{ token }, supabase] = await Promise.all([params, createServerClient()])
+  const preview = await getSessionPreview(supabase, decodeURIComponent(token)).catch(() => null)
 
   if (!preview) return { title: 'Invitation' }
 
@@ -38,30 +38,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /**
- * Join direct par lien : idempotent. Si l'utilisateur n'a pas encore de pseudo,
- * le proxy l'a envoyé sur /setup avec ce chemin en `next`, et il revient ici.
+ * Join direct par lien, code ou QR : idempotent. Sans pseudo, le proxy a
+ * envoyé l'invité sur /setup avec ce chemin en `next`, et il revient ici.
  */
 export default async function JoinByTokenPage({ params }: Props) {
-  const { token } = await params
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [{ token: rawToken }, supabase, user] = await Promise.all([
+    params,
+    createServerClient(),
+    getCurrentUser(),
+  ])
+  const identifier = decodeURIComponent(rawToken)
 
-  if (!user) redirect(setupHref(`/join/${token}`))
+  if (!user) redirect(router.setup(router.joinInvite(identifier)))
 
   let sessionId: string | null = null
   let errorMessage: string | null = null
   try {
-    const session = await joinSessionUseCase(supabase, token)
+    const session = await joinSessionUseCase(supabase, identifier)
     sessionId = session.id
   } catch (error) {
     errorMessage = toUserMessage(error, 'Lien invalide ou session introuvable.')
   }
 
-  if (sessionId) redirect(`/sessions/${sessionId}`)
+  if (sessionId) redirect(router.session(sessionId))
 
-  const preview = await getSessionPreview(supabase, token).catch(() => null)
+  const preview = await getSessionPreview(supabase, identifier).catch(() => null)
 
   return (
     <Shell className="justify-center">
@@ -71,10 +72,10 @@ export default async function JoinByTokenPage({ params }: Props) {
         description={errorMessage ?? undefined}
         action={
           <div className="flex flex-wrap justify-center gap-2">
-            <Link href="/join" className={cn(buttonVariants({ variant: 'outline' }))}>
+            <Link href={router.join()} className={cn(buttonVariants({ variant: 'outline' }))}>
               Entrer un code
             </Link>
-            <Link href="/" className={cn(buttonVariants())}>
+            <Link href={router.home()} className={cn(buttonVariants())}>
               Accueil
             </Link>
           </div>
