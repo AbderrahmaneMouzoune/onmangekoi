@@ -95,7 +95,8 @@ src/use-cases/           logique métier composée (créer / rejoindre / onboard
 src/lib/actions/         Server Actions (validation Zod, auth, erreurs typées)
 src/lib/                 schémas, Crockford, slug, share/invite (parsing), site (URL absolues), qr, erreurs
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`
-supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results)
+supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results), purge
+supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
 ```
 
@@ -109,11 +110,24 @@ e2e/                     Playwright
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.
 - Les messages d'erreur Postgres ne remontent jamais tels quels : seuls les codes métier `omk:*` sont traduits.
 
+## Rétention des données
+
+Un pseudo suffit à utiliser l'app, donc chaque pseudo crée un utilisateur anonyme : sans entretien, la base ne fait que grossir. Un job `pg_cron` nocturne (`public.run_maintenance()`) applique la rétention suivante :
+
+| Donnée                             | Conservée | Puis                                                |
+| ---------------------------------- | --------- | --------------------------------------------------- |
+| Anonyme sans activité ni email lié | 90 jours  | supprimé, avec ses listes et ses sessions (cascade) |
+| Session `waiting` jamais lancée    | 7 jours   | supprimée                                           |
+| Session `closed`                   | 180 jours | supprimée                                           |
+
+Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adresse email lui est liée — même non confirmée —, ou un téléphone, ou une identité externe. Une session en cours protège aussi tous ses participants. Chaque passage journalise ses compteurs dans `public.maintenance_runs`. Détail et réglages dans [`docs/local-stack.md`](docs/local-stack.md#entretien).
+
 ## Déployer (Vercel + Supabase cloud)
 
 1. Créer un projet Supabase, puis pousser le schéma : `supabase link --project-ref <ref>` et `supabase db push` (migrations, RLS, RPC, seed).
 2. Dans Supabase → Authentication → URL Configuration : ajouter `https://<domaine>/auth/confirm` aux _Redirect URLs_ (compte optionnel).
-3. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
+3. Dans Supabase → Database → Extensions : activer `pg_cron` si ce n'est pas déjà fait, puis rejouer la migration de purge — sans l'extension elle s'applique quand même, mais le job nocturne n'est pas planifié (vérifier avec `select jobname, schedule from cron.job`).
+4. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
 
 | Variable                               | Valeur                                                   |
 | -------------------------------------- | -------------------------------------------------------- |
