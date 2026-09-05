@@ -95,6 +95,25 @@ Les fonctions et policies peuvent être validées sur un PostgreSQL 16 nu en rec
 
 Le shim doit rester fidèle sur les points qui piègent : `auth.users.id` n'a **pas** de valeur par défaut — c'est GoTrue qui la fournit —, et `auth.identities` exige `provider_id` et `identity_data`. Un shim plus permissif fait passer un scénario qui échouera sur la vraie base.
 
+**Rejouer sur une base vide ne suffit pas.** Une contrainte `CHECK` ajoutée sur
+une colonne qui porte déjà des lignes est validée à l'ajout : une seule ligne
+non conforme fait échouer la migration entière, en production et nulle part
+ailleurs. Deux contraintes de `restaurants` sont dans ce cas —
+`restaurants_photo_url_https` (l'ancienne `image_url`) et
+`restaurants_name_length` — et sont donc posées `not valid` : elles
+contraignent toute écriture future sans rejeter l'existant, sans muter aucune
+donnée. Pour les rendre strictes une fois les données propres :
+
+```sql
+alter table public.restaurants validate constraint restaurants_photo_url_https;
+alter table public.restaurants validate constraint restaurants_name_length;
+```
+
+Le réflexe, avant de pousser une migration : l'appliquer par paliers sur une
+base **peuplée** (comptes, listes, session close avec ses votes), pas seulement
+sur une base neuve. C'est le seul moyen de voir ce genre d'échec avant le
+déploiement.
+
 Deux pièges de plus, rencontrés en rejouant `supabase/tests` :
 
 - `auth.uid()` lit **deux** réglages, pas un : la claim isolée `request.jwt.claim.sub` et l'objet complet `request.jwt.claims` (`::jsonb ->> 'sub'`). Les scénarios utilisent la seconde forme ; un shim qui n'accepte que la première fait échouer `delete_my_account()` sur `omk:not_authenticated`, ce qui ressemble à un bug du code alors que c'est le shim.

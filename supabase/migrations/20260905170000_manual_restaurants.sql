@@ -30,11 +30,19 @@ alter table public.restaurants
   add constraint restaurants_price_level_check
   check (price_level is null or price_level between 1 and 4);
 
+-- `not valid` : la contrainte s'applique à toute écriture future, mais ne
+-- rejette pas les lignes déjà en base. Sans ça, un seul resto au nom
+-- dégénéré (édité à la main dans le dashboard) ferait échouer la migration
+-- entière — et une migration ne doit pas dépendre de la propreté de
+-- l'historique. Rien n'est muté au passage : renommer le resto de quelqu'un
+-- d'autre serait pire que de le laisser tel quel.
+-- Pour la rendre stricte une fois les données propres :
+--   alter table public.restaurants validate constraint restaurants_name_length;
 alter table public.restaurants
   drop constraint if exists restaurants_name_length;
 alter table public.restaurants
   add constraint restaurants_name_length
-  check (char_length(btrim(name)) between 2 and 100);
+  check (char_length(btrim(name)) between 2 and 100) not valid;
 
 create index if not exists idx_restaurants_created_by
   on public.restaurants (created_by)
