@@ -23,9 +23,13 @@ const PLACE = {
   address: '12 rue de la Ré, Lyon',
   city: 'Lyon',
   cuisineType: 'Japonais',
-  latitude: 45.76,
-  longitude: 4.83,
   priceLevel: 2,
+  location: { lat: 45.76, lng: 4.83 },
+  description: 'Sushis préparés à la commande.',
+  website: 'https://sakura.example',
+  openingHours: { periods: [{ day: 1, open: '11:30', close: '14:00' }] },
+  photoName: 'places/ChIJsushi/photos/AbC',
+  photoUrl: 'https://lh3.googleusercontent.com/places/sakura',
 }
 
 describe('importPlaceUseCase', () => {

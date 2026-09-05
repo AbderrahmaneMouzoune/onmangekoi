@@ -201,7 +201,12 @@ export function VoteDeck({
       <div className="relative">
         {next?.restaurants && (
           <div aria-hidden="true" className="absolute inset-0 scale-[0.96] opacity-60">
-            <VoteCard restaurant={next.restaurants} index={done + 2} total={total} />
+            <VoteCard
+              restaurant={next.restaurants}
+              index={done + 2}
+              total={total}
+              priority={false}
+            />
           </div>
         )}
         <div
@@ -217,6 +222,7 @@ export function VoteDeck({
             total={total}
             style={cardStyle}
             overlay={overlay}
+            priority
           />
         </div>
       </div>

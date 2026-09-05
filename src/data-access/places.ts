@@ -8,6 +8,7 @@ import {
   type PlaceResult,
 } from '@/domain/places'
 import { env } from '@/env'
+import { remoteImageUrl } from '@/lib/images'
 import { TtlCache } from '@/lib/ttl-cache'
 
 /**
@@ -17,12 +18,25 @@ import { TtlCache } from '@/lib/ttl-cache'
  * `POST /api/places/search`, qui parle à Google. Les réponses sont gardées
  * 24 h en mémoire — une recherche répétée (« sushi » à midi, par toute
  * l'équipe) ne coûte qu'un appel.
+ *
+ * La recherche et le détail ne demandent pas les mêmes champs : voir les deux
+ * masques plus bas.
  */
 
 const SEARCH_ENDPOINT = 'https://places.googleapis.com/v1/places:searchText'
 const DETAILS_ENDPOINT = 'https://places.googleapis.com/v1/places'
+const PHOTO_ENDPOINT = 'https://places.googleapis.com/v1'
 
-const PLACE_FIELDS = [
+/**
+ * Deux masques, deux factures.
+ *
+ * La recherche ne demande que de quoi afficher une liste : Google facture au
+ * champ le plus cher demandé, et une recherche ramène dix résultats. Les
+ * champs qui remplissent la fiche (photo, site, horaires, résumé) ne sont
+ * demandés que sur le détail d'un lieu — c'est-à-dire une fois, au moment où
+ * quelqu'un clique pour importer.
+ */
+const SEARCH_FIELDS = [
   'id',
   'displayName',
   'formattedAddress',
@@ -34,8 +48,19 @@ const PLACE_FIELDS = [
   'addressComponents',
 ]
 
-const SEARCH_FIELD_MASK = PLACE_FIELDS.map((field) => `places.${field}`).join(',')
-const DETAILS_FIELD_MASK = PLACE_FIELDS.join(',')
+const DETAILS_FIELDS = [
+  ...SEARCH_FIELDS,
+  'editorialSummary',
+  'websiteUri',
+  'regularOpeningHours',
+  'photos',
+]
+
+const SEARCH_FIELD_MASK = SEARCH_FIELDS.map((field) => `places.${field}`).join(',')
+const DETAILS_FIELD_MASK = DETAILS_FIELDS.join(',')
+
+/** Largeur demandée pour la photo importée : suffisante pour la carte de vote. */
+const PHOTO_MAX_WIDTH_PX = 1200
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const MAX_RESULTS = 10
@@ -44,7 +69,11 @@ const BIAS_RADIUS_M = 5000
 const REQUEST_TIMEOUT_MS = 8000
 
 const searchCache = new TtlCache<PlaceResult[]>({ ttlMs: CACHE_TTL_MS, maxEntries: 200 })
-/** Alimenté par les recherches : un import se sert ici avant d'appeler Google. */
+/**
+ * Fiches détaillées uniquement. Une recherche ne les alimente plus : ses
+ * résultats n'ont pas les champs enrichis, et les servir ici ferait importer
+ * un resto sans photo ni horaires.
+ */
 const placeCache = new TtlCache<PlaceResult>({ ttlMs: CACHE_TTL_MS, maxEntries: 500 })
 
 export function isPlacesSearchEnabled(): boolean {
@@ -124,8 +153,34 @@ export async function searchPlaces(input: {
 
   const results = mapPlacesResponse(payload)
   searchCache.set(key, results)
-  results.forEach((place) => placeCache.set(place.placeId, place))
   return results
+}
+
+/**
+ * Photo servable à partir de son nom de ressource.
+ *
+ * L'endpoint media renvoie normalement une redirection vers l'image ;
+ * `skipHttpRedirect` demande le JSON à la place, dont le `photoUri` pointe un
+ * hôte Google **sans clé d'API**. C'est indispensable : l'URL est stockée en
+ * base puis rendue par le navigateur, et l'URL media elle-même exigerait la
+ * clé pour être chargée.
+ *
+ * Cette adresse n'est pas éternelle. Un réimport du même lieu la rafraîchit —
+ * la RPC est idempotente sur `place_id`.
+ */
+async function resolvePhotoUrl(photoName: string, apiKey: string): Promise<string | null> {
+  try {
+    const payload = await callGoogle(
+      `${PHOTO_ENDPOINT}/${photoName}/media?maxWidthPx=${PHOTO_MAX_WIDTH_PX}&skipHttpRedirect=true`,
+      { method: 'GET' },
+      apiKey
+    )
+    const uri = (payload as { photoUri?: unknown })?.photoUri
+    return typeof uri === 'string' && remoteImageUrl(uri) ? uri : null
+  } catch {
+    // Une photo indisponible ne doit pas faire échouer l'import du resto.
+    return null
+  }
 }
 
 /**
@@ -144,7 +199,13 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceResult | nu
     apiKey
   )
 
-  const place = mapPlaceDetails(payload)
-  if (place) placeCache.set(place.placeId, place)
+  const mapped = mapPlaceDetails(payload)
+  if (!mapped) return null
+
+  const place: PlaceResult = {
+    ...mapped,
+    photoUrl: mapped.photoName ? await resolvePhotoUrl(mapped.photoName, apiKey) : null,
+  }
+  placeCache.set(place.placeId, place)
   return place
 }

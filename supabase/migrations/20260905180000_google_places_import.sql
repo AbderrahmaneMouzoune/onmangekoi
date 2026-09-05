@@ -4,8 +4,9 @@
 --   * `restaurants.place_id` identifie un lieu Google de façon stable ;
 --     l'index unique garantit qu'un même lieu ne crée jamais de doublon,
 --     quel que soit le nombre d'imports concurrents.
---   * `latitude` / `longitude` sont conservées pour un futur biais
---     géographique et pour rouvrir la fiche du lieu.
+--   * L'import alimente la fiche enrichie livrée par `restaurant_details` :
+--     `photo_url`, `website`, `location`, `opening_hours`, `description`.
+--     Les coordonnées vivent dans `location` (jsonb) et nulle part ailleurs.
 --   * L'import passe par `upsert_restaurant_from_place`, idempotente :
 --     insertion au premier import, rafraîchissement des champs ensuite.
 --     Aucune policy RLS n'ouvre l'écriture en `source = 'google'` : cette
@@ -13,9 +14,7 @@
 -- ============================================================
 
 alter table public.restaurants
-  add column if not exists place_id  text,
-  add column if not exists latitude  double precision,
-  add column if not exists longitude double precision;
+  add column if not exists place_id text;
 
 -- Un index unique ignore les NULL : les restos hors Google cohabitent sans
 -- se marcher dessus, et c'est lui qui porte le `on conflict` de la RPC.
@@ -30,14 +29,17 @@ alter table public.restaurants
 
 -- ─── RPC : IMPORT IDEMPOTENT ─────────────────────────────────
 create or replace function public.upsert_restaurant_from_place(
-  p_place_id     text,
-  p_name         text,
-  p_address      text default null,
-  p_city         text default null,
-  p_cuisine_type text default null,
-  p_latitude     double precision default null,
-  p_longitude    double precision default null,
-  p_price_level  smallint default null
+  p_place_id      text,
+  p_name          text,
+  p_address       text default null,
+  p_city          text default null,
+  p_cuisine_type  text default null,
+  p_price_level   smallint default null,
+  p_description   text default null,
+  p_photo_url     text default null,
+  p_website       text default null,
+  p_location      jsonb default null,
+  p_opening_hours jsonb default null
 )
   returns public.restaurants
   language plpgsql
@@ -49,6 +51,19 @@ declare
   v_uid uuid := (select auth.uid());
   v_place_id text := btrim(coalesce(p_place_id, ''));
   v_name text := btrim(coalesce(p_name, ''));
+  -- Les champs enrichis sont facultatifs : une forme que la base refuserait
+  -- est écartée plutôt que de faire échouer tout l'import. Les contraintes
+  -- CHECK de `restaurant_details` lèveraient une erreur Postgres brute, sans
+  -- code `omk:` — l'utilisateur ne saurait pas quoi en faire, et perdre la
+  -- photo vaut mieux que perdre le resto.
+  v_photo_url text := case
+    when p_photo_url ~ '^https://' then p_photo_url else null end;
+  v_website text := case
+    when p_website ~ '^https?://' then p_website else null end;
+  v_location jsonb := case
+    when public.is_geo_point(p_location) then p_location else null end;
+  v_opening_hours jsonb := case
+    when public.is_opening_hours(p_opening_hours) then p_opening_hours else null end;
   v_restaurant public.restaurants;
 begin
   if v_uid is null then
@@ -68,8 +83,9 @@ begin
   end if;
 
   insert into public.restaurants (
-    name, cuisine_type, address, city, price_level,
-    place_id, latitude, longitude, created_by, source
+    name, cuisine_type, address, city, price_level, description,
+    photo_url, website, location, opening_hours,
+    place_id, created_by, source
   )
   values (
     v_name,
@@ -77,23 +93,31 @@ begin
     nullif(btrim(coalesce(p_address, '')), ''),
     nullif(btrim(coalesce(p_city, '')), ''),
     p_price_level,
+    nullif(btrim(coalesce(p_description, '')), ''),
+    v_photo_url,
+    v_website,
+    v_location,
+    v_opening_hours,
     v_place_id,
-    p_latitude,
-    p_longitude,
     v_uid,
     'google'
   )
   on conflict (place_id) do update set
     -- Le lieu est déjà en base : on rafraîchit ce que Google sait de lui,
     -- sans écraser le premier importateur ni perdre une valeur déjà connue.
-    name         = excluded.name,
-    cuisine_type = coalesce(excluded.cuisine_type, public.restaurants.cuisine_type),
-    address      = coalesce(excluded.address, public.restaurants.address),
-    city         = coalesce(excluded.city, public.restaurants.city),
-    price_level  = coalesce(excluded.price_level, public.restaurants.price_level),
-    latitude     = coalesce(excluded.latitude, public.restaurants.latitude),
-    longitude    = coalesce(excluded.longitude, public.restaurants.longitude),
-    created_by   = coalesce(public.restaurants.created_by, excluded.created_by)
+    -- La photo se rafraîchit ainsi d'elle-même : l'URL servie par Google
+    -- n'est pas éternelle, un réimport la remplace.
+    name          = excluded.name,
+    cuisine_type  = coalesce(excluded.cuisine_type, public.restaurants.cuisine_type),
+    address       = coalesce(excluded.address, public.restaurants.address),
+    city          = coalesce(excluded.city, public.restaurants.city),
+    price_level   = coalesce(excluded.price_level, public.restaurants.price_level),
+    description   = coalesce(excluded.description, public.restaurants.description),
+    photo_url     = coalesce(excluded.photo_url, public.restaurants.photo_url),
+    website       = coalesce(excluded.website, public.restaurants.website),
+    location      = coalesce(excluded.location, public.restaurants.location),
+    opening_hours = coalesce(excluded.opening_hours, public.restaurants.opening_hours),
+    created_by    = coalesce(public.restaurants.created_by, excluded.created_by)
   returning * into v_restaurant;
 
   return v_restaurant;
@@ -102,8 +126,8 @@ $$;
 
 -- ─── GRANTS ──────────────────────────────────────────────────
 revoke execute on function public.upsert_restaurant_from_place(
-  text, text, text, text, text, double precision, double precision, smallint
+  text, text, text, text, text, smallint, text, text, text, jsonb, jsonb
 ) from public, anon;
 grant execute on function public.upsert_restaurant_from_place(
-  text, text, text, text, text, double precision, double precision, smallint
+  text, text, text, text, text, smallint, text, text, text, jsonb, jsonb
 ) to authenticated;

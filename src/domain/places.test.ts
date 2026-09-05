@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest'
 import {
   cityFromPlace,
   cuisineFromPlace,
+  locationFromPlace,
   mapPlace,
   mapPlaceDetails,
   mapPlacesResponse,
+  openingHoursFromPlace,
   placesCacheKey,
   priceLevelFromPlace,
 } from './places'
@@ -70,6 +72,64 @@ describe('cityFromPlace', () => {
   })
 })
 
+describe('locationFromPlace', () => {
+  it('should refuse coordinates Google gives out of bounds or not at all', () => {
+    expect(locationFromPlace({ location: { latitude: 91, longitude: 4.83 } })).toBeNull()
+    expect(locationFromPlace({ location: { latitude: 45.76 } })).toBeNull()
+    expect(locationFromPlace({})).toBeNull()
+  })
+})
+
+describe('openingHoursFromPlace', () => {
+  it('should translate Google periods into the shape the database accepts', () => {
+    expect(
+      openingHoursFromPlace({
+        regularOpeningHours: {
+          periods: [
+            { open: { day: 1, hour: 11, minute: 30 }, close: { day: 1, hour: 14, minute: 0 } },
+            { open: { day: 5, hour: 19, minute: 0 }, close: { day: 6, hour: 2, minute: 0 } },
+          ],
+        },
+      })
+    ).toEqual({
+      periods: [
+        { day: 1, open: '11:30', close: '14:00' },
+        // Une fermeture le lendemain passe minuit : `domain/opening-hours` le
+        // lit ainsi, on garde donc le jour d'ouverture.
+        { day: 5, open: '19:00', close: '02:00' },
+      ],
+    })
+  })
+
+  it('should read a period without a closing time as open all day', () => {
+    expect(
+      openingHoursFromPlace({
+        regularOpeningHours: { periods: [{ open: { day: 0, hour: 0, minute: 0 } }] },
+      })
+    ).toEqual({ periods: [{ day: 0, open: '00:00', close: '24:00' }] })
+  })
+
+  it('should ignore a period the app could not use', () => {
+    expect(
+      openingHoursFromPlace({
+        regularOpeningHours: {
+          periods: [
+            // Sans jour d'ouverture, la période ne décrit rien.
+            { close: { day: 2, hour: 14, minute: 0 } },
+            // Ouverture = fermeture : plage vide.
+            { open: { day: 3, hour: 12, minute: 0 }, close: { day: 3, hour: 12, minute: 0 } },
+          ],
+        },
+      })
+    ).toBeNull()
+  })
+
+  it('should say nothing rather than invent hours', () => {
+    expect(openingHoursFromPlace({})).toBeNull()
+    expect(openingHoursFromPlace({ regularOpeningHours: { periods: [] } })).toBeNull()
+  })
+})
+
 describe('mapPlace', () => {
   it('should keep only what the app stores', () => {
     expect(mapPlace(SUSHI)).toEqual({
@@ -78,10 +138,36 @@ describe('mapPlace', () => {
       address: '12 rue de la Ré, 69002 Lyon, France',
       city: 'Lyon',
       cuisineType: 'Japonais',
-      latitude: 45.76,
-      longitude: 4.83,
       priceLevel: 2,
+      location: { lat: 45.76, lng: 4.83 },
+      description: null,
+      website: null,
+      openingHours: null,
+      photoName: null,
+      photoUrl: null,
     })
+  })
+
+  it('should keep the enriched fields a place detail carries', () => {
+    const place = mapPlace({
+      ...SUSHI,
+      editorialSummary: { text: 'Sushis préparés à la commande.' },
+      websiteUri: 'https://sakura.example',
+      photos: [{ name: 'places/ChIJsushi/photos/AbC' }, { name: 'places/ChIJsushi/photos/Second' }],
+    })
+
+    expect(place?.description).toBe('Sushis préparés à la commande.')
+    expect(place?.website).toBe('https://sakura.example')
+    // Une seule photo nous intéresse : c'est la première que Google juge la
+    // plus représentative, et chacune coûte un appel de plus à résoudre.
+    expect(place?.photoName).toBe('places/ChIJsushi/photos/AbC')
+    // La résolution est le travail de la passerelle, pas du mapping.
+    expect(place?.photoUrl).toBeNull()
+  })
+
+  it('should refuse a website that is not an HTTP link', () => {
+    expect(mapPlace({ ...SUSHI, websiteUri: 'javascript:alert(1)' })?.website).toBeNull()
+    expect(mapPlace({ ...SUSHI, websiteUri: '  ' })?.website).toBeNull()
   })
 
   it('should drop a place without an id or a usable name', () => {

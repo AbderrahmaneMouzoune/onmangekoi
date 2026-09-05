@@ -4,6 +4,7 @@ import { createPublicClient } from '@/data-access/supabase/public'
 
 import type { Restaurant } from './models'
 import type { Database } from './models/database'
+import type { PlaceResult } from '@/domain/places'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const RESTAURANT_PAGE_SIZE = 20
@@ -131,16 +132,7 @@ export async function findSimilarRestaurants(
  */
 export async function upsertRestaurantFromPlace(
   supabase: SupabaseClient<Database>,
-  place: {
-    placeId: string
-    name: string
-    address?: string | null
-    city?: string | null
-    cuisineType?: string | null
-    latitude?: number | null
-    longitude?: number | null
-    priceLevel?: number | null
-  }
+  place: PlaceResult
 ): Promise<Restaurant> {
   const { data, error } = await supabase.rpc('upsert_restaurant_from_place', {
     p_place_id: place.placeId,
@@ -148,9 +140,12 @@ export async function upsertRestaurantFromPlace(
     p_address: place.address ?? undefined,
     p_city: place.city ?? undefined,
     p_cuisine_type: place.cuisineType ?? undefined,
-    p_latitude: place.latitude ?? undefined,
-    p_longitude: place.longitude ?? undefined,
     p_price_level: place.priceLevel ?? undefined,
+    p_description: place.description ?? undefined,
+    p_photo_url: place.photoUrl ?? undefined,
+    p_website: place.website ?? undefined,
+    p_location: place.location ?? undefined,
+    p_opening_hours: place.openingHours ?? undefined,
   })
   if (error) throw error
   return data

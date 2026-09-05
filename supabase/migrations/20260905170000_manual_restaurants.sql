@@ -60,7 +60,12 @@ create policy "restaurants_update_creator"
   with check (created_by = (select auth.uid()));
 
 grant insert on public.restaurants to authenticated;
-grant update (name, cuisine_type, address, city, description, image_url, price_level)
+-- Liste blanche : le créateur modifie la fiche, jamais `created_by`, `source`
+-- ni `place_id`. `image_url` a été renommée `photo_url` par
+-- `restaurant_details` ; les colonnes structurées qu'il a ajoutées
+-- (`location`, `opening_hours`) restent hors de portée d'une édition à la
+-- main — elles viennent de Google et un réimport les rétablirait.
+grant update (name, cuisine_type, address, city, description, photo_url, price_level)
   on public.restaurants to authenticated;
 
 -- ─── RPC : AJOUT MANUEL ──────────────────────────────────────

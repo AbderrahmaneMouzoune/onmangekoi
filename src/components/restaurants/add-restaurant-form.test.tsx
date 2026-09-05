@@ -25,14 +25,15 @@ function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
     address: null,
     city: null,
     description: null,
-    image_url: null,
+    photo_url: null,
+    website: null,
+    location: null,
+    opening_hours: null,
     created_at: new Date().toISOString(),
     created_by: null,
     source: 'manual',
     price_level: null,
     place_id: null,
-    latitude: null,
-    longitude: null,
     ...overrides,
   }
 }

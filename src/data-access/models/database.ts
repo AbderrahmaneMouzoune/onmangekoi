@@ -156,13 +156,14 @@ export type Database = {
           cuisine_type: string | null
           description: string | null
           id: string
-          image_url: string | null
-          latitude: number | null
-          longitude: number | null
+          location: Json | null
           name: string
+          opening_hours: Json | null
+          photo_url: string | null
           place_id: string | null
           price_level: number | null
           source: string
+          website: string | null
         }
         Insert: {
           address?: string | null
@@ -172,13 +173,14 @@ export type Database = {
           cuisine_type?: string | null
           description?: string | null
           id?: string
-          image_url?: string | null
-          latitude?: number | null
-          longitude?: number | null
+          location?: Json | null
           name: string
+          opening_hours?: Json | null
+          photo_url?: string | null
           place_id?: string | null
           price_level?: number | null
           source?: string
+          website?: string | null
         }
         Update: {
           address?: string | null
@@ -188,13 +190,14 @@ export type Database = {
           cuisine_type?: string | null
           description?: string | null
           id?: string
-          image_url?: string | null
-          latitude?: number | null
-          longitude?: number | null
+          location?: Json | null
           name?: string
+          opening_hours?: Json | null
+          photo_url?: string | null
           place_id?: string | null
           price_level?: number | null
           source?: string
+          website?: string | null
         }
         Relationships: [
           {
@@ -444,13 +447,14 @@ export type Database = {
           cuisine_type: string | null
           description: string | null
           id: string
-          image_url: string | null
-          latitude: number | null
-          longitude: number | null
+          location: Json | null
           name: string
+          opening_hours: Json | null
+          photo_url: string | null
           place_id: string | null
           price_level: number | null
           source: string
+          website: string | null
         }
         SetofOptions: {
           from: '*'
@@ -511,13 +515,14 @@ export type Database = {
           cuisine_type: string | null
           description: string | null
           id: string
-          image_url: string | null
-          latitude: number | null
-          longitude: number | null
+          location: Json | null
           name: string
+          opening_hours: Json | null
+          photo_url: string | null
           place_id: string | null
           price_level: number | null
           source: string
+          website: string | null
         }[]
         SetofOptions: {
           from: '*'
@@ -594,13 +599,14 @@ export type Database = {
           cuisine_type: string | null
           description: string | null
           id: string
-          image_url: string | null
-          latitude: number | null
-          longitude: number | null
+          location: Json | null
           name: string
+          opening_hours: Json | null
+          photo_url: string | null
           place_id: string | null
           price_level: number | null
           source: string
+          website: string | null
         }[]
         SetofOptions: {
           from: '*'
@@ -637,12 +643,16 @@ export type Database = {
       session_results: {
         Args: { p_session_id: string }
         Returns: {
+          address: string
+          city: string
           cuisine_type: string
           description: string
           dislikes: number
-          image_url: string
           likes: number
+          location: Json
           name: string
+          opening_hours: Json
+          photo_url: string
           rank: number
           restaurant_id: string
           restaurant_position: number
@@ -651,6 +661,7 @@ export type Database = {
           super_dislikes: number
           superlikes: number
           votes_count: number
+          website: string
         }[]
       }
       shares_session_with: { Args: { p_profile_id: string }; Returns: boolean }
@@ -667,11 +678,14 @@ export type Database = {
           p_address?: string
           p_city?: string
           p_cuisine_type?: string
-          p_latitude?: number
-          p_longitude?: number
+          p_description?: string
+          p_location?: Json
           p_name: string
+          p_opening_hours?: Json
+          p_photo_url?: string
           p_place_id: string
           p_price_level?: number
+          p_website?: string
         }
         Returns: {
           address: string | null
@@ -681,13 +695,14 @@ export type Database = {
           cuisine_type: string | null
           description: string | null
           id: string
-          image_url: string | null
-          latitude: number | null
-          longitude: number | null
+          location: Json | null
           name: string
+          opening_hours: Json | null
+          photo_url: string | null
           place_id: string | null
           price_level: number | null
           source: string
+          website: string | null
         }
         SetofOptions: {
           from: '*'

@@ -20,15 +20,42 @@ const GOOGLE_PLACE = {
   addressComponents: [{ longText: 'Lyon', types: ['locality'] }],
 }
 
+/** Les champs enrichis n'existent que sur le détail d'un lieu. */
+const GOOGLE_DETAILS = {
+  ...GOOGLE_PLACE,
+  editorialSummary: { text: 'Sushis préparés à la commande.' },
+  websiteUri: 'https://sakura.example',
+  regularOpeningHours: {
+    periods: [{ open: { day: 1, hour: 11, minute: 30 }, close: { day: 1, hour: 14, minute: 0 } }],
+  },
+  photos: [{ name: 'places/ChIJsushi/photos/AbC' }],
+}
+
+const PHOTO_URI = 'https://lh3.googleusercontent.com/places/sakura'
+
+/** Ce qu'une recherche ramène : pas de photo, pas d'horaires, pas de site. */
 const SUSHI_BAR = {
   placeId: 'ChIJsushi',
   name: 'Sushi Bar Sakura',
   address: '12 rue de la Ré, Lyon',
   city: 'Lyon',
   cuisineType: 'Japonais',
-  latitude: 45.76,
-  longitude: 4.83,
   priceLevel: 2,
+  location: { lat: 45.76, lng: 4.83 },
+  description: null,
+  website: null,
+  openingHours: null,
+  photoName: null,
+  photoUrl: null,
+}
+
+const SUSHI_BAR_DETAILS = {
+  ...SUSHI_BAR,
+  description: 'Sushis préparés à la commande.',
+  website: 'https://sakura.example',
+  openingHours: { periods: [{ day: 1, open: '11:30', close: '14:00' }] },
+  photoName: 'places/ChIJsushi/photos/AbC',
+  photoUrl: PHOTO_URI,
 }
 
 const fetchMock = vi.fn()
@@ -93,21 +120,76 @@ describe('data-access/places', () => {
     })
   })
 
-  it('should read an imported place from the search cache, without paying twice', async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ places: [GOOGLE_PLACE] }) })
+  it('should not serve an import from the search cache: a search has no photo or hours', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ places: [GOOGLE_PLACE] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => GOOGLE_DETAILS })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ photoUri: PHOTO_URI }) })
     const { searchPlaces, getPlaceDetails } = await importPlaces()
 
     await searchPlaces({ query: 'sushi' })
-    expect(await getPlaceDetails('ChIJsushi')).toEqual(SUSHI_BAR)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(await getPlaceDetails('ChIJsushi')).toEqual(SUSHI_BAR_DETAILS)
   })
 
-  it('should ask Google for a place it has never seen', async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: async () => GOOGLE_PLACE })
+  it('should serve a second import of the same place from the cache', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => GOOGLE_DETAILS })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ photoUri: PHOTO_URI }) })
     const { getPlaceDetails } = await importPlaces()
 
-    expect(await getPlaceDetails('ChIJsushi')).toEqual(SUSHI_BAR)
+    await getPlaceDetails('ChIJsushi')
+    expect(await getPlaceDetails('ChIJsushi')).toEqual(SUSHI_BAR_DETAILS)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('should ask Google for a place it has never seen, enriched fields included', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => GOOGLE_DETAILS })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ photoUri: PHOTO_URI }) })
+    const { getPlaceDetails } = await importPlaces()
+
+    expect(await getPlaceDetails('ChIJsushi')).toEqual(SUSHI_BAR_DETAILS)
     expect(fetchMock.mock.calls[0]![0]).toBe('https://places.googleapis.com/v1/places/ChIJsushi')
+    const mask = fetchMock.mock.calls[0]![1].headers['X-Goog-FieldMask']
+    expect(mask).toContain('photos')
+    expect(mask).toContain('regularOpeningHours')
+  })
+
+  it('should never store a photo URL carrying the API key', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => GOOGLE_DETAILS })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ photoUri: PHOTO_URI }) })
+    const { getPlaceDetails } = await importPlaces()
+
+    const place = await getPlaceDetails('ChIJsushi')
+    expect(place?.photoUrl).toBe(PHOTO_URI)
+    expect(place?.photoUrl).not.toContain('test-google-key')
+
+    // La clé voyage en en-tête, jamais dans l'URL demandée à Google.
+    const [photoUrl, photoInit] = fetchMock.mock.calls[1]!
+    expect(photoUrl).toContain('skipHttpRedirect=true')
+    expect(photoUrl).not.toContain('test-google-key')
+    expect(photoInit.headers['X-Goog-Api-Key']).toBe('test-google-key')
+  })
+
+  it('should import the place anyway when its photo cannot be resolved', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => GOOGLE_DETAILS })
+      .mockResolvedValueOnce({ ok: false, status: 429, text: async () => 'quota' })
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { getPlaceDetails } = await importPlaces()
+
+    expect(await getPlaceDetails('ChIJsushi')).toEqual({ ...SUSHI_BAR_DETAILS, photoUrl: null })
+    expect(logged).toHaveBeenCalled()
+  })
+
+  it('should refuse a photo URL served from an unexpected host', async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => GOOGLE_DETAILS })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ photoUri: 'https://evil.test/x' }) })
+    const { getPlaceDetails } = await importPlaces()
+
+    expect((await getPlaceDetails('ChIJsushi'))?.photoUrl).toBeNull()
   })
 
   it('should never leak the body Google returns on an error', async () => {

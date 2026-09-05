@@ -59,6 +59,24 @@ Chaque page redirige vers sa forme canonique : un code tapé en minuscules ou av
 
 Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché par le host.
 
+## Fiche restaurant
+
+Chaque restaurant peut porter une photo, une adresse, un site, des coordonnées et des horaires. Tout est optionnel : sans la donnée, le bloc concerné disparaît au lieu de s'afficher vide.
+
+| Colonne          | Forme                                                                                 | Usage                                            |
+| ---------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `photo_url`      | HTTPS, hôte autorisé                                                                  | fond de la carte de vote, vignette du classement |
+| `address`/`city` | texte                                                                                 | ligne d'adresse, repli du lien d'itinéraire      |
+| `website`        | HTTP(S)                                                                               | bouton « Le site » sur le gagnant                |
+| `location`       | `{"lat": number, "lng": number}`                                                      | lien d'itinéraire et mini-carte du gagnant       |
+| `opening_hours`  | `{"timezone"?: string, "periods": [{"day": 0-6, "open": "HH:MM", "close": "HH:MM"}]}` | badge « ouvert / fermé » sur la carte de vote    |
+
+`day` suit `Date#getDay` (0 = dimanche) ; une période dont la fermeture précède l'ouverture passe minuit (`22:00 → 02:00`), y compris par-dessus la fin de semaine. Le fuseau est celui du restaurant quand il est connu, celui du visiteur sinon. Les formes `jsonb` sont validées en base (`is_geo_point`, `is_opening_hours`) **et** à la lecture : une donnée importée reste une donnée externe.
+
+Les images distantes ne sont chargées que depuis les hôtes de `ALLOWED_IMAGE_HOSTS` (`src/lib/images.ts`), synchronisés avec `images.remotePatterns` de `next.config.mjs` — un test échoue si les deux listes divergent. Une URL hors liste n'est pas rendue plutôt que de faire échouer `next/image`. La carte visible du deck charge sa photo en `priority`, celle du dessous en `lazy`.
+
+La mini-carte du gagnant est un bloc de 2×2 tuiles [OpenStreetMap](https://www.openstreetmap.org/copyright) et un repère positionné en pourcentage : pas de clé d'API, pas de JavaScript de cartographie. L'attribution ODbL est affichée sous la carte.
+
 ## Base de restaurants
 
 | Source   | Origine                                              | Qui peut modifier |
@@ -80,7 +98,13 @@ Quand `GOOGLE_PLACES_API_KEY` est configurée, un onglet **Google** apparaît à
 | Clé jamais exposée | La recherche passe par `POST /api/places/search`, côté serveur ; la variable n'est pas préfixée `NEXT_PUBLIC_`              |
 | Zéro doublon       | `upsert_restaurant_from_place` est idempotente sur `place_id`, garantie par un index unique                                 |
 | Données de source  | Le navigateur n'envoie qu'un `place_id` à l'import ; les champs enregistrés sont relus côté serveur, jamais reçus du client |
-| Coût maîtrisé      | Réponses gardées 24 h en mémoire ; l'import se sert de ce cache avant de rappeler Google                                    |
+| Coût maîtrisé      | Réponses gardées 24 h en mémoire, et deux masques de champs distincts (voir ci-dessous)                                     |
+
+L'import remplit la fiche décrite plus haut : `photo_url`, `website`, `location`, `opening_hours` et `description`. Un lieu réimporté rafraîchit ces champs sans jamais en effacer un déjà connu — ce qui fait aussi office d'entretien, l'adresse d'une photo Google n'étant pas éternelle.
+
+Le fuseau des horaires n'est pas demandé à Google : `opening_hours.timezone` reste absent et l'app raisonne dans celui du visiteur.
+
+**Deux masques de champs, deux factures.** Google facture au champ le plus cher demandé, et une recherche ramène dix résultats : elle ne demande donc que de quoi afficher une liste. Photo, site, horaires et résumé ne sont demandés que sur le détail d'un lieu — une fois, au clic sur « importer ». La photo coûte un appel de plus, pour convertir son nom de ressource en adresse servable : celle de l'endpoint media exigerait la clé pour être chargée, on stocke donc le `photoUri` qu'il renvoie, servi par Google sans clé et sur un hôte de `ALLOWED_IMAGE_HOSTS`.
 
 Sans clé, l'onglet n'apparaît pas et le reste de l'app fonctionne à l'identique.
 
@@ -128,13 +152,14 @@ src/proxy.ts             rafraîchit la session, protège les routes (redirige v
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
 src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], account, legal, auth, api/places)
 src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · account/ · restaurants/ · onboarding/
-src/data-access/         requêtes Supabase (un module par table) + places.ts (Google) + models/
+src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
-src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, places, schemas/ (Zod)
+src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, horaires, places, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
-src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr, ttl-cache
+src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
+                         images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
-src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`
+src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results), purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright

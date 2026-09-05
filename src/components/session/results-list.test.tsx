@@ -15,7 +15,12 @@ function row(overrides: Partial<SessionResultRow>): SessionResultRow {
     name: 'Resto',
     cuisine_type: null,
     description: null,
-    image_url: null,
+    photo_url: null,
+    address: null,
+    city: null,
+    website: null,
+    location: null,
+    opening_hours: null,
     restaurant_position: 0,
     score: 0,
     superlikes: 0,
@@ -65,6 +70,42 @@ describe('ResultsList', () => {
       />
     )
     expect(screen.getByText(/Égalité parfaite avec B/)).toBeInTheDocument()
+  })
+
+  it('should offer directions and a map for a located winner', () => {
+    render(
+      <ResultsList
+        participantCount={2}
+        results={[
+          row({
+            name: 'Burger & Co',
+            address: '12 rue de la Paix',
+            city: 'Paris',
+            location: { lat: 48.8719, lng: 2.3316 },
+            website: 'https://burger.test',
+            rank: 1,
+          }),
+        ]}
+      />
+    )
+    expect(screen.getByRole('link', { name: /Itinéraire/ })).toHaveAttribute(
+      'href',
+      'https://www.google.com/maps/dir/?api=1&destination=48.8719%2C2.3316'
+    )
+    expect(screen.getByRole('link', { name: /Le site/ })).toHaveAttribute(
+      'href',
+      'https://burger.test'
+    )
+    expect(screen.getByText('12 rue de la Paix, Paris')).toBeInTheDocument()
+    // 2×2 tuiles OpenStreetMap
+    expect(document.querySelectorAll('img')).toHaveLength(4)
+  })
+
+  it('should stay silent about a winner it cannot locate', () => {
+    render(<ResultsList participantCount={2} results={[row({ name: 'Burger & Co', rank: 1 })]} />)
+    expect(screen.queryByRole('link', { name: /Itinéraire/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Le site/ })).not.toBeInTheDocument()
+    expect(document.querySelectorAll('img')).toHaveLength(0)
   })
 
   it('should render nothing without results', () => {
