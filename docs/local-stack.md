@@ -75,6 +75,8 @@ Les codes d'invitation (6) et de partage de liste (10) sont en Crockford base32 
 
 Les fonctions et policies peuvent être validées sur un PostgreSQL 16 nu en recréant le minimum de l'environnement Supabase (rôles `anon` / `authenticated`, schéma `auth` avec `auth.uid()`, extensions `pgcrypto` et `pg_trgm` dans le schéma `extensions`). C'est ce qui a servi à tester les RPC de vote et de classement.
 
+Le shim doit rester fidèle sur les points qui piègent : `auth.users.id` n'a **pas** de valeur par défaut — c'est GoTrue qui la fournit —, et `auth.identities` exige `provider_id` et `identity_data`. Un shim plus permissif fait passer un scénario qui échouera sur la vraie base.
+
 ## Entretien
 
 Les visiteurs qui choisissent un pseudo sans jamais lier d'email restent des utilisateurs anonymes : sans purge, `auth.users` et `sessions` grossissent à chaque session. Le nettoyage est automatisé par la migration `20260905120000_purge_inactive_anonymous.sql`.

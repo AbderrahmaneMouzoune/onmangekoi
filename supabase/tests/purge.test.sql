@@ -48,12 +48,14 @@ as $$
 declare
   v_id uuid;
 begin
+  -- `auth.users.id` n'a pas de valeur par défaut : c'est GoTrue qui la
+  -- fournit, donc le scénario doit la générer lui-même.
   insert into auth.users (
-    email, phone, email_change, raw_user_meta_data,
+    id, email, phone, email_change, raw_user_meta_data,
     is_anonymous, created_at, updated_at, last_sign_in_at
   )
   values (
-    p_email, p_phone, p_email_change, jsonb_build_object('pseudo', p_pseudo),
+    gen_random_uuid(), p_email, p_phone, p_email_change, jsonb_build_object('pseudo', p_pseudo),
     p_anonymous, now() - p_age, now() - p_age,
     case when p_last_sign_in is null then null else now() - p_last_sign_in end
   )
@@ -227,7 +229,11 @@ begin
   v_phone         := pg_temp.mk_user('Téléphone', v_old, true, null, '', '+33600000000');
   v_registered    := pg_temp.mk_user('Compte lié', v_old, false, 'compte@example.test');
   v_identity      := pg_temp.mk_user('Identité externe', v_old);
-  insert into auth.identities (user_id, provider) values (v_identity, 'email');
+  insert into auth.identities (user_id, provider, provider_id, identity_data)
+  values (
+    v_identity, 'email', v_identity::text,
+    jsonb_build_object('sub', v_identity::text, 'email', 'identite@example.test')
+  );
 
   -- Protégés par la fraîcheur du compte.
   v_recent    := pg_temp.mk_user('Anonyme récent', interval '3 days');
