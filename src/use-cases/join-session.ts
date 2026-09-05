@@ -1,6 +1,6 @@
 import { joinSession } from '@/data-access/sessions'
-import { AppError } from '@/lib/errors'
-import { normalizeInviteInput } from '@/lib/invite'
+import { AppError } from '@/domain/errors'
+import { parseInviteIdentifier } from '@/domain/share'
 
 import type { Session } from '@/data-access/models'
 import type { Database } from '@/data-access/models/database'
@@ -14,7 +14,7 @@ export async function joinSessionUseCase(
   supabase: SupabaseClient<Database>,
   rawIdentifier: string
 ): Promise<Session> {
-  const identifier = normalizeInviteInput(rawIdentifier)
+  const identifier = parseInviteIdentifier(rawIdentifier)
   if (identifier.kind === 'invalid') {
     throw new AppError('Ce code ou ce lien n’a pas le bon format.')
   }

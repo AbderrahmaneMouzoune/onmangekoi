@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react'
 
+import { isOpenNow, parseOpeningHours } from '@/domain/opening-hours'
 import { useIsClient } from '@/hooks/use-is-client'
-import { isOpenNow, parseOpeningHours } from '@/lib/opening-hours'
 
 import type { Json } from '@/data-access/models'
 

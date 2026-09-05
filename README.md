@@ -109,10 +109,11 @@ src/config/              router.config.ts : préfixes protégés, longueurs de c
 src/app/                 routes App Router (setup, login, join, sessions, lists, l/[slug], account, auth)
 src/components/          ui/ (primitives) · layout/ · session/ · lists/ · account/ · restaurants/
 src/data-access/         requêtes Supabase, un module par table + models/ (types générés)
-src/use-cases/           logique métier composée (créer / rejoindre / onboarding)
-src/lib/actions/         Server Actions (validation Zod, auth, erreurs typées)
-src/lib/                 schémas, Crockford, slug, share/invite (parsing), site (URL absolues), qr, erreurs
-                         images (hôtes autorisés), maps (itinéraire, tuiles), opening-hours (ouvert ?)
+src/use-cases/           logique métier composée (créer / rejoindre / voter / onboarding)
+src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, horaires, schemas/ (Zod)
+src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
+src/lib/                 utilitaires transverses : Crockford, slug, format, routing, site (URL absolues), qr,
+                         images (hôtes autorisés), maps (itinéraire, tuiles)
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results)
 e2e/                     Playwright
@@ -147,6 +148,8 @@ Le build échoue volontairement si `NEXT_PUBLIC_SUPABASE_URL` ou la clé manque 
 ## Roadmap
 
 Les évolutions envisagées (import Google Places, filtres, anti-fatigue, notifications, PWA, i18n, RGPD…) sont suivies dans les [issues GitHub](https://github.com/AbderrahmaneMouzoune/onmangekoi/issues).
+
+Leur classement par priorité et leur version cible (v1.1 → v2.0) sont dans [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Hors scope (v1)
 

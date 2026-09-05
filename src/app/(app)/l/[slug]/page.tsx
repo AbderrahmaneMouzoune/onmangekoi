@@ -16,8 +16,8 @@ import {
 } from '@/data-access/lists'
 import { searchRestaurants } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
+import { parseSharedListParam } from '@/domain/share'
 import { countLabel, displayPseudo } from '@/lib/format'
-import { parseSharedListParam } from '@/lib/share'
 import { cn } from '@/lib/utils'
 
 import type { Metadata } from 'next'

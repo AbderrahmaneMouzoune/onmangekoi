@@ -11,10 +11,10 @@ import Image from 'next/image'
 
 import { StaticMap } from '@/components/restaurants/static-map'
 import { buttonVariants } from '@/components/ui/button'
+import { formatScore } from '@/domain/vote'
 import { remoteImageUrl } from '@/lib/images'
 import { directionsUrl, parseGeoPoint } from '@/lib/maps'
 import { cn } from '@/lib/utils'
-import { formatScore } from '@/lib/vote'
 
 import type { SessionResultRow } from '@/data-access/models'
 

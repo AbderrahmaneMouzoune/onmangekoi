@@ -3,11 +3,11 @@
 import { RiAddLine, RiBookmarkLine } from '@remixicon/react'
 import { useState, useTransition } from 'react'
 
+import { addToSharedListAction, copySharedListAction } from '@/actions/lists'
 import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
-import { addToSharedListAction, copySharedListAction } from '@/lib/actions/lists'
 
 import type { RestaurantPage } from '@/data-access/restaurants'
 
