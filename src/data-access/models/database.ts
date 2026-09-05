@@ -376,9 +376,15 @@ export type Database = {
           name: string
           status: Database['public']['Enums']['session_status']
         }
+        SetofOptions: {
+          from: '*'
+          to: 'sessions'
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       copy_shared_list: {
-        Args: { p_name?: string | null; p_token: string }
+        Args: { p_name?: string; p_token: string }
         Returns: {
           created_at: string
           id: string
@@ -389,27 +395,12 @@ export type Database = {
           share_token: string
           updated_at: string
         }
-      }
-      crockford_code: {
-        Args: { p_length: number }
-        Returns: string
-      }
-      find_list_by_share: {
-        Args: { p_identifier: string }
-        Returns: {
-          created_at: string
-          id: string
-          is_collaborative: boolean
-          name: string
-          owner_id: string
-          share_code: string
-          share_token: string
-          updated_at: string
+        SetofOptions: {
+          from: '*'
+          to: 'lists'
+          isOneToOne: true
+          isSetofReturn: false
         }
-      }
-      generate_share_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
       }
       create_session: {
         Args: { p_name: string; p_restaurant_ids: string[] }
@@ -424,15 +415,36 @@ export type Database = {
           name: string
           status: Database['public']['Enums']['session_status']
         }
+        SetofOptions: {
+          from: '*'
+          to: 'sessions'
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
-      generate_invite_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
+      crockford_code: { Args: { p_length: number }; Returns: string }
+      find_list_by_share: {
+        Args: { p_identifier: string }
+        Returns: {
+          created_at: string
+          id: string
+          is_collaborative: boolean
+          name: string
+          owner_id: string
+          share_code: string
+          share_token: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'lists'
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
-      is_session_host: {
-        Args: { p_session_id: string }
-        Returns: boolean
-      }
+      generate_invite_code: { Args: never; Returns: string }
+      generate_share_code: { Args: never; Returns: string }
+      is_session_host: { Args: { p_session_id: string }; Returns: boolean }
       is_session_participant: {
         Args: { p_session_id: string }
         Returns: boolean
@@ -450,6 +462,12 @@ export type Database = {
           name: string
           status: Database['public']['Enums']['session_status']
         }
+        SetofOptions: {
+          from: '*'
+          to: 'sessions'
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       launch_session: {
         Args: { p_session_id: string }
@@ -464,6 +482,12 @@ export type Database = {
           name: string
           status: Database['public']['Enums']['session_status']
         }
+        SetofOptions: {
+          from: '*'
+          to: 'sessions'
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       list_by_share_token: {
         Args: { p_token: string }
@@ -471,7 +495,7 @@ export type Database = {
           id: string
           is_collaborative: boolean
           name: string
-          owner_pseudo: string | null
+          owner_pseudo: string
           restaurant_count: number
           share_code: string
         }[]
@@ -488,34 +512,31 @@ export type Database = {
           image_url: string | null
           name: string
         }[]
+        SetofOptions: {
+          from: '*'
+          to: 'restaurants'
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
-      normalize_crockford: {
-        Args: { p_input: string }
-        Returns: string
-      }
+      normalize_crockford: { Args: { p_input: string }; Returns: string }
       purge_inactive_anonymous: {
-        Args: { p_older_than?: unknown }
+        Args: { p_older_than?: string }
         Returns: number
       }
       purge_stale_sessions: {
-        Args: { p_closed_older_than?: unknown; p_waiting_older_than?: unknown }
+        Args: { p_closed_older_than?: string; p_waiting_older_than?: string }
         Returns: {
           closed_purged: number
           waiting_purged: number
         }[]
       }
-      raise_omk: {
-        Args: { p_code: string }
-        Returns: undefined
-      }
-      run_maintenance: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      raise_omk: { Args: { p_code: string }; Returns: undefined }
+      run_maintenance: { Args: never; Returns: Json }
       session_preview: {
         Args: { p_identifier: string }
         Returns: {
-          host_pseudo: string | null
+          host_pseudo: string
           id: string
           name: string
           participant_count: number
@@ -526,10 +547,10 @@ export type Database = {
       session_results: {
         Args: { p_session_id: string }
         Returns: {
-          cuisine_type: string | null
-          description: string | null
+          cuisine_type: string
+          description: string
           dislikes: number
-          image_url: string | null
+          image_url: string
           likes: number
           name: string
           rank: number
@@ -542,12 +563,13 @@ export type Database = {
           votes_count: number
         }[]
       }
-      shares_session_with: {
-        Args: { p_profile_id: string }
-        Returns: boolean
-      }
+      shares_session_with: { Args: { p_profile_id: string }; Returns: boolean }
       submit_vote: {
-        Args: { p_session_id: string; p_session_restaurant_id: string; p_value: number }
+        Args: {
+          p_session_id: string
+          p_session_restaurant_id: string
+          p_value: number
+        }
         Returns: undefined
       }
     }
