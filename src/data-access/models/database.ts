@@ -131,8 +131,11 @@ export type Database = {
           cuisine_type: string | null
           description: string | null
           id: string
-          image_url: string | null
+          location: Json | null
           name: string
+          opening_hours: Json | null
+          photo_url: string | null
+          website: string | null
         }
         Insert: {
           address?: string | null
@@ -141,8 +144,11 @@ export type Database = {
           cuisine_type?: string | null
           description?: string | null
           id?: string
-          image_url?: string | null
+          location?: Json | null
           name: string
+          opening_hours?: Json | null
+          photo_url?: string | null
+          website?: string | null
         }
         Update: {
           address?: string | null
@@ -151,8 +157,11 @@ export type Database = {
           cuisine_type?: string | null
           description?: string | null
           id?: string
-          image_url?: string | null
+          location?: Json | null
           name?: string
+          opening_hours?: Json | null
+          photo_url?: string | null
+          website?: string | null
         }
         Relationships: []
       }
@@ -461,8 +470,11 @@ export type Database = {
           cuisine_type: string | null
           description: string | null
           id: string
-          image_url: string | null
+          location: Json | null
           name: string
+          opening_hours: Json | null
+          photo_url: string | null
+          website: string | null
         }[]
       }
       normalize_crockford: {
@@ -487,12 +499,16 @@ export type Database = {
       session_results: {
         Args: { p_session_id: string }
         Returns: {
+          address: string | null
+          city: string | null
           cuisine_type: string | null
           description: string | null
           dislikes: number
-          image_url: string | null
           likes: number
+          location: Json | null
           name: string
+          opening_hours: Json | null
+          photo_url: string | null
           rank: number
           restaurant_id: string
           restaurant_position: number
@@ -501,6 +517,7 @@ export type Database = {
           super_dislikes: number
           superlikes: number
           votes_count: number
+          website: string | null
         }[]
       }
       shares_session_with: {

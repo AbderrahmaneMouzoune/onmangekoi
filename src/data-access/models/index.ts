@@ -4,6 +4,8 @@
  */
 import type { Database } from './database'
 
+export type { Json } from './database'
+
 type Tables = Database['public']['Tables']
 type Functions = Database['public']['Functions']
 
