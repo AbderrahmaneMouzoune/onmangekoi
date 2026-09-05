@@ -9,7 +9,7 @@ import { DELETE_CONFIRMATION, DeleteAccountButton } from './delete-account-butto
 
 const deleteAccountAction = vi.hoisted(() => vi.fn())
 
-vi.mock('@/lib/actions/account', () => ({ deleteAccountAction }))
+vi.mock('@/actions/account', () => ({ deleteAccountAction }))
 
 async function openDialog() {
   render(<DeleteAccountButton />)

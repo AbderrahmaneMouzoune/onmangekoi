@@ -1,7 +1,7 @@
 import { RiForbid2Line, RiHeart3Fill, RiThumbDownLine, RiThumbUpLine } from '@remixicon/react'
 
+import { formatScore } from '@/domain/vote'
 import { cn } from '@/lib/utils'
-import { formatScore } from '@/lib/vote'
 
 import type { SessionResultRow } from '@/data-access/models'
 

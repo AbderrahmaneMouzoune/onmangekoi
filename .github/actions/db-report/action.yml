@@ -1,0 +1,70 @@
+name: Compte-rendu DB
+description: Publie le résultat d'une commande de base de données dans le résumé du run, et sur la PR de la branche s'il y en a une ouverte.
+
+inputs:
+  command:
+    description: Commande exécutée (check, types, pull, plan, push)
+    required: true
+  status:
+    description: Statut du job (success, failure, cancelled)
+    required: true
+  token:
+    description: Jeton GitHub utilisé pour commenter
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Publier le compte-rendu
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ github.repository }}
+        BRANCH: ${{ github.ref_name }}
+        COMMAND: ${{ inputs.command }}
+        STATUS: ${{ inputs.status }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+
+        case "$STATUS" in
+          success) icon='✅' ;;
+          failure) icon='❌' ;;
+          *) icon='⚪' ;;
+        esac
+
+        report="$RUNNER_TEMP/report.txt"
+        comment="$RUNNER_TEMP/comment.md"
+
+        {
+          echo "### $icon Base de données — \`$COMMAND\` sur \`$BRANCH\`"
+          echo
+          echo '<details><summary>Sortie de la commande</summary>'
+          echo
+          # Clôture sur quatre backticks : la sortie de la CLI peut en contenir trois.
+          echo '````console'
+          if [ -s "$report" ]; then
+            # Couleurs ANSI retirées, identifiants d'éventuelles URL de connexion masqués.
+            tail -c 6000 "$report" \
+              | sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g' \
+              | sed -E 's#(postgres(ql)?://[^:/@]+:)[^@]+@#\1***@#g'
+          else
+            echo '(aucune sortie)'
+          fi
+          echo '````'
+          echo
+          echo '</details>'
+          echo
+          echo "[Détail du run]($RUN_URL)"
+        } > "$comment"
+
+        cat "$comment" >> "$GITHUB_STEP_SUMMARY"
+
+        # Si la branche a une PR ouverte, le compte-rendu y est aussi posté : c'est
+        # là qu'on le cherche quand on suit une migration depuis un téléphone.
+        pr=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open --json number --jq '.[0].number // empty' || true)
+        if [ -n "$pr" ]; then
+          gh pr comment "$pr" --repo "$REPO" --body-file "$comment"
+        else
+          echo "Aucune PR ouverte pour $BRANCH : compte-rendu dans le résumé du run seulement."
+        fi

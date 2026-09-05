@@ -1,0 +1,23 @@
+name: Vérifier les secrets Supabase
+description: Échoue tôt, avec un message lisible, si un secret nécessaire au projet distant manque.
+
+runs:
+  using: composite
+  steps:
+    - name: Contrôler la présence des secrets
+      shell: bash
+      # Les valeurs sont lues depuis l'environnement du job : rien n'est interpolé ici,
+      # donc aucun secret ne peut se retrouver dans le script exécuté.
+      run: |
+        set -euo pipefail
+
+        missing=''
+        [ -n "${SUPABASE_ACCESS_TOKEN:-}" ] || missing="$missing SUPABASE_ACCESS_TOKEN"
+        [ -n "${SUPABASE_PROJECT_ID:-}" ] || missing="$missing SUPABASE_PROJECT_ID"
+        [ -n "${SUPABASE_DB_PASSWORD:-}" ] || missing="$missing SUPABASE_DB_PASSWORD"
+
+        if [ -n "$missing" ]; then
+          echo "::error::Secrets manquants :$missing — voir docs/ci-database.md"
+          exit 1
+        fi
+        echo '✅ Secrets présents.'

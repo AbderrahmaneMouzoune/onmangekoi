@@ -3,6 +3,7 @@
 import { RiPlayLine } from '@remixicon/react'
 import { useState, useTransition } from 'react'
 
+import { deleteSessionAction, launchSessionAction, leaveSessionAction } from '@/actions/sessions'
 import { ConnectionIndicator } from '@/components/session/connection-indicator'
 import { InviteCard } from '@/components/session/invite-card'
 import { ParticipantList } from '@/components/session/participant-list'
@@ -10,11 +11,6 @@ import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
 import { TwoStepButton } from '@/components/ui/two-step-button'
-import {
-  deleteSessionAction,
-  launchSessionAction,
-  leaveSessionAction,
-} from '@/lib/actions/sessions'
 import { countLabel, displayPseudo } from '@/lib/format'
 
 import type { ParticipantWithProfile, Session } from '@/data-access/models'

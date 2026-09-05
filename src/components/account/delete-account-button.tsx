@@ -3,6 +3,7 @@
 import { RiDeleteBin6Line } from '@remixicon/react'
 import { useId, useState, useTransition } from 'react'
 
+import { deleteAccountAction } from '@/actions/account'
 import {
   AlertDialogClose,
   AlertDialogDescription,
@@ -16,7 +17,6 @@ import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { deleteAccountAction } from '@/lib/actions/account'
 import { cn } from '@/lib/utils'
 
 /** Mot à recopier pour armer la suppression. */
