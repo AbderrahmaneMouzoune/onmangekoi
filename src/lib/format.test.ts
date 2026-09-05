@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { countLabel, displayPseudo, initials, plural, relativeDate } from './format'
+import {
+  countLabel,
+  DELETED_PARTICIPANT,
+  displayPseudo,
+  initials,
+  participantLabel,
+  plural,
+  relativeDate,
+} from './format'
 
 describe('plural / countLabel', () => {
   it('should pluralize above one', () => {
@@ -33,6 +41,21 @@ describe('displayPseudo', () => {
     expect(displayPseudo(null)).toBe('Invité')
     expect(displayPseudo('   ')).toBe('Invité')
     expect(displayPseudo(' Sam ')).toBe('Sam')
+  })
+})
+
+describe('participantLabel', () => {
+  it('should name a participant whose account was deleted', () => {
+    expect(participantLabel(null, null)).toBe(DELETED_PARTICIPANT)
+    // Le pseudo ne devrait plus exister, mais un cache périmé ne doit pas
+    // ressusciter l'auteur d'un vote anonymisé.
+    expect(participantLabel(null, 'Sam')).toBe(DELETED_PARTICIPANT)
+  })
+
+  it('should not confuse a deleted account with a guest without a pseudo', () => {
+    expect(participantLabel('user-1', null)).toBe('Invité')
+    expect(participantLabel('user-1', '  ')).toBe('Invité')
+    expect(participantLabel('user-1', 'Sam')).toBe('Sam')
   })
 })
 

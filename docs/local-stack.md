@@ -86,7 +86,7 @@ Une action qui ne connaît qu'un uuid ne peut donc pas viser une page précise :
 
 ## Valider les migrations sans Supabase
 
-Les fonctions et policies peuvent être validées sur un PostgreSQL 16 nu en recréant le minimum de l'environnement Supabase (rôles `anon` / `authenticated`, schéma `auth` avec `auth.uid()`, extensions `pgcrypto` et `pg_trgm` dans le schéma `extensions`). C'est ce qui a servi à tester les RPC de vote et de classement.
+Les fonctions et policies peuvent être validées sur un PostgreSQL 16 nu en recréant le minimum de l'environnement Supabase (rôles `anon` / `authenticated`, schéma `auth` avec `auth.uid()` et une table `auth.users`, extensions `pgcrypto` et `pg_trgm` dans le schéma `extensions`, publication `supabase_realtime`). C'est ce qui a servi à tester les RPC de vote et de classement, puis les scénarios ci-dessus.
 
 Le shim doit rester fidèle sur les points qui piègent : `auth.users.id` n'a **pas** de valeur par défaut — c'est GoTrue qui la fournit —, et `auth.identities` exige `provider_id` et `identity_data`. Un shim plus permissif fait passer un scénario qui échouera sur la vraie base.
 
@@ -100,7 +100,7 @@ Les visiteurs qui choisissent un pseudo sans jamais lier d'email restent des uti
 | `public.purge_stale_sessions(p_waiting_older_than, p_closed_older_than)` | 7 et 180 jours       | les sessions `waiting` jamais lancées, les sessions `closed` âgées  |
 | `public.run_maintenance()`                                               | —                    | enchaîne les deux, dans cet ordre ; cible du job `pg_cron` nocturne |
 
-Un compte n'est purgé que s'il ne peut plus jamais être retrouvé : **une adresse email liée — même en attente de confirmation —, un changement d'email en cours, un téléphone ou une identité externe le protègent définitivement**. Sont également conservés les comptes dont la création ou la dernière connexion est récente, ceux qui ont hébergé ou rejoint une session récemment, et ceux qui participent à une session non clôturée, quelle que soit son ancienneté. La suppression d'un anonyme emporte en cascade son profil, ses listes et ses sessions, via les clés étrangères existantes.
+Un compte n'est purgé que s'il ne peut plus jamais être retrouvé : **une adresse email liée — même en attente de confirmation —, un changement d'email en cours, un téléphone ou une identité externe le protègent définitivement**. Sont également conservés les comptes dont la création ou la dernière connexion est récente, ceux qui ont hébergé ou rejoint une session récemment, et ceux qui participent à une session non clôturée, quelle que soit son ancienneté. La suppression d'un anonyme emporte en cascade son profil et ses listes. Ses sessions, elles, survivent sans host (`sessions.host_id` et `session_participants.profile_id` sont en `on delete set null` depuis la suppression de compte RGPD) : purger un compte n'efface jamais un classement déjà affiché à d'autres. Les sessions closes finissent par partir via `purge_stale_sessions`.
 
 `run_maintenance()` est planifiée à 3 h 17 UTC par `pg_cron` (job `omk-nightly-maintenance`). La migration ne casse pas là où l'extension est absente — un PostgreSQL nu, un plan sans `pg_cron` — elle émet un `NOTICE` et laisse l'appel manuel possible :
 
@@ -126,4 +126,19 @@ supabase start
 bun run db:test
 ```
 
+| Scénario                  | Ce qu'il prouve                                                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `purge.test.sql`          | Purge : protections d'un compte joignable, cascades, compteurs, garde-fous de rétention                                      |
+| `delete-account.test.sql` | Suppression RGPD : classement d'une session close inchangé, votes anonymisés, sessions orphelines traitées, export cloisonné |
+
 `SUPABASE_DB_URL` permet de viser une autre base que la locale (`postgresql://postgres:postgres@127.0.0.1:54322/postgres`), y compris le PostgreSQL nu décrit plus haut. La CI les rejoue dans le job `End-to-end`, juste après `supabase start`.
+
+## RGPD
+
+| Droit                          | Où                                         | Ce qui se passe                                                                                          |
+| ------------------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| Accès et portabilité (art. 20) | `/account/export` → RPC `export_my_data()` | Un JSON assemblé en base, filtré sur `auth.uid()`, téléchargé à la demande                               |
+| Effacement (art. 17)           | « Mon compte » → RPC `delete_my_account()` | Profil, listes et compte auth supprimés ; votes des sessions closes conservés en agrégat mais anonymisés |
+| Information                    | `/legal/privacy`                           | Données conservées, durées, sous-traitants                                                               |
+
+Les deux RPC ne prennent aucun paramètre : leur périmètre est toujours `auth.uid()`. Elles sont `security definer` parce qu'elles touchent `auth.users`, et doivent donc appartenir à un rôle autorisé sur ce schéma — `postgres`, celui qui joue les migrations.
