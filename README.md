@@ -88,14 +88,15 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ```
 src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join, sessions, lists, l/[slug], account, auth)
+src/app/                 routes App Router (setup, login, join, sessions, lists, l/[slug], account, legal, auth)
 src/components/          ui/ (primitives) · layout/ · session/ · lists/ · account/ · restaurants/
 src/data-access/         requêtes Supabase, un module par table + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / onboarding)
 src/lib/actions/         Server Actions (validation Zod, auth, erreurs typées)
 src/lib/                 schémas, Crockford, slug, share/invite (parsing), site (URL absolues), qr, erreurs
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`
-supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results)
+supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results, RGPD)
+supabase/tests/          scénarios SQL rejouables (suppression de compte)
 e2e/                     Playwright
 ```
 
@@ -108,6 +109,19 @@ e2e/                     Playwright
 - Les pages sont rendues avec des chargements parallèles (`Promise.all`) et les lectures par requête sont dédupliquées via `React.cache` (`getCurrentUser`, `getProfile`, `getSessionById`…).
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.
 - Les messages d'erreur Postgres ne remontent jamais tels quels : seuls les codes métier `omk:*` sont traduits.
+
+## Vie privée
+
+L'app est utilisable avec un simple pseudo, et les deux droits qui comptent au quotidien sont en libre-service depuis « Mon compte » :
+
+| Droit                | Chemin            | Effet                                                                                                                       |
+| -------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Export (portabilité) | `/account/export` | JSON téléchargeable — profil, listes, sessions hébergées, participations et votes — assemblé en base par `export_my_data()` |
+| Suppression          | « Mon compte »    | `delete_my_account()` : profil, listes et compte auth supprimés en une transaction                                          |
+
+Supprimer un compte ne réécrit pas l'histoire des autres. Les votes déjà comptés dans une **session terminée** restent dans le classement mais perdent leur auteur (`Participant supprimé`) ; les sessions **en attente ou en cours** que le compte hébergeait sont supprimées, puisque sans host elles ne peuvent plus aboutir. La garantie est portée par le schéma (`on delete set null` sur `sessions.host_id` et `session_participants.profile_id`), pas seulement par la RPC : une suppression faite depuis le dashboard Supabase donne le même résultat.
+
+Le détail des données conservées et de leurs durées est sur la page `/legal/privacy`, atteignable depuis le pied de page. Le scénario de suppression est rejouable : `supabase/tests/delete_my_account.sql` (voir [`docs/local-stack.md`](docs/local-stack.md)).
 
 ## Déployer (Vercel + Supabase cloud)
 

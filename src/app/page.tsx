@@ -3,6 +3,7 @@ import Link from 'next/link'
 
 import { AppHeader } from '@/components/layout/app-header'
 import { Shell } from '@/components/layout/shell'
+import { SiteFooter } from '@/components/layout/site-footer'
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
 import { buttonVariants } from '@/components/ui/button'
 import { router } from '@/config/router.config'
@@ -165,6 +166,7 @@ export default async function HomePage() {
           </ol>
         </section>
       </Shell>
+      <SiteFooter />
     </>
   )
 }

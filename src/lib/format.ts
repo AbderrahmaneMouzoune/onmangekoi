@@ -22,6 +22,22 @@ export function displayPseudo(pseudo: string | null | undefined): string {
   return clean || 'Invité'
 }
 
+/** Libellé d'un participant dont le compte a été supprimé (RGPD). */
+export const DELETED_PARTICIPANT = 'Participant supprimé'
+
+/**
+ * Nom affiché d'un participant. Un `profileId` null signale un compte
+ * supprimé : la ligne survit pour que son vote reste dans le classement, mais
+ * son auteur n'existe plus — il ne faut surtout pas le confondre avec un
+ * invité sans pseudo.
+ */
+export function participantLabel(
+  profileId: string | null,
+  pseudo: string | null | undefined
+): string {
+  return profileId === null ? DELETED_PARTICIPANT : displayPseudo(pseudo)
+}
+
 const relativeFormatter = new Intl.RelativeTimeFormat('fr', { numeric: 'auto' })
 
 export function relativeDate(iso: string, now: Date = new Date()): string {

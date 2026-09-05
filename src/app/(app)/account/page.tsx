@@ -1,6 +1,14 @@
-import { RiCheckLine, RiMailLine, RiShieldCheckLine } from '@remixicon/react'
+import {
+  RiCheckLine,
+  RiDownloadLine,
+  RiMailLine,
+  RiShieldCheckLine,
+  RiShieldUserLine,
+} from '@remixicon/react'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
+import { DeleteAccountButton } from '@/components/account/delete-account-button'
 import { LinkEmailForm } from '@/components/account/link-email-form'
 import { SetPasswordForm } from '@/components/account/set-password-form'
 import { SignOutButton } from '@/components/account/sign-out-button'
@@ -9,12 +17,15 @@ import { PageHeader } from '@/components/layout/page-header'
 import { Shell } from '@/components/layout/shell'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
+import { Separator } from '@/components/ui/separator'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { getProfile } from '@/data-access/profile'
 import { createServerClient } from '@/data-access/supabase/server'
 import { displayPseudo } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 import type { Metadata } from 'next'
 
@@ -118,6 +129,41 @@ export default async function AccountPage({ searchParams }: Props) {
             )}
           </li>
         </ol>
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+            <RiShieldUserLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
+            Mes données
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Récupère une copie de tout ce que l’app sait de toi, ou supprime ton compte. Le détail
+            de ce qui est conservé est sur la{' '}
+            <Link href={router.privacy()} className="font-medium text-brand hover:underline">
+              page confidentialité
+            </Link>
+            .
+          </p>
+        </div>
+
+        <a
+          href={router.accountExport()}
+          download
+          className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}
+        >
+          <RiDownloadLine aria-hidden="true" />
+          Exporter mes données (JSON)
+        </a>
+
+        <Separator className="my-1" />
+
+        <p className="text-sm text-muted-foreground">
+          La suppression est immédiate et définitive : profil, pseudo, email et listes
+          disparaissent. Les votes déjà comptés dans une session terminée restent dans le
+          classement, mais plus rien ne les relie à toi.
+        </p>
+        <DeleteAccountButton />
       </section>
 
       <div className="flex justify-center pt-2">

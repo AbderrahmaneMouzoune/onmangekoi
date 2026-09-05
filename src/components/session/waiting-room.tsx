@@ -48,7 +48,9 @@ export function WaitingRoom({
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const host = participants.find((p) => p.profile_id === session.host_id)
+  const host = participants.find(
+    (p) => session.host_id !== null && p.profile_id === session.host_id
+  )
   const canLaunch = participants.length >= MIN_PARTICIPANTS
 
   function launch() {

@@ -70,9 +70,24 @@ Toutes les URL de l'app sont construites via `router.*()` dans `src/config/route
 
 Les codes d'invitation (6) et de partage de liste (10) sont en Crockford base32 : `src/lib/crockford.ts` normalise la saisie côté client, `public.normalize_crockford` fait de même en base. Les liens de liste ont la forme `/l/<slug>-<CODE>` ; `parseSharedListParam` ne garde que le code final.
 
+## Scénarios SQL
+
+`supabase/tests/` contient des scénarios rejouables directement en SQL, pour ce qui se vérifie mieux en base que dans un test de composant.
+
+```bash
+psql postgresql://postgres:postgres@127.0.0.1:54322/postgres \
+  -v ON_ERROR_STOP=1 -f supabase/tests/delete_my_account.sql
+```
+
+| Scénario                | Ce qu'il prouve                                                                                                              |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `delete_my_account.sql` | Suppression RGPD : classement d'une session close inchangé, votes anonymisés, sessions orphelines traitées, export cloisonné |
+
+Chaque scénario tient dans une transaction terminée par `rollback` : il ne laisse rien en base, et la moindre assertion fausse interrompt le script.
+
 ## Valider les migrations sans Supabase
 
-Les fonctions et policies peuvent être validées sur un PostgreSQL 16 nu en recréant le minimum de l'environnement Supabase (rôles `anon` / `authenticated`, schéma `auth` avec `auth.uid()`, extensions `pgcrypto` et `pg_trgm` dans le schéma `extensions`). C'est ce qui a servi à tester les RPC de vote et de classement.
+Les fonctions et policies peuvent être validées sur un PostgreSQL 16 nu en recréant le minimum de l'environnement Supabase (rôles `anon` / `authenticated`, schéma `auth` avec `auth.uid()` et une table `auth.users`, extensions `pgcrypto` et `pg_trgm` dans le schéma `extensions`, publication `supabase_realtime`). C'est ce qui a servi à tester les RPC de vote et de classement, puis les scénarios ci-dessus.
 
 ## Entretien
 
@@ -82,5 +97,23 @@ Les visiteurs qui choisissent un pseudo sans jamais lier d'email restent des uti
 delete from auth.users
 where is_anonymous is true
   and created_at < now() - interval '90 days'
-  and id not in (select host_id from public.sessions where created_at > now() - interval '90 days');
+  and id not in (
+    select host_id from public.sessions
+    where host_id is not null
+      and created_at > now() - interval '90 days'
+  );
 ```
+
+Le filtre `host_id is not null` n'est pas cosmétique : `host_id` est nullable depuis la suppression de compte RGPD, et un seul NULL dans un `not in` rend la condition entière nulle — la purge ne supprimerait plus personne.
+
+Cette purge ne détruit pas les classements : `sessions.host_id` et `session_participants.profile_id` sont en `on delete set null`, donc supprimer un compte — depuis l'app, depuis le dashboard Supabase ou par cette requête — anonymise ses votes au lieu de les effacer.
+
+## RGPD
+
+| Droit                          | Où                                         | Ce qui se passe                                                                                          |
+| ------------------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| Accès et portabilité (art. 20) | `/account/export` → RPC `export_my_data()` | Un JSON assemblé en base, filtré sur `auth.uid()`, téléchargé à la demande                               |
+| Effacement (art. 17)           | « Mon compte » → RPC `delete_my_account()` | Profil, listes et compte auth supprimés ; votes des sessions closes conservés en agrégat mais anonymisés |
+| Information                    | `/legal/privacy`                           | Données conservées, durées, sous-traitants                                                               |
+
+Les deux RPC ne prennent aucun paramètre : leur périmètre est toujours `auth.uid()`. Elles sont `security definer` parce qu'elles touchent `auth.users`, et doivent donc appartenir à un rôle autorisé sur ce schéma — `postgres`, celui qui joue les migrations.
