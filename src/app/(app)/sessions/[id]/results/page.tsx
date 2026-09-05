@@ -7,7 +7,7 @@ import {
 } from '@/components/session/session-results-section'
 import { getSessionById } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
-import { SessionIdSchema } from '@/lib/schemas/session'
+import { SessionIdSchema } from '@/domain/schemas/session'
 
 import type { Metadata } from 'next'
 

@@ -4,8 +4,8 @@ import { Shell } from '@/components/layout/shell'
 import { SharedListDetail, SharedListDetailFallback } from '@/components/lists/shared-list-detail'
 import { getSharedListPreview } from '@/data-access/lists'
 import { createServerClient } from '@/data-access/supabase/server'
+import { parseSharedListParam } from '@/domain/share'
 import { countLabel, displayPseudo } from '@/lib/format'
-import { parseSharedListParam } from '@/lib/share'
 
 import type { Metadata } from 'next'
 

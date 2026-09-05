@@ -2,13 +2,13 @@
 
 import { useActionState } from 'react'
 
+import { updatePseudoAction } from '@/actions/profile'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { updatePseudoAction } from '@/lib/actions/profile'
-import { PSEUDO_MAX, PSEUDO_MIN } from '@/lib/schemas/profile'
+import { PSEUDO_MAX, PSEUDO_MIN } from '@/domain/schemas/profile'
 
 export function UpdatePseudoForm({ currentPseudo }: { currentPseudo: string }) {
   const [state, formAction, isPending] = useActionState(updatePseudoAction, null)

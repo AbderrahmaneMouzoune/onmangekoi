@@ -9,7 +9,7 @@ import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
-import { toUserMessage } from '@/lib/errors'
+import { toUserMessage } from '@/domain/errors'
 import { cn } from '@/lib/utils'
 import { joinSessionUseCase } from '@/use-cases/join-session'
 
