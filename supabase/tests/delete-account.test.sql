@@ -10,10 +10,10 @@
 --     se clôture d'elle-même ;
 --   * l'export ne contient que les données de son appelant.
 --
--- À rejouer sur la stack locale :
---   supabase start
+-- Exécution (base Supabase locale, `supabase start` en cours) :
+--   bun run db:test        — rejoue tous les scénarios de supabase/tests
 --   psql postgresql://postgres:postgres@127.0.0.1:54322/postgres \
---     -v ON_ERROR_STOP=1 -f supabase/tests/delete_my_account.sql
+--     -v ON_ERROR_STOP=1 -f supabase/tests/delete-account.test.sql
 --
 -- Le script tient dans une transaction terminée par ROLLBACK : il ne laisse
 -- rien en base, et la moindre assertion fausse interrompt tout.

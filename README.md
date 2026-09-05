@@ -96,8 +96,8 @@ src/domain/              règles et vocabulaire métier : votes, codes de partag
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
 src/lib/                 utilitaires transverses : Crockford, slug, format, routing, site (URL absolues), qr
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`
-supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results, RGPD)
-supabase/tests/          scénarios SQL rejouables (suppression de compte)
+supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results), purge, RGPD
+supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
 ```
 
@@ -139,13 +139,26 @@ L'app est utilisable avec un simple pseudo, et les deux droits qui comptent au q
 
 Supprimer un compte ne réécrit pas l'histoire des autres. Les votes déjà comptés dans une **session terminée** restent dans le classement mais perdent leur auteur (`Participant supprimé`) ; les sessions **en attente ou en cours** que le compte hébergeait sont supprimées, puisque sans host elles ne peuvent plus aboutir. La garantie est portée par le schéma (`on delete set null` sur `sessions.host_id` et `session_participants.profile_id`), pas seulement par la RPC : une suppression faite depuis le dashboard Supabase donne le même résultat.
 
-Le détail des données conservées et de leurs durées est sur la page `/legal/privacy`, atteignable depuis le pied de page. Le scénario de suppression est rejouable : `supabase/tests/delete_my_account.sql` (voir [`docs/local-stack.md`](docs/local-stack.md)).
+Le détail des données conservées et de leurs durées est sur la page `/legal/privacy`, atteignable depuis le pied de page. Le scénario de suppression est rejouable avec `bun run db:test` (`supabase/tests/delete-account.test.sql`).
+
+## Rétention des données
+
+Un pseudo suffit à utiliser l'app, donc chaque pseudo crée un utilisateur anonyme : sans entretien, la base ne fait que grossir. Un job `pg_cron` nocturne (`public.run_maintenance()`) applique la rétention suivante :
+
+| Donnée                             | Conservée | Puis                                               |
+| ---------------------------------- | --------- | -------------------------------------------------- |
+| Anonyme sans activité ni email lié | 90 jours  | supprimé, avec ses listes ; ses sessions survivent |
+| Session `waiting` jamais lancée    | 7 jours   | supprimée                                          |
+| Session `closed`                   | 180 jours | supprimée                                          |
+
+Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adresse email lui est liée — même non confirmée —, ou un téléphone, ou une identité externe. Une session en cours protège aussi tous ses participants. Purger un compte n’efface jamais un classement : ses sessions restent, sans host et sans auteur (voir [Vie privée](#vie-privée)). Chaque passage journalise ses compteurs dans `public.maintenance_runs`. Détail et réglages dans [`docs/local-stack.md`](docs/local-stack.md#entretien).
 
 ## Déployer (Vercel + Supabase cloud)
 
 1. Créer un projet Supabase, puis pousser le schéma : `supabase link --project-ref <ref>` et `supabase db push` (migrations, RLS, RPC, seed). Sans terminal sous la main, les mêmes opérations se pilotent depuis GitHub — voir [`docs/ci-database.md`](docs/ci-database.md).
 2. Dans Supabase → Authentication → URL Configuration : ajouter `https://<domaine>/auth/confirm` aux _Redirect URLs_ (compte optionnel).
-3. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
+3. Dans Supabase → Database → Extensions : activer `pg_cron` si ce n'est pas déjà fait, puis rejouer la migration de purge — sans l'extension elle s'applique quand même, mais le job nocturne n'est pas planifié (vérifier avec `select jobname, schedule from cron.job`).
+4. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
 
 | Variable                               | Valeur                                                   |
 | -------------------------------------- | -------------------------------------------------------- |

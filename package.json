@@ -21,6 +21,7 @@
     "test:e2e": "playwright test",
     "check": "bun run typecheck && bun run lint && bun run format:check && bun run test",
     "db:types": "supabase gen types typescript --local > src/data-access/models/database.ts && prettier --write src/data-access/models/database.ts",
+    "db:test": "for f in supabase/tests/*.test.sql; do psql \"${SUPABASE_DB_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}\" -v ON_ERROR_STOP=1 -f \"$f\" || exit 1; done",
     "prepare": "husky"
   },
   "lint-staged": {
