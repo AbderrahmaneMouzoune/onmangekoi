@@ -20,16 +20,27 @@ export type ListRestaurant = Tables['list_restaurants']['Row']
 
 export type SessionStatus = Database['public']['Enums']['session_status']
 
-export type SessionPreview = Functions['session_preview']['Returns'][number]
+// Les types suivants réparent ce que le générateur ne peut pas déduire :
+// une colonne de `returns table (...)` ne porte aucune information `NOT NULL`,
+// donc tout en ressort non nul. La correction vit ici et non dans
+// `database.ts`, qui doit rester identique à la sortie de `bun run db:types`
+// — c'est ce que vérifie le workflow « Base de données » en commande `check`.
+
+/**
+ * `host_pseudo` est nul quand le host a supprimé son compte : la session
+ * survit, orpheline, et `session_preview` la joint à `profiles` en externe.
+ */
+export type SessionPreview = Omit<
+  Functions['session_preview']['Returns'][number],
+  'host_pseudo'
+> & { host_pseudo: string | null }
+
 export type SharedListPreview = Functions['list_by_share_token']['Returns'][number]
 
 /**
- * Colonnes que `session_results` recopie de `restaurants`. Le générateur
- * Supabase déclare non-nullable tout ce que renvoie un `returns table` : il ne
- * peut pas en connaître la nullabilité. Or ces colonnes-là sont nullables en
- * base, et l'interface s'appuie dessus pour masquer proprement une donnée
- * absente. On rétablit la vérité ici plutôt que dans `database.ts`, réécrit à
- * chaque `bun run db:types`.
+ * Colonnes que `session_results` recopie de `restaurants`, toutes nullables en
+ * base. La fiche restaurant s'appuie dessus pour masquer proprement une donnée
+ * absente : une photo, une adresse ou des horaires qu'on n'a pas.
  */
 type ResultRestaurantColumns =
   | 'address'

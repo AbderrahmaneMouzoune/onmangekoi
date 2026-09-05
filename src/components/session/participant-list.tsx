@@ -2,14 +2,15 @@ import { RiCheckDoubleLine } from '@remixicon/react'
 
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { countLabel, displayPseudo } from '@/lib/format'
+import { countLabel, participantLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import type { ParticipantWithProfile } from '@/data-access/models'
 
 interface ParticipantListProps {
   participants: ParticipantWithProfile[]
-  hostId: string
+  /** Null quand le host a supprimé son compte : la session est orpheline. */
+  hostId: string | null
   meId: string
   /** Affiche l'état « a terminé » (pendant le vote) */
   showProgress?: boolean
@@ -37,9 +38,9 @@ export function ParticipantList({
       </div>
       <ul className="flex flex-col gap-1.5">
         {participants.map((participant) => {
-          const pseudo = displayPseudo(participant.profiles?.pseudo)
+          const pseudo = participantLabel(participant.profile_id, participant.profiles?.pseudo)
           const isMe = participant.profile_id === meId
-          const isHost = participant.profile_id === hostId
+          const isHost = participant.profile_id !== null && participant.profile_id === hostId
           const done = showProgress && participant.has_finished_voting
           return (
             <li

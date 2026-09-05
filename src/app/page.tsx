@@ -5,6 +5,7 @@ import { Suspense } from 'react'
 import { HomeDashboard, HomeDashboardFallback } from '@/components/home/home-dashboard'
 import { AppHeader } from '@/components/layout/app-header'
 import { Shell } from '@/components/layout/shell'
+import { SiteFooter } from '@/components/layout/site-footer'
 import { buttonVariants } from '@/components/ui/button'
 import { router } from '@/config/router.config'
 import { cn } from '@/lib/utils'
@@ -94,6 +95,7 @@ export default function HomePage() {
           </ol>
         </section>
       </Shell>
+      <SiteFooter />
     </>
   )
 }

@@ -257,10 +257,11 @@ export async function copySharedList(
   identifier: string,
   name?: string
 ): Promise<List> {
-  // `p_name text default null` côté SQL : omettre l'argument vaut le passer à
-  // null. Les types régénérés déclarent le paramètre optionnel, plus nullable.
   const { data, error } = await supabase.rpc('copy_shared_list', {
     p_token: identifier,
+    // Omettre la clé plutôt que passer `null` : le paramètre est déclaré
+    // `default null` en base, donc l'absence produit exactement la même
+    // valeur — et le type généré ne l'accepte plus que comme optionnel.
     p_name: name,
   })
   if (error) throw error

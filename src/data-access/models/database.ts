@@ -194,7 +194,7 @@ export type Database = {
           has_finished_voting: boolean
           id: string
           joined_at: string
-          profile_id: string
+          profile_id: string | null
           session_id: string
           super_dislike_used: boolean
           superlike_used: boolean
@@ -203,7 +203,7 @@ export type Database = {
           has_finished_voting?: boolean
           id?: string
           joined_at?: string
-          profile_id: string
+          profile_id?: string | null
           session_id: string
           super_dislike_used?: boolean
           superlike_used?: boolean
@@ -212,7 +212,7 @@ export type Database = {
           has_finished_voting?: boolean
           id?: string
           joined_at?: string
-          profile_id?: string
+          profile_id?: string | null
           session_id?: string
           super_dislike_used?: boolean
           superlike_used?: boolean
@@ -274,7 +274,7 @@ export type Database = {
         Row: {
           closed_at: string | null
           created_at: string
-          host_id: string
+          host_id: string | null
           id: string
           invite_code: string
           invite_token: string
@@ -285,7 +285,7 @@ export type Database = {
         Insert: {
           closed_at?: string | null
           created_at?: string
-          host_id: string
+          host_id?: string | null
           id?: string
           invite_code?: string
           invite_token?: string
@@ -296,7 +296,7 @@ export type Database = {
         Update: {
           closed_at?: string | null
           created_at?: string
-          host_id?: string
+          host_id?: string | null
           id?: string
           invite_code?: string
           invite_token?: string
@@ -377,7 +377,7 @@ export type Database = {
         Returns: {
           closed_at: string | null
           created_at: string
-          host_id: string
+          host_id: string | null
           id: string
           invite_code: string
           invite_token: string
@@ -416,7 +416,7 @@ export type Database = {
         Returns: {
           closed_at: string | null
           created_at: string
-          host_id: string
+          host_id: string | null
           id: string
           invite_code: string
           invite_token: string
@@ -432,6 +432,8 @@ export type Database = {
         }
       }
       crockford_code: { Args: { p_length: number }; Returns: string }
+      delete_my_account: { Args: never; Returns: undefined }
+      export_my_data: { Args: never; Returns: Json }
       find_list_by_share: {
         Args: { p_identifier: string }
         Returns: {
@@ -463,7 +465,7 @@ export type Database = {
         Returns: {
           closed_at: string | null
           created_at: string
-          host_id: string
+          host_id: string | null
           id: string
           invite_code: string
           invite_token: string
@@ -483,7 +485,7 @@ export type Database = {
         Returns: {
           closed_at: string | null
           created_at: string
-          host_id: string
+          host_id: string | null
           id: string
           invite_code: string
           invite_token: string
