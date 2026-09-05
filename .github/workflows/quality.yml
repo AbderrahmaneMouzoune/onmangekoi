@@ -66,6 +66,11 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: latest
+          # `version: latest` résout la release via l'API GitHub : sans jeton,
+          # l'appel est anonyme et tombe en « rate limit exceeded » dès que
+          # plusieurs workflows démarrent en même temps. L'action prévoit cette
+          # entrée exactement pour ça.
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
