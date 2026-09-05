@@ -4,7 +4,7 @@
 
 ## Le principe
 
-1. Tu choisis des restaurants — dans la base, ou dans une de tes **listes** de favoris
+1. Tu choisis des restaurants — dans la base, dans une de tes **listes** de favoris, ou en ajoutant le tien à la volée
 2. Tu lances une **session**, tu envoies le code ou le lien au groupe — ou tu fais scanner le **QR code**
 3. Chacun vote dans son coin, carte par carte : **bof** · **ça me va** · **coup de cœur** · **veto**
 4. Quand tout le monde a voté (ou que le host clôture), le **classement** s'affiche
@@ -46,6 +46,17 @@ Les règles (jokers, session en cours, participant, restaurant valide) sont vér
 Les codes utilisent l'alphabet **Crockford base32** (`0-9`, `A-Z` sans `I`, `L`, `O`, `U`) : pas de lettre ambiguë à l'oral ni à l'écrit. La saisie est tolérante — minuscules, espaces, tirets, `I`/`L` lus comme `1`, `O` comme `0` — et un lien collé entier est accepté. Le segment texte des liens de liste est purement décoratif : seul le code final compte, et l'URL est canonicalisée si le nom change. Les anciens liens à jeton hexadécimal restent valides.
 
 Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché par le host.
+
+## Base de restaurants
+
+| Source   | Origine                                              | Qui peut modifier |
+| -------- | ---------------------------------------------------- | ----------------- |
+| `seed`   | livrée avec le schéma                                | personne          |
+| `manual` | ajoutée depuis l'app (nom, cuisine, adresse, budget) | son créateur      |
+
+Le formulaire « Ajouter un resto » est disponible partout où l'on choisit des restaurants — session, liste, liste partagée — et le resto créé est sélectionné aussitôt, sans rechargement.
+
+La déduplication est **souple** : un nom proche (recherche trigram) déclenche un avertissement et propose le resto existant en un clic, mais ne bloque jamais l'ajout — deux restos peuvent légitimement porter le même nom.
 
 ## Stack
 
@@ -104,6 +115,7 @@ e2e/                     Playwright
 - **Aucune table n'est lisible en `using (true)`.** Les tokens et codes d'invitation ne se résolvent que via des fonctions `security definer` qui prennent le secret en argument et renvoient uniquement la ligne visée.
 - **Toutes les écritures métier passent par des RPC** transactionnelles (`create_session`, `join_session`, `launch_session`, `submit_vote`, `close_session`) qui revérifient les règles côté base.
 - Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat.
+- L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.
 - Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision.
 - Les pages sont rendues avec des chargements parallèles (`Promise.all`) et les lectures par requête sont dédupliquées via `React.cache` (`getCurrentUser`, `getProfile`, `getSessionById`…).
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.

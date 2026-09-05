@@ -47,3 +47,39 @@ export async function getRestaurantsByIds(
   if (error) throw error
   return data
 }
+
+/** Ajout manuel — la RPC force `created_by` et `source = 'manual'` en base. */
+export async function createManualRestaurant(
+  supabase: SupabaseClient<Database>,
+  input: {
+    name: string
+    cuisineType?: string | null
+    address?: string | null
+    city?: string | null
+    priceLevel?: number | null
+  }
+): Promise<Restaurant> {
+  const { data, error } = await supabase.rpc('create_manual_restaurant', {
+    p_name: input.name,
+    p_cuisine_type: input.cuisineType ?? undefined,
+    p_address: input.address ?? undefined,
+    p_city: input.city ?? undefined,
+    p_price_level: input.priceLevel ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Restaurants au nom proche — déduplication souple, purement indicative. */
+export async function findSimilarRestaurants(
+  supabase: SupabaseClient<Database>,
+  name: string,
+  limit = 3
+): Promise<Restaurant[]> {
+  const { data, error } = await supabase.rpc('find_similar_restaurants', {
+    p_name: name,
+    p_limit: limit,
+  })
+  if (error) throw error
+  return data
+}

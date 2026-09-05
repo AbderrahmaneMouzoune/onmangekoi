@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { LoginSchema, SetPasswordSchema } from './auth'
 import { CreateListSchema } from './list'
 import { PseudoSchema, SetupProfileSchema } from './profile'
+import { CreateRestaurantSchema, PriceLevelSchema } from './restaurant'
 import { CreateSessionSchema, JoinSessionSchema } from './session'
 import { SubmitVoteSchema } from './vote'
 
@@ -87,5 +88,56 @@ describe('CreateListSchema', () => {
   it('should cap the name at 60 characters and default restaurants to []', () => {
     expect(CreateListSchema.safeParse({ name: 'a'.repeat(61) }).success).toBe(false)
     expect(CreateListSchema.safeParse({ name: 'Bureau' }).data?.restaurantIds).toEqual([])
+  })
+})
+
+describe('CreateRestaurantSchema', () => {
+  it('should trim the name and require two characters', () => {
+    expect(CreateRestaurantSchema.safeParse({ name: '  Chez Léa ' }).data?.name).toBe('Chez Léa')
+    expect(CreateRestaurantSchema.safeParse({ name: ' A ' }).success).toBe(false)
+    expect(CreateRestaurantSchema.safeParse({ name: 'a'.repeat(101) }).success).toBe(false)
+  })
+
+  it('should normalise blank and missing optional fields to null', () => {
+    const parsed = CreateRestaurantSchema.safeParse({
+      name: 'Wok Garden',
+      cuisineType: '   ',
+      address: null,
+    })
+    expect(parsed.data).toMatchObject({
+      cuisineType: null,
+      address: null,
+      city: null,
+      priceLevel: null,
+    })
+  })
+
+  it('should reject optional fields that are too long', () => {
+    expect(
+      CreateRestaurantSchema.safeParse({ name: 'Wok Garden', cuisineType: 'a'.repeat(41) }).success
+    ).toBe(false)
+    expect(
+      CreateRestaurantSchema.safeParse({ name: 'Wok Garden', address: 'a'.repeat(201) }).success
+    ).toBe(false)
+  })
+})
+
+describe('PriceLevelSchema', () => {
+  it('should read the four levels from a number or a form string', () => {
+    expect(PriceLevelSchema.safeParse(3).data).toBe(3)
+    expect(PriceLevelSchema.safeParse('2').data).toBe(2)
+  })
+
+  it('should treat an empty choice as « non renseigné »', () => {
+    expect(PriceLevelSchema.safeParse('').data).toBe(null)
+    expect(PriceLevelSchema.safeParse(null).data).toBe(null)
+    expect(PriceLevelSchema.safeParse(undefined).data).toBe(null)
+  })
+
+  it('should reject out-of-range and non-numeric budgets', () => {
+    expect(PriceLevelSchema.safeParse(0).success).toBe(false)
+    expect(PriceLevelSchema.safeParse(5).success).toBe(false)
+    expect(PriceLevelSchema.safeParse(1.5).success).toBe(false)
+    expect(PriceLevelSchema.safeParse('cher').success).toBe(false)
   })
 })

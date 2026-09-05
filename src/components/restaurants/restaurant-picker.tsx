@@ -1,8 +1,9 @@
 'use client'
 
-import { RiCheckLine, RiCloseLine, RiSearchLine } from '@remixicon/react'
+import { RiAddLine, RiCheckLine, RiCloseLine, RiSearchLine } from '@remixicon/react'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 
+import { AddRestaurantForm } from '@/components/restaurants/add-restaurant-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -40,6 +41,7 @@ export function RestaurantPicker({
   const [error, setError] = useState<string | null>(null)
   const [isSearching, startSearch] = useTransition()
   const [isLoadingMore, startLoadMore] = useTransition()
+  const [isAdding, setIsAdding] = useState(false)
   /** Cache des restaurants vus, pour afficher les sélectionnés même hors résultats */
   const [known, setKnown] = useState<Map<string, Restaurant>>(
     () => new Map(initialPage.items.map((r) => [r.id, r]))
@@ -96,6 +98,24 @@ export function RestaurantPicker({
     onChange(selected.has(id) ? value.filter((v) => v !== id) : [...value, id])
   }
 
+  /**
+   * Resto tout juste ajouté (ou doublon existant retenu à sa place) : il
+   * rejoint les résultats en tête et devient sélectionné immédiatement, sans
+   * attendre une nouvelle recherche.
+   */
+  function addAndSelect(restaurant: Restaurant) {
+    remember([restaurant])
+    setPage((prev) =>
+      prev.items.some((item) => item.id === restaurant.id)
+        ? prev
+        : { ...prev, items: [restaurant, ...prev.items] }
+    )
+    if (!locked.has(restaurant.id) && !selected.has(restaurant.id)) {
+      onChange([...value, restaurant.id])
+    }
+    setIsAdding(false)
+  }
+
   const selectedRestaurants = value
     .map((id) => known.get(id))
     .filter((r): r is Restaurant => Boolean(r))
@@ -120,6 +140,25 @@ export function RestaurantPicker({
         />
         {isSearching && <Spinner className="absolute top-1/2 right-3.5 -translate-y-1/2" />}
       </div>
+
+      {isAdding ? (
+        <AddRestaurantForm
+          defaultName={query.trim()}
+          onAdded={addAndSelect}
+          onCancel={() => setIsAdding(false)}
+        />
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          onClick={() => setIsAdding(true)}
+        >
+          <RiAddLine aria-hidden="true" />
+          Ajouter un resto
+        </Button>
+      )}
 
       {selectedRestaurants.length > 0 && (
         <ul className="flex flex-wrap gap-1.5" aria-label="Restaurants sélectionnés">
@@ -150,7 +189,22 @@ export function RestaurantPicker({
         aria-label="Résultats"
       >
         {page.items.length === 0 && !isSearching && (
-          <li className="px-3 py-6 text-center text-sm text-muted-foreground">{emptyLabel}</li>
+          <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+            {emptyLabel}
+            {!isAdding && (
+              <>
+                {' '}
+                <button
+                  type="button"
+                  onClick={() => setIsAdding(true)}
+                  className="font-semibold text-brand underline-offset-4 hover:underline"
+                >
+                  Ajoute-le
+                </button>
+                .
+              </>
+            )}
+          </li>
         )}
         {page.items.map((restaurant) => {
           const isLocked = locked.has(restaurant.id)

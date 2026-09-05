@@ -68,6 +68,8 @@ Le spec `e2e/full-flow.spec.ts` ouvre deux navigateurs (host et invité), crée 
 
 Toutes les URL de l'app sont construites via `router.*()` dans `src/config/router.config.ts` (jamais de chaîne `'/sessions/...'` en dur). Le fichier expose aussi les préfixes protégés — `src/proxy.ts` doit les répéter dans son `matcher` littéral, ce que vérifie `router.config.test.ts`.
 
+Les restaurants ajoutés depuis l'app portent `source = 'manual'` et `created_by` ; la RPC `create_manual_restaurant` pose les deux et les policies RLS empêchent de les contourner. `find_similar_restaurants` sert l'avertissement de doublon (pg_trgm, seuil 0.45).
+
 Les codes d'invitation (6) et de partage de liste (10) sont en Crockford base32 : `src/lib/crockford.ts` normalise la saisie côté client, `public.normalize_crockford` fait de même en base. Les liens de liste ont la forme `/l/<slug>-<CODE>` ; `parseSharedListParam` ne garde que le code final.
 
 ## Valider les migrations sans Supabase

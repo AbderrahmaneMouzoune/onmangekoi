@@ -128,33 +128,50 @@ export type Database = {
           address: string | null
           city: string | null
           created_at: string
+          created_by: string | null
           cuisine_type: string | null
           description: string | null
           id: string
           image_url: string | null
           name: string
+          price_level: number | null
+          source: string
         }
         Insert: {
           address?: string | null
           city?: string | null
           created_at?: string
+          created_by?: string | null
           cuisine_type?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
           name: string
+          price_level?: number | null
+          source?: string
         }
         Update: {
           address?: string | null
           city?: string | null
           created_at?: string
+          created_by?: string | null
           cuisine_type?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
           name?: string
+          price_level?: number | null
+          source?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'restaurants_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
       }
       session_participants: {
         Row: {
@@ -339,6 +356,28 @@ export type Database = {
         Args: { p_restaurant_id: string; p_token: string }
         Returns: undefined
       }
+      create_manual_restaurant: {
+        Args: {
+          p_address?: string
+          p_city?: string
+          p_cuisine_type?: string
+          p_name: string
+          p_price_level?: number
+        }
+        Returns: {
+          address: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          cuisine_type: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          price_level: number | null
+          source: string
+        }
+      }
       close_session: {
         Args: { p_session_id: string }
         Returns: {
@@ -405,6 +444,22 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      find_similar_restaurants: {
+        Args: { p_limit?: number; p_name: string }
+        Returns: {
+          address: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          cuisine_type: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          price_level: number | null
+          source: string
+        }[]
+      }
       is_session_host: {
         Args: { p_session_id: string }
         Returns: boolean
@@ -458,11 +513,14 @@ export type Database = {
           address: string | null
           city: string | null
           created_at: string
+          created_by: string | null
           cuisine_type: string | null
           description: string | null
           id: string
           image_url: string | null
           name: string
+          price_level: number | null
+          source: string
         }[]
       }
       normalize_crockford: {
