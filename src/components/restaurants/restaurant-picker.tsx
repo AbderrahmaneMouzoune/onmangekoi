@@ -3,6 +3,7 @@
 import { RiAddLine, RiCheckLine, RiCloseLine, RiSearchLine } from '@remixicon/react'
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from 'react'
 
+import { searchRestaurantsAction } from '@/actions/restaurants'
 import { AddRestaurantForm } from '@/components/restaurants/add-restaurant-form'
 import { GooglePlacesResults } from '@/components/restaurants/google-places-results'
 import { useRestaurantSources } from '@/components/restaurants/restaurant-sources'
@@ -10,7 +11,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import { searchRestaurantsAction } from '@/lib/actions/restaurants'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant } from '@/data-access/models'

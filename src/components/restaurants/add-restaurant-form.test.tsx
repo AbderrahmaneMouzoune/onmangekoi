@@ -12,7 +12,7 @@ import type { Restaurant } from '@/data-access/models'
 const createRestaurantAction = vi.hoisted(() => vi.fn())
 const findSimilarRestaurantsAction = vi.hoisted(() => vi.fn())
 
-vi.mock('@/lib/actions/restaurants', () => ({
+vi.mock('@/actions/restaurants', () => ({
   createRestaurantAction,
   findSimilarRestaurantsAction,
 }))

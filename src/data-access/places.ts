@@ -1,8 +1,13 @@
 import 'server-only'
 
+import { AppError } from '@/domain/errors'
+import {
+  mapPlaceDetails,
+  mapPlacesResponse,
+  placesCacheKey,
+  type PlaceResult,
+} from '@/domain/places'
 import { env } from '@/env'
-import { AppError } from '@/lib/errors'
-import { mapPlaceDetails, mapPlacesResponse, placesCacheKey, type PlaceResult } from '@/lib/places'
 import { TtlCache } from '@/lib/ttl-cache'
 
 /**

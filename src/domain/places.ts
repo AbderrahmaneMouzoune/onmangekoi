@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { RESTAURANT_NAME_MAX, RESTAURANT_NAME_MIN } from '@/lib/schemas/restaurant'
+import { RESTAURANT_NAME_MAX, RESTAURANT_NAME_MIN } from '@/domain/schemas/restaurant'
 
 /**
  * Traduction des réponses de la Places API (New) vers le modèle de l'app.

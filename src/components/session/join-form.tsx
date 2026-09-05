@@ -4,6 +4,7 @@ import { RiQrScanLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import { useActionState, useCallback, useState } from 'react'
 
+import { joinSessionAction } from '@/actions/sessions'
 import { QrScanner } from '@/components/session/qr-scanner'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
@@ -11,8 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { router } from '@/config/router.config'
-import { joinSessionAction } from '@/lib/actions/sessions'
-import { parseInviteIdentifier } from '@/lib/share'
+import { parseInviteIdentifier } from '@/domain/share'
 
 export function JoinForm({ initialError }: { initialError?: string }) {
   const navigation = useRouter()

@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server'
 
 import { getCurrentUser } from '@/data-access/auth'
 import { isPlacesSearchEnabled, searchPlaces } from '@/data-access/places'
-import { AppError, GENERIC_ERROR } from '@/lib/errors'
-import { SearchPlacesSchema } from '@/lib/schemas/place'
+import { AppError, GENERIC_ERROR } from '@/domain/errors'
+import { SearchPlacesSchema } from '@/domain/schemas/place'
 
-import type { PlaceResult } from '@/lib/places'
+import type { PlaceResult } from '@/domain/places'
 
 /**
  * `POST /api/places/search` — recherche de restaurants chez Google.

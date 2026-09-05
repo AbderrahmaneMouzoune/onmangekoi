@@ -3,13 +3,12 @@
 import { RiAlertLine } from '@remixicon/react'
 import { useEffect, useId, useRef, useState, useTransition } from 'react'
 
+import { createRestaurantAction, findSimilarRestaurantsAction } from '@/actions/restaurants'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import { createRestaurantAction, findSimilarRestaurantsAction } from '@/lib/actions/restaurants'
 import {
   PRICE_LEVELS,
   PRICE_LEVEL_LABELS,
@@ -17,7 +16,8 @@ import {
   RESTAURANT_CUISINE_MAX,
   RESTAURANT_NAME_MAX,
   RESTAURANT_NAME_MIN,
-} from '@/lib/schemas/restaurant'
+} from '@/domain/schemas/restaurant'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant } from '@/data-access/models'

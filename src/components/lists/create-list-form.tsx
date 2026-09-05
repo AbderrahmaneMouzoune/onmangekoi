@@ -2,15 +2,15 @@
 
 import { useActionState, useState } from 'react'
 
+import { createListAction } from '@/actions/lists'
 import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { createListAction } from '@/lib/actions/lists'
+import { LIST_NAME_MAX } from '@/domain/schemas/list'
 import { countLabel } from '@/lib/format'
-import { LIST_NAME_MAX } from '@/lib/schemas/list'
 
 import type { RestaurantPage } from '@/data-access/restaurants'
 

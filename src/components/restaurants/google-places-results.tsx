@@ -3,16 +3,16 @@
 import { RiAddLine, RiMapPin2Line } from '@remixicon/react'
 import { useEffect, useState, useTransition } from 'react'
 
+import { importPlaceAction } from '@/actions/places'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
-import { importPlaceAction } from '@/lib/actions/places'
-import { GENERIC_ERROR } from '@/lib/errors'
-import { PLACES_QUERY_MIN } from '@/lib/schemas/place'
-import { PRICE_LEVEL_LABELS } from '@/lib/schemas/restaurant'
+import { GENERIC_ERROR } from '@/domain/errors'
+import { PLACES_QUERY_MIN } from '@/domain/schemas/place'
+import { PRICE_LEVEL_LABELS } from '@/domain/schemas/restaurant'
 
 import type { Restaurant } from '@/data-access/models'
-import type { PlaceResult } from '@/lib/places'
+import type { PlaceResult } from '@/domain/places'
 
 interface GooglePlacesResultsProps {
   /** Recherche déjà débouncée, partagée avec l'onglet « Base ». */

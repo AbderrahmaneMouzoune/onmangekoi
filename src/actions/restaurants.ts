@@ -10,8 +10,8 @@ import {
   type RestaurantPage,
 } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
-import { toUserMessage } from '@/lib/errors'
-import { CreateRestaurantSchema, SimilarRestaurantsSchema } from '@/lib/schemas/restaurant'
+import { toUserMessage } from '@/domain/errors'
+import { CreateRestaurantSchema, SimilarRestaurantsSchema } from '@/domain/schemas/restaurant'
 
 import type { ActionResult } from './types'
 import type { Restaurant } from '@/data-access/models'

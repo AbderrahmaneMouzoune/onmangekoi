@@ -1,7 +1,7 @@
 import { RiForbid2Line, RiHeart3Fill, RiThumbDownLine, RiThumbUpLine } from '@remixicon/react'
 
+import { VOTE_ACTIONS, type VoteKind, type VoteValue } from '@/domain/vote'
 import { cn } from '@/lib/utils'
-import { VOTE_ACTIONS, type VoteKind, type VoteValue } from '@/lib/vote'
 
 interface VoteControlsProps {
   onVote: (value: VoteValue) => void
