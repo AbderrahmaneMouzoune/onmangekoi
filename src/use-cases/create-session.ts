@@ -1,10 +1,10 @@
 import { getRestaurantIdsForLists } from '@/data-access/lists'
 import { createSession } from '@/data-access/sessions'
-import { AppError } from '@/lib/errors'
+import { AppError } from '@/domain/errors'
 
 import type { Session } from '@/data-access/models'
 import type { Database } from '@/data-access/models/database'
-import type { CreateSessionInput } from '@/lib/schemas/session'
+import type { CreateSessionInput } from '@/domain/schemas/session'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**

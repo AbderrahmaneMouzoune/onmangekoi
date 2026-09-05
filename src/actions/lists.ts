@@ -10,14 +10,14 @@ import {
   addRestaurantsToList,
   addRestaurantsToSharedList,
   copySharedList,
-  createList,
   deleteList,
   removeRestaurantFromList,
   updateList,
 } from '@/data-access/lists'
 import { createServerClient } from '@/data-access/supabase/server'
-import { toUserMessage } from '@/lib/errors'
-import { CreateListSchema, SharedListActionSchema, UpdateListSchema } from '@/lib/schemas/list'
+import { toUserMessage } from '@/domain/errors'
+import { CreateListSchema, SharedListActionSchema, UpdateListSchema } from '@/domain/schemas/list'
+import { createListUseCase } from '@/use-cases/create-list'
 
 import type { ActionResult, FormState } from './types'
 
@@ -43,8 +43,7 @@ export async function createListAction(_prev: FormState, formData: FormData): Pr
 
   let listId: string
   try {
-    const list = await createList(supabase, { name: parsed.data.name, ownerId: user.id })
-    await addRestaurantsToList(supabase, list.id, parsed.data.restaurantIds)
+    const list = await createListUseCase(supabase, user.id, parsed.data)
     listId = list.id
   } catch (error) {
     return { error: toUserMessage(error) }

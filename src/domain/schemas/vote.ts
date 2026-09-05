@@ -1,9 +1,12 @@
 import { z } from 'zod'
 
+import { VOTE_VALUES } from '@/domain/vote'
+
 export const SubmitVoteSchema = z.object({
   sessionId: z.uuid(),
   sessionRestaurantId: z.uuid(),
-  value: z.union([z.literal(-2), z.literal(0), z.literal(1), z.literal(2)]),
+  /** Les quatre valeurs de vote sont définies une seule fois, dans `domain/vote`. */
+  value: z.literal(VOTE_VALUES),
 })
 
 export type SubmitVoteInput = z.infer<typeof SubmitVoteSchema>
