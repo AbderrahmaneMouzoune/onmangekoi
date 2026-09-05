@@ -10,33 +10,38 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
-import { getSessionById, getSessionParticipants, getSessionResults } from '@/data-access/sessions'
+import {
+  getSessionByParam,
+  getSessionParticipants,
+  getSessionResults,
+} from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
-import { SessionIdSchema } from '@/domain/schemas/session'
 import { countLabel } from '@/lib/format'
 import { absoluteUrl } from '@/lib/site'
 import { cn } from '@/lib/utils'
 
 /** Classement final d'une session : réservé à ses participants (RLS). */
-export async function SessionResultsSection({ params }: { params: Promise<{ id: string }> }) {
-  const [{ id }, supabase, user] = await Promise.all([
+export async function SessionResultsSection({ params }: { params: Promise<{ code: string }> }) {
+  const [{ code }, supabase, user] = await Promise.all([
     params,
     createServerClient(),
     getCurrentUser(),
   ])
-  if (!SessionIdSchema.safeParse(id).success) notFound()
-  if (!user) redirect(router.setup(router.sessionResults(id)))
+  if (!user) redirect(router.setup(router.sessionResults(code)))
 
-  // Les trois lectures sont indépendantes ; `session_results` renvoie vide
-  // tant que la session n'est pas close, ce que le statut confirme ensuite.
-  const [session, results, participants] = await Promise.all([
-    getSessionById(supabase, id),
-    getSessionResults(supabase, id),
-    getSessionParticipants(supabase, id),
-  ])
-
+  const session = await getSessionByParam(supabase, code)
   if (!session) notFound()
-  if (session.status !== 'closed') redirect(router.session(id))
+  if (session.status !== 'closed') redirect(router.session(session))
+
+  const canonical = router.sessionResults(session)
+  if (`/sessions/${code}/results` !== canonical) redirect(canonical)
+
+  // `session_results` renvoie vide tant que la session n'est pas close,
+  // ce que le statut a déjà confirmé.
+  const [results, participants] = await Promise.all([
+    getSessionResults(supabase, session.id),
+    getSessionParticipants(supabase, session.id),
+  ])
 
   const winner = results[0]
 
@@ -54,7 +59,7 @@ export async function SessionResultsSection({ params }: { params: Promise<{ id: 
           <ResultsList results={results} participantCount={participants.length} />
           <div className="flex flex-wrap gap-2">
             <ShareResultsButton
-              url={absoluteUrl(router.sessionResults(id))}
+              url={absoluteUrl(router.sessionResults(session))}
               sessionName={session.name}
               winnerName={winner.name}
             />

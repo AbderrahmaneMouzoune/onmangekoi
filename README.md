@@ -36,14 +36,26 @@ Les règles (jokers, session en cours, participant, restaurant valide) sont vér
 | Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)              |
 | Rejoindre           | Impossible une fois le vote lancé ; un participant existant retrouve sa session |
 
-## Codes et liens de partage
+## URLs, codes et liens de partage
 
-| Objet   | Forme                            | Exemple                                          |
-| ------- | -------------------------------- | ------------------------------------------------ |
-| Session | code de 6 caractères + lien + QR | `7K3 M9P` · `/join/<token>`                      |
-| Liste   | code de 10 caractères + lien     | `H4V2Q-8ZX0M` · `/l/restos-du-bureau-H4V2Q8ZX0M` |
+Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **son code court**, celui qu'on se dit à voix haute.
 
-Les codes utilisent l'alphabet **Crockford base32** (`0-9`, `A-Z` sans `I`, `L`, `O`, `U`) : pas de lettre ambiguë à l'oral ni à l'écrit. La saisie est tolérante — minuscules, espaces, tirets, `I`/`L` lus comme `1`, `O` comme `0` — et un lien collé entier est accepté. Le segment texte des liens de liste est purement décoratif : seul le code final compte, et l'URL est canonicalisée si le nom change. Les anciens liens à jeton hexadécimal restent valides.
+| Route                    | Exemple                    | Qui la voit                   |
+| ------------------------ | -------------------------- | ----------------------------- |
+| Salle de session         | `/sessions/7K3M9P`         | participants                  |
+| Classement               | `/sessions/7K3M9P/results` | participants                  |
+| Invitation (lien + QR)   | `/join/7K3M9P`             | qui reçoit le lien ou le code |
+| Liste, côté propriétaire | `/lists/H4V2Q8ZX0M`        | propriétaire                  |
+| Liste partagée           | `/l/H4V2Q8ZX0M`            | qui reçoit le lien            |
+
+| Objet   | Code          | Forme         |
+| ------- | ------------- | ------------- |
+| Session | 6 caractères  | `7K3 M9P`     |
+| Liste   | 10 caractères | `H4V2Q-8ZX0M` |
+
+Les codes utilisent l'alphabet **Crockford base32** (`0-9`, `A-Z` sans `I`, `L`, `O`, `U`) : pas de lettre ambiguë à l'oral ni à l'écrit. La saisie est tolérante — minuscules, espaces, tirets, `I`/`L` lus comme `1`, `O` comme `0` — et un lien collé entier est accepté.
+
+Chaque page redirige vers sa forme canonique : un code tapé en minuscules ou avec des tirets, comme un ancien lien (uuid de session ou de liste, jeton hexadécimal de partage, `/l/<slug>-<CODE>`), retombe sur l'URL du moment. Rien de ce qui a déjà été partagé ne casse.
 
 Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché par le host.
 
@@ -113,13 +125,13 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ```
 src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join, sessions, lists, l/[slug], account, auth, api/places)
+src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], account, auth, api/places)
 src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · account/ · restaurants/ · onboarding/
 src/data-access/         requêtes Supabase (un module par table) + places.ts (Google) + models/
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
 src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, places, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
-src/lib/                 utilitaires transverses : Crockford, slug, format, routing, site (URL absolues), qr, ttl-cache
+src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr, ttl-cache
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results), purge
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
@@ -138,13 +150,14 @@ Les **Cache Components** de Next 16 sont activés (`cacheComponents: true`) : ch
 Deux règles tiennent l'ensemble :
 
 - **Rien de personnel n'entre dans un cache partagé.** Le catalogue de restaurants est la seule donnée mise en cache : c'est la seule table lisible par le rôle `anon`, et elle est lue par un client sans cookie (`data-access/supabase/public.ts`). Toutes les autres lectures gardent le client lié à la session, donc restent dans le trou dynamique.
-- **Rien qui écrit n'est prérendu.** `/join/[token]` inscrit la personne dans la session avant de rediriger : la coquille n'affiche que « on te fait entrer… », le reste est fait à la requête.
+- **Rien qui écrit n'est prérendu.** `/join/[code]` inscrit la personne dans la session avant de rediriger : la coquille n'affiche que « on te fait entrer… », le reste est fait à la requête.
 
 Le catalogue étant partagé, la recherche du sélecteur de restaurants sort du cache elle aussi : une même requête ne touche la base qu'une fois par heure, pour tout le monde. Après un import de restaurants, `revalidateTag(RESTAURANTS_CACHE_TAG)` suffit à le rafraîchir.
 
 ## Sécurité
 
-- **Aucune table n'est lisible en `using (true)`.** Les tokens et codes d'invitation ne se résolvent que via des fonctions `security definer` qui prennent le secret en argument et renvoient uniquement la ligne visée.
+- **Aucune table n'est lisible en `using (true)`.** Les tokens et codes d'invitation ne se résolvent que via des fonctions `security definer` qui prennent le secret en argument et renvoient uniquement la ligne visée. Les codes qui figurent dans les URL privées (`/sessions/…`, `/lists/…`) ne contournent rien : la RLS filtre la lecture comme pour un id.
+- **Aperçu d'invitation** (`session_preview`) : un visiteur non authentifié — typiquement le robot qui déplie le lien dans une conversation — n'obtient un aperçu par code court que sur une session **en attente**, et seulement le nom, le pseudo du host et deux compteurs. Rejoindre exige toujours un compte.
 - **Toutes les écritures métier passent par des RPC** transactionnelles (`create_session`, `join_session`, `launch_session`, `submit_vote`, `close_session`) qui revérifient les règles côté base.
 - Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat.
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.

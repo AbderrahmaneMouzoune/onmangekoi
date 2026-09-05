@@ -27,7 +27,8 @@ test.describe('Session de vote complète', () => {
     await results.getByRole('checkbox').nth(0).click()
     await results.getByRole('checkbox').nth(1).click()
     await host.getByRole('button', { name: /créer la session · 2 restos/i }).click()
-    await expect(host).toHaveURL(/\/sessions\/[0-9a-f-]{36}$/)
+    // URL lisible : le code d'invitation, pas d'uuid
+    await expect(host).toHaveURL(/\/sessions\/[0-9A-HJKMNP-TV-Z]{6}$/)
     await expect(host.getByRole('heading', { name: 'E2E lunch' })).toBeVisible()
 
     const code = await host.getByTestId('invite-code').getAttribute('data-code')
