@@ -55,6 +55,8 @@ export const router = {
   login: (next?: string | null) => withNext('/login', next),
   account: (params?: { auth?: 'invalid' | 'expired' | 'confirmed' }) =>
     params?.auth ? `/account?auth=${params.auth}` : '/account',
+  /** Export RGPD : Route Handler qui renvoie le JSON des données du compte. */
+  accountExport: () => '/account/export',
 
   join: () => '/join',
   /** Invitation : `/join/7K3M9P` (code court, ou ancien token long). */
@@ -73,6 +75,8 @@ export const router = {
   sharedList: (target: ListTarget) => `/l/${listSegment(target)}`,
 
   authConfirm: () => '/auth/confirm',
+
+  privacy: () => '/legal/privacy',
 } as const
 
 export type Router = typeof router

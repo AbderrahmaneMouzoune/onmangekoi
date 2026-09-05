@@ -141,3 +141,156 @@ grant execute on function public.create_manual_restaurant(text, text, text, text
 
 revoke execute on function public.find_similar_restaurants(text, int) from public, anon;
 grant execute on function public.find_similar_restaurants(text, int) to authenticated;
+
+-- ─── EXPORT RGPD ─────────────────────────────────────────────
+-- `export_my_data` (migration 20260905140000) énumère tout ce qui est rattaché
+-- au compte. `restaurants.created_by` crée une catégorie de plus : sans cette
+-- redéfinition, un resto ajouté par la personne serait absent de son export.
+-- Le corps est repris tel quel, à la clé `contributed_restaurants` près.
+create or replace function public.export_my_data()
+  returns jsonb
+  language plpgsql
+  stable
+  security definer
+  set search_path = ''
+as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_export jsonb;
+begin
+  if v_uid is null then
+    perform public.raise_omk('not_authenticated');
+  end if;
+
+  select jsonb_build_object(
+    'format_version', 1,
+    'exported_at', now(),
+
+    'account', (
+      select jsonb_build_object(
+        'id', u.id,
+        'email', u.email,
+        'is_anonymous', u.is_anonymous,
+        'created_at', u.created_at,
+        'last_sign_in_at', u.last_sign_in_at
+      )
+      from auth.users u
+      where u.id = v_uid
+    ),
+
+    'profile', (
+      select jsonb_build_object(
+        'pseudo', p.pseudo,
+        'created_at', p.created_at,
+        'updated_at', p.updated_at
+      )
+      from public.profiles p
+      where p.id = v_uid
+    ),
+
+    -- Restos ajoutés par cette personne (issue #3 / #2) : la ligne reste en
+    -- base après suppression du compte — `created_by` est simplement détaché —
+    -- mais tant que le compte existe, le lien est une donnée la concernant.
+    'contributed_restaurants', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'id', r.id,
+          'name', r.name,
+          'cuisine_type', r.cuisine_type,
+          'address', r.address,
+          'city', r.city,
+          'price_level', r.price_level,
+          'source', r.source,
+          'created_at', r.created_at
+        )
+        order by r.created_at
+      )
+      from public.restaurants r
+      where r.created_by = v_uid
+    ), '[]'::jsonb),
+
+    'lists', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'id', l.id,
+          'name', l.name,
+          'is_collaborative', l.is_collaborative,
+          'share_code', l.share_code,
+          'created_at', l.created_at,
+          'restaurants', coalesce((
+            select jsonb_agg(
+              jsonb_build_object('id', r.id, 'name', r.name, 'added_at', lr.added_at)
+              order by lr.added_at
+            )
+            from public.list_restaurants lr
+            join public.restaurants r on r.id = lr.restaurant_id
+            where lr.list_id = l.id
+          ), '[]'::jsonb)
+        )
+        order by l.created_at
+      )
+      from public.lists l
+      where l.owner_id = v_uid
+    ), '[]'::jsonb),
+
+    'hosted_sessions', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'id', s.id,
+          'name', s.name,
+          'status', s.status,
+          'invite_code', s.invite_code,
+          'created_at', s.created_at,
+          'launched_at', s.launched_at,
+          'closed_at', s.closed_at,
+          'participant_count',
+            (select count(*) from public.session_participants sp where sp.session_id = s.id)
+        )
+        order by s.created_at
+      )
+      from public.sessions s
+      where s.host_id = v_uid
+    ), '[]'::jsonb),
+
+    'participations', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'session_id', s.id,
+          'session_name', s.name,
+          'status', s.status,
+          'is_host', s.host_id = v_uid,
+          'joined_at', sp.joined_at,
+          'has_finished_voting', sp.has_finished_voting,
+          'votes', coalesce((
+            select jsonb_agg(
+              jsonb_build_object(
+                'restaurant', r.name,
+                'value', v.value,
+                'label', case v.value
+                  when 2 then 'coup de cœur'
+                  when 1 then 'ça me va'
+                  when 0 then 'bof'
+                  when -2 then 'veto'
+                end,
+                'created_at', v.created_at
+              )
+              order by v.created_at
+            )
+            from public.votes v
+            join public.session_restaurants sr on sr.id = v.session_restaurant_id
+            join public.restaurants r on r.id = sr.restaurant_id
+            where v.participant_id = sp.id
+          ), '[]'::jsonb)
+        )
+        order by sp.joined_at
+      )
+      from public.session_participants sp
+      join public.sessions s on s.id = sp.session_id
+      where sp.profile_id = v_uid
+    ), '[]'::jsonb)
+  )
+  into v_export;
+
+  return v_export;
+end;
+$$;

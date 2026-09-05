@@ -18,22 +18,31 @@ export type ListRestaurant = Tables['list_restaurants']['Row']
 
 export type SessionStatus = Database['public']['Enums']['session_status']
 
-export type SessionPreview = Functions['session_preview']['Returns'][number]
+// Les deux types suivants réparent ce que le générateur ne peut pas déduire :
+// une colonne de `returns table (...)` ne porte aucune information `NOT NULL`,
+// donc tout en ressort non nul. La correction vit ici et non dans
+// `database.ts`, qui doit rester identique à la sortie de `bun run db:types`
+// — c'est ce que vérifie le workflow « Base de données » en commande `check`.
+
 /**
- * Le générateur Supabase ne sait pas déduire la nullabilité des colonnes d'un
- * `returns table` : il les déclare toutes non nulles. Or `session_results`
- * relaie `restaurants.cuisine_type`, `description` et `image_url`, qui sont
- * bel et bien nullables. On rétablit la vérité ici, sinon un appelant croirait
- * pouvoir s'en passer de garde.
+ * `host_pseudo` est nul quand le host a supprimé son compte : la session
+ * survit, orpheline, et `session_preview` la joint à `profiles` en externe.
+ */
+export type SessionPreview = Omit<
+  Functions['session_preview']['Returns'][number],
+  'host_pseudo'
+> & { host_pseudo: string | null }
+
+/**
+ * `cuisine_type`, `description` et `image_url` viennent de `restaurants`, où
+ * elles sont nullables ; `session_results` les remonte telles quelles.
  */
 export type SessionResultRow = Omit<
   Functions['session_results']['Returns'][number],
   'cuisine_type' | 'description' | 'image_url'
-> & {
-  cuisine_type: string | null
-  description: string | null
-  image_url: string | null
-}
+> &
+  Pick<Restaurant, 'cuisine_type' | 'description' | 'image_url'>
+
 export type SharedListPreview = Functions['list_by_share_token']['Returns'][number]
 
 /** Participant avec le profil joint (pseudo) */

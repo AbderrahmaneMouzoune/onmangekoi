@@ -126,7 +126,7 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ```
 src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], account, auth, api/places)
+src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], account, legal, auth, api/places)
 src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · account/ · restaurants/ · onboarding/
 src/data-access/         requêtes Supabase (un module par table) + places.ts (Google) + models/
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
@@ -135,7 +135,7 @@ src/actions/             Server Actions (validation Zod, auth, revalidate/redire
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr, ttl-cache
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`
-supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results), purge
+supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results), purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
 ```
@@ -170,17 +170,30 @@ Le catalogue étant partagé, la recherche du sélecteur de restaurants sort du 
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.
 - Les messages d'erreur Postgres ne remontent jamais tels quels : seuls les codes métier `omk:*` sont traduits.
 
+## Vie privée
+
+L'app est utilisable avec un simple pseudo, et les deux droits qui comptent au quotidien sont en libre-service depuis « Mon compte » :
+
+| Droit                | Chemin            | Effet                                                                                                                       |
+| -------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Export (portabilité) | `/account/export` | JSON téléchargeable — profil, listes, sessions hébergées, participations et votes — assemblé en base par `export_my_data()` |
+| Suppression          | « Mon compte »    | `delete_my_account()` : profil, listes et compte auth supprimés en une transaction                                          |
+
+Supprimer un compte ne réécrit pas l'histoire des autres. Les votes déjà comptés dans une **session terminée** restent dans le classement mais perdent leur auteur (`Participant supprimé`) ; les sessions **en attente ou en cours** que le compte hébergeait sont supprimées, puisque sans host elles ne peuvent plus aboutir. La garantie est portée par le schéma (`on delete set null` sur `sessions.host_id` et `session_participants.profile_id`), pas seulement par la RPC : une suppression faite depuis le dashboard Supabase donne le même résultat.
+
+Le détail des données conservées et de leurs durées est sur la page `/legal/privacy`, atteignable depuis le pied de page. Le scénario de suppression est rejouable avec `bun run db:test` (`supabase/tests/delete-account.test.sql`).
+
 ## Rétention des données
 
 Un pseudo suffit à utiliser l'app, donc chaque pseudo crée un utilisateur anonyme : sans entretien, la base ne fait que grossir. Un job `pg_cron` nocturne (`public.run_maintenance()`) applique la rétention suivante :
 
-| Donnée                             | Conservée | Puis                                                |
-| ---------------------------------- | --------- | --------------------------------------------------- |
-| Anonyme sans activité ni email lié | 90 jours  | supprimé, avec ses listes et ses sessions (cascade) |
-| Session `waiting` jamais lancée    | 7 jours   | supprimée                                           |
-| Session `closed`                   | 180 jours | supprimée                                           |
+| Donnée                             | Conservée | Puis                                               |
+| ---------------------------------- | --------- | -------------------------------------------------- |
+| Anonyme sans activité ni email lié | 90 jours  | supprimé, avec ses listes ; ses sessions survivent |
+| Session `waiting` jamais lancée    | 7 jours   | supprimée                                          |
+| Session `closed`                   | 180 jours | supprimée                                          |
 
-Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adresse email lui est liée — même non confirmée —, ou un téléphone, ou une identité externe. Une session en cours protège aussi tous ses participants. Chaque passage journalise ses compteurs dans `public.maintenance_runs`. Détail et réglages dans [`docs/local-stack.md`](docs/local-stack.md#entretien).
+Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adresse email lui est liée — même non confirmée —, ou un téléphone, ou une identité externe. Une session en cours protège aussi tous ses participants. Purger un compte n’efface jamais un classement : ses sessions restent, sans host et sans auteur (voir [Vie privée](#vie-privée)). Chaque passage journalise ses compteurs dans `public.maintenance_runs`. Détail et réglages dans [`docs/local-stack.md`](docs/local-stack.md#entretien).
 
 ## Déployer (Vercel + Supabase cloud)
 

@@ -26,6 +26,7 @@ export const OMK_MESSAGES: Record<string, string> = {
   invalid_restaurant: 'Ce restaurant ne fait pas partie de la session.',
   invalid_restaurant_name: 'Le nom du restaurant doit faire entre 2 et 100 caractères.',
   invalid_price_level: 'Le budget doit être compris entre 1 et 4.',
+  invalid_place: 'Ce lieu Google n’est pas exploitable.',
   superlike_used: 'Tu as déjà utilisé ton coup de cœur.',
   super_dislike_used: 'Tu as déjà utilisé ton veto.',
   list_not_found: 'Cette liste n’existe pas ou le lien est invalide.',

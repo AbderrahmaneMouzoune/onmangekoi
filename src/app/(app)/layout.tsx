@@ -1,4 +1,5 @@
 import { AppHeader } from '@/components/layout/app-header'
+import { SiteFooter } from '@/components/layout/site-footer'
 import { RestaurantSourcesProvider } from '@/components/restaurants/restaurant-sources'
 import { isPlacesSearchEnabled } from '@/data-access/places'
 
@@ -10,6 +11,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <RestaurantSourcesProvider google={isPlacesSearchEnabled()}>
       <AppHeader />
       {children}
+      <SiteFooter />
     </RestaurantSourcesProvider>
   )
 }
