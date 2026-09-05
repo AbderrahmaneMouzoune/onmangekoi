@@ -49,6 +49,13 @@ Le seul identifiant transmis est l'**UUID du profil Supabase**, opaque, passé �
 
 Le catalogue est typé (`src/lib/analytics/events.ts`) : une propriété non prévue ne compile pas. C'est le garde-fou qui empêche d'y glisser une donnée personnelle par inadvertance.
 
+### Où c'est branché
+
+Les Cache Components prérendent la coquille de chaque route : la mesure ne doit donc rien lire de dynamique en dehors d'un `<Suspense>`, sous peine de rendre cette coquille dynamique et d'annuler le prérendu.
+
+- `AnalyticsProvider` est monté dans le layout racine **sans aucune donnée serveur** : il ne lit ni l'URL ni l'utilisateur, il ne décide que du chargement selon le consentement. Les vues de page sont comptées par PostHog lui-même (`capture_pageview: 'history_change'`), qui suit les navigations client — et dont l'URL passe par le même masquage.
+- `AnalyticsIdentity` est le seul fragment qui dépend de l'utilisateur : il lit les cookies, donc il vit sous `<Suspense fallback={null}>`.
+
 ### Pourquoi un passage de témoin
 
 Créer ou rejoindre une session se termine par un `redirect()` serveur : la Server Action ne rend jamais la main au composant qui l'a appelée. Un événement émis au moment du clic compterait donc aussi les échecs.

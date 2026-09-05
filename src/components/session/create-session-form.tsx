@@ -3,16 +3,16 @@
 import { RiCheckLine } from '@remixicon/react'
 import { useActionState, useMemo, useState } from 'react'
 
+import { createSessionAction } from '@/actions/sessions'
 import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { createSessionAction } from '@/lib/actions/sessions'
+import { SESSION_NAME_MAX } from '@/domain/schemas/session'
 import { rememberSessionEntry } from '@/lib/analytics/handoff'
 import { countLabel } from '@/lib/format'
-import { SESSION_NAME_MAX } from '@/lib/schemas/session'
 import { cn } from '@/lib/utils'
 
 import type { ListWithRestaurantIds } from '@/data-access/lists'

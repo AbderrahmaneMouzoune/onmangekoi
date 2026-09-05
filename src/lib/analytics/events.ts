@@ -7,7 +7,7 @@
  * — UUID de session — et des compteurs sont transmis.
  */
 
-import type { VoteKind, VoteValue } from '@/lib/vote'
+import type { VoteKind, VoteValue } from '@/domain/vote'
 
 /** Canal par lequel une invitation ou une liste a été diffusée. */
 export type ShareMethod = 'code_copy' | 'link_copy' | 'native_share' | 'qr'

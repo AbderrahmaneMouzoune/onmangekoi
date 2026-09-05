@@ -1,9 +1,10 @@
 import { Bricolage_Grotesque, Geist_Mono, Instrument_Sans } from 'next/font/google'
+import { Suspense } from 'react'
 
 import './globals.css'
+import { AnalyticsIdentity } from '@/components/analytics/analytics-identity'
 import { AnalyticsProvider } from '@/components/analytics/analytics-provider'
 import { ThemeProvider } from '@/components/theme-provider'
-import { getCurrentUser } from '@/data-access/auth'
 import { SITE_NAME, SITE_TAGLINE, siteUrl } from '@/lib/site'
 import { cn } from '@/lib/utils'
 
@@ -65,11 +66,7 @@ export const viewport: Viewport = {
   ],
 }
 
-export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  // `getCurrentUser` est mis en cache par requête : les pages le rappellent
-  // sans aller-retour supplémentaire.
-  const user = await getCurrentUser()
-
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="fr"
@@ -78,7 +75,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     >
       <body className="flex min-h-svh flex-col">
         <ThemeProvider>{children}</ThemeProvider>
-        <AnalyticsProvider profileId={user?.id ?? null} />
+        <AnalyticsProvider />
+        <Suspense fallback={null}>
+          <AnalyticsIdentity />
+        </Suspense>
       </body>
     </html>
   )

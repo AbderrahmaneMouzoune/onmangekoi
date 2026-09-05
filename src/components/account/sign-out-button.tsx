@@ -3,8 +3,8 @@
 import { RiLogoutBoxRLine } from '@remixicon/react'
 import { useTransition } from 'react'
 
+import { signOutAction } from '@/actions/auth'
 import { TwoStepButton } from '@/components/ui/two-step-button'
-import { signOutAction } from '@/lib/actions/auth'
 
 export function SignOutButton({ isAnonymous }: { isAnonymous: boolean }) {
   const [isPending, startTransition] = useTransition()

@@ -3,6 +3,13 @@
 import { RiAddLine, RiCloseLine, RiDeleteBinLine, RiGroupLine } from '@remixicon/react'
 import { useActionState, useOptimistic, useState, useTransition } from 'react'
 
+import {
+  addRestaurantsToListAction,
+  deleteListAction,
+  removeRestaurantFromListAction,
+  renameListAction,
+  setListCollaborativeAction,
+} from '@/actions/lists'
 import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/copy-button'
@@ -11,17 +18,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { TwoStepButton } from '@/components/ui/two-step-button'
-import {
-  addRestaurantsToListAction,
-  deleteListAction,
-  removeRestaurantFromListAction,
-  renameListAction,
-  setListCollaborativeAction,
-} from '@/lib/actions/lists'
+import { LIST_NAME_MAX } from '@/domain/schemas/list'
 import { captureEvent } from '@/lib/analytics/client'
 import { groupCode } from '@/lib/crockford'
 import { countLabel } from '@/lib/format'
-import { LIST_NAME_MAX } from '@/lib/schemas/list'
 import { cn } from '@/lib/utils'
 
 import type { ListWithRestaurants, Restaurant } from '@/data-access/models'

@@ -23,20 +23,47 @@ let client: PostHog | null = null
 let loading: Promise<PostHog | null> | null = null
 /** Événements survenus pendant le chargement du SDK, rejoués juste après. */
 let queue: QueuedCapture[] = []
-let identifiedAs: string | null = null
+/** Ce que l'app sait de l'utilisateur courant. */
+let profile: string | null = null
+/** Ce que PostHog en sait déjà — les deux divergent le temps du chargement. */
+let identified: string | null = null
 
 /** La mesure est-elle possible sur ce déploiement ? */
 export function isAnalyticsConfigured(): boolean {
   return Boolean(env.NEXT_PUBLIC_POSTHOG_KEY)
 }
 
+function syncIdentity(): void {
+  if (!client || identified === profile) return
+
+  if (!profile) {
+    client.reset()
+    identified = null
+    return
+  }
+
+  client.identify(profile)
+  identified = profile
+}
+
 /**
- * Charge et initialise PostHog. Idempotent : les appels suivants réutilisent
- * la même promesse. À n'appeler qu'une fois le consentement obtenu.
+ * Charge et initialise PostHog. Idempotent, y compris après un refus suivi
+ * d'une acceptation dans la même visite. À n'appeler qu'une fois le
+ * consentement obtenu.
  */
 export function startAnalytics(): Promise<PostHog | null> {
   const key = env.NEXT_PUBLIC_POSTHOG_KEY
   if (!key || typeof window === 'undefined') return Promise.resolve(null)
+
+  if (client) {
+    // Déjà chargé : on sort d'un refus (de cette visite ou d'une précédente,
+    // PostHog gardant l'opt-out en stockage). `captureEventName: false` évite
+    // un événement `$opt_in` qui n'apporte rien à l'entonnoir.
+    client.opt_in_capturing({ captureEventName: false })
+    syncIdentity()
+    return Promise.resolve(client)
+  }
+
   if (loading) return loading
 
   loading = import('posthog-js')
@@ -45,8 +72,9 @@ export function startAnalytics(): Promise<PostHog | null> {
         api_host: env.NEXT_PUBLIC_POSTHOG_HOST,
         // Profils uniquement pour les personnes identifiées (issue #18).
         person_profiles: 'identified_only',
-        // Les vues sont émises à la main, sur des routes masquées.
-        capture_pageview: false,
+        // Une vue par changement d'historique — donc aussi en navigation
+        // client. L'URL réelle ne part jamais : `before_send` la masque.
+        capture_pageview: 'history_change',
         capture_pageleave: false,
         // L'autocapture enverrait le texte des éléments cliqués — donc des pseudos.
         autocapture: false,
@@ -61,7 +89,10 @@ export function startAnalytics(): Promise<PostHog | null> {
       })
 
       client = posthog
-      if (identifiedAs) posthog.identify(identifiedAs)
+      if (posthog.has_opted_out_capturing()) {
+        posthog.opt_in_capturing({ captureEventName: false })
+      }
+      syncIdentity()
       for (const { event, properties } of queue) posthog.capture(event, properties)
       queue = []
       return posthog
@@ -78,14 +109,16 @@ export function startAnalytics(): Promise<PostHog | null> {
 
 /**
  * Coupe la mesure et efface ce que PostHog a stocké (cookies, identifiant).
- * Appelé au retrait du consentement.
+ * Appelé au retrait du consentement. L'identifiant connu de l'app est
+ * conservé : il resservira si le consentement revient.
  */
 export function stopAnalytics(): void {
   queue = []
-  identifiedAs = null
+  identified = null
   if (!client) return
-  client.opt_out_capturing()
+  // `reset()` d'abord : il efface le stockage, opt-out compris.
   client.reset()
+  client.opt_out_capturing()
 }
 
 function enqueue(event: string, properties?: Record<string, unknown>): void {
@@ -105,24 +138,11 @@ export function captureEvent<E extends AnalyticsEvent>(
   enqueue(event, properties)
 }
 
-/** Vue de page, sur une route masquée (jamais l'URL réelle). */
-export function capturePageview(): void {
-  enqueue('$pageview')
-}
-
 /**
  * Rattache les événements à un identifiant opaque (l'UUID du profil Supabase),
  * ce qui rend la rétention hebdomadaire mesurable. `null` à la déconnexion.
  */
 export function identifyProfile(profileId: string | null): void {
-  if (profileId === identifiedAs) return
-
-  if (!profileId) {
-    identifiedAs = null
-    client?.reset()
-    return
-  }
-
-  identifiedAs = profileId
-  client?.identify(profileId)
+  profile = profileId
+  syncIdentity()
 }

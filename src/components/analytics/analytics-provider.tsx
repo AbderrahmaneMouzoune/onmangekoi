@@ -1,29 +1,19 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
 import { useEffect } from 'react'
 
 import { ConsentBanner } from '@/components/analytics/consent-banner'
 import { useAnalyticsConsent } from '@/hooks/use-analytics-consent'
-import {
-  capturePageview,
-  identifyProfile,
-  startAnalytics,
-  stopAnalytics,
-} from '@/lib/analytics/client'
-
-interface AnalyticsProviderProps {
-  /** UUID du profil Supabase, ou `null` pour un visiteur sans pseudo. */
-  profileId: string | null
-}
+import { identifyProfile, startAnalytics, stopAnalytics } from '@/lib/analytics/client'
 
 /**
- * Point d'entrée unique de la mesure d'audience : décide du chargement selon
- * le consentement, rattache l'identifiant opaque, émet les vues de page et
- * affiche le bandeau. Ne rend rien d'autre que le bandeau.
+ * Point d'entrée de la mesure d'audience : décide du chargement selon le
+ * consentement et affiche le bandeau. Ne lit ni l'URL ni l'utilisateur, pour
+ * rester dans la coquille prérendue de chaque route — les vues de page sont
+ * comptées par PostHog lui-même (`capture_pageview: 'history_change'`), et
+ * l'identification arrive par `AnalyticsIdentity` sous `<Suspense>`.
  */
-export function AnalyticsProvider({ profileId }: AnalyticsProviderProps) {
-  const pathname = usePathname()
+export function AnalyticsProvider() {
   const { choice, available } = useAnalyticsConsent()
 
   useEffect(() => {
@@ -32,16 +22,18 @@ export function AnalyticsProvider({ profileId }: AnalyticsProviderProps) {
     if (choice === 'denied') stopAnalytics()
   }, [available, choice])
 
-  useEffect(() => {
-    if (!available || choice !== 'granted') return
-    identifyProfile(profileId)
-  }, [available, choice, profileId])
-
-  // Une vue par route (masquée par `before_send`), y compris en navigation client.
-  useEffect(() => {
-    if (!available || choice !== 'granted') return
-    capturePageview()
-  }, [available, choice, pathname])
-
   return <ConsentBanner />
+}
+
+/**
+ * Rattache la mesure à l'UUID opaque du profil. Ne rend rien : c'est le seul
+ * fragment de la mesure qui dépend de l'utilisateur, isolé pour que le reste
+ * reste prérendu.
+ */
+export function IdentifyProfile({ profileId }: { profileId: string | null }) {
+  useEffect(() => {
+    identifyProfile(profileId)
+  }, [profileId])
+
+  return null
 }
