@@ -2,12 +2,12 @@
 
 import { useActionState } from 'react'
 
+import { setPasswordAction } from '@/actions/auth'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { setPasswordAction } from '@/lib/actions/auth'
 
 export function SetPasswordForm({ hasPassword }: { hasPassword: boolean }) {
   const [state, formAction, isPending] = useActionState(setPasswordAction, null)

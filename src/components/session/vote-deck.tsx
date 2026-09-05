@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { submitVoteAction } from '@/actions/votes'
 import { VoteCard } from '@/components/session/vote-card'
 import { VoteControls } from '@/components/session/vote-controls'
 import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
-import { submitVoteAction } from '@/lib/actions/votes'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant, SessionRestaurantWithRestaurant } from '@/data-access/models'
-import type { VoteValue } from '@/lib/vote'
+import type { VoteValue } from '@/domain/vote'
 
 interface VoteDeckProps {
   sessionId: string

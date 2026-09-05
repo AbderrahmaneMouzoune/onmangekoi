@@ -1,4 +1,5 @@
 import { updatePseudo } from '@/data-access/profile'
+import { updatePseudoUseCase } from '@/use-cases/update-pseudo'
 
 import type { Database } from '@/data-access/models/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -17,10 +18,7 @@ export async function setupProfileUseCase(
   } = await supabase.auth.getUser()
 
   if (user) {
-    await Promise.all([
-      updatePseudo(supabase, user.id, pseudo),
-      supabase.auth.updateUser({ data: { pseudo } }),
-    ])
+    await updatePseudoUseCase(supabase, user.id, pseudo)
     return { userId: user.id }
   }
 
