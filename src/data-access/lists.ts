@@ -259,7 +259,10 @@ export async function copySharedList(
 ): Promise<List> {
   const { data, error } = await supabase.rpc('copy_shared_list', {
     p_token: identifier,
-    p_name: name ?? null,
+    // Omettre la clé plutôt que passer `null` : le paramètre est déclaré
+    // `default null` en base, donc l'absence produit exactement la même
+    // valeur — et le type généré ne l'accepte plus que comme optionnel.
+    p_name: name,
   })
   if (error) throw error
   return data
