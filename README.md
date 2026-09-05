@@ -74,17 +74,17 @@ Sans clé, l'onglet n'apparaît pas et le reste de l'app fonctionne à l'identiq
 
 ## Stack
 
-| Couche     | Choix                                                                      |
-| ---------- | -------------------------------------------------------------------------- |
-| Frontend   | Next.js 16 (App Router, Turbopack, `proxy.ts`) · React 19 · TypeScript     |
-| Routage    | `src/config/router.config.ts` — toutes les URL construites au même endroit |
-| UI         | Tailwind CSS 4 · Base UI · Remix Icon · charte « L'ardoise »               |
-| Données    | Supabase (PostgreSQL 17, RLS, RPC `security definer`)                      |
-| Temps réel | Supabase Realtime (Postgres Changes, resync au retour au premier plan)     |
-| Auth       | Utilisateur anonyme créé au choix du pseudo · email/mot de passe optionnel |
-| Validation | Zod 4 · `@t3-oss/env-nextjs`                                               |
-| Tests      | Vitest 5 + Testing Library · Playwright                                    |
-| Qualité    | ESLint 9 (flat) · Prettier · Husky · commitlint · CI GitHub Actions        |
+| Couche     | Choix                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| Frontend   | Next.js 16 (App Router, Cache Components, Turbopack, `proxy.ts`) · React 19 · TypeScript |
+| Routage    | `src/config/router.config.ts` — toutes les URL construites au même endroit               |
+| UI         | Tailwind CSS 4 · Base UI · Remix Icon · charte « L'ardoise »                             |
+| Données    | Supabase (PostgreSQL 17, RLS, RPC `security definer`)                                    |
+| Temps réel | Supabase Realtime (Postgres Changes, resync au retour au premier plan)                   |
+| Auth       | Utilisateur anonyme créé au choix du pseudo · email/mot de passe optionnel               |
+| Validation | Zod 4 · `@t3-oss/env-nextjs`                                                             |
+| Tests      | Vitest 5 + Testing Library · Playwright                                                  |
+| Qualité    | ESLint 9 (flat) · Prettier · Husky · commitlint · CI GitHub Actions                      |
 
 ## Démarrer
 
@@ -114,16 +114,33 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
 src/app/                 routes App Router (setup, login, join, sessions, lists, l/[slug], account, auth, api/places)
-src/components/          ui/ (primitives) · layout/ · session/ · lists/ · account/ · restaurants/
+src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · account/ · restaurants/ · onboarding/
 src/data-access/         requêtes Supabase (un module par table) + places.ts (Google) + models/
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
 src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, places, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
 src/lib/                 utilitaires transverses : Crockford, slug, format, routing, site (URL absolues), qr, ttl-cache
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`
-supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results)
+supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results), purge
+supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
 ```
+
+## Rendu et cache
+
+Les **Cache Components** de Next 16 sont activés (`cacheComponents: true`) : chaque route est prérendue sous forme de **coquille statique** — chrome, titres, textes, squelettes — servie immédiatement depuis le cache, pendant que les parties réellement personnelles arrivent en streaming dans leur `<Suspense>`.
+
+| Ce qui est prérendu et mis en cache                                       | Ce qui reste diffusé à chaque requête                                        |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| En-tête, titres, accroche, « comment ça marche », formulaires, squelettes | Pseudo et avatar, sessions, listes, votes, classements, aperçus d'invitation |
+| Catalogue de restaurants (`use cache`, 1 h, tag `restaurants`)            | Tout ce qui passe par le client Supabase lié aux cookies                     |
+
+Deux règles tiennent l'ensemble :
+
+- **Rien de personnel n'entre dans un cache partagé.** Le catalogue de restaurants est la seule donnée mise en cache : c'est la seule table lisible par le rôle `anon`, et elle est lue par un client sans cookie (`data-access/supabase/public.ts`). Toutes les autres lectures gardent le client lié à la session, donc restent dans le trou dynamique.
+- **Rien qui écrit n'est prérendu.** `/join/[token]` inscrit la personne dans la session avant de rediriger : la coquille n'affiche que « on te fait entrer… », le reste est fait à la requête.
+
+Le catalogue étant partagé, la recherche du sélecteur de restaurants sort du cache elle aussi : une même requête ne touche la base qu'une fois par heure, pour tout le monde. Après un import de restaurants, `revalidateTag(RESTAURANTS_CACHE_TAG)` suffit à le rafraîchir.
 
 ## Sécurité
 
@@ -134,14 +151,28 @@ e2e/                     Playwright
 - La clé Google Places ne quitte jamais le serveur, et aucune policy RLS n'ouvre l'écriture en `source = 'google'` : `upsert_restaurant_from_place` est le seul chemin. Les corps d'erreur renvoyés par Google restent dans les logs serveur.
 - Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision.
 - Les pages sont rendues avec des chargements parallèles (`Promise.all`) et les lectures par requête sont dédupliquées via `React.cache` (`getCurrentUser`, `getProfile`, `getSessionById`…).
+- **Aucune donnée personnelle n'est mise en cache.** Seul le catalogue public de restaurants est mémorisé, via un client Supabase sans cookie ; voir [Rendu et cache](#rendu-et-cache).
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.
 - Les messages d'erreur Postgres ne remontent jamais tels quels : seuls les codes métier `omk:*` sont traduits.
 
+## Rétention des données
+
+Un pseudo suffit à utiliser l'app, donc chaque pseudo crée un utilisateur anonyme : sans entretien, la base ne fait que grossir. Un job `pg_cron` nocturne (`public.run_maintenance()`) applique la rétention suivante :
+
+| Donnée                             | Conservée | Puis                                                |
+| ---------------------------------- | --------- | --------------------------------------------------- |
+| Anonyme sans activité ni email lié | 90 jours  | supprimé, avec ses listes et ses sessions (cascade) |
+| Session `waiting` jamais lancée    | 7 jours   | supprimée                                           |
+| Session `closed`                   | 180 jours | supprimée                                           |
+
+Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adresse email lui est liée — même non confirmée —, ou un téléphone, ou une identité externe. Une session en cours protège aussi tous ses participants. Chaque passage journalise ses compteurs dans `public.maintenance_runs`. Détail et réglages dans [`docs/local-stack.md`](docs/local-stack.md#entretien).
+
 ## Déployer (Vercel + Supabase cloud)
 
-1. Créer un projet Supabase, puis pousser le schéma : `supabase link --project-ref <ref>` et `supabase db push` (migrations, RLS, RPC, seed).
+1. Créer un projet Supabase, puis pousser le schéma : `supabase link --project-ref <ref>` et `supabase db push` (migrations, RLS, RPC, seed). Sans terminal sous la main, les mêmes opérations se pilotent depuis GitHub — voir [`docs/ci-database.md`](docs/ci-database.md).
 2. Dans Supabase → Authentication → URL Configuration : ajouter `https://<domaine>/auth/confirm` aux _Redirect URLs_ (compte optionnel).
-3. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
+3. Dans Supabase → Database → Extensions : activer `pg_cron` si ce n'est pas déjà fait, puis rejouer la migration de purge — sans l'extension elle s'applique quand même, mais le job nocturne n'est pas planifié (vérifier avec `select jobname, schedule from cron.job`).
+4. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
 
 | Variable                               | Valeur                                                   |
 | -------------------------------------- | -------------------------------------------------------- |

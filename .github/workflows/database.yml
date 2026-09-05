@@ -1,0 +1,274 @@
+name: Base de données
+
+run-name: 🗄️ db ${{ inputs.command }} · ${{ github.ref_name }}
+
+# Onglet Actions → « Base de données » → « Run workflow » : on choisit la branche,
+# puis la commande. Le bouton existe aussi sur mobile — c'est tout l'intérêt.
+#
+# Commandes :
+#   check  rejoue toutes les migrations sur une base neuve, lint SQL, vérifie que
+#          `src/data-access/models/database.ts` est à jour
+#   types  régénère les types Supabase et les commite sur la branche choisie
+#   pull   importe les changements faits à la main dans le dashboard sous forme de
+#          nouvelle migration (+ types), et les commite sur la branche
+#   plan   liste les migrations qui seraient appliquées au projet distant (dry-run)
+#   push   applique les migrations en attente au projet distant
+#
+# Secrets attendus (Settings → Secrets and variables → Actions) :
+#   SUPABASE_ACCESS_TOKEN  jeton personnel — https://supabase.com/dashboard/account/tokens
+#   SUPABASE_PROJECT_ID    référence du projet (Project Settings → General)
+#   SUPABASE_DB_PASSWORD   mot de passe Postgres du projet
+#   GH_PAT                 optionnel — pour que la CI se relance sur les commits du bot
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: Opération à lancer sur la branche sélectionnée
+        type: choice
+        default: check
+        options:
+          - check
+          - types
+          - pull
+          - plan
+          - push
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: db-${{ github.ref_name }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    # `shell: bash` explicite = `-eo pipefail` : sans lui, un `supabase … | tee`
+    # renverrait le code de sortie de `tee` et masquerait l'échec.
+    shell: bash
+
+env:
+  SUPABASE_SERVICES: studio,imgproxy,edge-runtime,logflare,vector,pgadmin-schema-diff,migra,postgres-meta
+
+jobs:
+  local:
+    name: Migrations locales (${{ inputs.command }})
+    if: contains(fromJSON('["check","types"]'), inputs.command)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # GH_PAT (optionnel) : sans lui, les commits poussés par ce workflow ne
+          # redéclenchent pas Quality Checks — c'est un garde-fou de GitHub.
+          token: ${{ secrets.GH_PAT || github.token }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Démarrer Supabase
+        run: supabase start -x "$SUPABASE_SERVICES" 2>&1 | tee -a "$RUNNER_TEMP/report.txt"
+
+      - name: Rejouer toutes les migrations sur une base neuve
+        if: inputs.command == 'check'
+        run: supabase db reset 2>&1 | tee -a "$RUNNER_TEMP/report.txt"
+
+      - name: Lint SQL
+        if: inputs.command == 'check'
+        run: supabase db lint --local --level warning --fail-on error 2>&1 | tee -a "$RUNNER_TEMP/report.txt"
+
+      - name: Régénérer les types
+        run: bun run db:types
+
+      - name: Vérifier que les types sont à jour
+        if: inputs.command == 'check'
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/data-access/models/database.ts; then
+            echo '✅ Types à jour.' | tee -a "$RUNNER_TEMP/report.txt"
+          else
+            git --no-pager diff --stat -- src/data-access/models/database.ts | tee -a "$RUNNER_TEMP/report.txt"
+            echo '❌ database.ts ne correspond plus aux migrations — relancer ce workflow avec la commande `types`.' | tee -a "$RUNNER_TEMP/report.txt"
+            exit 1
+          fi
+
+      - name: Commiter les types
+        if: inputs.command == 'types'
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/data-access/models/database.ts; then
+            echo '✅ Types déjà à jour, rien à commiter.' | tee -a "$RUNNER_TEMP/report.txt"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/data-access/models/database.ts
+          git commit -m 'chore(db): régénère les types Supabase'
+          git push origin "HEAD:$BRANCH"
+          echo "✅ Types régénérés et poussés sur \`$BRANCH\`." | tee -a "$RUNNER_TEMP/report.txt"
+
+      - name: Compte-rendu
+        if: always()
+        uses: ./.github/actions/db-report
+        with:
+          command: ${{ inputs.command }}
+          status: ${{ job.status }}
+          token: ${{ github.token }}
+
+  sync:
+    name: Import du schéma distant
+    if: inputs.command == 'pull'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT || github.token }}
+
+      - name: Vérifier les secrets
+        uses: ./.github/actions/db-secrets
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lier le projet distant
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID" 2>&1 | tee -a "$RUNNER_TEMP/report.txt"
+
+      - name: Importer le schéma distant
+        run: supabase db pull --linked --yes 2>&1 | tee -a "$RUNNER_TEMP/report.txt"
+
+      - name: Régénérer les types
+        run: |
+          set -euo pipefail
+          supabase start -x "$SUPABASE_SERVICES" > /dev/null
+          bun run db:types
+
+      - name: Commiter la migration
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet && git diff --quiet --cached && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            echo '✅ Aucun écart : la base distante correspond aux migrations du dépôt.' | tee -a "$RUNNER_TEMP/report.txt"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase/migrations src/data-access/models/database.ts
+          git commit -m 'chore(db): importe le schéma distant'
+          git push origin "HEAD:$BRANCH"
+          git --no-pager show --stat --oneline HEAD | tee -a "$RUNNER_TEMP/report.txt"
+          echo "✅ Migration importée et poussée sur \`$BRANCH\`." | tee -a "$RUNNER_TEMP/report.txt"
+
+      - name: Compte-rendu
+        if: always()
+        uses: ./.github/actions/db-report
+        with:
+          command: ${{ inputs.command }}
+          status: ${{ job.status }}
+          token: ${{ github.token }}
+
+  plan:
+    name: Migrations en attente (dry-run)
+    if: inputs.command == 'plan'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Vérifier les secrets
+        uses: ./.github/actions/db-secrets
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Lier le projet distant
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID" 2>&1 | tee -a "$RUNNER_TEMP/report.txt"
+
+      - name: Lister les migrations qui seraient appliquées
+        run: supabase db push --linked --dry-run 2>&1 | tee -a "$RUNNER_TEMP/report.txt"
+
+      - name: Compte-rendu
+        if: always()
+        uses: ./.github/actions/db-report
+        with:
+          command: ${{ inputs.command }}
+          status: ${{ job.status }}
+          token: ${{ github.token }}
+
+  deploy:
+    name: Application au projet distant
+    if: inputs.command == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Ajouter un « required reviewer » sur cet environnement (Settings → Environments)
+    # transforme chaque push en demande d'approbation — validable depuis l'app mobile.
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Vérifier les secrets
+        uses: ./.github/actions/db-secrets
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Lier le projet distant
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID" 2>&1 | tee -a "$RUNNER_TEMP/report.txt"
+
+      - name: Aperçu
+        run: supabase db push --linked --dry-run 2>&1 | tee -a "$RUNNER_TEMP/report.txt"
+
+      - name: Appliquer les migrations
+        run: supabase db push --linked 2>&1 | tee -a "$RUNNER_TEMP/report.txt"
+
+      - name: Compte-rendu
+        if: always()
+        uses: ./.github/actions/db-report
+        with:
+          command: ${{ inputs.command }}
+          status: ${{ job.status }}
+          token: ${{ github.token }}

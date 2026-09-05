@@ -78,6 +78,13 @@ jobs:
       - name: Start Supabase (migrations + seed)
         run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,pgadmin-schema-diff,migra,postgres-meta
 
+      - name: Database scenarios (supabase/tests)
+        run: |
+          command -v psql >/dev/null 2>&1 || {
+            sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+          }
+          bun run db:test
+
       - name: Export Supabase keys
         id: supabase
         run: |

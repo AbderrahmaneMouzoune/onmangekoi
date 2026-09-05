@@ -1,6 +1,9 @@
 'use server'
 
+import { revalidateTag } from 'next/cache'
+
 import { getCurrentUser } from '@/data-access/auth'
+import { RESTAURANTS_CACHE_PROFILE, RESTAURANTS_CACHE_TAG } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
 import { AppError, toUserMessage } from '@/domain/errors'
 import { ImportPlaceSchema } from '@/domain/schemas/place'
@@ -25,7 +28,11 @@ export async function importPlaceAction(placeId: string): Promise<ActionResult<R
   if (!user) return { ok: false, error: 'Tu dois d’abord choisir un pseudo.' }
 
   try {
-    return { ok: true, data: await importPlaceUseCase(supabase, parsed.data.placeId) }
+    const restaurant = await importPlaceUseCase(supabase, parsed.data.placeId)
+    // Même raison que pour l'ajout manuel : le catalogue en cache doit voir
+    // arriver le resto importé.
+    revalidateTag(RESTAURANTS_CACHE_TAG, RESTAURANTS_CACHE_PROFILE)
+    return { ok: true, data: restaurant }
   } catch (error) {
     // Une `AppError` porte déjà un message lisible (clé absente, Google en
     // vrac) ; tout le reste retombe sur le libellé générique.

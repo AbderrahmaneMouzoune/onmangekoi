@@ -102,6 +102,30 @@ export type Database = {
           },
         ]
       }
+      maintenance_runs: {
+        Row: {
+          duration_ms: number
+          id: number
+          purged: Json
+          ran_at: string
+          task: string
+        }
+        Insert: {
+          duration_ms: number
+          id?: never
+          purged?: Json
+          ran_at?: string
+          task: string
+        }
+        Update: {
+          duration_ms?: number
+          id?: never
+          purged?: Json
+          ran_at?: string
+          task?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -545,9 +569,24 @@ export type Database = {
         Args: { p_input: string }
         Returns: string
       }
+      purge_inactive_anonymous: {
+        Args: { p_older_than?: unknown }
+        Returns: number
+      }
+      purge_stale_sessions: {
+        Args: { p_closed_older_than?: unknown; p_waiting_older_than?: unknown }
+        Returns: {
+          closed_purged: number
+          waiting_purged: number
+        }[]
+      }
       raise_omk: {
         Args: { p_code: string }
         Returns: undefined
+      }
+      run_maintenance: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       session_preview: {
         Args: { p_identifier: string }
