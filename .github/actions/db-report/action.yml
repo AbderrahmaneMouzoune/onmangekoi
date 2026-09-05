@@ -1,11 +1,7 @@
 name: Compte-rendu DB
-description: Poste le résultat d'une commande de base de données sur la PR et dans le résumé du run.
+description: Publie le résultat d'une commande de base de données dans le résumé du run, et sur la PR de la branche s'il y en a une ouverte.
 
 inputs:
-  pr:
-    description: Numéro de PR où poster le commentaire (vide = résumé du run seulement)
-    required: false
-    default: ''
   command:
     description: Commande exécutée (check, types, pull, plan, push)
     required: true
@@ -24,7 +20,7 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
         REPO: ${{ github.repository }}
-        PR: ${{ inputs.pr }}
+        BRANCH: ${{ github.ref_name }}
         COMMAND: ${{ inputs.command }}
         STATUS: ${{ inputs.status }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -41,7 +37,7 @@ runs:
         comment="$RUNNER_TEMP/comment.md"
 
         {
-          echo "### $icon \`/db $COMMAND\`"
+          echo "### $icon Base de données — \`$COMMAND\` sur \`$BRANCH\`"
           echo
           echo '<details><summary>Sortie de la commande</summary>'
           echo
@@ -64,6 +60,11 @@ runs:
 
         cat "$comment" >> "$GITHUB_STEP_SUMMARY"
 
-        if [ -n "$PR" ]; then
-          gh pr comment "$PR" --repo "$REPO" --body-file "$comment"
+        # Si la branche a une PR ouverte, le compte-rendu y est aussi posté : c'est
+        # là qu'on le cherche quand on suit une migration depuis un téléphone.
+        pr=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open --json number --jq '.[0].number // empty' || true)
+        if [ -n "$pr" ]; then
+          gh pr comment "$pr" --repo "$REPO" --body-file "$comment"
+        else
+          echo "Aucune PR ouverte pour $BRANCH : compte-rendu dans le résumé du run seulement."
         fi

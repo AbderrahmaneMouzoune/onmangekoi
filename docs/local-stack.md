@@ -54,7 +54,7 @@ L'app démarre sur `http://localhost:3000`.
 | `supabase db reset` | rejoue toutes les migrations et le seed                             |
 | `supabase stop`     | arrête la stack                                                     |
 
-Ces commandes ont un équivalent déclenchable depuis GitHub, sans terminal : un commentaire `/db check`, `/db types`, `/db pull`, `/db plan` ou `/db push` sur une PR. Détail dans [`docs/ci-database.md`](ci-database.md).
+Ces commandes ont un équivalent lançable depuis GitHub, sans terminal : Actions → « Base de données » → _Run workflow_, puis `check`, `types`, `pull`, `plan` ou `push`. Détail dans [`docs/ci-database.md`](ci-database.md).
 
 ## Tests de bout en bout
 
