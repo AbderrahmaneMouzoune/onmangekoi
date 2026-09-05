@@ -1,19 +1,13 @@
 import { RiArrowRightLine, RiGroupLine, RiLinkM, RiRestaurant2Line } from '@remixicon/react'
 import Link from 'next/link'
+import { Suspense } from 'react'
 
+import { HomeDashboard, HomeDashboardFallback } from '@/components/home/home-dashboard'
 import { AppHeader } from '@/components/layout/app-header'
 import { Shell } from '@/components/layout/shell'
-import { SessionStatusBadge } from '@/components/session/session-status-badge'
 import { buttonVariants } from '@/components/ui/button'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
-import { getListsByOwner } from '@/data-access/lists'
-import { getMySessions } from '@/data-access/sessions'
-import { createServerClient } from '@/data-access/supabase/server'
-import { countLabel, relativeDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
-
-import type { ListSummary, SessionSummary } from '@/data-access/models'
 
 const STEPS = [
   {
@@ -33,13 +27,12 @@ const STEPS = [
   },
 ] as const
 
-export default async function HomePage() {
-  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
-
-  const [sessions, lists] = user
-    ? await Promise.all([getMySessions(supabase), getListsByOwner(supabase, user.id)])
-    : [[] as SessionSummary[], [] as ListSummary[]]
-
+/**
+ * Accueil : tout est statique sauf le bloc « tes sessions / tes listes », qui
+ * arrive en streaming. La page est donc prérendue et servie depuis le cache,
+ * y compris pour un premier visiteur.
+ */
+export default function HomePage() {
   return (
     <>
       <AppHeader />
@@ -72,73 +65,9 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {user && sessions.length > 0 && (
-          <section className="flex flex-col gap-3">
-            <h2 className="text-lg font-bold">Tes sessions</h2>
-            <ul className="flex flex-col gap-2">
-              {sessions.map((session) => (
-                <li key={session.id}>
-                  <Link
-                    href={
-                      session.status === 'closed'
-                        ? router.sessionResults(session.id)
-                        : router.session(session.id)
-                    }
-                    className="flex items-center justify-between gap-3 rounded-lg bg-surface p-4 ring-1 ring-line transition-colors hover:bg-surface-2"
-                  >
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <span className="truncate font-semibold">{session.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {countLabel(session.participant_count, 'participant')} ·{' '}
-                        {relativeDate(session.created_at)}
-                      </span>
-                    </div>
-                    <SessionStatusBadge status={session.status} />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {user && (
-          <section className="flex flex-col gap-3">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-lg font-bold">Tes listes</h2>
-              <Link
-                href={router.lists()}
-                className="text-sm font-medium text-brand hover:underline"
-              >
-                Tout voir
-              </Link>
-            </div>
-            {lists.length === 0 ? (
-              <Link
-                href={router.listNew()}
-                className="flex items-center justify-between rounded-lg border border-dashed border-line-strong p-4 text-sm text-ink-2 hover:bg-surface-2"
-              >
-                <span>Crée ta première liste de favoris</span>
-                <RiArrowRightLine aria-hidden="true" className="size-4" />
-              </Link>
-            ) : (
-              <ul className="flex flex-wrap gap-2">
-                {lists.slice(0, 6).map((list) => (
-                  <li key={list.id}>
-                    <Link
-                      href={router.list(list.id)}
-                      className="inline-flex items-center gap-2 rounded-full bg-surface px-3.5 py-2 text-sm font-medium ring-1 ring-line hover:bg-surface-2"
-                    >
-                      {list.name}
-                      <span className="font-mono text-xs text-muted-foreground tabular">
-                        {list.restaurant_count}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        )}
+        <Suspense fallback={<HomeDashboardFallback />}>
+          <HomeDashboard />
+        </Suspense>
 
         <section className="flex flex-col gap-4">
           <h2 className="text-lg font-bold">Comment ça marche</h2>
