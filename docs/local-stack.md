@@ -51,8 +51,11 @@ L'app démarre sur `http://localhost:3000`.
 | `bun run test:e2e`  | flow complet host + invité avec Playwright (`E2E=1`, stack locale)  |
 | `bun run build`     | build de production                                                 |
 | `bun run db:types`  | régénère `src/data-access/models/database.ts` depuis la base locale |
+| `bun run db:test`   | rejoue les scénarios SQL de `supabase/tests/` (`psql` requis)       |
 | `supabase db reset` | rejoue toutes les migrations et le seed                             |
 | `supabase stop`     | arrête la stack                                                     |
+
+Ces commandes ont un équivalent lançable depuis GitHub, sans terminal : Actions → « Base de données » → _Run workflow_, puis `check`, `types`, `pull`, `plan` ou `push`. Détail dans [`docs/ci-database.md`](ci-database.md).
 
 ## Tests de bout en bout
 
@@ -74,13 +77,42 @@ Les codes d'invitation (6) et de partage de liste (10) sont en Crockford base32 
 
 Les fonctions et policies peuvent être validées sur un PostgreSQL 16 nu en recréant le minimum de l'environnement Supabase (rôles `anon` / `authenticated`, schéma `auth` avec `auth.uid()`, extensions `pgcrypto` et `pg_trgm` dans le schéma `extensions`). C'est ce qui a servi à tester les RPC de vote et de classement.
 
+Le shim doit rester fidèle sur les points qui piègent : `auth.users.id` n'a **pas** de valeur par défaut — c'est GoTrue qui la fournit —, et `auth.identities` exige `provider_id` et `identity_data`. Un shim plus permissif fait passer un scénario qui échouera sur la vraie base.
+
 ## Entretien
 
-Les visiteurs qui choisissent un pseudo sans jamais lier d'email restent des utilisateurs anonymes. Pour purger ceux qui n'ont plus d'activité :
+Les visiteurs qui choisissent un pseudo sans jamais lier d'email restent des utilisateurs anonymes : sans purge, `auth.users` et `sessions` grossissent à chaque session. Le nettoyage est automatisé par la migration `20260905120000_purge_inactive_anonymous.sql`.
+
+| Fonction                                                                 | Rétention par défaut | Ce qui est supprimé                                                 |
+| ------------------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------- |
+| `public.purge_inactive_anonymous(p_older_than)`                          | 90 jours             | les anonymes sans aucune activité ni moyen de reconnexion           |
+| `public.purge_stale_sessions(p_waiting_older_than, p_closed_older_than)` | 7 et 180 jours       | les sessions `waiting` jamais lancées, les sessions `closed` âgées  |
+| `public.run_maintenance()`                                               | —                    | enchaîne les deux, dans cet ordre ; cible du job `pg_cron` nocturne |
+
+Un compte n'est purgé que s'il ne peut plus jamais être retrouvé : **une adresse email liée — même en attente de confirmation —, un changement d'email en cours, un téléphone ou une identité externe le protègent définitivement**. Sont également conservés les comptes dont la création ou la dernière connexion est récente, ceux qui ont hébergé ou rejoint une session récemment, et ceux qui participent à une session non clôturée, quelle que soit son ancienneté. La suppression d'un anonyme emporte en cascade son profil, ses listes et ses sessions, via les clés étrangères existantes.
+
+`run_maintenance()` est planifiée à 3 h 17 UTC par `pg_cron` (job `omk-nightly-maintenance`). La migration ne casse pas là où l'extension est absente — un PostgreSQL nu, un plan sans `pg_cron` — elle émet un `NOTICE` et laisse l'appel manuel possible :
 
 ```sql
-delete from auth.users
-where is_anonymous is true
-  and created_at < now() - interval '90 days'
-  and id not in (select host_id from public.sessions where created_at > now() - interval '90 days');
+select public.run_maintenance();
+select cron.schedule('omk-nightly-maintenance', '17 3 * * *', 'select public.run_maintenance()');
 ```
+
+Chaque passage écrit une ligne dans `public.maintenance_runs` (tâche, durée, compteurs en JSON) et une trace dans les logs Postgres. Le journal se purge lui-même au-delà d'un an. La table n'est exposée ni à `anon` ni à `authenticated` :
+
+```sql
+select ran_at, task, purged from public.maintenance_runs order by ran_at desc limit 10;
+```
+
+Les intervalles sont paramétrables à l'appel, avec un plancher d'un jour ; passer `null` à `purge_stale_sessions` conserve la catégorie concernée — c'est le levier à utiliser le jour où les sessions closes alimenteront un historique consultable.
+
+## Scénarios SQL
+
+`supabase/tests/*.test.sql` contient des scénarios exécutés par `psql`, chacun dans une transaction annulée à la fin : ils ne laissent aucune donnée derrière eux et une assertion fausse fait sortir `psql` en erreur.
+
+```bash
+supabase start
+bun run db:test
+```
+
+`SUPABASE_DB_URL` permet de viser une autre base que la locale (`postgresql://postgres:postgres@127.0.0.1:54322/postgres`), y compris le PostgreSQL nu décrit plus haut. La CI les rejoue dans le job `End-to-end`, juste après `supabase start`.
