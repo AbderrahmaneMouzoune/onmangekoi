@@ -55,7 +55,7 @@ export default async function ListsPage() {
           {lists.map((list) => (
             <li key={list.id}>
               <Link
-                href={router.list(list.id)}
+                href={router.list(list)}
                 className="flex items-center justify-between gap-3 rounded-lg bg-surface p-4 ring-1 ring-line transition-colors hover:bg-surface-2"
               >
                 <div className="flex min-w-0 flex-col gap-0.5">

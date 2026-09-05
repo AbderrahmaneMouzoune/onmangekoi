@@ -10,48 +10,52 @@ import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
-import { getSessionById, getSessionParticipants, getSessionResults } from '@/data-access/sessions'
+import {
+  getSessionByParam,
+  getSessionParticipants,
+  getSessionResults,
+} from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { countLabel } from '@/lib/format'
-import { SessionIdSchema } from '@/lib/schemas/session'
 import { absoluteUrl } from '@/lib/site'
 import { cn } from '@/lib/utils'
 
 import type { Metadata } from 'next'
 
 interface Props {
-  params: Promise<{ id: string }>
+  params: Promise<{ slug: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const [{ id }, supabase] = await Promise.all([params, createServerClient()])
-  if (!SessionIdSchema.safeParse(id).success) return { title: 'Classement' }
-  const session = await getSessionById(supabase, id).catch(() => null)
+  const [{ slug }, supabase] = await Promise.all([params, createServerClient()])
+  const session = await getSessionByParam(supabase, slug).catch(() => null)
   return {
     title: session ? `Classement · ${session.name}` : 'Classement',
     robots: { index: false },
   }
 }
 
+/** Classement : `/sessions/dej-du-lundi-7K3M9P/results`. */
 export default async function ResultsPage({ params }: Props) {
-  const [{ id }, supabase, user] = await Promise.all([
+  const [{ slug }, supabase, user] = await Promise.all([
     params,
     createServerClient(),
     getCurrentUser(),
   ])
-  if (!SessionIdSchema.safeParse(id).success) notFound()
-  if (!user) redirect(router.setup(router.sessionResults(id)))
+  if (!user) redirect(router.setup(router.sessionResults(slug)))
 
-  // Les trois lectures sont indépendantes ; `session_results` renvoie vide
-  // tant que la session n'est pas close, ce que le statut confirme ensuite.
-  const [session, results, participants] = await Promise.all([
-    getSessionById(supabase, id),
-    getSessionResults(supabase, id),
-    getSessionParticipants(supabase, id),
-  ])
-
+  const session = await getSessionByParam(supabase, slug)
   if (!session) notFound()
-  if (session.status !== 'closed') redirect(router.session(id))
+  if (session.status !== 'closed') redirect(router.session(session))
+
+  const canonical = router.sessionResults(session)
+  if (`/sessions/${slug}/results` !== canonical) redirect(canonical)
+
+  // Les deux lectures restantes sont indépendantes.
+  const [results, participants] = await Promise.all([
+    getSessionResults(supabase, session.id),
+    getSessionParticipants(supabase, session.id),
+  ])
 
   const winner = results[0]
 
@@ -69,7 +73,7 @@ export default async function ResultsPage({ params }: Props) {
           <ResultsList results={results} participantCount={participants.length} />
           <div className="flex flex-wrap gap-2">
             <ShareResultsButton
-              url={absoluteUrl(router.sessionResults(id))}
+              url={absoluteUrl(router.sessionResults(session))}
               sessionName={session.name}
               winnerName={winner.name}
             />

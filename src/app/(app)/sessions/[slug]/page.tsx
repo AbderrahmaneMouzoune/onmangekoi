@@ -5,54 +5,61 @@ import { SessionRoom } from '@/components/session/session-room'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import {
-  getSessionById,
+  getSessionByParam,
   getSessionParticipants,
   getSessionRestaurants,
 } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { getMyVotes } from '@/data-access/votes'
 import { qrCodeSvg } from '@/lib/qr'
-import { SessionIdSchema } from '@/lib/schemas/session'
 import { inviteUrl } from '@/lib/site'
 
 import type { Metadata } from 'next'
 
 interface Props {
-  params: Promise<{ id: string }>
+  params: Promise<{ slug: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const [{ id }, supabase] = await Promise.all([params, createServerClient()])
-  if (!SessionIdSchema.safeParse(id).success) return { title: 'Session' }
-  const session = await getSessionById(supabase, id).catch(() => null)
+  const [{ slug }, supabase] = await Promise.all([params, createServerClient()])
+  const session = await getSessionByParam(supabase, slug).catch(() => null)
   return { title: session?.name ?? 'Session', robots: { index: false } }
 }
 
+/**
+ * Salle de session : `/sessions/dej-du-lundi-7K3M9P`. Le slug est décoratif,
+ * seul le code d'invitation compte ; les anciens liens en uuid restent valides
+ * et sont redirigés vers la forme lisible.
+ */
 export default async function SessionPage({ params }: Props) {
-  const [{ id }, supabase, user] = await Promise.all([
+  const [{ slug }, supabase, user] = await Promise.all([
     params,
     createServerClient(),
     getCurrentUser(),
   ])
-  if (!SessionIdSchema.safeParse(id).success) notFound()
-  if (!user) redirect(router.setup(router.session(id)))
+  if (!user) redirect(router.setup(router.session(slug)))
 
-  // Les quatre lectures sont indépendantes : un seul aller-retour de latence.
-  // Sous RLS, un non-participant obtient une session null et repart sur le join.
-  const [session, participants, restaurants, votes] = await Promise.all([
-    getSessionById(supabase, id),
-    getSessionParticipants(supabase, id),
-    getSessionRestaurants(supabase, id),
-    getMyVotes(supabase, id),
+  // Résoudre le code coûte une lecture avant les autres, qui ont besoin de l'id.
+  // Sous RLS, un non-participant ne voit rien : la session revient nulle.
+  const session = await getSessionByParam(supabase, slug)
+  if (!session) notFound()
+  if (session.status === 'closed') redirect(router.sessionResults(session))
+
+  const canonical = router.session(session)
+  if (`/sessions/${slug}` !== canonical) redirect(canonical)
+
+  // Les trois lectures restantes sont indépendantes : un seul aller-retour.
+  const [participants, restaurants, votes] = await Promise.all([
+    getSessionParticipants(supabase, session.id),
+    getSessionRestaurants(supabase, session.id),
+    getMyVotes(supabase, session.id),
   ])
 
-  if (!session) notFound()
-  if (session.status === 'closed') redirect(router.sessionResults(id))
   if (!participants.some((p) => p.profile_id === user.id)) {
-    redirect(router.joinInvite(session.invite_token))
+    redirect(router.joinInvite(session))
   }
 
-  const url = inviteUrl(session.invite_token)
+  const url = inviteUrl(session)
   const isHost = session.host_id === user.id
   const qrSvg = isHost && session.status === 'waiting' ? await qrCodeSvg(url) : null
 

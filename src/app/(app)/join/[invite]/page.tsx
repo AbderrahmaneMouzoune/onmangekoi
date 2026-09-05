@@ -11,18 +11,24 @@ import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { toUserMessage } from '@/lib/errors'
 import { displayPseudo } from '@/lib/format'
+import { parseInviteIdentifier } from '@/lib/share'
 import { cn } from '@/lib/utils'
 import { joinSessionUseCase } from '@/use-cases/join-session'
 
+import type { Session } from '@/data-access/models'
 import type { Metadata } from 'next'
 
 interface Props {
-  params: Promise<{ token: string }>
+  params: Promise<{ invite: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const [{ token }, supabase] = await Promise.all([params, createServerClient()])
-  const preview = await getSessionPreview(supabase, decodeURIComponent(token)).catch(() => null)
+  const [{ invite }, supabase] = await Promise.all([params, createServerClient()])
+  const identifier = parseInviteIdentifier(invite)
+  const preview =
+    identifier.kind === 'invalid'
+      ? null
+      : await getSessionPreview(supabase, identifier.value).catch(() => null)
 
   if (!preview) return { title: 'Invitation' }
 
@@ -38,31 +44,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /**
- * Join direct par lien, code ou QR : idempotent. Sans pseudo, le proxy a
- * envoyé l'invité sur /setup avec ce chemin en `next`, et il revient ici.
+ * Join direct par lien (`/join/dej-du-lundi-7K3M9P`), code ou QR : idempotent.
+ * Sans pseudo, le proxy a envoyé l'invité sur /setup avec ce chemin en `next`,
+ * et il revient ici. Les anciens liens à jeton long restent acceptés.
  */
-export default async function JoinByTokenPage({ params }: Props) {
-  const [{ token: rawToken }, supabase, user] = await Promise.all([
+export default async function JoinByInvitePage({ params }: Props) {
+  const [{ invite }, supabase, user] = await Promise.all([
     params,
     createServerClient(),
     getCurrentUser(),
   ])
-  const identifier = decodeURIComponent(rawToken)
+  if (!user) redirect(router.setup(router.joinInvite(invite)))
 
-  if (!user) redirect(router.setup(router.joinInvite(identifier)))
+  const identifier = parseInviteIdentifier(invite)
 
-  let sessionId: string | null = null
+  let session: Session | null = null
   let errorMessage: string | null = null
   try {
-    const session = await joinSessionUseCase(supabase, identifier)
-    sessionId = session.id
+    session = await joinSessionUseCase(supabase, invite)
   } catch (error) {
     errorMessage = toUserMessage(error, 'Lien invalide ou session introuvable.')
   }
 
-  if (sessionId) redirect(router.session(sessionId))
+  if (session) redirect(router.session(session))
 
-  const preview = await getSessionPreview(supabase, identifier).catch(() => null)
+  const preview =
+    identifier.kind === 'invalid'
+      ? null
+      : await getSessionPreview(supabase, identifier.value).catch(() => null)
 
   return (
     <Shell className="justify-center">

@@ -9,11 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
-import {
-  getOwnedListIdByShare,
-  getSharedListPreview,
-  getSharedListRestaurants,
-} from '@/data-access/lists'
+import { getSharedListPreview, getSharedListRestaurants, ownsSharedList } from '@/data-access/lists'
 import { searchRestaurants } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
 import { countLabel, displayPseudo } from '@/lib/format'
@@ -51,22 +47,20 @@ export default async function SharedListPage({ params }: Props) {
   ])
   const identifier = parseSharedListParam(slug)
   if (identifier.kind === 'invalid') notFound()
-  if (!user) redirect(router.setup(`/l/${slug}`))
+  if (!user) redirect(router.setup(router.sharedList(slug)))
 
   // Quatre lectures indépendantes en parallèle.
-  const [preview, restaurants, initialPage, ownedListId] = await Promise.all([
+  const [preview, restaurants, initialPage, isOwner] = await Promise.all([
     getSharedListPreview(supabase, identifier.value),
     getSharedListRestaurants(supabase, identifier.value),
     searchRestaurants(supabase),
-    getOwnedListIdByShare(supabase, identifier),
+    ownsSharedList(supabase, identifier),
   ])
   if (!preview) notFound()
 
   // Lien canonique lisible (l'ancien token redirige vers la nouvelle forme)
-  const canonical = router.sharedList(preview.share_code, preview.name)
+  const canonical = router.sharedList(preview)
   if (`/l/${slug}` !== canonical) redirect(canonical)
-
-  const isOwner = Boolean(ownedListId)
 
   return (
     <Shell>
@@ -85,11 +79,8 @@ export default async function SharedListPage({ params }: Props) {
         }
       />
 
-      {isOwner && ownedListId && (
-        <Link
-          href={router.list(ownedListId)}
-          className={cn(buttonVariants({ variant: 'outline' }))}
-        >
+      {isOwner && (
+        <Link href={router.list(preview)} className={cn(buttonVariants({ variant: 'outline' }))}>
           C’est ta liste — la modifier
         </Link>
       )}
