@@ -95,6 +95,11 @@ Les fonctions et policies peuvent être validées sur un PostgreSQL 16 nu en rec
 
 Le shim doit rester fidèle sur les points qui piègent : `auth.users.id` n'a **pas** de valeur par défaut — c'est GoTrue qui la fournit —, et `auth.identities` exige `provider_id` et `identity_data`. Un shim plus permissif fait passer un scénario qui échouera sur la vraie base.
 
+Deux pièges de plus, rencontrés en rejouant `supabase/tests` :
+
+- `auth.uid()` lit **deux** réglages, pas un : la claim isolée `request.jwt.claim.sub` et l'objet complet `request.jwt.claims` (`::jsonb ->> 'sub'`). Les scénarios utilisent la seconde forme ; un shim qui n'accepte que la première fait échouer `delete_my_account()` sur `omk:not_authenticated`, ce qui ressemble à un bug du code alors que c'est le shim.
+- `auth.users` porte bien plus que les colonnes utilisées par les migrations : les scénarios insèrent aussi `instance_id`, `aud`, `role`, `updated_at`. Il faut les déclarer, sinon le scénario s'arrête à l'insertion.
+
 ## Entretien
 
 Les visiteurs qui choisissent un pseudo sans jamais lier d'email restent des utilisateurs anonymes : sans purge, `auth.users` et `sessions` grossissent à chaque session. Le nettoyage est automatisé par la migration `20260905120000_purge_inactive_anonymous.sql`.
@@ -145,5 +150,7 @@ bun run db:test
 | Accès et portabilité (art. 20) | `/account/export` → RPC `export_my_data()` | Un JSON assemblé en base, filtré sur `auth.uid()`, téléchargé à la demande                               |
 | Effacement (art. 17)           | « Mon compte » → RPC `delete_my_account()` | Profil, listes et compte auth supprimés ; votes des sessions closes conservés en agrégat mais anonymisés |
 | Information                    | `/legal/privacy`                           | Données conservées, durées, sous-traitants                                                               |
+
+L'export couvre le compte, le profil, les listes, les sessions hébergées, les participations avec leurs votes, et les restaurants ajoutés par la personne (`contributed_restaurants`). **Toute nouvelle colonne rattachée à `auth.uid()` doit y être ajoutée** : c'est ce qu'a demandé `restaurants.created_by`, dont la migration `20260905150000` redéfinit `export_my_data()` pour cette seule clé.
 
 Les deux RPC ne prennent aucun paramètre : leur périmètre est toujours `auth.uid()`. Elles sont `security definer` parce qu'elles touchent `auth.users`, et doivent donc appartenir à un rôle autorisé sur ce schéma — `postgres`, celui qui joue les migrations.
