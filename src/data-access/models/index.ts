@@ -19,7 +19,23 @@ export type ListRestaurant = Tables['list_restaurants']['Row']
 export type SessionStatus = Database['public']['Enums']['session_status']
 
 export type SessionPreview = Functions['session_preview']['Returns'][number]
-export type SessionResultRow = Functions['session_results']['Returns'][number]
+
+/**
+ * Le générateur Supabase ne peut pas connaître la nullabilité des colonnes
+ * d'un `returns table (...)` : la déclaration ne porte aucune information
+ * `NOT NULL`, donc tout en ressort non nul. Ces trois colonnes viennent de
+ * `restaurants`, où elles sont bien nullables, et `session_results` les
+ * remonte telles quelles.
+ *
+ * On rétablit la vérité ici plutôt que dans `database.ts`, qui doit rester
+ * identique à la sortie de `bun run db:types` — c'est ce que vérifie le
+ * workflow « Base de données » en commande `check`.
+ */
+export type SessionResultRow = Omit<
+  Functions['session_results']['Returns'][number],
+  'cuisine_type' | 'description' | 'image_url'
+> &
+  Pick<Restaurant, 'cuisine_type' | 'description' | 'image_url'>
 export type SharedListPreview = Functions['list_by_share_token']['Returns'][number]
 
 /** Participant avec le profil joint (pseudo) */
