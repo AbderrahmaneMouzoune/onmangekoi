@@ -12,9 +12,17 @@ interface CopyButtonProps extends Omit<
   value: string
   label: string
   copiedLabel?: string
+  /** Appelé quand la copie a réellement abouti (mesure d'usage) */
+  onCopied?: () => void
 }
 
-export function CopyButton({ value, label, copiedLabel = 'Copié', ...props }: CopyButtonProps) {
+export function CopyButton({
+  value,
+  label,
+  copiedLabel = 'Copié',
+  onCopied,
+  ...props
+}: CopyButtonProps) {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -27,6 +35,7 @@ export function CopyButton({ value, label, copiedLabel = 'Copié', ...props }: C
     try {
       await navigator.clipboard.writeText(value)
       setCopied(true)
+      onCopied?.()
     } catch {
       // Clipboard indisponible (contexte non sécurisé) : on sélectionne à défaut
       window.prompt('Copie ce lien :', value)

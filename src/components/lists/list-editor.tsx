@@ -18,6 +18,7 @@ import {
   renameListAction,
   setListCollaborativeAction,
 } from '@/lib/actions/lists'
+import { captureEvent } from '@/lib/analytics/client'
 import { groupCode } from '@/lib/crockford'
 import { countLabel } from '@/lib/format'
 import { LIST_NAME_MAX } from '@/lib/schemas/list'
@@ -139,6 +140,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
             label="Copier le lien"
             variant="outline"
             className="sm:flex-1"
+            onCopied={() => captureEvent('list_shared', { method: 'link_copy' })}
           />
           <button
             type="button"

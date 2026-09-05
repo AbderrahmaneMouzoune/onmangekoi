@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { createSessionAction } from '@/lib/actions/sessions'
+import { rememberSessionEntry } from '@/lib/analytics/handoff'
 import { countLabel } from '@/lib/format'
 import { SESSION_NAME_MAX } from '@/lib/schemas/session'
 import { cn } from '@/lib/utils'
@@ -42,8 +43,15 @@ export function CreateSessionForm({ lists, initialPage, defaultName }: CreateSes
     setSelectedListIds((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]))
   }
 
+  // L'action redirige : elle ne rend jamais la main. On note l'intention ici,
+  // la page de session la transforme en `session_created` — et seulement si la
+  // création a bien abouti.
+  function rememberCreation() {
+    rememberSessionEntry({ kind: 'created', listCount: selectedListIds.length })
+  }
+
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form action={formAction} onSubmit={rememberCreation} className="flex flex-col gap-6">
       {selectedListIds.map((id) => (
         <input key={id} type="hidden" name="listIds" value={id} />
       ))}

@@ -5,6 +5,7 @@ import { LinkEmailForm } from '@/components/account/link-email-form'
 import { SetPasswordForm } from '@/components/account/set-password-form'
 import { SignOutButton } from '@/components/account/sign-out-button'
 import { UpdatePseudoForm } from '@/components/account/update-pseudo-form'
+import { AnalyticsPreference } from '@/components/analytics/analytics-preference'
 import { PageHeader } from '@/components/layout/page-header'
 import { Shell } from '@/components/layout/shell'
 import { Avatar } from '@/components/ui/avatar'
@@ -119,6 +120,8 @@ export default async function AccountPage({ searchParams }: Props) {
           </li>
         </ol>
       </section>
+
+      <AnalyticsPreference />
 
       <div className="flex justify-center pt-2">
         <SignOutButton isAnonymous={isAnonymous} />

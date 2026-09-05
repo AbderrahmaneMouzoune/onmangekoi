@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { FinishedPanel } from '@/components/session/finished-panel'
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
@@ -9,6 +9,8 @@ import { VoteDeck } from '@/components/session/vote-deck'
 import { WaitingRoom } from '@/components/session/waiting-room'
 import { router } from '@/config/router.config'
 import { useSessionRoom } from '@/hooks/use-session-room'
+import { captureEvent } from '@/lib/analytics/client'
+import { markOnce, takeSessionEntry } from '@/lib/analytics/handoff'
 
 import type {
   ParticipantWithProfile,
@@ -54,6 +56,46 @@ export function SessionRoom({
     myVotedIds.length >= restaurants.length && restaurants.length > 0
   )
   const meFinished = finishedLocally || Boolean(me?.has_finished_voting)
+
+  // Entrée en session : l'intention posée avant le redirect serveur dit d'où
+  // vient la personne. Sans intention, c'est un lien d'invitation ouvert
+  // directement — sauf pour le host, qui ne « rejoint » pas sa propre session.
+  useEffect(() => {
+    if (!markOnce(`entry.${initialSession.id}`)) return
+
+    const entry = takeSessionEntry()
+    if (entry?.kind === 'created') {
+      captureEvent('session_created', {
+        session_id: initialSession.id,
+        restaurant_count: restaurants.length,
+        list_count: entry.listCount,
+      })
+      return
+    }
+
+    const via = entry?.kind === 'joined' ? entry.via : 'link'
+    if (entry || !isHost) {
+      captureEvent('session_joined', { session_id: initialSession.id, via })
+    }
+  }, [initialSession.id, isHost, restaurants.length])
+
+  const closeTracked = useRef(false)
+
+  useEffect(() => {
+    if (session.status !== 'closed' || closeTracked.current) return
+    closeTracked.current = true
+
+    // Personne n'annonce la clôture : elle vient de la base dès que tout le
+    // monde a fini, sinon c'est le host qui l'a forcée.
+    const everyoneFinished =
+      participants.length > 0 && participants.every((p) => p.has_finished_voting)
+    captureEvent('session_closed', {
+      session_id: session.id,
+      reason: everyoneFinished ? 'auto' : 'host',
+      participant_count: participants.length,
+      restaurant_count: restaurants.length,
+    })
+  }, [session.status, session.id, participants, restaurants.length])
 
   useEffect(() => {
     if (session.status === 'closed') {

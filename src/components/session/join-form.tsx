@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { router } from '@/config/router.config'
 import { joinSessionAction } from '@/lib/actions/sessions'
+import { rememberSessionEntry } from '@/lib/analytics/handoff'
 import { parseInviteIdentifier } from '@/lib/share'
 
 export function JoinForm({ initialError }: { initialError?: string }) {
@@ -28,6 +29,7 @@ export function JoinForm({ initialError }: { initialError?: string }) {
         return
       }
       setScanning(false)
+      rememberSessionEntry({ kind: 'joined', via: 'scan' })
       navigation.push(router.joinInvite(identifier.value))
     },
     [navigation]
@@ -60,7 +62,11 @@ export function JoinForm({ initialError }: { initialError?: string }) {
         <span className="h-px flex-1 bg-line" />
       </div>
 
-      <form action={formAction} className="flex flex-col gap-4">
+      <form
+        action={formAction}
+        onSubmit={() => rememberSessionEntry({ kind: 'joined', via: 'code' })}
+        className="flex flex-col gap-4"
+      >
         <div className="flex flex-col gap-2">
           <Label htmlFor="identifier">Code ou lien d’invitation</Label>
           <Input
