@@ -1,6 +1,6 @@
 import { cache } from 'react'
 
-import { parseListParam } from '@/lib/share'
+import { parseListParam } from '@/domain/share'
 
 import type {
   List,

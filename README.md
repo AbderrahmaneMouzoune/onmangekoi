@@ -103,9 +103,10 @@ src/config/              router.config.ts : préfixes protégés, longueurs de c
 src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], account, auth)
 src/components/          ui/ (primitives) · layout/ · session/ · lists/ · account/ · restaurants/
 src/data-access/         requêtes Supabase, un module par table + models/ (types générés)
-src/use-cases/           logique métier composée (créer / rejoindre / onboarding)
-src/lib/actions/         Server Actions (validation Zod, auth, erreurs typées)
-src/lib/                 schémas, Crockford (`codeFromSegment`), share/invite (parsing), site (URL absolues), qr, erreurs
+src/use-cases/           logique métier composée (créer / rejoindre / voter / onboarding)
+src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, schemas/ (Zod)
+src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
+src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results)
 e2e/                     Playwright

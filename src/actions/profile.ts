@@ -5,12 +5,12 @@ import { redirect } from 'next/navigation'
 
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
-import { updatePseudo } from '@/data-access/profile'
 import { createServerClient } from '@/data-access/supabase/server'
-import { toUserMessage } from '@/lib/errors'
+import { toUserMessage } from '@/domain/errors'
+import { SetupProfileSchema, UpdatePseudoSchema } from '@/domain/schemas/profile'
 import { sanitizeNextPath } from '@/lib/routing'
-import { SetupProfileSchema, UpdatePseudoSchema } from '@/lib/schemas/profile'
 import { setupProfileUseCase } from '@/use-cases/setup-profile'
+import { updatePseudoUseCase } from '@/use-cases/update-pseudo'
 
 import type { FormState } from './types'
 
@@ -44,10 +44,7 @@ export async function updatePseudoAction(_prev: FormState, formData: FormData): 
   if (!user) return { error: 'Tu dois d’abord choisir un pseudo.' }
 
   try {
-    await Promise.all([
-      updatePseudo(supabase, user.id, parsed.data.pseudo),
-      supabase.auth.updateUser({ data: { pseudo: parsed.data.pseudo } }),
-    ])
+    await updatePseudoUseCase(supabase, user.id, parsed.data.pseudo)
   } catch (error) {
     return { error: toUserMessage(error, 'Impossible de modifier le pseudo.') }
   }

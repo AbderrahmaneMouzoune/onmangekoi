@@ -1,6 +1,6 @@
 import { cache } from 'react'
 
-import { parseSessionParam } from '@/lib/share'
+import { parseSessionParam } from '@/domain/share'
 
 import type {
   ParticipantWithProfile,
@@ -124,6 +124,22 @@ export async function getSessionParticipants(
     .order('joined_at', { ascending: true })
   if (error) throw error
   return data
+}
+
+/** Le participant courant a-t-il terminé ses votes ? (RLS : sa propre ligne) */
+export async function hasFinishedVoting(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  profileId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('session_participants')
+    .select('has_finished_voting')
+    .eq('session_id', sessionId)
+    .eq('profile_id', profileId)
+    .maybeSingle()
+  if (error) throw error
+  return data?.has_finished_voting ?? false
 }
 
 export async function getSessionRestaurants(

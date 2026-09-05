@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { AppError } from '@/lib/errors'
+import { AppError } from '@/domain/errors'
 
 import { createSessionUseCase } from './create-session'
 

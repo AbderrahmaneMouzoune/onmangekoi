@@ -3,13 +3,13 @@
 import { RiCheckDoubleLine, RiFlagLine } from '@remixicon/react'
 import { useState, useTransition } from 'react'
 
+import { closeSessionAction } from '@/actions/sessions'
 import { ConnectionIndicator } from '@/components/session/connection-indicator'
 import { ParticipantList } from '@/components/session/participant-list'
 import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
 import { TwoStepButton } from '@/components/ui/two-step-button'
-import { closeSessionAction } from '@/lib/actions/sessions'
 
 import type { ParticipantWithProfile, Session } from '@/data-access/models'
 import type { ConnectionState } from '@/hooks/use-session-room'

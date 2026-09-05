@@ -73,8 +73,19 @@ describe('parseListParam', () => {
 })
 
 describe('parseInviteIdentifier', () => {
-  it('should normalize a short code', () => {
-    expect(parseInviteIdentifier('a3f 9bo')).toEqual({ kind: 'code', value: 'A3F9B0' })
+  it('should normalize a short code whatever the case and separators', () => {
+    expect(parseInviteIdentifier('a3f9b2')).toEqual({ kind: 'code', value: 'A3F9B2' })
+    expect(parseInviteIdentifier('  A3F 9B2 ')).toEqual({ kind: 'code', value: 'A3F9B2' })
+    expect(parseInviteIdentifier('A3F-9B2')).toEqual({ kind: 'code', value: 'A3F9B2' })
+  })
+
+  it('should read confusable letters as digits', () => {
+    expect(parseInviteIdentifier('a3f9bo')).toEqual({ kind: 'code', value: 'A3F9B0' })
+    expect(parseInviteIdentifier('IL0O12')).toEqual({ kind: 'code', value: '110012' })
+  })
+
+  it('should still accept a legacy 32-hex token', () => {
+    expect(parseInviteIdentifier(TOKEN.toUpperCase())).toEqual({ kind: 'token', value: TOKEN })
   })
 
   it('should extract a code or token from a pasted link', () => {
@@ -82,14 +93,21 @@ describe('parseInviteIdentifier', () => {
       kind: 'token',
       value: TOKEN,
     })
+    expect(parseInviteIdentifier(`http://localhost:3000/join/${TOKEN}?utm=x#top`)).toEqual({
+      kind: 'token',
+      value: TOKEN,
+    })
     expect(parseInviteIdentifier('https://onmangekoi.app/join/A3F9B2?x=1')).toEqual({
       kind: 'code',
       value: 'A3F9B2',
     })
+    expect(parseInviteIdentifier('/join/A3F9B2')).toEqual({ kind: 'code', value: 'A3F9B2' })
   })
 
   it('should reject malformed input', () => {
+    expect(parseInviteIdentifier('').kind).toBe('invalid')
     expect(parseInviteIdentifier('ABC').kind).toBe('invalid')
+    expect(parseInviteIdentifier('ZZZZZZZ').kind).toBe('invalid')
     expect(parseInviteIdentifier('https://onmangekoi.app/').kind).toBe('invalid')
   })
 })
