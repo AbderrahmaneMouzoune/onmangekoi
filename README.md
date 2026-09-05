@@ -116,7 +116,7 @@ src/config/              router.config.ts : préfixes protégés, longueurs de c
 src/app/                 routes App Router (setup, login, join, sessions, lists, l/[slug], account, auth, api/places)
 src/components/          ui/ (primitives) · layout/ · session/ · lists/ · account/ · restaurants/
 src/data-access/         requêtes Supabase (un module par table) + places.ts (Google) + models/
-src/use-cases/           logique métier composée (créer / rejoindre / voter / onboarding)
+src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
 src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, places, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
 src/lib/                 utilitaires transverses : Crockford, slug, format, routing, site (URL absolues), qr, ttl-cache

@@ -1,11 +1,10 @@
 'use server'
 
 import { getCurrentUser } from '@/data-access/auth'
-import { getPlaceDetails } from '@/data-access/places'
-import { upsertRestaurantFromPlace } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
 import { AppError, toUserMessage } from '@/domain/errors'
 import { ImportPlaceSchema } from '@/domain/schemas/place'
+import { importPlaceUseCase } from '@/use-cases/import-place'
 
 import type { ActionResult } from './types'
 import type { Restaurant } from '@/data-access/models'
@@ -26,10 +25,7 @@ export async function importPlaceAction(placeId: string): Promise<ActionResult<R
   if (!user) return { ok: false, error: 'Tu dois d’abord choisir un pseudo.' }
 
   try {
-    const place = await getPlaceDetails(parsed.data.placeId)
-    if (!place) return { ok: false, error: 'Ce lieu n’existe plus chez Google.' }
-
-    return { ok: true, data: await upsertRestaurantFromPlace(supabase, place) }
+    return { ok: true, data: await importPlaceUseCase(supabase, parsed.data.placeId) }
   } catch (error) {
     // Une `AppError` porte déjà un message lisible (clé absente, Google en
     // vrac) ; tout le reste retombe sur le libellé générique.
