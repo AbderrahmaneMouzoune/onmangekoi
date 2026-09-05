@@ -41,12 +41,22 @@ export const env = createEnv({
     NEXT_PUBLIC_SUPABASE_URL: z.url(),
     /** Nom actuel de la clé publique Supabase ; l'ancien `NEXT_PUBLIC_SUPABASE_ANON_KEY` reste accepté. */
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+    /**
+     * Clé projet PostHog. **Optionnelle** : sans elle, aucune mesure n'est
+     * chargée et aucun bandeau de consentement ne s'affiche (tests, CI,
+     * previews, développement local).
+     */
+    NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1).optional(),
+    /** Point d'ingestion PostHog — région européenne par défaut (RGPD). */
+    NEXT_PUBLIC_POSTHOG_HOST: z.url().default('https://eu.i.posthog.com'),
   },
   runtimeEnv: {
     SITE_URL: resolveSiteUrl(),
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   },
   emptyStringAsUndefined: true,
 })

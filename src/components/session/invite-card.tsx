@@ -1,13 +1,19 @@
 'use client'
 
 import { RiShareForwardLine } from '@remixicon/react'
+import { useEffect } from 'react'
 
 import { InviteCode } from '@/components/session/invite-code'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/copy-button'
 import { useCanShare } from '@/hooks/use-can-share'
+import { captureEvent } from '@/lib/analytics/client'
+import { markOnce } from '@/lib/analytics/handoff'
+
+import type { ShareMethod } from '@/lib/analytics/events'
 
 interface InviteCardProps {
+  sessionId: string
   inviteCode: string
   /** URL absolue calculée côté serveur (variables Vercel ou NEXT_PUBLIC_SITE_URL) */
   inviteUrl: string
@@ -16,8 +22,26 @@ interface InviteCardProps {
   qrSvg: string | null
 }
 
-export function InviteCard({ inviteCode, inviteUrl, sessionName, qrSvg }: InviteCardProps) {
+export function InviteCard({
+  sessionId,
+  inviteCode,
+  inviteUrl,
+  sessionName,
+  qrSvg,
+}: InviteCardProps) {
   const canShare = useCanShare()
+
+  function trackShare(method: ShareMethod) {
+    captureEvent('invite_shared', { session_id: sessionId, method })
+  }
+
+  // Le QR code n'a pas d'action dédiée : son affichage vaut partage, compté
+  // une seule fois par session pour ne pas gonfler à chaque rendu.
+  useEffect(() => {
+    if (!qrSvg) return
+    if (!markOnce(`qr.${sessionId}`)) return
+    captureEvent('invite_shared', { session_id: sessionId, method: 'qr' })
+  }, [qrSvg, sessionId])
 
   async function share() {
     try {
@@ -26,6 +50,7 @@ export function InviteCard({ inviteCode, inviteUrl, sessionName, qrSvg }: Invite
         text: 'On vote pour choisir où manger, ça prend deux minutes.',
         url: inviteUrl,
       })
+      trackShare('native_share')
     } catch {
       // Partage annulé par l'utilisateur
     }
@@ -66,8 +91,18 @@ export function InviteCard({ inviteCode, inviteUrl, sessionName, qrSvg }: Invite
       )}
 
       <div className="grid grid-cols-2 gap-2">
-        <CopyButton value={inviteCode} label="Copier le code" variant="chalk" />
-        <CopyButton value={inviteUrl} label="Copier le lien" variant="chalk" />
+        <CopyButton
+          value={inviteCode}
+          label="Copier le code"
+          variant="chalk"
+          onCopied={() => trackShare('code_copy')}
+        />
+        <CopyButton
+          value={inviteUrl}
+          label="Copier le lien"
+          variant="chalk"
+          onCopied={() => trackShare('link_copy')}
+        />
         {canShare && (
           <Button type="button" variant="default" className="col-span-2" onClick={share}>
             <RiShareForwardLine aria-hidden="true" />
