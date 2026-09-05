@@ -533,6 +533,8 @@ export type Database = {
       }
       generate_invite_code: { Args: never; Returns: string }
       generate_share_code: { Args: never; Returns: string }
+      is_geo_point: { Args: { p_value: Json }; Returns: boolean }
+      is_opening_hours: { Args: { p_value: Json }; Returns: boolean }
       is_session_host: { Args: { p_session_id: string }; Returns: boolean }
       is_session_participant: {
         Args: { p_session_id: string }
