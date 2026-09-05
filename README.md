@@ -95,6 +95,7 @@ Sans clé, l'onglet n'apparaît pas et le reste de l'app fonctionne à l'identiq
 | Temps réel | Supabase Realtime (Postgres Changes, resync au retour au premier plan)                   |
 | Auth       | Utilisateur anonyme créé au choix du pseudo · email/mot de passe optionnel               |
 | Validation | Zod 4 · `@t3-oss/env-nextjs`                                                             |
+| Mesure     | PostHog (EU), après consentement — désactivée sans clé                                   |
 | Tests      | Vitest 5 + Testing Library · Playwright                                                  |
 | Qualité    | ESLint 9 (flat) · Prettier · Husky · commitlint · CI GitHub Actions                      |
 
@@ -132,6 +133,7 @@ src/use-cases/           logique métier composée (créer / rejoindre / voter /
 src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, places, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr, ttl-cache
+src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results), purge
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
@@ -193,10 +195,19 @@ Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adress
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | clé _publishable_ (l'ancienne _anon_ est acceptée aussi) |
 | `NEXT_PUBLIC_SITE_URL`                 | optionnel — surcharge explicite (domaine personnalisé)   |
 | `GOOGLE_PLACES_API_KEY`                | optionnel — active l'import Google (serveur uniquement)  |
+| `NEXT_PUBLIC_POSTHOG_KEY`              | optionnel — sans elle, aucune mesure n'est chargée       |
+| `NEXT_PUBLIC_POSTHOG_HOST`             | optionnel — `https://eu.i.posthog.com` par défaut        |
 
 L'URL publique (`env.SITE_URL`, côté serveur) est résolue dans cet ordre : `NEXT_PUBLIC_SITE_URL` si définie et non locale, sinon les variables système Vercel — `VERCEL_PROJECT_PRODUCTION_URL` en production, `VERCEL_BRANCH_URL` / `VERCEL_URL` en preview — et enfin `http://localhost:3000` en développement. Un `localhost` copié par erreur dans les variables Vercel est ignoré.
 
 Le build échoue volontairement si `NEXT_PUBLIC_SUPABASE_URL` ou la clé manque (`src/env.ts`) : mieux vaut un build rouge qu'une app déployée qui ne parle à aucune base.
+
+## Vie privée et mesure d'audience
+
+- La mesure est **doublement conditionnée** : sans `NEXT_PUBLIC_POSTHOG_KEY`, le module est inerte ; sans consentement explicite, le script PostHog n'est même pas téléchargé — donc aucun cookie, aucun identifiant, aucune requête.
+- Le bandeau propose « Refuser » et « Accepter » au même niveau, et le choix se révise depuis **Mon compte**.
+- **Aucune donnée personnelle ne sort** : ni pseudo, ni email, ni nom de liste ou de restaurant. Les URL sont masquées avant envoi (`/sessions/[code]`, `/join/[code]`, `/l/[code]`), car le code qu'elles portent suffirait à rejoindre une session ou à lire une liste. Le seul identifiant transmis est l'UUID opaque du profil.
+- Le détail — catalogue d'événements, masquage, entonnoirs à construire — est dans [`docs/analytics.md`](docs/analytics.md).
 
 ## Roadmap
 

@@ -24,8 +24,10 @@ cp .env.local.example .env.local
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | la _publishable key_ (ou l'ancienne _anon key_)                                         |
 | `NEXT_PUBLIC_SITE_URL`                 | optionnelle — `http://localhost:3000` par défaut ; déduite des variables Vercel en prod |
 | `GOOGLE_PLACES_API_KEY`                | optionnelle — active l'onglet « Google » du sélecteur de restos (serveur uniquement)    |
+| `NEXT_PUBLIC_POSTHOG_KEY`              | optionnelle — **à laisser vide en local** : sans elle, aucune mesure n'est chargée      |
+| `NEXT_PUBLIC_POSTHOG_HOST`             | optionnelle — `https://eu.i.posthog.com` par défaut                                     |
 
-Les variables sont validées au démarrage (`src/env.ts`) : une valeur manquante fait échouer l'app immédiatement plutôt que silencieusement.
+Les variables sont validées au démarrage (`src/env.ts`) : une valeur manquante fait échouer l'app immédiatement plutôt que silencieusement. Les deux variables PostHog font exception — elles sont optionnelles, et leur absence désactive complètement la mesure (voir [`analytics.md`](analytics.md)).
 
 ## 3) Démarrer Supabase local
 

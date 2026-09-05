@@ -1,6 +1,9 @@
 import { Bricolage_Grotesque, Geist_Mono, Instrument_Sans } from 'next/font/google'
+import { Suspense } from 'react'
 
 import './globals.css'
+import { AnalyticsIdentity } from '@/components/analytics/analytics-identity'
+import { AnalyticsProvider } from '@/components/analytics/analytics-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SITE_NAME, SITE_TAGLINE, siteUrl } from '@/lib/site'
 import { cn } from '@/lib/utils'
@@ -72,6 +75,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     >
       <body className="flex min-h-svh flex-col">
         <ThemeProvider>{children}</ThemeProvider>
+        <AnalyticsProvider />
+        <Suspense fallback={null}>
+          <AnalyticsIdentity />
+        </Suspense>
       </body>
     </html>
   )

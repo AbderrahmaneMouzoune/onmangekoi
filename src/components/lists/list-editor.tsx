@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { TwoStepButton } from '@/components/ui/two-step-button'
 import { LIST_NAME_MAX } from '@/domain/schemas/list'
+import { captureEvent } from '@/lib/analytics/client'
 import { groupCode } from '@/lib/crockford'
 import { countLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -139,6 +140,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
             label="Copier le lien"
             variant="outline"
             className="sm:flex-1"
+            onCopied={() => captureEvent('list_shared', { method: 'link_copy' })}
           />
           <button
             type="button"
