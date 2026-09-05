@@ -159,9 +159,8 @@ export default async function AccountPage({ searchParams }: Props) {
         <Separator className="my-1" />
 
         <p className="text-sm text-muted-foreground">
-          La suppression est immédiate et définitive : profil, pseudo, email et listes
-          disparaissent. Les votes déjà comptés dans une session terminée restent dans le
-          classement, mais plus rien ne les relie à toi.
+          La suppression est immédiate et définitive. Une confirmation à recopier détaille ce qui
+          disparaît avant de lancer quoi que ce soit.
         </p>
         <DeleteAccountButton />
       </section>
