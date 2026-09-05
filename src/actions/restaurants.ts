@@ -2,8 +2,7 @@
 
 import { z } from 'zod'
 
-import { searchRestaurants, type RestaurantPage } from '@/data-access/restaurants'
-import { createServerClient } from '@/data-access/supabase/server'
+import { getRestaurantCatalogPage, type RestaurantPage } from '@/data-access/restaurants'
 
 import type { ActionResult } from './types'
 
@@ -12,6 +11,10 @@ const SearchSchema = z.object({
   offset: z.number().int().min(0).max(10_000).default(0),
 })
 
+/**
+ * Recherche du `RestaurantPicker`. Le catalogue est public : la lecture passe
+ * par le cache partagé, donc une même recherche ne touche la base qu'une fois.
+ */
 export async function searchRestaurantsAction(input: {
   query?: string
   offset?: number
@@ -19,9 +22,8 @@ export async function searchRestaurantsAction(input: {
   const parsed = SearchSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Recherche invalide' }
 
-  const supabase = await createServerClient()
   try {
-    const page = await searchRestaurants(supabase, parsed.data)
+    const page = await getRestaurantCatalogPage(parsed.data)
     return { ok: true, data: page }
   } catch {
     return { ok: false, error: 'La recherche a échoué. Réessaie.' }
