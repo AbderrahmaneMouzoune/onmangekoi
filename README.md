@@ -129,6 +129,8 @@ Le build échoue volontairement si `NEXT_PUBLIC_SUPABASE_URL` ou la clé manque 
 
 Les évolutions envisagées (import Google Places, filtres, anti-fatigue, notifications, PWA, i18n, RGPD…) sont suivies dans les [issues GitHub](https://github.com/AbderrahmaneMouzoune/onmangekoi/issues).
 
+Leur classement par priorité et leur version cible (v1.1 → v2.0) sont dans [`docs/roadmap.md`](docs/roadmap.md).
+
 ## Hors scope (v1)
 
 - Réservation / intégration TheFork, OpenTable
