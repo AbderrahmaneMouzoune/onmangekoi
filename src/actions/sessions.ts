@@ -36,16 +36,15 @@ export async function createSessionAction(
   const { supabase, user } = await requireUser()
   if (!user) return { error: 'Tu dois d’abord choisir un pseudo.' }
 
-  let sessionId: string
+  let session: Session
   try {
-    const session = await createSessionUseCase(supabase, parsed.data)
-    sessionId = session.id
+    session = await createSessionUseCase(supabase, parsed.data)
   } catch (error) {
     return { error: toUserMessage(error) }
   }
 
   revalidatePath(router.home())
-  redirect(router.session(sessionId))
+  redirect(router.session(session))
 }
 
 export async function joinSessionAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -57,16 +56,15 @@ export async function joinSessionAction(_prev: FormState, formData: FormData): P
   const { supabase, user } = await requireUser()
   if (!user) return { error: 'Tu dois d’abord choisir un pseudo.' }
 
-  let sessionId: string
+  let session: Session
   try {
-    const session = await joinSessionUseCase(supabase, parsed.data.identifier)
-    sessionId = session.id
+    session = await joinSessionUseCase(supabase, parsed.data.identifier)
   } catch (error) {
     return { error: toUserMessage(error) }
   }
 
   revalidatePath(router.home())
-  redirect(router.session(sessionId))
+  redirect(router.session(session))
 }
 
 export async function launchSessionAction(sessionId: string): Promise<ActionResult<Session>> {
@@ -78,7 +76,7 @@ export async function launchSessionAction(sessionId: string): Promise<ActionResu
 
   try {
     const session = await launchSession(supabase, id.data)
-    revalidatePath(router.session(id.data))
+    revalidatePath(router.session(session))
     return { ok: true, data: session }
   } catch (error) {
     return { ok: false, error: toUserMessage(error) }
@@ -94,7 +92,8 @@ export async function closeSessionAction(sessionId: string): Promise<ActionResul
 
   try {
     const session = await closeSession(supabase, id.data)
-    revalidatePath(router.session(id.data))
+    revalidatePath(router.session(session))
+    revalidatePath(router.sessionResults(session))
     return { ok: true, data: session }
   } catch (error) {
     return { ok: false, error: toUserMessage(error) }

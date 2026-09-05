@@ -31,3 +31,19 @@ export function groupCode(code: string, size: number, separator = '-'): string {
   for (let i = 0; i < clean.length; i += size) groups.push(clean.slice(i, i + size))
   return groups.join(separator)
 }
+
+/**
+ * Code lu depuis un segment d'URL, ou `null` s'il n'y en a pas.
+ * La saisie humaine est tolérée (casse, séparateurs, I/L → 1, O → 0), et un
+ * ancien lien décoré d'un slug (`restos-du-bureau-H4V2Q8ZX0M`) reste lisible :
+ * seul le code final compte.
+ */
+export function codeFromSegment(segment: string, length: number): string | null {
+  const raw = segment.trim()
+
+  const whole = normalizeCrockford(raw)
+  if (isCrockford(whole, length)) return whole
+
+  const tail = normalizeCrockford(raw.split('-').at(-1) ?? '')
+  return isCrockford(tail, length) ? tail : null
+}

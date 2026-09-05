@@ -10,12 +10,12 @@ import { countLabel, displayPseudo } from '@/lib/format'
 import type { Metadata } from 'next'
 
 interface Props {
-  params: Promise<{ slug: string }>
+  params: Promise<{ code: string }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const [{ slug }, supabase] = await Promise.all([params, createServerClient()])
-  const identifier = parseSharedListParam(slug)
+  const [{ code }, supabase] = await Promise.all([params, createServerClient()])
+  const identifier = parseSharedListParam(code)
   if (identifier.kind === 'invalid') return { title: 'Liste partagée' }
   const preview = await getSharedListPreview(supabase, identifier.value).catch(() => null)
   if (!preview) return { title: 'Liste partagée' }
@@ -27,8 +27,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /**
- * Liste partagée : `/l/restos-du-bureau-7K3M9P2QWX`. Le slug est décoratif,
- * seul le code compte ; les anciens liens `/l/<token 32 hex>` restent valides.
+ * Liste partagée : `/l/7K3M9P2QWX`. Les anciens liens — décorés d'un slug
+ * (`/l/restos-du-bureau-7K3M9P2QWX`) ou à jeton 32 hex — restent valides et
+ * sont redirigés vers cette forme.
  */
 export default function SharedListPage({ params }: Props) {
   return (

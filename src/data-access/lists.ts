@@ -1,5 +1,7 @@
 import { cache } from 'react'
 
+import { parseListParam } from '@/domain/share'
+
 import type {
   List,
   ListSummary,
@@ -27,27 +29,58 @@ export async function getListsByOwner(
   }))
 }
 
+async function findListWithRestaurants(
+  supabase: SupabaseClient<Database>,
+  column: 'id' | 'share_code',
+  value: string
+): Promise<ListWithRestaurants | null> {
+  const { data, error } = await supabase
+    .from('lists')
+    .select('*, list_restaurants(added_at, restaurants(*))')
+    .eq(column, value)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+
+  const { list_restaurants, ...list } = data
+  const restaurants = [...list_restaurants]
+    .sort((a, b) => a.added_at.localeCompare(b.added_at))
+    .map((row) => row.restaurants)
+    .filter((restaurant): restaurant is Restaurant => restaurant !== null)
+
+  return { ...list, restaurants }
+}
+
 /** Liste avec ses restaurants — mémoïsée par requête (page + métadonnées). */
 export const getListWithRestaurants = cache(
+  async (supabase: SupabaseClient<Database>, listId: string): Promise<ListWithRestaurants | null> =>
+    findListWithRestaurants(supabase, 'id', listId)
+)
+
+/** Idem, par code de partage : c'est lui qui identifie la liste dans l'URL. */
+export const getListByShareCode = cache(
   async (
     supabase: SupabaseClient<Database>,
-    listId: string
+    shareCode: string
+  ): Promise<ListWithRestaurants | null> =>
+    findListWithRestaurants(supabase, 'share_code', shareCode)
+)
+
+/**
+ * Liste visée par un paramètre d'URL : son code de partage aujourd'hui, un
+ * uuid pour les liens d'avant. La RLS ne rend visible que les listes du
+ * propriétaire, comme pour une lecture par id.
+ */
+export const getListByParam = cache(
+  async (
+    supabase: SupabaseClient<Database>,
+    param: string
   ): Promise<ListWithRestaurants | null> => {
-    const { data, error } = await supabase
-      .from('lists')
-      .select('*, list_restaurants(added_at, restaurants(*))')
-      .eq('id', listId)
-      .maybeSingle()
-    if (error) throw error
-    if (!data) return null
-
-    const { list_restaurants, ...list } = data
-    const restaurants = [...list_restaurants]
-      .sort((a, b) => a.added_at.localeCompare(b.added_at))
-      .map((row) => row.restaurants)
-      .filter((restaurant): restaurant is Restaurant => restaurant !== null)
-
-    return { ...list, restaurants }
+    const identifier = parseListParam(param)
+    if (identifier.kind === 'invalid') return null
+    return identifier.kind === 'id'
+      ? getListWithRestaurants(supabase, identifier.value)
+      : getListByShareCode(supabase, identifier.value)
   }
 )
 
@@ -108,13 +141,20 @@ export async function createList(
   return data
 }
 
+/** Renvoie la ligne à jour : son nom et son code composent l'URL lisible. */
 export async function updateList(
   supabase: SupabaseClient<Database>,
   listId: string,
   patch: { name?: string; is_collaborative?: boolean }
-): Promise<void> {
-  const { error } = await supabase.from('lists').update(patch).eq('id', listId)
+): Promise<List> {
+  const { data, error } = await supabase
+    .from('lists')
+    .update(patch)
+    .eq('id', listId)
+    .select()
+    .single()
   if (error) throw error
+  return data
 }
 
 export async function deleteList(
@@ -181,11 +221,11 @@ export async function getSharedListRestaurants(
   return data
 }
 
-/** Id de la liste si elle appartient à l'utilisateur courant (RLS), sinon null. */
-export async function getOwnedListIdByShare(
+/** Vrai si la liste partagée appartient à l'utilisateur courant (vu par la RLS). */
+export async function ownsSharedList(
   supabase: SupabaseClient<Database>,
   identifier: { kind: 'code' | 'token'; value: string }
-): Promise<string | null> {
+): Promise<boolean> {
   const column = identifier.kind === 'code' ? 'share_code' : 'share_token'
   const { data, error } = await supabase
     .from('lists')
@@ -193,7 +233,7 @@ export async function getOwnedListIdByShare(
     .eq(column, identifier.value)
     .maybeSingle()
   if (error) throw error
-  return data?.id ?? null
+  return data !== null
 }
 
 export async function addRestaurantsToSharedList(

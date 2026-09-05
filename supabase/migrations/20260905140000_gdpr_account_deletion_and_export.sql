@@ -37,8 +37,15 @@ alter table public.sessions
 
 -- Les policies comparent `host_id` / `profile_id` à `auth.uid()` : une valeur
 -- nulle rend la comparaison nulle, donc fausse. Aucune n'ouvre d'accès par
--- l'anonymisation ; seule la jointure de `session_preview` doit tolérer un
--- host absent (jointure interne auparavant → aucune ligne renvoyée).
+-- l'anonymisation.
+--
+-- `session_preview` est la seule exception : elle joignait `profiles` en
+-- interne, donc une session dont le host a supprimé son compte ne renvoyait
+-- plus aucune ligne — ni aperçu, ni page d'erreur nommant la session. La
+-- jointure passe en externe et `host_pseudo` devient nul, ce que le type de
+-- retour permet déjà. Le reste du corps est repris tel quel de
+-- `20260905130000_readable_invite_links.sql` : les règles d'ouverture au
+-- visiteur anonyme ne changent pas.
 create or replace function public.session_preview(p_identifier text)
   returns table (
     id uuid,
@@ -72,9 +79,11 @@ as $$
       and s.invite_token = lower(ident.raw)
     )
     or (
-      (select auth.uid()) is not null
-      and ident.compact ~ '^[A-Z0-9]{6}$'
+      ident.compact ~ '^[A-Z0-9]{6}$'
       and s.invite_code in (ident.compact, public.normalize_crockford(ident.compact))
+      -- Connecté : n'importe quel statut (la page d'erreur nomme la session).
+      -- Anonyme : uniquement une session encore ouverte aux arrivées.
+      and ((select auth.uid()) is not null or s.status = 'waiting')
     );
 $$;
 

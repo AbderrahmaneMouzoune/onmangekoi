@@ -266,6 +266,39 @@ select pg_temp.assert(
   'la session en cours se clôture au lieu de rester gelée'
 );
 
+-- ─── L'APERÇU SURVIT À UN HOST SUPPRIMÉ ──────────────────────
+-- `session_preview` joignait `profiles` en interne : une session orpheline
+-- n'y apparaissait plus du tout. La jointure externe doit la rendre, avec un
+-- `host_pseudo` nul — sans rouvrir l'aperçu anonyme au-delà de « waiting ».
+select set_config('request.jwt.claims', '{"sub":"' || :'bob' || '","role":"authenticated"}', true);
+
+create temporary table t_preview as
+select * from public.session_preview(
+  (select invite_code from public.sessions s join t_sessions t on t.id = s.id where t.label = 'closed')
+);
+
+select set_config('request.jwt.claims', '', true);
+
+select pg_temp.assert(
+  (select count(*) from t_preview) = 1 and (select host_pseudo is null from t_preview),
+  'la session orpheline garde son aperçu, sans pseudo de host'
+);
+
+-- Visiteur anonyme : la règle de 20260905130000 ne bouge pas.
+create temporary table t_preview_anon as
+select
+  (select count(*) from public.session_preview(
+     (select invite_code from public.sessions s join t_sessions t on t.id = s.id where t.label = 'voting')
+   )) as closed_session,
+  (select count(*) from public.session_preview(
+     (select invite_token from public.sessions s join t_sessions t on t.id = s.id where t.label = 'voting')
+   )) as by_token;
+
+select pg_temp.assert(
+  (select closed_session = 0 and by_token = 1 from t_preview_anon),
+  'l’aperçu anonyme reste fermé hors « waiting » et ouvert au token long'
+);
+
 -- ─── L'EXPORT NE SORT PAS DE SON PÉRIMÈTRE ───────────────────
 select pg_temp.assert(
   has_function_privilege('authenticated', 'public.export_my_data()', 'execute')

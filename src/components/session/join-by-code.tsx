@@ -10,36 +10,41 @@ import { getCurrentUser } from '@/data-access/auth'
 import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { toUserMessage } from '@/domain/errors'
+import { parseInviteIdentifier } from '@/domain/share'
 import { cn } from '@/lib/utils'
 import { joinSessionUseCase } from '@/use-cases/join-session'
+
+import type { Session } from '@/data-access/models'
 
 /**
  * Inscription effective dans la session. Cette étape *écrit* en base : elle
  * doit rester derrière un `<Suspense>` et n'est jamais mise en cache — seule la
  * coquille « on te fait entrer » est prérendue.
  */
-export async function JoinByToken({ params }: { params: Promise<{ token: string }> }) {
-  const [{ token: rawToken }, supabase, user] = await Promise.all([
+export async function JoinByCode({ params }: { params: Promise<{ code: string }> }) {
+  const [{ code }, supabase, user] = await Promise.all([
     params,
     createServerClient(),
     getCurrentUser(),
   ])
-  const identifier = decodeURIComponent(rawToken)
+  if (!user) redirect(router.setup(router.joinInvite(code)))
 
-  if (!user) redirect(router.setup(router.joinInvite(identifier)))
+  const identifier = parseInviteIdentifier(code)
 
-  let sessionId: string | null = null
+  let session: Session | null = null
   let errorMessage: string | null = null
   try {
-    const session = await joinSessionUseCase(supabase, identifier)
-    sessionId = session.id
+    session = await joinSessionUseCase(supabase, code)
   } catch (error) {
     errorMessage = toUserMessage(error, 'Lien invalide ou session introuvable.')
   }
 
-  if (sessionId) redirect(router.session(sessionId))
+  if (session) redirect(router.session(session))
 
-  const preview = await getSessionPreview(supabase, identifier).catch(() => null)
+  const preview =
+    identifier.kind === 'invalid'
+      ? null
+      : await getSessionPreview(supabase, identifier.value).catch(() => null)
 
   return (
     <EmptyState
@@ -60,7 +65,7 @@ export async function JoinByToken({ params }: { params: Promise<{ token: string 
   )
 }
 
-export function JoinByTokenFallback() {
+export function JoinByCodeFallback() {
   return (
     <div
       aria-busy="true"
