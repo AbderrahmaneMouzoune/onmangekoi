@@ -3,96 +3,134 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-import { updateSessionStatus } from '@/data-access/sessions'
-import { createServerClient } from '@/data-access/supabase'
-import { CreateSessionSchema, JoinSessionSchema } from '@/lib/schemas/session'
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
+import { closeSession, deleteSession, launchSession, leaveSession } from '@/data-access/sessions'
+import { createServerClient } from '@/data-access/supabase/server'
+import { toUserMessage } from '@/lib/errors'
+import { CreateSessionSchema, JoinSessionSchema, SessionIdSchema } from '@/lib/schemas/session'
 import { createSessionUseCase } from '@/use-cases/create-session'
 import { joinSessionUseCase } from '@/use-cases/join-session'
 
-export type SessionActionState = { error: string } | null
+import type { ActionResult, FormState } from './types'
+import type { Session } from '@/data-access/models'
+
+async function requireUser() {
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  return { supabase, user }
+}
 
 export async function createSessionAction(
-  _prevState: SessionActionState,
+  _prev: FormState,
   formData: FormData
-): Promise<{ error: string }> {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) return { error: 'Non authentifié' }
-
+): Promise<FormState> {
   const parsed = CreateSessionSchema.safeParse({
     name: formData.get('name'),
     listIds: formData.getAll('listIds'),
     restaurantIds: formData.getAll('restaurantIds'),
   })
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Formulaire invalide' }
+  }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { error: 'Tu dois d’abord choisir un pseudo.' }
 
   let sessionId: string
   try {
-    const { session } = await createSessionUseCase(user.id, parsed.data)
+    const session = await createSessionUseCase(supabase, parsed.data)
     sessionId = session.id
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Erreur lors de la création' }
+  } catch (error) {
+    return { error: toUserMessage(error) }
   }
 
-  redirect(`/sessions/${sessionId}`)
+  revalidatePath(router.home())
+  redirect(router.session(sessionId))
 }
 
-export async function joinSessionAction(
-  _prevState: SessionActionState,
-  formData: FormData
-): Promise<{ error: string }> {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) return { error: 'Non authentifié' }
-
+export async function joinSessionAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = JoinSessionSchema.safeParse({ identifier: formData.get('identifier') })
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Code invalide' }
+  }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { error: 'Tu dois d’abord choisir un pseudo.' }
 
   let sessionId: string
   try {
-    const { session } = await joinSessionUseCase(user.id, parsed.data.identifier)
+    const session = await joinSessionUseCase(supabase, parsed.data.identifier)
     sessionId = session.id
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Session introuvable ou déjà démarrée' }
+  } catch (error) {
+    return { error: toUserMessage(error) }
   }
 
-  redirect(`/sessions/${sessionId}`)
+  revalidatePath(router.home())
+  redirect(router.session(sessionId))
 }
 
-export async function launchSessionAction(
-  sessionId: string
-): Promise<{ success: true } | { success: false; error: string }> {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+export async function launchSessionAction(sessionId: string): Promise<ActionResult<Session>> {
+  const id = SessionIdSchema.safeParse(sessionId)
+  if (!id.success) return { ok: false, error: 'Session invalide' }
 
-  if (!user) return { success: false, error: 'Non authentifié' }
-
-  const { data: session } = await supabase
-    .from('sessions')
-    .select('host_id, status')
-    .eq('id', sessionId)
-    .single()
-
-  if (!session) return { success: false, error: 'Session introuvable' }
-  if (session.host_id !== user.id) return { success: false, error: 'Réservé au host' }
-  if (session.status !== 'waiting') return { success: false, error: 'La session a déjà démarré' }
+  const { supabase, user } = await requireUser()
+  if (!user) return { ok: false, error: 'Non authentifié' }
 
   try {
-    await updateSessionStatus(supabase, sessionId, 'voting')
-    revalidatePath(`/sessions/${sessionId}`)
-    return { success: true }
-  } catch (err) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : 'Erreur lors du lancement',
-    }
+    const session = await launchSession(supabase, id.data)
+    revalidatePath(router.session(id.data))
+    return { ok: true, data: session }
+  } catch (error) {
+    return { ok: false, error: toUserMessage(error) }
   }
+}
+
+export async function closeSessionAction(sessionId: string): Promise<ActionResult<Session>> {
+  const id = SessionIdSchema.safeParse(sessionId)
+  if (!id.success) return { ok: false, error: 'Session invalide' }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { ok: false, error: 'Non authentifié' }
+
+  try {
+    const session = await closeSession(supabase, id.data)
+    revalidatePath(router.session(id.data))
+    return { ok: true, data: session }
+  } catch (error) {
+    return { ok: false, error: toUserMessage(error) }
+  }
+}
+
+export async function leaveSessionAction(sessionId: string): Promise<ActionResult> {
+  const id = SessionIdSchema.safeParse(sessionId)
+  if (!id.success) return { ok: false, error: 'Session invalide' }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { ok: false, error: 'Non authentifié' }
+
+  try {
+    await leaveSession(supabase, id.data, user.id)
+  } catch (error) {
+    return { ok: false, error: toUserMessage(error) }
+  }
+
+  revalidatePath(router.home())
+  redirect(router.home())
+}
+
+export async function deleteSessionAction(sessionId: string): Promise<ActionResult> {
+  const id = SessionIdSchema.safeParse(sessionId)
+  if (!id.success) return { ok: false, error: 'Session invalide' }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { ok: false, error: 'Non authentifié' }
+
+  try {
+    await deleteSession(supabase, id.data)
+  } catch (error) {
+    return { ok: false, error: toUserMessage(error) }
+  }
+
+  revalidatePath(router.home())
+  redirect(router.home())
 }

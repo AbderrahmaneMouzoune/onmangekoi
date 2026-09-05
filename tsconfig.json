@@ -24,11 +24,14 @@
     }
   },
   "include": [
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "e2e/**/*.ts",
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", ".agents"]
 }

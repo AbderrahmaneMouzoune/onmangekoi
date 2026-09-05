@@ -1,19 +1,22 @@
+import { PageHeader } from '@/components/layout/page-header'
+import { Shell } from '@/components/layout/shell'
 import { JoinForm } from '@/components/session/join-form'
+import { router } from '@/config/router.config'
 
-interface Props {
-  searchParams: Promise<{ error?: string }>
-}
+import type { Metadata } from 'next'
 
-export default async function JoinPage({ searchParams }: Props) {
-  const { error } = await searchParams
+export const metadata: Metadata = { title: 'Rejoindre une session' }
 
+export default function JoinPage() {
   return (
-    <div className="mx-auto max-w-sm space-y-6 p-6">
-      <div className="space-y-1">
-        <h1 className="text-xl font-semibold">Rejoindre une session</h1>
-        <p className="text-sm text-muted-foreground">Entre le code à 6 caractères reçu du host.</p>
-      </div>
-      <JoinForm initialError={error} />
-    </div>
+    <Shell>
+      <PageHeader
+        eyebrow="Rejoindre"
+        title="Scanne ou entre le code"
+        description="Le host te montre son QR code, te dit le code, ou t’envoie le lien."
+        back={{ href: router.home(), label: 'Accueil' }}
+      />
+      <JoinForm />
+    </Shell>
   )
 }

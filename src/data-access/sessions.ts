@@ -1,89 +1,92 @@
-import type { Session, SessionParticipant } from './models'
+import { cache } from 'react'
+
+import type {
+  ParticipantWithProfile,
+  Session,
+  SessionPreview,
+  SessionRestaurantWithRestaurant,
+  SessionResultRow,
+  SessionSummary,
+} from './models'
 import type { Database } from './models/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export type ParticipantWithProfile = SessionParticipant & {
-  profiles: {
-    id: string
-    pseudo: string
-  }
-}
+// ─── Écritures (RPC transactionnelles, règles vérifiées en base) ───
 
 export async function createSession(
   supabase: SupabaseClient<Database>,
-  data: { name: string; hostId: string }
+  input: { name: string; restaurantIds: string[] }
 ): Promise<Session> {
-  const { data: session, error } = await supabase
-    .from('sessions')
-    .insert({ name: data.name, host_id: data.hostId })
-    .select()
-    .single()
+  const { data, error } = await supabase.rpc('create_session', {
+    p_name: input.name,
+    p_restaurant_ids: input.restaurantIds,
+  })
   if (error) throw error
-  return session
+  return data
 }
 
-export async function createSessionRestaurants(
+export async function joinSession(
   supabase: SupabaseClient<Database>,
-  sessionId: string,
-  restaurantIds: string[]
-): Promise<void> {
-  const rows = restaurantIds.map((restaurantId, index) => ({
-    session_id: sessionId,
-    restaurant_id: restaurantId,
-    position: index,
-  }))
-  const { error } = await supabase.from('session_restaurants').insert(rows)
+  identifier: string
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('join_session', { p_identifier: identifier })
   if (error) throw error
+  return data
 }
 
-export async function createHostParticipant(
+export async function launchSession(
+  supabase: SupabaseClient<Database>,
+  sessionId: string
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('launch_session', { p_session_id: sessionId })
+  if (error) throw error
+  return data
+}
+
+export async function closeSession(
+  supabase: SupabaseClient<Database>,
+  sessionId: string
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('close_session', { p_session_id: sessionId })
+  if (error) throw error
+  return data
+}
+
+export async function leaveSession(
   supabase: SupabaseClient<Database>,
   sessionId: string,
   profileId: string
-): Promise<SessionParticipant> {
-  const { data, error } = await supabase
+): Promise<void> {
+  const { error } = await supabase
     .from('session_participants')
-    .insert({ session_id: sessionId, profile_id: profileId })
-    .select()
-    .single()
+    .delete()
+    .eq('session_id', sessionId)
+    .eq('profile_id', profileId)
   if (error) throw error
-  return data
 }
 
-export async function getSessionByToken(
-  supabase: SupabaseClient<Database>,
-  token: string
-): Promise<Session | null> {
-  const { data, error } = await supabase
-    .from('sessions')
-    .select()
-    .eq('invite_token', token)
-    .single()
-  if (error) return null
-  return data
-}
-
-export async function getSessionByCode(
-  supabase: SupabaseClient<Database>,
-  code: string
-): Promise<Session | null> {
-  const { data, error } = await supabase
-    .from('sessions')
-    .select()
-    .eq('invite_code', code.toUpperCase())
-    .single()
-  if (error) return null
-  return data
-}
-
-export async function getSessionById(
+export async function deleteSession(
   supabase: SupabaseClient<Database>,
   sessionId: string
-): Promise<Session | null> {
-  const { data, error } = await supabase.from('sessions').select().eq('id', sessionId).single()
-  if (error) return null
-  return data
+): Promise<void> {
+  const { error } = await supabase.from('sessions').delete().eq('id', sessionId)
+  if (error) throw error
 }
+
+// ─── Lectures (sous RLS : participant uniquement) ───────────────
+
+/** Session par id — mémoïsée par requête : page et `generateMetadata` partagent l'appel. */
+export const getSessionById = cache(
+  async (supabase: SupabaseClient<Database>, sessionId: string): Promise<Session | null> => {
+    const { data, error } = await supabase
+      .from('sessions')
+      .select()
+      .eq('id', sessionId)
+      .maybeSingle()
+    if (error) throw error
+    return data
+  }
+)
 
 export async function getSessionParticipants(
   supabase: SupabaseClient<Database>,
@@ -95,35 +98,55 @@ export async function getSessionParticipants(
     .eq('session_id', sessionId)
     .order('joined_at', { ascending: true })
   if (error) throw error
-  return data as ParticipantWithProfile[]
+  return data
 }
 
-export async function upsertParticipant(
+export async function getSessionRestaurants(
   supabase: SupabaseClient<Database>,
-  sessionId: string,
-  profileId: string
-): Promise<SessionParticipant> {
+  sessionId: string
+): Promise<SessionRestaurantWithRestaurant[]> {
   const { data, error } = await supabase
-    .from('session_participants')
-    .upsert(
-      { session_id: sessionId, profile_id: profileId },
-      { onConflict: 'session_id,profile_id', ignoreDuplicates: false }
-    )
-    .select()
-    .single()
+    .from('session_restaurants')
+    .select('*, restaurants(*)')
+    .eq('session_id', sessionId)
+    .order('position', { ascending: true })
   if (error) throw error
   return data
 }
 
-export async function updateSessionStatus(
+export async function getMySessions(
   supabase: SupabaseClient<Database>,
-  sessionId: string,
-  status: 'voting' | 'closed'
-): Promise<void> {
-  type SessionUpdate = Database['public']['Tables']['sessions']['Update']
-  const update: SessionUpdate = { status }
-  if (status === 'voting') update.launched_at = new Date().toISOString()
-  if (status === 'closed') update.closed_at = new Date().toISOString()
-  const { error } = await supabase.from('sessions').update(update).eq('id', sessionId)
+  limit = 8
+): Promise<SessionSummary[]> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*, session_participants(count)')
+    .order('created_at', { ascending: false })
+    .limit(limit)
   if (error) throw error
+  return data.map(({ session_participants, ...session }) => ({
+    ...session,
+    participant_count: session_participants[0]?.count ?? 0,
+  }))
+}
+
+/** Aperçu par token ou code — mémoïsé par requête (page, métadonnées, image OG). */
+export const getSessionPreview = cache(
+  async (
+    supabase: SupabaseClient<Database>,
+    identifier: string
+  ): Promise<SessionPreview | null> => {
+    const { data, error } = await supabase.rpc('session_preview', { p_identifier: identifier })
+    if (error) throw error
+    return data[0] ?? null
+  }
+)
+
+export async function getSessionResults(
+  supabase: SupabaseClient<Database>,
+  sessionId: string
+): Promise<SessionResultRow[]> {
+  const { data, error } = await supabase.rpc('session_results', { p_session_id: sessionId })
+  if (error) throw error
+  return data
 }

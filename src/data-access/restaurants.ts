@@ -1,53 +1,49 @@
-import type { List, Restaurant } from './models'
+import type { Restaurant } from './models'
 import type { Database } from './models/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export type ListWithRestaurants = List & {
-  list_restaurants: {
-    restaurant_id: string
-    restaurants: Restaurant
-  }[]
+export const RESTAURANT_PAGE_SIZE = 20
+
+export interface RestaurantPage {
+  items: Restaurant[]
+  hasMore: boolean
+  nextOffset: number
 }
 
-export async function getRestaurants(supabase: SupabaseClient<Database>): Promise<Restaurant[]> {
-  const { data, error } = await supabase.from('restaurants').select().order('name')
+/** Échappe les jokers ILIKE pour qu'une recherche « 100% » reste littérale. */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`)
+}
+
+export async function searchRestaurants(
+  supabase: SupabaseClient<Database>,
+  options: { query?: string; offset?: number; limit?: number } = {}
+): Promise<RestaurantPage> {
+  const limit = Math.min(Math.max(options.limit ?? RESTAURANT_PAGE_SIZE, 1), 50)
+  const offset = Math.max(options.offset ?? 0, 0)
+  const query = (options.query ?? '').trim()
+
+  let request = supabase.from('restaurants').select()
+
+  if (query) {
+    const pattern = `%${escapeLike(query)}%`
+    request = request.or(`name.ilike.${pattern},cuisine_type.ilike.${pattern}`)
+  }
+
+  const { data, error } = await request.order('name').range(offset, offset + limit)
+  if (error) throw error
+
+  const hasMore = data.length > limit
+  const items = hasMore ? data.slice(0, limit) : data
+  return { items, hasMore, nextOffset: offset + items.length }
+}
+
+export async function getRestaurantsByIds(
+  supabase: SupabaseClient<Database>,
+  ids: string[]
+): Promise<Restaurant[]> {
+  if (ids.length === 0) return []
+  const { data, error } = await supabase.from('restaurants').select().in('id', ids).order('name')
   if (error) throw error
   return data
-}
-
-export async function getListsByOwner(
-  supabase: SupabaseClient<Database>,
-  ownerId: string
-): Promise<ListWithRestaurants[]> {
-  const { data, error } = await supabase
-    .from('lists')
-    .select('*, list_restaurants(restaurant_id, restaurants(*))')
-    .eq('owner_id', ownerId)
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return data as ListWithRestaurants[]
-}
-
-export async function getRestaurantsByListIds(
-  supabase: SupabaseClient<Database>,
-  listIds: string[]
-): Promise<Restaurant[]> {
-  if (listIds.length === 0) return []
-
-  const { data, error } = await supabase
-    .from('list_restaurants')
-    .select('restaurant_id, restaurants!inner(*)')
-    .in('list_id', listIds)
-  if (error) throw error
-
-  const seen = new Set<string>()
-  const restaurants: Restaurant[] = []
-  for (const row of data) {
-    const r = (row as { restaurants: Restaurant }).restaurants
-    if (!seen.has(r.id)) {
-      seen.add(r.id)
-      restaurants.push(r)
-    }
-  }
-  return restaurants
 }

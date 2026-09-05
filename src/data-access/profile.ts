@@ -1,15 +1,17 @@
+import { cache } from 'react'
+
 import type { Profile } from './models'
 import type { Database } from './models/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export async function getProfile(
-  supabase: SupabaseClient<Database>,
-  userId: string
-): Promise<Profile | null> {
-  const { data, error } = await supabase.from('profiles').select().eq('id', userId).single()
-  if (error) return null
-  return data
-}
+/** Profil d'un utilisateur — mémoïsé par requête (en-tête + page partagent l'appel). */
+export const getProfile = cache(
+  async (supabase: SupabaseClient<Database>, userId: string): Promise<Profile | null> => {
+    const { data, error } = await supabase.from('profiles').select().eq('id', userId).maybeSingle()
+    if (error) throw error
+    return data
+  }
+)
 
 export async function updatePseudo(
   supabase: SupabaseClient<Database>,

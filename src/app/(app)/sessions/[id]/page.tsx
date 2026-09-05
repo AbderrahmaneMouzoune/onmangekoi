@@ -1,37 +1,72 @@
 import { notFound, redirect } from 'next/navigation'
 
-import { WaitingRoomClient } from '@/components/waiting-room/waiting-room-client'
-import { getSessionById, getSessionParticipants } from '@/data-access/sessions'
-import { createServerClient } from '@/data-access/supabase'
+import { Shell } from '@/components/layout/shell'
+import { SessionRoom } from '@/components/session/session-room'
+import { router } from '@/config/router.config'
+import { getCurrentUser } from '@/data-access/auth'
+import {
+  getSessionById,
+  getSessionParticipants,
+  getSessionRestaurants,
+} from '@/data-access/sessions'
+import { createServerClient } from '@/data-access/supabase/server'
+import { getMyVotes } from '@/data-access/votes'
+import { qrCodeSvg } from '@/lib/qr'
+import { SessionIdSchema } from '@/lib/schemas/session'
+import { inviteUrl } from '@/lib/site'
+
+import type { Metadata } from 'next'
 
 interface Props {
   params: Promise<{ id: string }>
 }
 
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const [{ id }, supabase] = await Promise.all([params, createServerClient()])
+  if (!SessionIdSchema.safeParse(id).success) return { title: 'Session' }
+  const session = await getSessionById(supabase, id).catch(() => null)
+  return { title: session?.name ?? 'Session', robots: { index: false } }
+}
+
 export default async function SessionPage({ params }: Props) {
-  const { id } = await params
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [{ id }, supabase, user] = await Promise.all([
+    params,
+    createServerClient(),
+    getCurrentUser(),
+  ])
+  if (!SessionIdSchema.safeParse(id).success) notFound()
+  if (!user) redirect(router.setup(router.session(id)))
 
-  // Filet de sécurité — normalement garanti par le middleware
-  if (!user) redirect('/setup')
-
-  const [session, participants] = await Promise.all([
+  // Les quatre lectures sont indépendantes : un seul aller-retour de latence.
+  // Sous RLS, un non-participant obtient une session null et repart sur le join.
+  const [session, participants, restaurants, votes] = await Promise.all([
     getSessionById(supabase, id),
     getSessionParticipants(supabase, id),
+    getSessionRestaurants(supabase, id),
+    getMyVotes(supabase, id),
   ])
 
   if (!session) notFound()
-
-  // Si l'utilisateur n'est pas encore participant, le rediriger vers le flux de join
-  const isParticipant = participants.some((p) => p.profile_id === user.id)
-  if (!isParticipant) {
-    redirect(`/join/${session.invite_token}`)
+  if (session.status === 'closed') redirect(router.sessionResults(id))
+  if (!participants.some((p) => p.profile_id === user.id)) {
+    redirect(router.joinInvite(session.invite_token))
   }
 
+  const url = inviteUrl(session.invite_token)
   const isHost = session.host_id === user.id
+  const qrSvg = isHost && session.status === 'waiting' ? await qrCodeSvg(url) : null
 
-  return <WaitingRoomClient session={session} initialParticipants={participants} isHost={isHost} />
+  return (
+    <Shell>
+      <SessionRoom
+        session={session}
+        participants={participants}
+        restaurants={restaurants}
+        myVotedIds={votes.map((vote) => vote.session_restaurant_id)}
+        meId={user.id}
+        inviteUrl={url}
+        qrSvg={qrSvg}
+      />
+    </Shell>
+  )
 }
