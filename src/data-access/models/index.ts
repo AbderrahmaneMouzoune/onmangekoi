@@ -19,7 +19,21 @@ export type ListRestaurant = Tables['list_restaurants']['Row']
 export type SessionStatus = Database['public']['Enums']['session_status']
 
 export type SessionPreview = Functions['session_preview']['Returns'][number]
-export type SessionResultRow = Functions['session_results']['Returns'][number]
+/**
+ * Le générateur Supabase ne sait pas déduire la nullabilité des colonnes d'un
+ * `returns table` : il les déclare toutes non nulles. Or `session_results`
+ * relaie `restaurants.cuisine_type`, `description` et `image_url`, qui sont
+ * bel et bien nullables. On rétablit la vérité ici, sinon un appelant croirait
+ * pouvoir s'en passer de garde.
+ */
+export type SessionResultRow = Omit<
+  Functions['session_results']['Returns'][number],
+  'cuisine_type' | 'description' | 'image_url'
+> & {
+  cuisine_type: string | null
+  description: string | null
+  image_url: string | null
+}
 export type SharedListPreview = Functions['list_by_share_token']['Returns'][number]
 
 /** Participant avec le profil joint (pseudo) */
