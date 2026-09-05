@@ -37,8 +37,8 @@ export async function HomeDashboard() {
                 <Link
                   href={
                     session.status === 'closed'
-                      ? router.sessionResults(session.id)
-                      : router.session(session.id)
+                      ? router.sessionResults(session)
+                      : router.session(session)
                   }
                   className="flex items-center justify-between gap-3 rounded-lg bg-surface p-4 ring-1 ring-line transition-colors hover:bg-surface-2"
                 >
@@ -77,7 +77,7 @@ export async function HomeDashboard() {
             {lists.slice(0, 6).map((list) => (
               <li key={list.id}>
                 <Link
-                  href={router.list(list.id)}
+                  href={router.list(list)}
                   className="inline-flex items-center gap-2 rounded-full bg-surface px-3.5 py-2 text-sm font-medium ring-1 ring-line hover:bg-surface-2"
                 >
                   {list.name}

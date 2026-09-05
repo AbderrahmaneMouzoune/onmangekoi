@@ -57,9 +57,9 @@ export function SessionRoom({
 
   useEffect(() => {
     if (session.status === 'closed') {
-      navigation.replace(router.sessionResults(session.id))
+      navigation.replace(router.sessionResults(session))
     }
-  }, [session.status, session.id, navigation])
+  }, [session, navigation])
 
   const handleFinished = useCallback(() => {
     setFinishedLocally(true)
