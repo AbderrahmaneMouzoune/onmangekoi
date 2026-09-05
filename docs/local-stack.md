@@ -23,6 +23,7 @@ cp .env.local.example .env.local
 | `NEXT_PUBLIC_SUPABASE_URL`             | `http://127.0.0.1:54321` (affichée par `supabase start`)                                |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | la _publishable key_ (ou l'ancienne _anon key_)                                         |
 | `NEXT_PUBLIC_SITE_URL`                 | optionnelle — `http://localhost:3000` par défaut ; déduite des variables Vercel en prod |
+| `GOOGLE_PLACES_API_KEY`                | optionnelle — active l'onglet « Google » du sélecteur de restos (serveur uniquement)    |
 
 Les variables sont validées au démarrage (`src/env.ts`) : une valeur manquante fait échouer l'app immédiatement plutôt que silencieusement.
 
@@ -68,7 +69,9 @@ Le spec `e2e/full-flow.spec.ts` ouvre deux navigateurs (host et invité), crée 
 
 Toutes les URL de l'app sont construites via `router.*()` dans `src/config/router.config.ts` (jamais de chaîne `'/sessions/...'` en dur). Le fichier expose aussi les préfixes protégés — `src/proxy.ts` doit les répéter dans son `matcher` littéral, ce que vérifie `router.config.test.ts`.
 
-Les restaurants ajoutés depuis l'app portent `source = 'manual'` et `created_by` ; la RPC `create_manual_restaurant` pose les deux et les policies RLS empêchent de les contourner. `find_similar_restaurants` sert l'avertissement de doublon (pg_trgm, seuil 0.45).
+Sans `GOOGLE_PLACES_API_KEY`, l'import Google est simplement absent de l'interface : rien d'autre ne change, et aucun test n'en dépend. Pour l'essayer en local, créer une clé dans Google Cloud avec l'API « Places API (New) » activée, puis la restreindre à cette seule API.
+
+Les restaurants ajoutés depuis l'app portent `source = 'manual'` et `created_by` ; la RPC `create_manual_restaurant` pose les deux et les policies RLS empêchent de les contourner. `find_similar_restaurants` sert l'avertissement de doublon (pg_trgm, seuil 0.45). Les restos importés de Google portent `source = 'google'` et un `place_id` unique : `upsert_restaurant_from_place` est idempotente, la rejouer ne crée jamais de seconde ligne.
 
 Les codes d'invitation (6) et de partage de liste (10) sont en Crockford base32 : `src/lib/crockford.ts` normalise la saisie côté client, `public.normalize_crockford` fait de même en base. Les liens de liste ont la forme `/l/<slug>-<CODE>` ; `parseSharedListParam` ne garde que le code final.
 

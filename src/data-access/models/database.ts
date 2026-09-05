@@ -133,7 +133,10 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          latitude: number | null
+          longitude: number | null
           name: string
+          place_id: string | null
           price_level: number | null
           source: string
         }
@@ -146,7 +149,10 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          latitude?: number | null
+          longitude?: number | null
           name: string
+          place_id?: string | null
           price_level?: number | null
           source?: string
         }
@@ -159,7 +165,10 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          latitude?: number | null
+          longitude?: number | null
           name?: string
+          place_id?: string | null
           price_level?: number | null
           source?: string
         }
@@ -373,7 +382,10 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          latitude: number | null
+          longitude: number | null
           name: string
+          place_id: string | null
           price_level: number | null
           source: string
         }
@@ -455,7 +467,10 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          latitude: number | null
+          longitude: number | null
           name: string
+          place_id: string | null
           price_level: number | null
           source: string
         }[]
@@ -518,7 +533,10 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          latitude: number | null
+          longitude: number | null
           name: string
+          place_id: string | null
           price_level: number | null
           source: string
         }[]
@@ -568,6 +586,34 @@ export type Database = {
       submit_vote: {
         Args: { p_session_id: string; p_session_restaurant_id: string; p_value: number }
         Returns: undefined
+      }
+      upsert_restaurant_from_place: {
+        Args: {
+          p_address?: string
+          p_city?: string
+          p_cuisine_type?: string
+          p_latitude?: number
+          p_longitude?: number
+          p_name: string
+          p_place_id: string
+          p_price_level?: number
+        }
+        Returns: {
+          address: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          cuisine_type: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          latitude: number | null
+          longitude: number | null
+          name: string
+          place_id: string | null
+          price_level: number | null
+          source: string
+        }
       }
     }
     Enums: {

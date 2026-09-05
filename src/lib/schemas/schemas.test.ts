@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { LoginSchema, SetPasswordSchema } from './auth'
 import { CreateListSchema } from './list'
+import { ImportPlaceSchema, SearchPlacesSchema } from './place'
 import { PseudoSchema, SetupProfileSchema } from './profile'
 import { CreateRestaurantSchema, PriceLevelSchema } from './restaurant'
 import { CreateSessionSchema, JoinSessionSchema } from './session'
@@ -139,5 +140,38 @@ describe('PriceLevelSchema', () => {
     expect(PriceLevelSchema.safeParse(5).success).toBe(false)
     expect(PriceLevelSchema.safeParse(1.5).success).toBe(false)
     expect(PriceLevelSchema.safeParse('cher').success).toBe(false)
+  })
+})
+
+describe('SearchPlacesSchema', () => {
+  it('should trim the query and require two characters', () => {
+    expect(SearchPlacesSchema.safeParse({ query: '  sushi ' }).data?.query).toBe('sushi')
+    expect(SearchPlacesSchema.safeParse({ query: ' a ' }).success).toBe(false)
+    expect(SearchPlacesSchema.safeParse({ query: 'a'.repeat(121) }).success).toBe(false)
+  })
+
+  it('should accept a search with no geographic bias', () => {
+    expect(SearchPlacesSchema.safeParse({ query: 'sushi' }).success).toBe(true)
+    expect(
+      SearchPlacesSchema.safeParse({ query: 'sushi', latitude: null, longitude: null }).success
+    ).toBe(true)
+  })
+
+  it('should reject coordinates outside the globe', () => {
+    expect(SearchPlacesSchema.safeParse({ query: 'sushi', latitude: 91 }).success).toBe(false)
+    expect(SearchPlacesSchema.safeParse({ query: 'sushi', longitude: -181 }).success).toBe(false)
+    expect(SearchPlacesSchema.safeParse({ query: 'sushi', latitude: '45' }).success).toBe(false)
+  })
+})
+
+describe('ImportPlaceSchema', () => {
+  it('should accept a Google place id and refuse anything else', () => {
+    expect(ImportPlaceSchema.safeParse({ placeId: 'ChIJN1t_tDeuEmsRUsoyG83frY4' }).success).toBe(
+      true
+    )
+    expect(ImportPlaceSchema.safeParse({ placeId: '' }).success).toBe(false)
+    expect(ImportPlaceSchema.safeParse({ placeId: '../etc/passwd' }).success).toBe(false)
+    expect(ImportPlaceSchema.safeParse({ placeId: 'a b' }).success).toBe(false)
+    expect(ImportPlaceSchema.safeParse({ placeId: 'a'.repeat(256) }).success).toBe(false)
   })
 })

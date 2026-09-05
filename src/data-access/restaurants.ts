@@ -83,3 +83,34 @@ export async function findSimilarRestaurants(
   if (error) throw error
   return data
 }
+
+/**
+ * Import d'un lieu Google. Idempotente sur `place_id` : un même lieu importé
+ * par plusieurs personnes ne donne qu'une ligne, rafraîchie au passage.
+ */
+export async function upsertRestaurantFromPlace(
+  supabase: SupabaseClient<Database>,
+  place: {
+    placeId: string
+    name: string
+    address?: string | null
+    city?: string | null
+    cuisineType?: string | null
+    latitude?: number | null
+    longitude?: number | null
+    priceLevel?: number | null
+  }
+): Promise<Restaurant> {
+  const { data, error } = await supabase.rpc('upsert_restaurant_from_place', {
+    p_place_id: place.placeId,
+    p_name: place.name,
+    p_address: place.address ?? undefined,
+    p_city: place.city ?? undefined,
+    p_cuisine_type: place.cuisineType ?? undefined,
+    p_latitude: place.latitude ?? undefined,
+    p_longitude: place.longitude ?? undefined,
+    p_price_level: place.priceLevel ?? undefined,
+  })
+  if (error) throw error
+  return data
+}

@@ -53,10 +53,24 @@ Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvr
 | -------- | ---------------------------------------------------- | ----------------- |
 | `seed`   | livrée avec le schéma                                | personne          |
 | `manual` | ajoutée depuis l'app (nom, cuisine, adresse, budget) | son créateur      |
+| `google` | importée depuis Google Places                        | son importateur   |
 
 Le formulaire « Ajouter un resto » est disponible partout où l'on choisit des restaurants — session, liste, liste partagée — et le resto créé est sélectionné aussitôt, sans rechargement.
 
 La déduplication est **souple** : un nom proche (recherche trigram) déclenche un avertissement et propose le resto existant en un clic, mais ne bloque jamais l'ajout — deux restos peuvent légitimement porter le même nom.
+
+### Import Google Places
+
+Quand `GOOGLE_PLACES_API_KEY` est configurée, un onglet **Google** apparaît à côté de la base : la même saisie cherche chez Google, un clic importe le resto et le sélectionne. Le bouton « Autour de moi » ajoute un biais géographique de 5 km, sur position explicitement autorisée.
+
+| Garantie           | Comment                                                                                                                     |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| Clé jamais exposée | La recherche passe par `POST /api/places/search`, côté serveur ; la variable n'est pas préfixée `NEXT_PUBLIC_`              |
+| Zéro doublon       | `upsert_restaurant_from_place` est idempotente sur `place_id`, garantie par un index unique                                 |
+| Données de source  | Le navigateur n'envoie qu'un `place_id` à l'import ; les champs enregistrés sont relus côté serveur, jamais reçus du client |
+| Coût maîtrisé      | Réponses gardées 24 h en mémoire ; l'import se sert de ce cache avant de rappeler Google                                    |
+
+Sans clé, l'onglet n'apparaît pas et le reste de l'app fonctionne à l'identique.
 
 ## Stack
 
@@ -99,12 +113,12 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ```
 src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join, sessions, lists, l/[slug], account, auth)
+src/app/                 routes App Router (setup, login, join, sessions, lists, l/[slug], account, auth, api/places)
 src/components/          ui/ (primitives) · layout/ · session/ · lists/ · account/ · restaurants/
-src/data-access/         requêtes Supabase, un module par table + models/ (types générés)
+src/data-access/         requêtes Supabase (un module par table) + places.ts (Google) + models/
 src/use-cases/           logique métier composée (créer / rejoindre / onboarding)
 src/lib/actions/         Server Actions (validation Zod, auth, erreurs typées)
-src/lib/                 schémas, Crockford, slug, share/invite (parsing), site (URL absolues), qr, erreurs
+src/lib/                 schémas, Crockford, slug, share/invite (parsing), site (URL absolues), qr, places, erreurs
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results)
 e2e/                     Playwright
@@ -116,6 +130,7 @@ e2e/                     Playwright
 - **Toutes les écritures métier passent par des RPC** transactionnelles (`create_session`, `join_session`, `launch_session`, `submit_vote`, `close_session`) qui revérifient les règles côté base.
 - Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat.
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.
+- La clé Google Places ne quitte jamais le serveur, et aucune policy RLS n'ouvre l'écriture en `source = 'google'` : `upsert_restaurant_from_place` est le seul chemin. Les corps d'erreur renvoyés par Google restent dans les logs serveur.
 - Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision.
 - Les pages sont rendues avec des chargements parallèles (`Promise.all`) et les lectures par requête sont dédupliquées via `React.cache` (`getCurrentUser`, `getProfile`, `getSessionById`…).
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.
@@ -132,6 +147,7 @@ e2e/                     Playwright
 | `NEXT_PUBLIC_SUPABASE_URL`             | URL du projet (Project Settings → API)                   |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | clé _publishable_ (l'ancienne _anon_ est acceptée aussi) |
 | `NEXT_PUBLIC_SITE_URL`                 | optionnel — surcharge explicite (domaine personnalisé)   |
+| `GOOGLE_PLACES_API_KEY`                | optionnel — active l'import Google (serveur uniquement)  |
 
 L'URL publique (`env.SITE_URL`, côté serveur) est résolue dans cet ordre : `NEXT_PUBLIC_SITE_URL` si définie et non locale, sinon les variables système Vercel — `VERCEL_PROJECT_PRODUCTION_URL` en production, `VERCEL_BRANCH_URL` / `VERCEL_URL` en preview — et enfin `http://localhost:3000` en développement. Un `localhost` copié par erreur dans les variables Vercel est ignoré.
 
@@ -139,7 +155,7 @@ Le build échoue volontairement si `NEXT_PUBLIC_SUPABASE_URL` ou la clé manque 
 
 ## Roadmap
 
-Les évolutions envisagées (import Google Places, filtres, anti-fatigue, notifications, PWA, i18n, RGPD…) sont suivies dans les [issues GitHub](https://github.com/AbderrahmaneMouzoune/onmangekoi/issues).
+Les évolutions envisagées (filtres, anti-fatigue, notifications, PWA, i18n, RGPD…) sont suivies dans les [issues GitHub](https://github.com/AbderrahmaneMouzoune/onmangekoi/issues).
 
 Leur classement par priorité et leur version cible (v1.1 → v2.0) sont dans [`docs/roadmap.md`](docs/roadmap.md).
 

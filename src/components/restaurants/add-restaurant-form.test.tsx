@@ -30,6 +30,9 @@ function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
     created_by: null,
     source: 'manual',
     price_level: null,
+    place_id: null,
+    latitude: null,
+    longitude: null,
     ...overrides,
   }
 }
