@@ -20,14 +20,14 @@ Le retrait du consentement (« Mon compte » → _Statistiques d'usage_) appelle
 ## Ce qui ne sort jamais
 
 - **Aucune donnée personnelle** : ni pseudo, ni email, ni nom de restaurant ou de liste.
-- **Aucun secret d'accès** : le jeton d'invitation d'une session suffirait à la rejoindre, le code de partage d'une liste à la lire. Ils ne sortent pas — et comme ils vivent dans l'URL, **toutes** les URL sont masquées avant envoi (`src/lib/analytics/sanitize.ts`) :
+- **Aucun secret d'accès** : les ressources s'adressent par leur code court, celui-là même qui donne l'accès — le code d'invitation suffit à rejoindre une session, le code de partage à lire une liste. Ils vivent donc dans l'URL, et **toutes** les URL sont masquées avant envoi (`src/lib/analytics/sanitize.ts`) :
 
-  | URL réelle                       | Envoyé                   |
-  | -------------------------------- | ------------------------ |
-  | `/sessions/0f8fad5b-…/results`   | `/sessions/[id]/results` |
-  | `/join/7K3M9P`                   | `/join/[invite]`         |
-  | `/l/restos-du-bureau-H4V2Q8ZX0M` | `/l/[list]`              |
-  | `/setup?next=%2Fjoin%2F7K3M9P`   | `/setup`                 |
+  | URL réelle                       | Envoyé                     |
+  | -------------------------------- | -------------------------- |
+  | `/sessions/7K3M9P/results`       | `/sessions/[code]/results` |
+  | `/join/7K3M9P`                   | `/join/[code]`             |
+  | `/l/restos-du-bureau-H4V2Q8ZX0M` | `/l/[code]`                |
+  | `/setup?next=%2Fjoin%2F7K3M9P`   | `/setup`                   |
 
   Le masquage passe par `before_send`, donc il s'applique à **toutes** les propriétés d'URL, y compris celles que PostHog ajoute lui-même (`$current_url`, `$referrer`, `$initial_*`…). Une route inconnue voit ses segments identifiants remplacés par `[id]` : une route ajoutée plus tard ne fuite pas par oubli.
 
@@ -70,7 +70,7 @@ Ces objets se configurent côté PostHog, pas dans le dépôt.
    `session_created` → `invite_shared` → `session_joined` → `vote_submitted` → `session_closed`.
    La marche la plus haute désigne l'étape à corriger.
 2. **Entonnoir « Invité »**, pour isoler le parcours des non-hosts :
-   `$pageview` sur `/join/[invite]` → `session_joined` → `vote_submitted`.
+   `$pageview` sur `/join/[code]` → `session_joined` → `vote_submitted`.
    À décomposer par `via` : un code dicté à l'oral et un QR scanné n'échouent pas pour les mêmes raisons.
 3. **Rétention hebdomadaire** : cohorte d'entrée `session_created`, action de retour `session_created`.
 4. **Répartition de `session_closed` par `reason`** : la part de clôtures forcées par le host mesure le vote qui n'aboutit pas — c'est l'indicateur qui justifiera (ou non) le vote chronométré (issue #9).

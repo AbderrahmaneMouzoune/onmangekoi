@@ -3,21 +3,25 @@ import { describe, expect, it } from 'vitest'
 import { maskPathname, sanitizeProperties, sanitizeUrl } from './sanitize'
 
 describe('maskPathname', () => {
-  it('should mask the identifier of a session route', () => {
-    expect(maskPathname('/sessions/0f8fad5b-d9cb-469f-a165-70867728950e')).toBe('/sessions/[id]')
-    expect(maskPathname('/sessions/0f8fad5b-d9cb-469f-a165-70867728950e/results')).toBe(
-      '/sessions/[id]/results'
-    )
+  it('should mask the invite code carried by a session route', () => {
+    expect(maskPathname('/sessions/7K3M9P')).toBe('/sessions/[code]')
+    expect(maskPathname('/sessions/7K3M9P/results')).toBe('/sessions/[code]/results')
   })
 
-  it('should mask an invite token or code, never the value itself', () => {
-    expect(maskPathname('/join/7K3M9P')).toBe('/join/[invite]')
-    expect(maskPathname('/join/a3f9b2c1d4e5f6a7b8c9d0e1f2a3b4c5')).toBe('/join/[invite]')
+  it('should mask an invite code or an old token, never the value itself', () => {
+    expect(maskPathname('/join/7K3M9P')).toBe('/join/[code]')
+    expect(maskPathname('/join/a3f9b2c1d4e5f6a7b8c9d0e1f2a3b4c5')).toBe('/join/[code]')
   })
 
-  it('should mask a shared list link, slug included', () => {
-    expect(maskPathname('/l/restos-du-bureau-H4V2Q8ZX0M')).toBe('/l/[list]')
-    expect(maskPathname('/lists/0f8fad5b-d9cb-469f-a165-70867728950e')).toBe('/lists/[id]')
+  it('should mask a list route, decorative slug included', () => {
+    expect(maskPathname('/l/H4V2Q8ZX0M')).toBe('/l/[code]')
+    expect(maskPathname('/l/restos-du-bureau-H4V2Q8ZX0M')).toBe('/l/[code]')
+    expect(maskPathname('/lists/H4V2Q8ZX0M')).toBe('/lists/[code]')
+  })
+
+  it('should still mask the uuid form of old links', () => {
+    expect(maskPathname('/sessions/0f8fad5b-d9cb-469f-a165-70867728950e')).toBe('/sessions/[code]')
+    expect(maskPathname('/lists/0f8fad5b-d9cb-469f-a165-70867728950e')).toBe('/lists/[code]')
   })
 
   it('should keep static routes untouched', () => {
@@ -36,7 +40,7 @@ describe('maskPathname', () => {
   })
 
   it('should ignore a trailing slash', () => {
-    expect(maskPathname('/sessions/0f8fad5b-d9cb-469f-a165-70867728950e/')).toBe('/sessions/[id]')
+    expect(maskPathname('/sessions/7K3M9P/')).toBe('/sessions/[code]')
   })
 })
 
@@ -50,7 +54,7 @@ describe('sanitizeUrl', () => {
 
   it('should mask the path of an absolute URL and keep its origin', () => {
     expect(sanitizeUrl('https://onmangekoi.fr/join/7K3M9P')).toBe(
-      'https://onmangekoi.fr/join/[invite]'
+      'https://onmangekoi.fr/join/[code]'
     )
   })
 
@@ -63,8 +67,8 @@ describe('sanitizeUrl', () => {
 describe('sanitizeProperties', () => {
   it('should sanitize every property carrying a URL, whatever its prefix', () => {
     const properties = sanitizeProperties({
-      $current_url: 'https://onmangekoi.fr/sessions/0f8fad5b-d9cb-469f-a165-70867728950e',
-      $pathname: '/sessions/0f8fad5b-d9cb-469f-a165-70867728950e',
+      $current_url: 'https://onmangekoi.fr/sessions/7K3M9P',
+      $pathname: '/sessions/7K3M9P',
       $initial_current_url: 'https://onmangekoi.fr/join/7K3M9P',
       $referrer: '$direct',
       session_id: '0f8fad5b-d9cb-469f-a165-70867728950e',
@@ -72,9 +76,9 @@ describe('sanitizeProperties', () => {
     })
 
     expect(properties).toEqual({
-      $current_url: 'https://onmangekoi.fr/sessions/[id]',
-      $pathname: '/sessions/[id]',
-      $initial_current_url: 'https://onmangekoi.fr/join/[invite]',
+      $current_url: 'https://onmangekoi.fr/sessions/[code]',
+      $pathname: '/sessions/[code]',
+      $initial_current_url: 'https://onmangekoi.fr/join/[code]',
       $referrer: '$direct',
       // Un identifiant envoyé volontairement reste intact : il est opaque.
       session_id: '0f8fad5b-d9cb-469f-a165-70867728950e',

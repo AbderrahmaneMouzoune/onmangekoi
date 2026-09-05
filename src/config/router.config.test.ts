@@ -10,9 +10,9 @@ describe('router', () => {
     expect(router.home()).toBe('/')
     expect(router.join()).toBe('/join')
     expect(router.joinInvite('A3F9B2')).toBe('/join/A3F9B2')
-    expect(router.session('abc')).toBe('/sessions/abc')
-    expect(router.sessionResults('abc')).toBe('/sessions/abc/results')
-    expect(router.list('l1')).toBe('/lists/l1')
+    expect(router.session('7K3M9P')).toBe('/sessions/7K3M9P')
+    expect(router.sessionResults('7K3M9P')).toBe('/sessions/7K3M9P/results')
+    expect(router.list('7K3M9P2QWX')).toBe('/lists/7K3M9P2QWX')
     expect(router.authConfirm()).toBe('/auth/confirm')
     expect(router.account({ auth: 'expired' })).toBe('/account?auth=expired')
   })
@@ -24,12 +24,17 @@ describe('router', () => {
     expect(router.login('/lists')).toBe('/login?next=%2Flists')
   })
 
-  it('should build human-friendly shared list links, slug optional', () => {
-    expect(router.sharedList('7K3M9P2QWX', 'Restos du bureau')).toBe(
-      '/l/restos-du-bureau-7K3M9P2QWX'
-    )
-    expect(router.sharedList('7K3M9P2QWX')).toBe('/l/7K3M9P2QWX')
-    expect(router.sharedList('7K3M9P2QWX', '!!!')).toBe('/l/7K3M9P2QWX')
+  it('should address a session by its invite code, never by its id', () => {
+    const session = { id: 'ffffffff-0000-4000-8000-000000000000', invite_code: '7K3M9P' }
+    expect(router.session(session)).toBe('/sessions/7K3M9P')
+    expect(router.sessionResults(session)).toBe('/sessions/7K3M9P/results')
+    expect(router.joinInvite(session)).toBe('/join/7K3M9P')
+  })
+
+  it('should address a list by its share code, never by its id', () => {
+    const list = { id: 'ffffffff-0000-4000-8000-000000000000', share_code: '7K3M9P2QWX' }
+    expect(router.list(list)).toBe('/lists/7K3M9P2QWX')
+    expect(router.sharedList(list)).toBe('/l/7K3M9P2QWX')
   })
 })
 

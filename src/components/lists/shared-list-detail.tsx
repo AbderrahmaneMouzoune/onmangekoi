@@ -9,11 +9,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
-import {
-  getOwnedListIdByShare,
-  getSharedListPreview,
-  getSharedListRestaurants,
-} from '@/data-access/lists'
+import { getSharedListPreview, getSharedListRestaurants, ownsSharedList } from '@/data-access/lists'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
 import { parseSharedListParam } from '@/domain/share'
@@ -25,30 +21,28 @@ import { cn } from '@/lib/utils'
  * résolution passe par une RPC `security definer` et ne peut donc jamais être
  * prérendue. Le catalogue du sélecteur, lui, vient du cache partagé.
  */
-export async function SharedListDetail({ params }: { params: Promise<{ slug: string }> }) {
-  const [{ slug }, supabase, user] = await Promise.all([
+export async function SharedListDetail({ params }: { params: Promise<{ code: string }> }) {
+  const [{ code }, supabase, user] = await Promise.all([
     params,
     createServerClient(),
     getCurrentUser(),
   ])
-  const identifier = parseSharedListParam(slug)
+  const identifier = parseSharedListParam(code)
   if (identifier.kind === 'invalid') notFound()
-  if (!user) redirect(router.setup(`/l/${slug}`))
+  if (!user) redirect(router.setup(router.sharedList(code)))
 
   // Quatre lectures indépendantes en parallèle.
-  const [preview, restaurants, initialPage, ownedListId] = await Promise.all([
+  const [preview, restaurants, initialPage, isOwner] = await Promise.all([
     getSharedListPreview(supabase, identifier.value),
     getSharedListRestaurants(supabase, identifier.value),
     getRestaurantCatalogPage(),
-    getOwnedListIdByShare(supabase, identifier),
+    ownsSharedList(supabase, identifier),
   ])
   if (!preview) notFound()
 
-  // Lien canonique lisible (l'ancien token redirige vers la nouvelle forme)
-  const canonical = router.sharedList(preview.share_code, preview.name)
-  if (`/l/${slug}` !== canonical) redirect(canonical)
-
-  const isOwner = Boolean(ownedListId)
+  // Forme canonique : le code seul (slug ou ancien token redirigés)
+  const canonical = router.sharedList(preview)
+  if (`/l/${code}` !== canonical) redirect(canonical)
 
   return (
     <>
@@ -67,11 +61,8 @@ export async function SharedListDetail({ params }: { params: Promise<{ slug: str
         }
       />
 
-      {isOwner && ownedListId && (
-        <Link
-          href={router.list(ownedListId)}
-          className={cn(buttonVariants({ variant: 'outline' }))}
-        >
+      {isOwner && (
+        <Link href={router.list(preview)} className={cn(buttonVariants({ variant: 'outline' }))}>
           C’est ta liste — la modifier
         </Link>
       )}

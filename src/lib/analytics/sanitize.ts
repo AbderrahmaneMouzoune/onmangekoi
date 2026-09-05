@@ -1,20 +1,20 @@
 /**
  * Masquage des URLs avant envoi à PostHog.
  *
- * Les URLs de l'app portent des secrets et des données lisibles : jeton
- * d'invitation (`/join/<token>` suffit pour rejoindre une session), code de
- * partage de liste, nom de liste dans le slug, destination `?next=`. Rien de
- * tout cela ne doit sortir : on ne transmet que le **motif de route**
- * (`/sessions/[id]`), jamais la valeur du segment.
+ * Les ressources s'adressent par leur code court, celui-là même qui donne
+ * l'accès : `/sessions/7K3M9P` et `/join/7K3M9P` portent le code d'invitation,
+ * `/l/H4V2Q8ZX0M` le code de partage d'une liste, et `?next=` reconduit l'un
+ * ou l'autre. Rien de tout cela ne doit sortir : on ne transmet que le
+ * **motif de route** (`/sessions/[code]`), jamais la valeur du segment.
  */
 
 /** Motifs de routes dynamiques, testés dans l'ordre (le plus spécifique d'abord). */
 const ROUTE_PATTERNS: readonly [RegExp, string][] = [
-  [/^\/sessions\/(?!new(?:\/|$))[^/]+\/results$/, '/sessions/[id]/results'],
-  [/^\/sessions\/(?!new(?:\/|$))[^/]+$/, '/sessions/[id]'],
-  [/^\/join\/[^/]+$/, '/join/[invite]'],
-  [/^\/lists\/(?!new(?:\/|$))[^/]+$/, '/lists/[id]'],
-  [/^\/l\/[^/]+$/, '/l/[list]'],
+  [/^\/sessions\/(?!new(?:\/|$))[^/]+\/results$/, '/sessions/[code]/results'],
+  [/^\/sessions\/(?!new(?:\/|$))[^/]+$/, '/sessions/[code]'],
+  [/^\/join\/[^/]+$/, '/join/[code]'],
+  [/^\/lists\/(?!new(?:\/|$))[^/]+$/, '/lists/[code]'],
+  [/^\/l\/[^/]+$/, '/l/[code]'],
 ]
 
 /**

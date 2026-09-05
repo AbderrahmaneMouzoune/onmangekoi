@@ -3,6 +3,8 @@ import 'server-only'
 import { router } from '@/config/router.config'
 import { env } from '@/env'
 
+import type { ListTarget, SessionTarget } from '@/config/router.config'
+
 export { SITE_NAME, SITE_TAGLINE } from '@/lib/brand'
 
 /** URL publique du site, sans slash final (voir `resolveSiteUrl` dans `env.ts`). */
@@ -15,10 +17,12 @@ export function absoluteUrl(path: string): string {
   return `${siteUrl()}${normalized}`
 }
 
-export function inviteUrl(inviteToken: string): string {
-  return absoluteUrl(router.joinInvite(inviteToken))
+/** Lien d'invitation : `https://…/join/7K3M9P`. */
+export function inviteUrl(session: SessionTarget): string {
+  return absoluteUrl(router.joinInvite(session))
 }
 
-export function listShareUrl(shareCode: string, name?: string | null): string {
-  return absoluteUrl(router.sharedList(shareCode, name))
+/** Lien de partage d'une liste : `https://…/l/7K3M9P2QWX`. */
+export function listShareUrl(list: ListTarget): string {
+  return absoluteUrl(router.sharedList(list))
 }
