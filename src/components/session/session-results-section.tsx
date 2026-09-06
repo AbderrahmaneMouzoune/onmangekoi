@@ -2,7 +2,7 @@ import { RiTrophyLine } from '@remixicon/react'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 
-import { PageHeader } from '@/components/layout/page-header'
+import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
 import { ResultsList } from '@/components/session/results-list'
 import { ShareResultsButton } from '@/components/session/share-results-button'
 import { buttonVariants } from '@/components/ui/button'
@@ -84,20 +84,43 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
   )
 }
 
+/**
+ * Silhouette du classement : le surtitre, le retour et le titre du bas de
+ * page sont les mêmes pour toutes les sessions et s'affichent en clair. Seuls
+ * le nom de la session, le podium et les scores attendent la base.
+ */
 export function SessionResultsFallback() {
   return (
-    <div aria-busy="true" className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <Skeleton className="h-4 w-28" />
-        <Skeleton className="h-8 w-2/3" />
-        <Skeleton className="h-4 w-1/3" />
+    <>
+      <PageHeaderFallback
+        eyebrow="Classement final"
+        back={{ href: router.home(), label: 'Accueil' }}
+        description
+      />
+      <div aria-busy="true" className="flex flex-col gap-6">
+        <Skeleton className="h-64 w-full rounded-xl" />
+        <section className="flex flex-col gap-2">
+          <h2 className="font-display text-base font-semibold">Le reste du classement</h2>
+          <SkeletonResult nameWidth="max-w-40" />
+          <SkeletonResult nameWidth="max-w-32" />
+          <SkeletonResult nameWidth="max-w-36" />
+        </section>
       </div>
-      <Skeleton className="h-28 w-full rounded-lg" />
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-16 w-full rounded-lg" />
-        <Skeleton className="h-16 w-full rounded-lg" />
-        <Skeleton className="h-16 w-full rounded-lg" />
+    </>
+  )
+}
+
+/** Rangée du classement : rang, nom, score, puis la barre et le détail. */
+function SkeletonResult({ nameWidth }: { nameWidth: string }) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg bg-surface p-4 ring-1 ring-line">
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-5 w-7" />
+        <Skeleton className={cn('h-5 flex-1', nameWidth)} />
+        <Skeleton className="h-5 w-8" />
       </div>
+      <Skeleton className="h-1.5 w-full rounded-full" />
+      <Skeleton className="h-4 w-36" />
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { VisitMemo } from '@/components/layout/visit-memo'
 import { Avatar } from '@/components/ui/avatar'
 import { buttonVariants } from '@/components/ui/button'
 import { router } from '@/config/router.config'
@@ -12,7 +13,8 @@ import { cn } from '@/lib/utils'
 /**
  * Bloc compte de l'en-tête : la seule partie personnalisée. L'utilisateur et
  * le profil sont mémoïsés par requête, donc partagés avec la page sans appel
- * supplémentaire.
+ * supplémentaire. Présent sur toutes les pages, c'est aussi lui qui note —
+ * ou oublie, à la déconnexion — qu'un pseudo existe, pour les silhouettes.
  */
 export async function AccountNavLink() {
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
@@ -20,25 +22,38 @@ export async function AccountNavLink() {
 
   if (!user) {
     return (
-      <Link
-        href={router.setup()}
-        className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}
-      >
-        Choisir un pseudo
-      </Link>
+      <>
+        <VisitMemo account={false} />
+        <ChoosePseudoLink />
+      </>
     )
   }
 
   return (
+    <>
+      <VisitMemo account />
+      <Link
+        href={router.account()}
+        className={cn(
+          buttonVariants({ variant: 'ghost', size: 'sm' }),
+          'gap-2 rounded-full pr-3 pl-1'
+        )}
+      >
+        <Avatar name={profile?.pseudo} size="sm" />
+        <span className="max-w-28 truncate">{displayPseudo(profile?.pseudo)}</span>
+      </Link>
+    </>
+  )
+}
+
+/** Bouton des visiteurs sans pseudo — partagé avec la silhouette de l'en-tête. */
+export function ChoosePseudoLink({ className }: { className?: string }) {
+  return (
     <Link
-      href={router.account()}
-      className={cn(
-        buttonVariants({ variant: 'ghost', size: 'sm' }),
-        'gap-2 rounded-full pr-3 pl-1'
-      )}
+      href={router.setup()}
+      className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), className)}
     >
-      <Avatar name={profile?.pseudo} size="sm" />
-      <span className="max-w-28 truncate">{displayPseudo(profile?.pseudo)}</span>
+      Choisir un pseudo
     </Link>
   )
 }

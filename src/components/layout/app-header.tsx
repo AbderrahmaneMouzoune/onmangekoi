@@ -4,7 +4,7 @@ import { Brand } from '@/components/layout/brand'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { Skeleton } from '@/components/ui/skeleton'
 
-import { AccountNavLink } from './account-nav-link'
+import { AccountNavLink, ChoosePseudoLink } from './account-nav-link'
 
 /**
  * En-tête de l'application.
@@ -22,11 +22,31 @@ export function AppHeader() {
         <Brand />
         <nav aria-label="Compte" className="flex items-center gap-1">
           <ThemeToggle />
-          <Suspense fallback={<Skeleton className="h-8 w-28 rounded-full" />}>
+          <Suspense fallback={<AccountNavFallback />}>
             <AccountNavLink />
           </Suspense>
         </nav>
       </div>
     </header>
+  )
+}
+
+/**
+ * Silhouette du bloc compte, accordée à la dernière visite : à qui n'a jamais
+ * choisi de pseudo, on montre directement le bouton qu'il va voir ; à qui
+ * revient, la pastille de son compte aux dimensions du vrai lien.
+ */
+function AccountNavFallback() {
+  return (
+    <>
+      <ChoosePseudoLink className="seen-account:hidden" />
+      <div
+        aria-busy="true"
+        className="hidden h-9 items-center gap-2 rounded-full pr-3 pl-1 seen-account:flex"
+      >
+        <Skeleton className="size-8 rounded-full" />
+        <Skeleton className="h-4 w-20" />
+      </div>
+    </>
   )
 }

@@ -60,14 +60,18 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
   )
 }
 
-/** Même silhouette que `loading.tsx` : la coquille ne bouge pas quand le salon arrive. */
+/**
+ * Silhouette du salon — réutilisée telle quelle par `loading.tsx`, pour que la
+ * coquille ne bouge pas d'un pixel quand le salon arrive. Le surtitre est le
+ * même pour toutes les sessions : il s'affiche en clair, seul le nom attend.
+ */
 export function SessionRoomFallback() {
   return (
     <div aria-busy="true" className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-3 w-16" />
-          <Skeleton className="h-8 w-48" />
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="eyebrow">Session</p>
+          <Skeleton className="h-8 w-48 sm:h-9" />
         </div>
         <Skeleton className="h-6 w-24 rounded-full" />
       </div>

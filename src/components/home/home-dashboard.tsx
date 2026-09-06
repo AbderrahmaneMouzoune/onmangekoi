@@ -1,14 +1,16 @@
 import { RiArrowRightLine } from '@remixicon/react'
 import Link from 'next/link'
 
+import { VisitMemo } from '@/components/layout/visit-memo'
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, SkeletonRow } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { getListsByOwner } from '@/data-access/lists'
 import { getMySessions } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { countLabel, relativeDate } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 /**
  * Sessions et listes de la personne connectée : la seule partie personnalisée
@@ -28,6 +30,8 @@ export async function HomeDashboard() {
 
   return (
     <>
+      <VisitMemo account sessions={sessions.length > 0} lists={lists.length > 0} />
+
       {sessions.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-bold">Tes sessions</h2>
@@ -65,13 +69,7 @@ export async function HomeDashboard() {
           </Link>
         </div>
         {lists.length === 0 ? (
-          <Link
-            href={router.listNew()}
-            className="flex items-center justify-between rounded-lg border border-dashed border-line-strong p-4 text-sm text-ink-2 hover:bg-surface-2"
-          >
-            <span>Crée ta première liste de favoris</span>
-            <RiArrowRightLine aria-hidden="true" className="size-4" />
-          </Link>
+          <FirstListInvite />
         ) : (
           <ul className="flex flex-wrap gap-2">
             {lists.slice(0, 6).map((list) => (
@@ -94,12 +92,55 @@ export async function HomeDashboard() {
   )
 }
 
-/** Réservation de place pendant le streaming, à la hauteur du bloc « Tes listes ». */
+/** Invite à créer une première liste — partagée avec la silhouette. */
+function FirstListInvite({ className }: { className?: string }) {
+  return (
+    <Link
+      href={router.listNew()}
+      className={cn(
+        'flex items-center justify-between rounded-lg border border-dashed border-line-strong p-4 text-sm text-ink-2 hover:bg-surface-2',
+        className
+      )}
+    >
+      <span>Crée ta première liste de favoris</span>
+      <RiArrowRightLine aria-hidden="true" className="size-4" />
+    </Link>
+  )
+}
+
+/**
+ * Silhouette du tableau de bord, accordée à la dernière visite : un premier
+ * visiteur n'a ni session ni liste, et le tableau de bord ne s'affichera même
+ * pas pour lui — sa silhouette ne réserve donc rien. À qui revient, elle rend
+ * les titres en clair et ne garde en gris que les cartes à venir. Le tri se
+ * fait en CSS, sur l'attribut posé avant le premier pixel (`visit-hint.ts`).
+ */
 export function HomeDashboardFallback() {
   return (
-    <section aria-busy="true" className="flex flex-col gap-3">
-      <Skeleton className="h-6 w-28" />
-      <Skeleton className="h-14 w-full rounded-lg" />
-    </section>
+    <>
+      <section aria-busy="true" className="hidden flex-col gap-3 seen-sessions:flex">
+        <h2 className="text-lg font-bold">Tes sessions</h2>
+        <div className="flex flex-col gap-2">
+          <SkeletonRow nameWidth="w-44" badgeWidth="w-20" />
+          <SkeletonRow nameWidth="w-32" badgeWidth="w-16" />
+        </div>
+      </section>
+
+      <section aria-busy="true" className="hidden flex-col gap-3 seen-account:flex">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-bold">Tes listes</h2>
+          <Link href={router.lists()} className="text-sm font-medium text-brand hover:underline">
+            Tout voir
+          </Link>
+        </div>
+        {/* Personne connue sans liste : l'invite affichée est déjà la bonne. */}
+        <FirstListInvite className="hidden seen-no-lists:flex" />
+        <div className="hidden flex-wrap gap-2 seen-lists:flex">
+          <Skeleton className="h-9 w-32 rounded-full" />
+          <Skeleton className="h-9 w-24 rounded-full" />
+          <Skeleton className="h-9 w-28 rounded-full" />
+        </div>
+      </section>
+    </>
   )
 }

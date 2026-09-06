@@ -72,18 +72,32 @@ export async function SetupPanel({ searchParams }: { searchParams: Promise<{ nex
   )
 }
 
+/**
+ * L'en-tête dépend de l'invitation éventuellement portée par `?next=` : elle
+ * seule reste une silhouette. Le formulaire, lui, est le même pour tout le
+ * monde — son intitulé et son aide s'affichent en clair.
+ */
 export function SetupPanelFallback() {
   return (
     <div aria-busy="true" className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
         <Skeleton className="h-3 w-28" />
         <Skeleton className="h-9 w-3/4" />
-        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-5 w-full" />
       </div>
-      <div className="flex flex-col gap-3">
+
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm leading-none font-medium text-ink">Ton pseudo</p>
+          <Skeleton className="h-12 w-full rounded-md" />
+          <p className="text-xs text-muted-foreground">
+            C’est le nom que les autres verront. Modifiable à tout moment.
+          </p>
+        </div>
         <Skeleton className="h-12 w-full rounded-md" />
-        <Skeleton className="h-11 w-full rounded-md" />
       </div>
+
+      <Skeleton className="h-5 w-48 max-w-full self-center" />
     </div>
   )
 }

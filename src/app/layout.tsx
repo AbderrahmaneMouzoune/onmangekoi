@@ -7,6 +7,7 @@ import { AnalyticsProvider } from '@/components/analytics/analytics-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SITE_NAME, SITE_TAGLINE, siteUrl } from '@/lib/site'
 import { cn } from '@/lib/utils'
+import { VISIT_HINT_SCRIPT } from '@/lib/visit-hint'
 
 import type { Metadata, Viewport } from 'next'
 
@@ -74,6 +75,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       className={cn(fontDisplay.variable, fontSans.variable, fontMono.variable)}
     >
       <body className="flex min-h-svh flex-col">
+        {/* Avant le premier pixel : la forme de la dernière visite, pour que
+            les silhouettes de chargement ne réservent que ce qui va venir. */}
+        <script dangerouslySetInnerHTML={{ __html: VISIT_HINT_SCRIPT }} />
         <ThemeProvider>{children}</ThemeProvider>
         <AnalyticsProvider />
         <Suspense fallback={null}>
