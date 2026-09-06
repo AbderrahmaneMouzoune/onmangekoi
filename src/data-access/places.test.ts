@@ -197,14 +197,56 @@ describe('data-access/places', () => {
     fetchMock.mockResolvedValue({
       ok: false,
       status: 403,
-      text: async () => 'API key test-google-key is not authorized',
+      text: async () =>
+        JSON.stringify({
+          error: {
+            status: 'PERMISSION_DENIED',
+            message: 'API key test-google-key is not authorized',
+          },
+        }),
     })
+    const { searchPlaces } = await importPlaces()
+
+    const failure = await searchPlaces({ query: 'sushi' }).catch((error: Error) => error)
+    expect(failure).toBeInstanceOf(Error)
+    expect((failure as Error).message).not.toContain('test-google-key')
+    expect((failure as Error).message).not.toContain('PERMISSION_DENIED')
+    // Le corps, lui, est bien allé dans les logs serveur.
+    expect(logged.mock.calls[0]!.join(' ')).toContain('test-google-key')
+  })
+
+  it('should say a refused key is not worth retrying', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchMock.mockResolvedValue({ ok: false, status: 403, text: async () => '{}' })
+    const { searchPlaces } = await importPlaces()
+
+    await expect(searchPlaces({ query: 'sushi' })).rejects.toThrow(/refuse la clé/)
+  })
+
+  it('should send someone hitting the quota away for a minute, not an instant', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchMock.mockResolvedValue({ ok: false, status: 429, text: async () => '{}' })
+    const { searchPlaces } = await importPlaces()
+
+    await expect(searchPlaces({ query: 'sushi' })).rejects.toThrow(/dans une minute/)
+  })
+
+  it('should treat a Google outage as the passing failure it is', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchMock.mockResolvedValue({ ok: false, status: 503, text: async () => 'upstream down' })
     const { searchPlaces } = await importPlaces()
 
     await expect(searchPlaces({ query: 'sushi' })).rejects.toThrow(
       'La recherche Google a échoué. Réessaie dans un instant.'
     )
-    expect(logged).toHaveBeenCalled()
+  })
+
+  it('should name the timeout rather than fall back on a technical error', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchMock.mockRejectedValue(new DOMException('The operation was aborted', 'TimeoutError'))
+    const { searchPlaces } = await importPlaces()
+
+    await expect(searchPlaces({ query: 'sushi' })).rejects.toThrow(/n’a pas répondu à temps/)
   })
 
   it('should not call Google at all when no key is configured', async () => {

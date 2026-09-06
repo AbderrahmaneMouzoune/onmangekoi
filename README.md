@@ -106,6 +106,17 @@ Le fuseau des horaires n'est pas demandé à Google : `opening_hours.timezone` r
 
 **Deux masques de champs, deux factures.** Google facture au champ le plus cher demandé, et une recherche ramène dix résultats : elle ne demande donc que de quoi afficher une liste. Photo, site, horaires et résumé ne sont demandés que sur le détail d'un lieu — une fois, au clic sur « importer ». La photo coûte un appel de plus, pour convertir son nom de ressource en adresse servable : celle de l'endpoint media exigerait la clé pour être chargée, on stocke donc le `photoUri` qu'il renvoie, servi par Google sans clé et sur un hôte de `ALLOWED_IMAGE_HOSTS`.
 
+**Quand la recherche échoue.** Le message affiché nomme la famille de panne plutôt que de renvoyer tout le monde vers un « réessaie » indifférencié, et le log serveur (`places: recherche → <statut> <raison>`) donne la raison exacte renvoyée par Google — `PERMISSION_DENIED`, `SERVICE_DISABLED`, `RESOURCE_EXHAUSTED`…
+
+| Message affiché                            | Statut Google  | Où regarder                                                                                                                                                                                           |
+| ------------------------------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| « Google refuse la clé de ce déploiement » | 401 / 403      | Clé absente ou invalide ; **restriction par référent HTTP** alors que l'appel part du serveur (restreindre par API, pas par site) ; « Places API (New) » pas activée ; facturation non liée au projet |
+| « Trop de recherches Google d'un coup »    | 429            | Quota par minute atteint dans Google Cloud                                                                                                                                                            |
+| « Google n'a pas répondu à temps »         | aucune réponse | Rien reçu en 8 s : réseau ou lenteur passagère                                                                                                                                                        |
+| « La recherche Google a échoué »           | 5xx            | Incident côté Google, passager                                                                                                                                                                        |
+
+L'ancienne « Places API » ne suffit pas : c'est **Places API (New)** qu'il faut activer, les deux se ressemblant beaucoup dans la console.
+
 Sans clé, l'onglet n'apparaît pas et le reste de l'app fonctionne à l'identique.
 
 ## Stack
