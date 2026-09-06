@@ -86,24 +86,69 @@ function requireApiKey(): string {
   return key
 }
 
-async function callGoogle(url: string, init: RequestInit, apiKey: string): Promise<unknown> {
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': apiKey,
-      ...(init.headers ?? {}),
-    },
-    // Le cache 24 h est le nôtre : celui de Next ne s'applique pas au POST.
-    cache: 'no-store',
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  })
+/**
+ * Tous les refus de Google ne se valent pas : une clé rejetée le restera tant
+ * que la console Google Cloud n'aura pas bougé, alors qu'un 5xx passe tout
+ * seul. Le statut HTTP suffit à les séparer, et le message dit à qui le lit
+ * s'il faut réessayer ou aller regarder la configuration — sans jamais citer
+ * ce que Google a répondu.
+ */
+function failureMessage(status: number): string {
+  if (status === 401 || status === 403)
+    return 'Google refuse la clé de ce déploiement : la recherche est indisponible.'
+  if (status === 429) return 'Trop de recherches Google d’un coup. Réessaie dans une minute.'
+  return 'La recherche Google a échoué. Réessaie dans un instant.'
+}
+
+/**
+ * Google répond ses erreurs en JSON : `{ error: { status, message } }`. Seul
+ * `status` est remonté en tête du log — c'est une énumération
+ * (`PERMISSION_DENIED`, `RESOURCE_EXHAUSTED`, `SERVICE_DISABLED`…) qui nomme
+ * la panne d'un coup d'œil ; `message`, lui, peut citer la clé et reste noyé
+ * dans le corps.
+ */
+function errorReason(body: string): string {
+  try {
+    const reason = (JSON.parse(body) as { error?: { status?: unknown } })?.error?.status
+    return typeof reason === 'string' ? reason : 'HTTP'
+  } catch {
+    return 'HTTP'
+  }
+}
+
+async function callGoogle(
+  label: string,
+  url: string,
+  init: RequestInit,
+  apiKey: string
+): Promise<unknown> {
+  let response: Response
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        ...(init.headers ?? {}),
+      },
+      // Le cache 24 h est le nôtre : celui de Next ne s'applique pas au POST.
+      cache: 'no-store',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
+  } catch (error) {
+    // Délai dépassé ou réseau : Google n'a rien répondu, il n'y a pas de
+    // statut à interpréter. Sans ce filet, l'appel remonterait en erreur
+    // technique et l'interface afficherait un message générique.
+    console.error('places: %s injoignable', label, error)
+    throw new AppError('Google n’a pas répondu à temps. Réessaie dans un instant.')
+  }
 
   if (!response.ok) {
     // Le corps d'erreur Google peut contenir la clé ou des détails de quota :
     // il reste dans les logs serveur, jamais dans la réponse à l'utilisateur.
-    console.error('places: réponse Google %d', response.status, await response.text())
-    throw new AppError('La recherche Google a échoué. Réessaie dans un instant.')
+    const body = await response.text()
+    console.error('places: %s → %d %s', label, response.status, errorReason(body), body)
+    throw new AppError(failureMessage(response.status))
   }
 
   return response.json()
@@ -126,6 +171,7 @@ export async function searchPlaces(input: {
     Number.isFinite(input.longitude)
 
   const payload = await callGoogle(
+    'recherche',
     SEARCH_ENDPOINT,
     {
       method: 'POST',
@@ -171,6 +217,7 @@ export async function searchPlaces(input: {
 async function resolvePhotoUrl(photoName: string, apiKey: string): Promise<string | null> {
   try {
     const payload = await callGoogle(
+      'photo',
       `${PHOTO_ENDPOINT}/${photoName}/media?maxWidthPx=${PHOTO_MAX_WIDTH_PX}&skipHttpRedirect=true`,
       { method: 'GET' },
       apiKey
@@ -194,6 +241,7 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceResult | nu
   if (cached) return cached
 
   const payload = await callGoogle(
+    'détail',
     `${DETAILS_ENDPOINT}/${encodeURIComponent(placeId)}`,
     { method: 'GET', headers: { 'X-Goog-FieldMask': DETAILS_FIELD_MASK } },
     apiKey
