@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Skeleton } from '@/components/ui/skeleton'
+import { SkeletonRow } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { getListsByOwner } from '@/data-access/lists'
@@ -63,12 +63,13 @@ export async function ListsOverview() {
   )
 }
 
+/** Trois rangées au gabarit exact des cartes de liste : nom, méta, anneau. */
 export function ListsOverviewFallback() {
   return (
     <div aria-busy="true" className="flex flex-col gap-2">
-      <Skeleton className="h-[4.5rem] w-full rounded-lg" />
-      <Skeleton className="h-[4.5rem] w-full rounded-lg" />
-      <Skeleton className="h-[4.5rem] w-full rounded-lg" />
+      <SkeletonRow nameWidth="w-44" />
+      <SkeletonRow nameWidth="w-32" badgeWidth="w-32" />
+      <SkeletonRow nameWidth="w-40" />
     </div>
   )
 }

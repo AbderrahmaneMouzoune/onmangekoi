@@ -135,12 +135,74 @@ function StepMark({ done, index }: { done: boolean; index: number }) {
   )
 }
 
+/**
+ * Silhouette de la page compte. Les intitulés — « Pseudo », le parcours de
+ * liaison d'email et ses deux étapes — sont les mêmes pour tout le monde :
+ * seules l'identité et l'avancée réelle des étapes attendent le serveur.
+ */
 export function AccountDetailsFallback() {
   return (
-    <div aria-busy="true" className="flex flex-col gap-6">
-      <Skeleton className="h-[5.5rem] w-full rounded-lg" />
-      <Skeleton className="h-24 w-full rounded-lg" />
-      <Skeleton className="h-64 w-full rounded-lg" />
-    </div>
+    <>
+      <section
+        aria-busy="true"
+        className="flex items-center gap-4 rounded-lg bg-surface p-4 ring-1 ring-line"
+      >
+        <Skeleton className="size-14 rounded-full" />
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-6 w-44 rounded-full" />
+        </div>
+      </section>
+
+      <section aria-busy="true" className="flex flex-col gap-3">
+        <h2 className="font-display text-base font-semibold">Pseudo</h2>
+        <p className="text-sm leading-none font-medium text-ink">Pseudo</p>
+        <div className="flex gap-2">
+          <Skeleton className="h-11 flex-1 rounded-md" />
+          <Skeleton className="h-11 w-32 rounded-md" />
+        </div>
+      </section>
+
+      <section
+        aria-busy="true"
+        className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line"
+      >
+        <div className="flex flex-col gap-0.5">
+          <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+            <RiMailLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
+            Retrouver mes listes ailleurs
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Optionnel. Lier un email et un mot de passe permet de se reconnecter depuis un autre
+            appareil. Tout le reste fonctionne sans.
+          </p>
+        </div>
+
+        <ol className="flex flex-col gap-4">
+          <li className="flex flex-col gap-2">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <Skeleton as="span" className="size-6 shrink-0 rounded-full" />
+              Lier une adresse email
+            </p>
+            <div className="pl-8">
+              <Skeleton className="h-11 w-full rounded-md" />
+            </div>
+          </li>
+          <li className="flex flex-col gap-2">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <Skeleton as="span" className="size-6 shrink-0 rounded-full" />
+              Définir un mot de passe
+            </p>
+            <div className="pl-8">
+              <Skeleton className="h-5 w-64 max-w-full" />
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <div className="flex justify-center pt-2">
+        <Skeleton className="h-11 w-40 rounded-md" />
+      </div>
+    </>
   )
 }

@@ -2,11 +2,11 @@ import { RiGroupLine } from '@remixicon/react'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 
-import { PageHeader } from '@/components/layout/page-header'
+import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
 import { SharedListActions } from '@/components/lists/shared-list-actions'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, SkeletonRow } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { getSharedListPreview, getSharedListRestaurants, ownsSharedList } from '@/data-access/lists'
@@ -107,19 +107,23 @@ export async function SharedListDetail({ params }: { params: Promise<{ code: str
   )
 }
 
+/**
+ * Le code de partage ne dit rien du propriétaire ni du nom : seul le retour
+ * vers l'accueil est connu d'avance, et il est affiché comme tel.
+ */
 export function SharedListDetailFallback() {
   return (
-    <div aria-busy="true" className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-8 w-2/3" />
-        <Skeleton className="h-4 w-24" />
+    <>
+      <PageHeaderFallback
+        eyebrow={<Skeleton as="span" className="h-3 w-32" />}
+        back={{ href: router.home(), label: 'Accueil' }}
+        description
+      />
+      <div aria-busy="true" className="flex flex-col gap-1.5">
+        <SkeletonRow compact nameWidth="w-44" />
+        <SkeletonRow compact nameWidth="w-32" />
+        <SkeletonRow compact nameWidth="w-40" />
       </div>
-      <div className="flex flex-col gap-1.5">
-        <Skeleton className="h-14 w-full rounded-md" />
-        <Skeleton className="h-14 w-full rounded-md" />
-        <Skeleton className="h-14 w-full rounded-md" />
-      </div>
-    </div>
+    </>
   )
 }

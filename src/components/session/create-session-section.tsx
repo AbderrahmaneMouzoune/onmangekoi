@@ -1,12 +1,15 @@
 import { redirect } from 'next/navigation'
 
+import { RestaurantPickerFallback } from '@/components/restaurants/restaurant-picker-fallback'
 import { CreateSessionForm } from '@/components/session/create-session-form'
+import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { getListsWithRestaurantIds } from '@/data-access/lists'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
+import { cn } from '@/lib/utils'
 
 const DAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
 
@@ -36,12 +39,29 @@ export async function CreateSessionSection() {
   )
 }
 
+/**
+ * Silhouette du formulaire : intitulés et bouton d'envoi sont les mêmes pour
+ * tout le monde, écrits en clair dans leur état de départ. Seuls le nom
+ * proposé, les listes de la personne et le catalogue attendent le serveur.
+ */
 export function CreateSessionSectionFallback() {
   return (
     <div aria-busy="true" className="flex flex-col gap-6">
-      <Skeleton className="h-12 w-full rounded-md" />
-      <Skeleton className="h-24 w-full rounded-lg" />
-      <Skeleton className="h-64 w-full rounded-lg" />
+      <div className="flex flex-col gap-2">
+        <p className="text-sm leading-none font-medium text-ink">Nom de la session</p>
+        <Skeleton className="h-12 w-full rounded-md" />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium">Restaurants</p>
+        <RestaurantPickerFallback />
+      </div>
+
+      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md">
+        <button type="button" disabled className={cn(buttonVariants({ size: 'lg' }), 'w-full')}>
+          Sélectionne des restaurants
+        </button>
+      </div>
     </div>
   )
 }

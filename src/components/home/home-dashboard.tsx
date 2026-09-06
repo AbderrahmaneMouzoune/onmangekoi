@@ -2,7 +2,7 @@ import { RiArrowRightLine } from '@remixicon/react'
 import Link from 'next/link'
 
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, SkeletonRow } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { getListsByOwner } from '@/data-access/lists'
@@ -94,12 +94,35 @@ export async function HomeDashboard() {
   )
 }
 
-/** Réservation de place pendant le streaming, à la hauteur du bloc « Tes listes ». */
+/**
+ * Silhouette du tableau de bord. Les deux titres de section et le lien « Tout
+ * voir » ne dépendent d'aucune donnée : ils s'affichent en clair dès le
+ * prérendu — seules les cartes, elles, restent en attente.
+ */
 export function HomeDashboardFallback() {
   return (
-    <section aria-busy="true" className="flex flex-col gap-3">
-      <Skeleton className="h-6 w-28" />
-      <Skeleton className="h-14 w-full rounded-lg" />
-    </section>
+    <>
+      <section aria-busy="true" className="flex flex-col gap-3">
+        <h2 className="text-lg font-bold">Tes sessions</h2>
+        <div className="flex flex-col gap-2">
+          <SkeletonRow nameWidth="w-44" badgeWidth="w-20" />
+          <SkeletonRow nameWidth="w-32" badgeWidth="w-16" />
+        </div>
+      </section>
+
+      <section aria-busy="true" className="flex flex-col gap-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-bold">Tes listes</h2>
+          <Link href={router.lists()} className="text-sm font-medium text-brand hover:underline">
+            Tout voir
+          </Link>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-9 w-32 rounded-full" />
+          <Skeleton className="h-9 w-24 rounded-full" />
+          <Skeleton className="h-9 w-28 rounded-full" />
+        </div>
+      </section>
+    </>
   )
 }

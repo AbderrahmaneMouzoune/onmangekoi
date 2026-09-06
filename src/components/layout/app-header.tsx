@@ -22,11 +22,21 @@ export function AppHeader() {
         <Brand />
         <nav aria-label="Compte" className="flex items-center gap-1">
           <ThemeToggle />
-          <Suspense fallback={<Skeleton className="h-8 w-28 rounded-full" />}>
+          <Suspense fallback={<AccountNavFallback />}>
             <AccountNavLink />
           </Suspense>
         </nav>
       </div>
     </header>
+  )
+}
+
+/** Pastille du compte : l'avatar et le pseudo, aux dimensions du vrai lien. */
+function AccountNavFallback() {
+  return (
+    <div aria-busy="true" className="flex h-9 items-center gap-2 rounded-full pr-3 pl-1">
+      <Skeleton className="size-8 rounded-full" />
+      <Skeleton className="h-4 w-20" />
+    </div>
   )
 }

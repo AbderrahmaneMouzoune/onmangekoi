@@ -1,8 +1,8 @@
 import { notFound, redirect } from 'next/navigation'
 
-import { PageHeader } from '@/components/layout/page-header'
+import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
 import { ListEditor } from '@/components/lists/list-editor'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton, SkeletonRow } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { getListByParam } from '@/data-access/lists'
@@ -49,15 +49,55 @@ export async function ListDetail({ params }: { params: Promise<{ code: string }>
   )
 }
 
+/**
+ * Silhouette de l'éditeur de liste. Tout ce que la route porte déjà — le
+ * retour vers « Mes listes », le surtitre, les intitulés du formulaire et de
+ * la carte de partage — est écrit en clair ; seuls le nom de la liste, son
+ * code et ses restos attendent la base.
+ */
 export function ListDetailFallback() {
   return (
-    <div aria-busy="true" className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-8 w-2/3" />
+    <>
+      <PageHeaderFallback eyebrow="Favoris" back={{ href: router.lists(), label: 'Mes listes' }} />
+
+      <div aria-busy="true" className="flex flex-col gap-8">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm leading-none font-medium text-ink">Nom</p>
+          <div className="flex gap-2">
+            <Skeleton className="h-11 flex-1 rounded-md" />
+            <Skeleton className="h-11 w-28 rounded-md" />
+          </div>
+        </div>
+
+        <section className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line">
+          <div className="flex flex-col gap-0.5">
+            <h2 className="font-display text-base font-semibold">Partager</h2>
+            <Skeleton className="h-5 w-full max-w-xs" />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md bg-surface-2 px-3 py-2">
+            <span className="font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
+              Code
+            </span>
+            <Skeleton className="h-6 w-36 bg-line" />
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Skeleton className="h-11 rounded-md sm:flex-1" />
+            <Skeleton className="h-11 rounded-md sm:flex-1" />
+          </div>
+        </section>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-baseline justify-between">
+            <Skeleton className="h-6 w-28" />
+            <Skeleton className="h-9 w-24 rounded-md" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <SkeletonRow compact nameWidth="w-40" />
+            <SkeletonRow compact nameWidth="w-28" />
+            <SkeletonRow compact nameWidth="w-36" />
+          </div>
+        </div>
       </div>
-      <Skeleton className="h-40 w-full rounded-lg" />
-      <Skeleton className="h-64 w-full rounded-lg" />
-    </div>
+    </>
   )
 }
