@@ -4,10 +4,12 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { FinishedPanel } from '@/components/session/finished-panel'
+import { SessionCountdown } from '@/components/session/session-countdown'
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
 import { VoteDeck } from '@/components/session/vote-deck'
 import { WaitingRoom } from '@/components/session/waiting-room'
 import { router } from '@/config/router.config'
+import { closeAttribution } from '@/domain/session-deadline'
 import { useSessionRoom } from '@/hooks/use-session-room'
 import { captureEvent } from '@/lib/analytics/client'
 import { markOnce, takeSessionEntry } from '@/lib/analytics/handoff'
@@ -86,16 +88,27 @@ export function SessionRoom({
     closeTracked.current = true
 
     // Personne n'annonce la clôture : elle vient de la base dès que tout le
-    // monde a fini, sinon c'est le host qui l'a forcée.
+    // monde a fini ou que l'échéance tombe, sinon c'est le host qui l'a forcée.
     const everyoneFinished =
       participants.length > 0 && participants.every((p) => p.has_finished_voting)
     captureEvent('session_closed', {
       session_id: session.id,
-      reason: everyoneFinished ? 'auto' : 'host',
+      reason: closeAttribution({
+        everyoneFinished,
+        closesAt: session.closes_at,
+        closedAt: session.closed_at,
+      }),
       participant_count: participants.length,
       restaurant_count: restaurants.length,
     })
-  }, [session.status, session.id, participants, restaurants.length])
+  }, [
+    session.status,
+    session.id,
+    session.closes_at,
+    session.closed_at,
+    participants,
+    restaurants.length,
+  ])
 
   useEffect(() => {
     if (session.status === 'closed') {
@@ -117,6 +130,15 @@ export function SessionRoom({
         </div>
         <SessionStatusBadge status={session.status} />
       </div>
+
+      {session.status !== 'closed' && (
+        <SessionCountdown
+          session={session}
+          isHost={isHost}
+          onExtended={setSession}
+          onExpired={refresh}
+        />
+      )}
 
       {session.status === 'waiting' && (
         <WaitingRoom

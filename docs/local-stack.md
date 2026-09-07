@@ -131,11 +131,20 @@ Les visiteurs qui choisissent un pseudo sans jamais lier d'email restent des uti
 
 Un compte n'est purgé que s'il ne peut plus jamais être retrouvé : **une adresse email liée — même en attente de confirmation —, un changement d'email en cours, un téléphone ou une identité externe le protègent définitivement**. Sont également conservés les comptes dont la création ou la dernière connexion est récente, ceux qui ont hébergé ou rejoint une session récemment, et ceux qui participent à une session non clôturée, quelle que soit son ancienneté. La suppression d'un anonyme emporte en cascade son profil et ses listes. Ses sessions, elles, survivent sans host (`sessions.host_id` et `session_participants.profile_id` sont en `on delete set null` depuis la suppression de compte RGPD) : purger un compte n'efface jamais un classement déjà affiché à d'autres. Les sessions closes finissent par partir via `purge_stale_sessions`.
 
-`run_maintenance()` est planifiée à 3 h 17 UTC par `pg_cron` (job `omk-nightly-maintenance`). La migration ne casse pas là où l'extension est absente — un PostgreSQL nu, un plan sans `pg_cron` — elle émet un `NOTICE` et laisse l'appel manuel possible :
+Le vote chronométré ajoute un second job, à la minute cette fois : `public.close_expired_sessions()` clôture les sessions `voting` dont l'échéance est passée (migration `20260907120000_timed_sessions.sql`). Il ne journalise que les passages qui ont fermé quelque chose — 1 440 lignes par jour rendraient `maintenance_runs` illisible.
+
+| Job                          | Cadence       | Fonction                          |
+| ---------------------------- | ------------- | --------------------------------- |
+| `omk-nightly-maintenance`    | 3 h 17 UTC    | `public.run_maintenance()`        |
+| `omk-close-expired-sessions` | chaque minute | `public.close_expired_sessions()` |
+
+Les deux migrations ne cassent pas là où l'extension est absente — un PostgreSQL nu, un plan sans `pg_cron` — elles émettent un `NOTICE` et laissent l'appel manuel possible :
 
 ```sql
 select public.run_maintenance();
+select public.close_expired_sessions();
 select cron.schedule('omk-nightly-maintenance', '17 3 * * *', 'select public.run_maintenance()');
+select cron.schedule('omk-close-expired-sessions', '* * * * *', 'select public.close_expired_sessions()');
 ```
 
 Chaque passage écrit une ligne dans `public.maintenance_runs` (tâche, durée, compteurs en JSON) et une trace dans les logs Postgres. Le journal se purge lui-même au-delà d'un an. La table n'est exposée ni à `anon` ni à `authenticated` :
@@ -155,10 +164,11 @@ supabase start
 bun run db:test
 ```
 
-| Scénario                  | Ce qu'il prouve                                                                                                              |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `purge.test.sql`          | Purge : protections d'un compte joignable, cascades, compteurs, garde-fous de rétention                                      |
-| `delete-account.test.sql` | Suppression RGPD : classement d'une session close inchangé, votes anonymisés, sessions orphelines traitées, export cloisonné |
+| Scénario                  | Ce qu'il prouve                                                                                                               |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `purge.test.sql`          | Purge : protections d'un compte joignable, cascades, compteurs, garde-fous de rétention                                       |
+| `delete-account.test.sql` | Suppression RGPD : classement d'une session close inchangé, votes anonymisés, sessions orphelines traitées, export cloisonné  |
+| `timed-session.test.sql`  | Vote chronométré : bornes de l'échéance, lancement refusé après l'heure, prolongation réservée au host, clôture et classement |
 
 `SUPABASE_DB_URL` permet de viser une autre base que la locale (`postgresql://postgres:postgres@127.0.0.1:54322/postgres`), y compris le PostgreSQL nu décrit plus haut. La CI les rejoue dans le job `End-to-end`, juste après `supabase start`.
 
