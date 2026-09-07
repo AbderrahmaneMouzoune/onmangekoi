@@ -55,6 +55,10 @@ export interface AnalyticsEventMap {
   list_shared: {
     method: ShareMethod
   }
+  /** Ouverture du journal des versions ; la version lue, rien d'autre. */
+  changelog_opened: {
+    version: string
+  }
 }
 
 export type AnalyticsEvent = keyof AnalyticsEventMap

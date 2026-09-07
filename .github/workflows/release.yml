@@ -1,0 +1,165 @@
+name: Release
+
+run-name: 🚀 release · ${{ github.sha }}
+
+# Deux étapes, dans cet ordre :
+#
+#   1. release-please tient une PR de release ouverte en permanence sur `main`.
+#      Elle accumule les commits Conventional Commits, calcule la version
+#      suivante, met à jour `CHANGELOG.md` et `package.json`. La fusionner
+#      publie : tag `vX.Y.Z` + release GitHub.
+#   2. dès qu'une release est publiée, une issue de rédaction est ouverte avec
+#      les commits déjà classés, pour écrire la note **produit** de
+#      `src/content/changelog/entries.ts` — celle que les utilisateurs lisent
+#      sur /nouveautes. Rien n'est généré automatiquement à leur place : une
+#      note produit se rédige, elle ne se déduit pas d'un `feat(scope):`.
+#
+# Secrets (Settings → Secrets and variables → Actions) :
+#   GH_PAT  optionnel — sans lui, les PR ouvertes par le bot ne déclenchent pas
+#           la CI (limitation GitHub sur `GITHUB_TOKEN`) ; le reste fonctionne.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Version, tag et release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      released: ${{ steps.release.outputs.release_created || steps.release.outputs.releases_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Release Please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  product-note:
+    name: Note de version produit
+    needs: release
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      - name: La note existe-t-elle déjà ?
+        id: check
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          if grep -q "version: '${VERSION}'" src/content/changelog/entries.ts; then
+            echo "missing=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Ouvrir l'issue de rédaction
+        if: steps.check.outputs.missing == 'true'
+        uses: actions/github-script@v7
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+          TAG: ${{ needs.release.outputs.tag }}
+        with:
+          github-token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          script: |
+            const version = process.env.VERSION
+            const tag = process.env.TAG
+            const title = `Note de version produit — v${version}`
+
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            })
+            const already = open.find((issue) => issue.title === title)
+            if (already) {
+              core.info(`Issue déjà ouverte : ${already.html_url}`)
+              return
+            }
+
+            let notes = ''
+            try {
+              const release = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              })
+              notes = release.data.body ?? ''
+            } catch (error) {
+              core.warning(`Notes de release illisibles : ${error.message}`)
+            }
+
+            const body = [
+              `La release [\`${tag}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/${tag}) est publiée, mais la page **Nouveautés** ne l'annonce pas encore.`,
+              '',
+              '### À faire',
+              '',
+              '1. Ajouter une entrée en tête de `src/content/changelog/entries.ts` (voir `docs/changelog.md`).',
+              '2. Écrire pour quelqu’un qui n’a jamais lu une ligne de code : ce qu’il peut faire de plus, pas ce qui a été refactoré.',
+              '3. Ne rien annoncer qui ne se voie pas à l’usage — le reste est déjà dans le `CHANGELOG.md`.',
+              '',
+              '### Gabarit',
+              '',
+              '```ts',
+              '{',
+              `  version: '${version}',`,
+              `  date: '${new Date().toISOString().slice(0, 10)}',`,
+              "  title: 'Le nom de la version, côté produit',",
+              "  summary: 'Une phrase : ce que cette version change pour le groupe qui vote.',",
+              '  changes: [',
+              '    {',
+              "      kind: 'new', // 'new' | 'improved' | 'fixed'",
+              "      title: 'Ce qu’on peut faire de plus',",
+              "      description: 'Deux phrases au plus, à hauteur d’utilisateur.',",
+              '    },',
+              '  ],',
+              '},',
+              '```',
+              '',
+              '<details><summary>Notes techniques de la release</summary>',
+              '',
+              notes || '_(aucune note générée)_',
+              '',
+              '</details>',
+            ].join('\n')
+
+            const payload = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              assignees: [context.repo.owner],
+            }
+
+            let issue
+            try {
+              issue = await github.rest.issues.create({ ...payload, labels: ['changelog'] })
+            } catch (error) {
+              // Le label n'existe pas encore et n'a pas pu être créé : l'issue
+              // compte plus que son étiquette.
+              core.warning(`Création avec label impossible : ${error.message}`)
+              issue = await github.rest.issues.create(payload)
+            }
+            core.info(`Issue ouverte : ${issue.data.html_url}`)
