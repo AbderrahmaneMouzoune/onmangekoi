@@ -53,7 +53,7 @@ const RETENTION = [
 
 export default function PrivacyPage() {
   return (
-    <Shell wide>
+    <Shell size="reading">
       <PageHeader
         eyebrow="Vie privée"
         title="Confidentialité"

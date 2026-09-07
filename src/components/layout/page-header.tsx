@@ -32,8 +32,10 @@ export function PageHeader({
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1.5">
           {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-          <h1 className="text-2xl font-bold sm:text-3xl">{title}</h1>
-          {description && <p className="text-sm text-muted-foreground">{description}</p>}
+          <h1 className="text-2xl font-bold sm:text-3xl lg:text-4xl">{title}</h1>
+          {description && (
+            <p className="text-sm text-muted-foreground lg:text-base">{description}</p>
+          )}
         </div>
         {action && <div className="shrink-0">{action}</div>}
       </div>
@@ -72,7 +74,7 @@ export function PageHeaderFallback({
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-          <Skeleton className={cn('h-8 sm:h-9', titleWidth)} />
+          <Skeleton className={cn('h-8 sm:h-9 lg:h-10', titleWidth)} />
           {description && <Skeleton className="h-5 w-40" />}
         </div>
         {action && <div className="shrink-0">{action}</div>}
@@ -85,7 +87,7 @@ function BackLink({ href, label }: BackLinkProps) {
   return (
     <Link
       href={href}
-      className="inline-flex w-fit items-center gap-1 text-sm font-medium text-muted-foreground hover:text-ink"
+      className="inline-flex w-fit items-center gap-1 rounded-sm text-sm font-medium text-muted-foreground hover:text-ink"
     >
       <RiArrowLeftLine aria-hidden="true" className="size-4" />
       {label}

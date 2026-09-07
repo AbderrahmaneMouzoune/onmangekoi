@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default function SessionPage({ params }: Props) {
   return (
-    <Shell>
+    <Shell size="app">
       <Suspense fallback={<SessionRoomFallback />}>
         <SessionRoomSection params={params} />
       </Suspense>

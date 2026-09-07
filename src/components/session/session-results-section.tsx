@@ -55,19 +55,22 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
       />
 
       {winner ? (
-        <>
-          <ResultsList results={results} participantCount={participants.length} />
-          <div className="flex flex-wrap gap-2">
-            <ShareResultsButton
-              url={absoluteUrl(router.sessionResults(session))}
-              sessionName={session.name}
-              winnerName={winner.name}
-            />
-            <Link href={router.sessionNew()} className={cn(buttonVariants())}>
-              Nouvelle session
-            </Link>
-          </div>
-        </>
+        <ResultsList
+          results={results}
+          participantCount={participants.length}
+          actions={
+            <>
+              <ShareResultsButton
+                url={absoluteUrl(router.sessionResults(session))}
+                sessionName={session.name}
+                winnerName={winner.name}
+              />
+              <Link href={router.sessionNew()} className={cn(buttonVariants())}>
+                Nouvelle session
+              </Link>
+            </>
+          }
+        />
       ) : (
         <EmptyState
           icon={<RiTrophyLine />}
@@ -97,8 +100,11 @@ export function SessionResultsFallback() {
         back={{ href: router.home(), label: 'Accueil' }}
         description
       />
-      <div aria-busy="true" className="flex flex-col gap-6">
-        <Skeleton className="h-64 w-full rounded-xl" />
+      <div
+        aria-busy="true"
+        className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:gap-10"
+      >
+        <Skeleton className="h-64 w-full rounded-xl lg:h-80" />
         <section className="flex flex-col gap-2">
           <h2 className="font-display text-base font-semibold">Le reste du classement</h2>
           <SkeletonResult nameWidth="max-w-40" />

@@ -29,7 +29,21 @@ type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => BarcodeDete
  */
 export function QrScanner({ onDetected, onClose }: QrScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
   const [state, setState] = useState<State>('starting')
+
+  // Le bouton qui a ouvert le scanner a disparu : le focus doit atterrir ici,
+  // et Échap referme comme pour n'importe quel panneau qui prend l'écran.
+  useEffect(() => {
+    closeRef.current?.focus()
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   useEffect(() => {
     let stream: MediaStream | null = null
@@ -137,6 +151,7 @@ export function QrScanner({ onDetected, onClose }: QrScannerProps) {
           {state === 'unsupported' && 'Pas de caméra disponible ici. Saisis le code à la main.'}
         </p>
         <Button
+          ref={closeRef}
           type="button"
           variant="chalk"
           size="icon-sm"

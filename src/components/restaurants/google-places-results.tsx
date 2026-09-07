@@ -140,7 +140,7 @@ export function GooglePlacesResults({ query, onImported }: GooglePlacesResultsPr
       <FormMessage error={error} />
 
       <ul
-        className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line"
+        className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line lg:max-h-[28rem]"
         aria-label="Résultats Google"
         aria-busy={isSearching}
       >
@@ -167,7 +167,7 @@ export function GooglePlacesResults({ query, onImported }: GooglePlacesResultsPr
                 type="button"
                 onClick={() => importPlace(place)}
                 disabled={isImporting}
-                className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-surface-2 disabled:opacity-60"
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-surface-2 focus-visible:outline-offset-[-2px] disabled:opacity-60"
               >
                 <span
                   aria-hidden="true"

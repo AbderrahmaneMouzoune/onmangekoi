@@ -50,68 +50,88 @@ export function CreateSessionForm({ lists, initialPage, defaultName }: CreateSes
     rememberSessionEntry({ kind: 'created', listCount: selectedListIds.length })
   }
 
+  const submitLabel =
+    total > 0 ? `Créer la session · ${countLabel(total, 'resto')}` : 'Sélectionne des restaurants'
+
   return (
-    <form action={formAction} onSubmit={rememberCreation} className="flex flex-col gap-6">
+    <form
+      action={formAction}
+      onSubmit={rememberCreation}
+      className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-10"
+    >
       {selectedListIds.map((id) => (
         <input key={id} type="hidden" name="listIds" value={id} />
       ))}
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="name">Nom de la session</Label>
-        <Input
-          id="name"
-          name="name"
-          defaultValue={defaultName}
-          placeholder="Lunch du vendredi"
-          required
-          maxLength={SESSION_NAME_MAX}
-          autoComplete="off"
-          className="h-12 text-lg"
-        />
-      </div>
+      <div className="flex flex-col gap-6 lg:sticky lg:top-24">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="name">Nom de la session</Label>
+          <Input
+            id="name"
+            name="name"
+            defaultValue={defaultName}
+            placeholder="Lunch du vendredi"
+            required
+            maxLength={SESSION_NAME_MAX}
+            autoComplete="off"
+            className="h-12 text-lg"
+          />
+        </div>
 
-      {lists.length > 0 && (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-2 text-sm font-medium">Depuis mes listes</legend>
-          <ul className="flex flex-col gap-2">
-            {lists.map((list) => {
-              const isSelected = selectedListIds.includes(list.id)
-              return (
-                <li key={list.id}>
-                  <button
-                    type="button"
-                    role="checkbox"
-                    aria-checked={isSelected}
-                    onClick={() => toggleList(list.id)}
-                    className={cn(
-                      'flex w-full items-center justify-between gap-3 rounded-lg border p-3.5 text-left transition-colors',
-                      isSelected
-                        ? 'border-brand bg-brand-soft'
-                        : 'border-line bg-surface hover:bg-surface-2'
-                    )}
-                  >
-                    <span className="flex items-center gap-3">
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          'flex size-5 items-center justify-center rounded-full border',
-                          isSelected ? 'border-brand bg-brand text-on-brand' : 'border-line-strong'
-                        )}
-                      >
-                        {isSelected && <RiCheckLine className="size-3.5" />}
+        {lists.length > 0 && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-2 text-sm font-medium">Depuis mes listes</legend>
+            <ul className="flex flex-col gap-2">
+              {lists.map((list) => {
+                const isSelected = selectedListIds.includes(list.id)
+                return (
+                  <li key={list.id}>
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      onClick={() => toggleList(list.id)}
+                      className={cn(
+                        'flex w-full items-center justify-between gap-3 rounded-lg border p-3.5 text-left transition-colors',
+                        isSelected
+                          ? 'border-brand bg-brand-soft'
+                          : 'border-line bg-surface hover:bg-surface-2'
+                      )}
+                    >
+                      <span className="flex items-center gap-3">
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            'flex size-5 items-center justify-center rounded-full border',
+                            isSelected
+                              ? 'border-brand bg-brand text-on-brand'
+                              : 'border-line-strong'
+                          )}
+                        >
+                          {isSelected && <RiCheckLine className="size-3.5" />}
+                        </span>
+                        <span className="font-medium">{list.name}</span>
                       </span>
-                      <span className="font-medium">{list.name}</span>
-                    </span>
-                    <span className="font-mono text-xs text-muted-foreground tabular">
-                      {countLabel(list.restaurant_ids.length, 'resto')}
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </fieldset>
-      )}
+                      <span className="font-mono text-xs text-muted-foreground tabular">
+                        {countLabel(list.restaurant_ids.length, 'resto')}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </fieldset>
+        )}
+
+        {/* Sur grand écran, le bouton reste sous le nom et les listes, dans la
+          colonne collante : plus besoin de la barre du bas. */}
+        <div className="hidden lg:flex lg:flex-col lg:gap-2">
+          <Button type="submit" size="lg" disabled={isPending || total === 0} className="w-full">
+            {isPending ? <Spinner /> : submitLabel}
+          </Button>
+          <FormMessage error={state?.error} />
+        </div>
+      </div>
 
       <div className="flex flex-col gap-2">
         <p className="text-sm font-medium">
@@ -126,18 +146,13 @@ export function CreateSessionForm({ lists, initialPage, defaultName }: CreateSes
         />
       </div>
 
-      <FormMessage error={state?.error} />
-
-      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md">
-        <Button type="submit" size="lg" disabled={isPending || total === 0} className="w-full">
-          {isPending ? (
-            <Spinner />
-          ) : total > 0 ? (
-            `Créer la session · ${countLabel(total, 'resto')}`
-          ) : (
-            'Sélectionne des restaurants'
-          )}
-        </Button>
+      <div className="flex flex-col gap-3 lg:hidden">
+        <FormMessage error={state?.error} />
+        <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md sm:-mx-6 sm:px-6">
+          <Button type="submit" size="lg" disabled={isPending || total === 0} className="w-full">
+            {isPending ? <Spinner /> : submitLabel}
+          </Button>
+        </div>
       </div>
     </form>
   )

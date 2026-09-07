@@ -43,7 +43,7 @@ export function VoteCard({
       aria-label={`${restaurant.name}, restaurant ${index} sur ${total}`}
       style={style}
       className={cn(
-        'relative flex aspect-[4/5] w-full flex-col justify-between overflow-hidden rounded-xl chalkboard p-6 shadow-lg select-none sm:aspect-[5/6]',
+        'relative flex aspect-[4/5] w-full flex-col justify-between overflow-hidden rounded-xl chalkboard p-6 shadow-lg select-none sm:aspect-[5/6] lg:aspect-[4/5]',
         className
       )}
     >
@@ -54,7 +54,7 @@ export function VoteCard({
             src={photo}
             alt=""
             fill
-            sizes="(min-width: 640px) 32rem, 100vw"
+            sizes="(min-width: 1024px) 26rem, (min-width: 640px) 32rem, 100vw"
             priority={priority}
             loading={priority ? undefined : 'lazy'}
             className="object-cover"

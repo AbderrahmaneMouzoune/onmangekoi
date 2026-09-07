@@ -8,6 +8,8 @@ interface VoteControlsProps {
   disabled?: boolean
   superlikeUsed: boolean
   superDislikeUsed: boolean
+  /** Affiche la touche associée à chaque action (clavier physique). */
+  showShortcuts?: boolean
 }
 
 const ICONS: Record<VoteKind, typeof RiThumbUpLine> = {
@@ -24,16 +26,30 @@ const STYLES: Record<VoteKind, string> = {
   fav: 'bg-fav-soft text-fav hover:bg-fav hover:text-white focus-visible:ring-fav/40',
 }
 
+/**
+ * Touche de chaque action, la même que celle écoutée par le deck : gauche et
+ * droite pour les deux votes courants (le sens du swipe), haut et bas pour les
+ * jokers — hors de portée d'un geste, pas d'une touche.
+ */
+export const VOTE_SHORTCUTS: Record<VoteKind, { key: string; symbol: string; label: string }> = {
+  veto: { key: 'ArrowDown', symbol: '↓', label: 'flèche bas' },
+  no: { key: 'ArrowLeft', symbol: '←', label: 'flèche gauche' },
+  yes: { key: 'ArrowRight', symbol: '→', label: 'flèche droite' },
+  fav: { key: 'ArrowUp', symbol: '↑', label: 'flèche haut' },
+}
+
 export function VoteControls({
   onVote,
   disabled = false,
   superlikeUsed,
   superDislikeUsed,
+  showShortcuts = false,
 }: VoteControlsProps) {
   return (
-    <div role="group" aria-label="Voter" className="grid grid-cols-4 gap-2">
+    <div role="group" aria-label="Voter" className="grid grid-cols-4 gap-2 lg:grid-cols-2 lg:gap-3">
       {VOTE_ACTIONS.map((action) => {
         const Icon = ICONS[action.kind]
+        const shortcut = VOTE_SHORTCUTS[action.kind]
         const jokerSpent =
           (action.kind === 'fav' && superlikeUsed) || (action.kind === 'veto' && superDislikeUsed)
         const isDisabled = disabled || jokerSpent
@@ -45,8 +61,9 @@ export function VoteControls({
             disabled={isDisabled}
             title={jokerSpent ? 'Joker déjà utilisé' : action.hint}
             aria-label={`${action.label} — ${action.hint}`}
+            aria-keyshortcuts={shortcut.key}
             className={cn(
-              'flex flex-col items-center justify-center gap-1.5 rounded-lg py-3 text-xs font-semibold transition-[background-color,color,transform] outline-none focus-visible:ring-3 active:not-disabled:scale-95 disabled:cursor-not-allowed disabled:opacity-35',
+              'relative flex flex-col items-center justify-center gap-1.5 rounded-lg py-3 text-xs font-semibold transition-[background-color,color,transform] outline-none focus-visible:ring-3 active:not-disabled:scale-95 disabled:cursor-not-allowed disabled:opacity-35 lg:min-h-28 lg:text-sm',
               action.joker ? 'min-h-20' : 'min-h-24',
               STYLES[action.kind]
             )}
@@ -57,6 +74,14 @@ export function VoteControls({
               <span className="font-mono text-[0.6rem] tracking-wide opacity-70">
                 {jokerSpent ? 'utilisé' : '1 joker'}
               </span>
+            )}
+            {showShortcuts && (
+              <kbd
+                aria-hidden="true"
+                className="absolute top-2 right-2 hidden border-current/30 bg-transparent text-current opacity-60 lg:inline-flex"
+              >
+                {shortcut.symbol}
+              </kbd>
             )}
           </button>
         )

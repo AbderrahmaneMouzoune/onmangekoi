@@ -33,7 +33,7 @@ export async function ListsOverview() {
   return (
     <>
       <VisitMemo account lists />
-      <ul className="flex flex-col gap-2">
+      <ul className="grid gap-2 sm:grid-cols-2 lg:gap-3">
         {lists.map((list) => (
           <li key={list.id}>
             <Link
@@ -86,7 +86,7 @@ function NoLists() {
 export function ListsOverviewFallback() {
   return (
     <>
-      <div aria-busy="true" className="hidden flex-col gap-2 seen-lists:flex">
+      <div aria-busy="true" className="hidden gap-2 sm:grid-cols-2 lg:gap-3 seen-lists:grid">
         <SkeletonRow nameWidth="w-44" />
         <SkeletonRow nameWidth="w-32" badgeWidth="w-32" />
         <SkeletonRow nameWidth="w-40" />
