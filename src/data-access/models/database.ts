@@ -28,6 +28,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      join_attempts: {
+        Row: {
+          attempted_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          attempted_at?: string
+          id?: never
+          user_id: string
+        }
+        Update: {
+          attempted_at?: string
+          id?: never
+          user_id?: string
+        }
+        Relationships: []
+      }
       list_restaurants: {
         Row: {
           added_at: string
@@ -619,6 +637,10 @@ export type Database = {
       }
       normalize_crockford: { Args: { p_input: string }; Returns: string }
       purge_inactive_anonymous: {
+        Args: { p_older_than?: string }
+        Returns: number
+      }
+      purge_join_attempts: {
         Args: { p_older_than?: string }
         Returns: number
       }

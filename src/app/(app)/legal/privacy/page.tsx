@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 }
 
 /** Dernière révision du texte — à remonter à chaque modification de fond. */
-const LAST_UPDATED = '5 septembre 2026'
+const LAST_UPDATED = '7 septembre 2026'
 
 const RETENTION = [
   {
@@ -48,6 +48,11 @@ const RETENTION = [
     data: 'Compte invité sans email',
     why: 'Permettre d’utiliser l’app sans inscription',
     kept: 'Supprimé après 90 jours sans activité',
+  },
+  {
+    data: 'Essais de code ratés',
+    why: 'Empêcher qu’un script devine les codes d’invitation',
+    kept: 'Purgés dans les 24 h — aucune adresse IP n’est enregistrée',
   },
 ] as const
 

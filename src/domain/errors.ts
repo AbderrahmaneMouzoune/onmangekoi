@@ -13,6 +13,8 @@ export const OMK_MESSAGES: Record<string, string> = {
   too_many_restaurants: 'Une session ne peut pas dépasser 100 restaurants.',
   invalid_identifier: 'Ce code ou ce lien n’a pas le bon format.',
   session_not_found: 'Aucune session ne correspond à ce code.',
+  too_many_attempts:
+    'Trop de codes essayés d’affilée. Attends une dizaine de minutes avant de réessayer.',
   session_started: 'Le vote a déjà démarré, il n’est plus possible de rejoindre.',
   session_closed: 'Cette session est terminée.',
   session_already_started: 'La session a déjà été lancée.',
@@ -36,6 +38,15 @@ export const OMK_MESSAGES: Record<string, string> = {
 export const GENERIC_ERROR = 'Une erreur est survenue. Réessaie dans un instant.'
 
 const OMK_PREFIX = 'omk:'
+
+/**
+ * Fabrique une erreur métier avec le même contrat que la base. Sert aux rares
+ * refus que Postgres ne peut pas signaler par une exception — voir
+ * `joinSession` dans `data-access/sessions.ts`.
+ */
+export function omkError(code: string): Error {
+  return new Error(`${OMK_PREFIX}${code}`)
+}
 
 export function omkCode(error: unknown): string | null {
   const message = extractMessage(error)

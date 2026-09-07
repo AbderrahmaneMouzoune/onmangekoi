@@ -42,6 +42,13 @@ export const env = createEnv({
      * préfixée `NEXT_PUBLIC_` — elle ne doit pas atteindre le navigateur.
      */
     GOOGLE_PLACES_API_KEY: z.string().min(1).optional(),
+    /**
+     * Clé secrète Cloudflare Turnstile. **Optionnelle** : sans elle (ou sans
+     * la clé publique correspondante), le captcha de l'onboarding est
+     * entièrement désactivé — c'est l'interrupteur des tests e2e, de la CI et
+     * du développement local.
+     */
+    TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.url(),
@@ -55,15 +62,19 @@ export const env = createEnv({
     NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1).optional(),
     /** Point d'ingestion PostHog — région européenne par défaut (RGPD). */
     NEXT_PUBLIC_POSTHOG_HOST: z.url().default('https://eu.i.posthog.com'),
+    /** Clé publique Turnstile — l'autre moitié de l'interrupteur du captcha. */
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
   },
   runtimeEnv: {
     SITE_URL: resolveSiteUrl(),
     GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
+    TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
   },
   emptyStringAsUndefined: true,
 })
