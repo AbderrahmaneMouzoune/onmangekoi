@@ -17,15 +17,18 @@ import type {
   Session,
   SessionRestaurantWithRestaurant,
 } from '@/data-access/models'
+import type { RestaurantPage } from '@/data-access/restaurants'
 
 interface SessionRoomProps {
   session: Session
   participants: ParticipantWithProfile[]
   restaurants: SessionRestaurantWithRestaurant[]
+  /** Première page du catalogue, pour ajouter un resto en salle d'attente */
+  restaurantCatalog: RestaurantPage | null
   myVotedIds: string[]
   meId: string
   inviteUrl: string
-  /** QR code SVG du lien d'invitation, rendu côté serveur (host, salle d'attente) */
+  /** QR code SVG du lien d'invitation, rendu côté serveur (salle d'attente) */
   qrSvg: string | null
 }
 
@@ -36,24 +39,26 @@ interface SessionRoomProps {
 export function SessionRoom({
   session: initialSession,
   participants: initialParticipants,
-  restaurants,
+  restaurants: initialRestaurants,
+  restaurantCatalog,
   myVotedIds,
   meId,
   inviteUrl,
   qrSvg,
 }: SessionRoomProps) {
   const navigation = useRouter()
-  const { session, participants, connection, refresh, setSession } = useSessionRoom({
+  const { session, participants, restaurants, connection, refresh, setSession } = useSessionRoom({
     sessionId: initialSession.id,
     initialSession,
     initialParticipants,
+    initialRestaurants,
   })
 
   const me = participants.find((p) => p.profile_id === meId)
   const isHost = session.host_id === meId
 
   const [finishedLocally, setFinishedLocally] = useState(
-    myVotedIds.length >= restaurants.length && restaurants.length > 0
+    myVotedIds.length >= initialRestaurants.length && initialRestaurants.length > 0
   )
   const meFinished = finishedLocally || Boolean(me?.has_finished_voting)
 
@@ -67,7 +72,7 @@ export function SessionRoom({
     if (entry?.kind === 'created') {
       captureEvent('session_created', {
         session_id: initialSession.id,
-        restaurant_count: restaurants.length,
+        restaurant_count: initialRestaurants.length,
         list_count: entry.listCount,
       })
       return
@@ -77,7 +82,7 @@ export function SessionRoom({
     if (entry || !isHost) {
       captureEvent('session_joined', { session_id: initialSession.id, via })
     }
-  }, [initialSession.id, isHost, restaurants.length])
+  }, [initialSession.id, isHost, initialRestaurants.length])
 
   const closeTracked = useRef(false)
 
@@ -126,9 +131,11 @@ export function SessionRoom({
           isHost={isHost}
           inviteUrl={inviteUrl}
           qrSvg={qrSvg}
-          restaurantCount={restaurants.length}
+          restaurants={restaurants}
+          restaurantCatalog={restaurantCatalog}
           connection={connection}
           onLaunched={setSession}
+          onRestaurantsChanged={refresh}
         />
       )}
 

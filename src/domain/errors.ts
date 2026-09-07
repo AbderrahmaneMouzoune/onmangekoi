@@ -20,6 +20,7 @@ export const OMK_MESSAGES: Record<string, string> = {
   not_enough_participants: 'Il faut au moins 2 participants pour lancer le vote.',
   host_only: 'Seul le host peut faire ça.',
   not_participant: 'Tu ne fais pas partie de cette session.',
+  not_your_restaurant: 'Tu ne peux retirer que les restos que tu as ajoutés.',
   already_finished: 'Tu as déjà terminé de voter.',
   already_voted: 'Tu as déjà voté pour ce restaurant.',
   invalid_vote: 'Ce vote n’est pas valide.',

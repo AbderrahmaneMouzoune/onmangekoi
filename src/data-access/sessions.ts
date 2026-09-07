@@ -6,6 +6,7 @@ import type {
   ParticipantWithProfile,
   Session,
   SessionPreview,
+  SessionRestaurant,
   SessionRestaurantWithRestaurant,
   SessionResultRow,
   SessionSummary,
@@ -52,6 +53,53 @@ export async function closeSession(
   const { data, error } = await supabase.rpc('close_session', { p_session_id: sessionId })
   if (error) throw error
   return data
+}
+
+/**
+ * Ajoute un restaurant à une session en attente. La RPC vérifie en base que
+ * l'appelant en est participant, que le vote n'a pas démarré et pose
+ * `added_by` elle-même.
+ */
+export async function addSessionRestaurant(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  restaurantId: string
+): Promise<SessionRestaurant> {
+  const { data, error } = await supabase.rpc('add_session_restaurant', {
+    p_session_id: sessionId,
+    p_restaurant_id: restaurantId,
+  })
+  if (error) throw error
+  return data
+}
+
+/**
+ * Ajoute plusieurs restaurants, **en séquence** : chaque insertion prend la
+ * position suivante dans le deck, donc l'ordre des appels est l'ordre de
+ * sélection. En parallèle, la RPC sérialiserait quand même les écritures (elle
+ * verrouille la session) mais l'ordre du deck deviendrait celui du hasard.
+ */
+export async function addSessionRestaurants(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  restaurantIds: string[]
+): Promise<void> {
+  for (const restaurantId of restaurantIds) {
+    await addSessionRestaurant(supabase, sessionId, restaurantId)
+  }
+}
+
+/** Retire un restaurant : celui qu'on a apporté, ou n'importe lequel si on est host. */
+export async function removeSessionRestaurant(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  restaurantId: string
+): Promise<void> {
+  const { error } = await supabase.rpc('remove_session_restaurant', {
+    p_session_id: sessionId,
+    p_restaurant_id: restaurantId,
+  })
+  if (error) throw error
 }
 
 export async function leaveSession(

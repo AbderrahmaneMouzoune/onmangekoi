@@ -5,8 +5,9 @@ import { expect, test, type Browser, type Page } from '@playwright/test'
  *  1. Le host choisit un pseudo et crée une session avec deux restaurants.
  *  2. L'invité ouvre le lien d'invitation, passe par l'onboarding et revient
  *     automatiquement dans la salle d'attente (le `?next=` est conservé).
- *  3. Le host lance ; chacun vote ; la session se clôture toute seule.
- *  4. Les deux voient le classement, avec le coup de cœur en tête.
+ *  3. L'invité apporte son resto : le host le voit arriver en temps réel.
+ *  4. Le host lance ; chacun vote ; la session se clôture toute seule.
+ *  5. Les deux voient le classement, avec le coup de cœur en tête.
  */
 test.describe('Session de vote complète', () => {
   test.skip(process.env.E2E !== '1', 'Nécessite une stack Supabase locale (E2E=1).')
@@ -51,7 +52,18 @@ test.describe('Session de vote complète', () => {
     await expect(host.getByText('Sam')).toBeVisible()
     await expect(host.getByText('2 participants')).toBeVisible()
 
-    // 3. Lancement et votes
+    // 3. Sam apporte son resto — inviter et compléter le deck ne sont pas des
+    // privilèges de host : il voit le code d'invitation et le bouton d'ajout.
+    await expect(guest.getByTestId('invite-code')).toBeVisible()
+    await guest.getByRole('button', { name: /ajouter le mien/i }).click()
+    const guestResults = guest.getByRole('list', { name: 'Résultats' })
+    await guestResults.getByRole('checkbox').nth(2).click()
+    await guest.getByRole('button', { name: /^ajouter 1 resto$/i }).click()
+
+    // Le host voit le deck grossir sans recharger
+    await expect(host.getByText('3 restos à départager')).toBeVisible({ timeout: 15_000 })
+
+    // 4. Lancement et votes
     await host.getByRole('button', { name: /lancer le vote/i }).click()
     await expect(host.getByRole('group', { name: 'Voter' })).toBeVisible()
     await expect(guest.getByRole('group', { name: 'Voter' })).toBeVisible()
@@ -59,12 +71,14 @@ test.describe('Session de vote complète', () => {
     await host.getByRole('button', { name: /coup de cœur/i }).click()
     await expect(host.getByRole('button', { name: /coup de cœur/i })).toBeDisabled()
     await host.getByRole('button', { name: /bof/i }).click()
+    await host.getByRole('button', { name: /bof/i }).click()
     await expect(host.getByText(/tu as tout voté/i)).toBeVisible()
 
     await guest.getByRole('button', { name: /ça me va/i }).click()
     await guest.getByRole('button', { name: /veto/i }).click()
+    await guest.getByRole('button', { name: /ça me va/i }).click()
 
-    // 4. Clôture automatique → classement pour les deux
+    // 5. Clôture automatique → classement pour les deux
     await expect(host).toHaveURL(/\/results$/, { timeout: 15_000 })
     await expect(guest).toHaveURL(/\/results$/, { timeout: 15_000 })
     await expect(host.getByText(/on mange chez/i)).toBeVisible()

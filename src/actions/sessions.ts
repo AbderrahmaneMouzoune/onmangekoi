@@ -3,12 +3,25 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-import { router } from '@/config/router.config'
+import { ROUTE_PATTERNS, router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
-import { closeSession, deleteSession, launchSession, leaveSession } from '@/data-access/sessions'
+import {
+  addSessionRestaurants,
+  closeSession,
+  deleteSession,
+  launchSession,
+  leaveSession,
+  removeSessionRestaurant,
+} from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { toUserMessage } from '@/domain/errors'
-import { CreateSessionSchema, JoinSessionSchema, SessionIdSchema } from '@/domain/schemas/session'
+import {
+  AddSessionRestaurantsSchema,
+  CreateSessionSchema,
+  JoinSessionSchema,
+  SessionIdSchema,
+  SessionRestaurantSchema,
+} from '@/domain/schemas/session'
 import { createSessionUseCase } from '@/use-cases/create-session'
 import { joinSessionUseCase } from '@/use-cases/join-session'
 
@@ -65,6 +78,53 @@ export async function joinSessionAction(_prev: FormState, formData: FormData): P
 
   revalidatePath(router.home())
   redirect(router.session(session))
+}
+
+/**
+ * Apporte des restaurants à une session en attente. Ouvert à tous ses
+ * participants : la RPC revérifie en base l'appartenance et le statut.
+ */
+export async function addSessionRestaurantsAction(
+  sessionId: string,
+  restaurantIds: string[]
+): Promise<ActionResult> {
+  const parsed = AddSessionRestaurantsSchema.safeParse({ sessionId, restaurantIds })
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Requête invalide' }
+  }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { ok: false, error: 'Non authentifié' }
+
+  try {
+    await addSessionRestaurants(supabase, parsed.data.sessionId, parsed.data.restaurantIds)
+  } catch (error) {
+    return { ok: false, error: toUserMessage(error) }
+  }
+
+  revalidatePath(ROUTE_PATTERNS.session, 'page')
+  return { ok: true, data: undefined }
+}
+
+/** Retire un restaurant apporté — le sien, ou n'importe lequel quand on est host. */
+export async function removeSessionRestaurantAction(
+  sessionId: string,
+  restaurantId: string
+): Promise<ActionResult> {
+  const parsed = SessionRestaurantSchema.safeParse({ sessionId, restaurantId })
+  if (!parsed.success) return { ok: false, error: 'Requête invalide' }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { ok: false, error: 'Non authentifié' }
+
+  try {
+    await removeSessionRestaurant(supabase, parsed.data.sessionId, parsed.data.restaurantId)
+  } catch (error) {
+    return { ok: false, error: toUserMessage(error) }
+  }
+
+  revalidatePath(ROUTE_PATTERNS.session, 'page')
+  return { ok: true, data: undefined }
 }
 
 export async function launchSessionAction(sessionId: string): Promise<ActionResult<Session>> {

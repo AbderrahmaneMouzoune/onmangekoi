@@ -2,10 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { getSessionById, getSessionParticipants } from '@/data-access/sessions'
+import {
+  getSessionById,
+  getSessionParticipants,
+  getSessionRestaurants,
+} from '@/data-access/sessions'
 import { createBrowserClient } from '@/data-access/supabase/client'
 
-import type { ParticipantWithProfile, Session } from '@/data-access/models'
+import type {
+  ParticipantWithProfile,
+  Session,
+  SessionRestaurantWithRestaurant,
+} from '@/data-access/models'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
 export type ConnectionState = 'connecting' | 'live' | 'offline'
@@ -14,6 +22,7 @@ interface UseSessionRoomOptions {
   sessionId: string
   initialSession: Session
   initialParticipants: ParticipantWithProfile[]
+  initialRestaurants: SessionRestaurantWithRestaurant[]
 }
 
 /** Resynchronisation de secours quand le canal est en direct (filet, pas chemin principal). */
@@ -25,6 +34,7 @@ const OFFLINE_POLL_MS = 3000
  * État live d'une session :
  *  - UPDATE sur `sessions` → statut (waiting → voting → closed)
  *  - tout événement sur `session_participants` → arrivées, départs, votes terminés
+ *  - tout événement sur `session_restaurants` → les restos apportés par les autres
  *
  * Realtime est le chemin rapide ; un polling léger sert de filet dans tous les
  * cas (un événement manqué, un token appliqué tardivement, un canal qui se
@@ -36,23 +46,41 @@ export function useSessionRoom({
   sessionId,
   initialSession,
   initialParticipants,
+  initialRestaurants,
 }: UseSessionRoomOptions) {
   const [session, setSession] = useState<Session>(initialSession)
   const [participants, setParticipants] = useState<ParticipantWithProfile[]>(initialParticipants)
+  const [restaurants, setRestaurants] =
+    useState<SessionRestaurantWithRestaurant[]>(initialRestaurants)
   const [connection, setConnection] = useState<ConnectionState>('connecting')
   const connectionRef = useRef<ConnectionState>('connecting')
+  /**
+   * Le deck ne se compose qu'en salle d'attente : passé le lancement, le
+   * relire à chaque cycle ne rapporterait jamais rien. Le drapeau ne tombe
+   * qu'après la lecture qui a vu le statut changer — c'est elle qui rapporte
+   * un resto apporté juste avant le lancement.
+   */
+  const readsDeckRef = useRef(initialSession.status === 'waiting')
 
   const refresh = useCallback(async () => {
     const supabase = createBrowserClient()
+    const readsDeck = readsDeckRef.current
     try {
-      const [nextSession, nextParticipants] = await Promise.all([
+      const [nextSession, nextParticipants, nextRestaurants] = await Promise.all([
         getSessionById(supabase, sessionId),
         getSessionParticipants(supabase, sessionId),
+        readsDeck ? getSessionRestaurants(supabase, sessionId) : [],
       ])
-      if (nextSession) setSession(nextSession)
-      // Une liste vide signifie « rien de visible » (token absent) : on garde
-      // l'état connu plutôt que d'effacer la salle.
+      if (nextSession) {
+        setSession(nextSession)
+        if (readsDeck && nextSession.status !== 'waiting') readsDeckRef.current = false
+      }
+      // Une liste vide signifie « rien de visible » (token absent, deck non
+      // relu) : on garde l'état connu plutôt que d'effacer la salle. Une
+      // session compte toujours au moins un restaurant — le retrait du dernier
+      // est refusé en base — donc la même règle vaut pour le deck.
       if (nextParticipants.length > 0) setParticipants(nextParticipants)
+      if (nextRestaurants.length > 0) setRestaurants(nextRestaurants)
     } catch {
       // Réseau indisponible : on retentera au prochain événement / cycle
     }
@@ -100,6 +128,18 @@ export function useSessionRoom({
             void refresh()
           }
         )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'session_restaurants',
+            filter: `session_id=eq.${sessionId}`,
+          },
+          () => {
+            void refresh()
+          }
+        )
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
             setConn('live')
@@ -140,5 +180,5 @@ export function useSessionRoom({
     }
   }, [sessionId, refresh])
 
-  return { session, participants, connection, refresh, setSession }
+  return { session, participants, restaurants, connection, refresh, setSession }
 }

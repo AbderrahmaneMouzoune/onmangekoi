@@ -256,24 +256,37 @@ export type Database = {
       }
       session_restaurants: {
         Row: {
+          added_at: string
+          added_by: string | null
           id: string
           position: number
           restaurant_id: string
           session_id: string
         }
         Insert: {
+          added_at?: string
+          added_by?: string | null
           id?: string
           position: number
           restaurant_id: string
           session_id: string
         }
         Update: {
+          added_at?: string
+          added_by?: string | null
           id?: string
           position?: number
           restaurant_id?: string
           session_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: 'session_restaurants_added_by_fkey'
+            columns: ['added_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
           {
             foreignKeyName: 'session_restaurants_restaurant_id_fkey'
             columns: ['restaurant_id']
@@ -391,6 +404,23 @@ export type Database = {
       add_restaurant_to_shared_list: {
         Args: { p_restaurant_id: string; p_token: string }
         Returns: undefined
+      }
+      add_session_restaurant: {
+        Args: { p_restaurant_id: string; p_session_id: string }
+        Returns: {
+          added_at: string
+          added_by: string | null
+          id: string
+          position: number
+          restaurant_id: string
+          session_id: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'session_restaurants'
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       close_session: {
         Args: { p_session_id: string }
@@ -630,6 +660,10 @@ export type Database = {
         }[]
       }
       raise_omk: { Args: { p_code: string }; Returns: undefined }
+      remove_session_restaurant: {
+        Args: { p_restaurant_id: string; p_session_id: string }
+        Returns: undefined
+      }
       run_maintenance: { Args: never; Returns: Json }
       session_preview: {
         Args: { p_identifier: string }
