@@ -16,7 +16,7 @@ import type { Browser, Page } from '@playwright/test'
 test.describe('Accessibilité', () => {
   test.skip(process.env.E2E !== '1', 'Nécessite une stack Supabase locale (E2E=1).')
 
-  test('pages publiques : accueil, rejoindre, connexion, confidentialité', async ({
+  test('pages publiques : accueil, connexion, confidentialité, pseudo', async ({
     page,
   }, testInfo) => {
     await page.goto('/')
@@ -28,16 +28,20 @@ test.describe('Accessibilité', () => {
     await auditA11y(page, testInfo, 'accueil (sombre)')
     await page.emulateMedia({ colorScheme: 'light' })
 
-    await page.goto('/join')
-    await expect(page.getByLabel(/code ou lien/i)).toBeVisible()
-    await auditA11y(page, testInfo, 'rejoindre')
+    await page.goto('/login')
+    await expect(page.getByLabel('Email')).toBeVisible()
+    await auditA11y(page, testInfo, 'connexion')
     await expectVisibleFocusRing(page, 6)
 
-    await page.goto('/login')
-    await auditA11y(page, testInfo, 'connexion')
-
     await page.goto('/legal/privacy')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     await auditA11y(page, testInfo, 'confidentialité')
+
+    // « Rejoindre » est derrière le pseudo : sans lui, on atterrit sur /setup.
+    await page.goto('/join')
+    await expect(page).toHaveURL(/\/setup\?next=%2Fjoin/)
+    await expect(page.getByLabel('Ton pseudo')).toBeVisible()
+    await auditA11y(page, testInfo, 'pseudo')
   })
 
   test('parcours de session : pseudo, salle d’attente, vote, classement', async ({
@@ -49,7 +53,6 @@ test.describe('Accessibilité', () => {
     // 1. Onboarding
     await host.goto('/sessions/new')
     await expect(host).toHaveURL(/\/setup\?next=/)
-    await auditA11y(host, testInfo, 'pseudo')
     await host.getByLabel('Ton pseudo').fill('Alex')
     await host.getByRole('button', { name: /c’est parti/i }).click()
 
@@ -73,6 +76,8 @@ test.describe('Accessibilité', () => {
     await guest.getByLabel('Ton pseudo').fill('Sam')
     await guest.getByRole('button', { name: /c’est parti/i }).click()
     await expect(guest).toHaveURL(/\/join$/)
+    await expect(guest.getByLabel(/code ou lien/i)).toBeVisible()
+    await auditA11y(guest, testInfo, 'rejoindre')
     await guest.getByLabel(/code ou lien/i).fill(code as string)
     await guest.getByRole('button', { name: 'Rejoindre' }).click()
     await expect(guest).toHaveURL(sessionUrl)

@@ -216,11 +216,15 @@ function Breakdown({ row, tone }: { row: SessionResultRow; tone: 'chalk' | 'ink'
           key={item.label}
           className={cn(
             'inline-flex items-center gap-1 font-mono text-xs tabular',
-            tone === 'chalk' ? 'text-chalk-muted' : 'text-muted-foreground',
-            item.count === 0 && 'opacity-50'
+            tone === 'chalk' ? 'text-chalk-muted' : 'text-muted-foreground'
           )}
         >
-          <item.icon aria-hidden="true" className={cn('size-3.5', item.count > 0 && item.color)} />
+          {/* Un compteur à zéro se voit à son icône éteinte : dépolir le chiffre
+              lui-même le ferait tomber sous le contraste minimum. */}
+          <item.icon
+            aria-hidden="true"
+            className={cn('size-3.5', item.count > 0 ? item.color : 'opacity-50')}
+          />
           {item.count}
           <span className="sr-only"> {item.label}</span>
         </li>

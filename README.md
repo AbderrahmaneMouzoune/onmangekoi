@@ -202,7 +202,7 @@ Le deck se vote entièrement au clavier, la charte tient le contraste AA dans se
 | Audit axe                | `e2e/accessibility.spec.ts`      | Chaque page du parcours passe sous axe (WCAG 2.1 A et AA) ; toute violation `serious` ou `critical` échoue |
 | Contraste des tokens     | `src/app/theme-contrast.test.ts` | Lit `globals.css` et refuse toute paire texte/fond sous 4.5:1 — en clair comme en sombre                   |
 | Rôle et nom accessible   | `src/components/ui/*.test.tsx`   | Chaque primitive expose le rôle et le nom attendus                                                         |
-| Lighthouse Accessibilité | `.lighthouserc.json`             | Score ≥ 95 sur les pages publiques (accueil, rejoindre, connexion, pseudo, confidentialité)                |
+| Lighthouse Accessibilité | `.lighthouserc.json`             | Score ≥ 95 sur les pages publiques (accueil, connexion, pseudo, confidentialité)                           |
 
 ### Le deck au clavier
 

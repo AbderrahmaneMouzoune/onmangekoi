@@ -55,7 +55,8 @@ export function VoteControls({
             <Icon aria-hidden="true" className={action.joker ? 'size-6' : 'size-7'} />
             <span>{action.short}</span>
             {action.joker && (
-              <span className="font-mono text-[0.6rem] tracking-wide opacity-70">
+              // Pas d'opacité ici : à 70 % le libellé retombe à 2,7:1 sur son fond.
+              <span className="font-mono text-[0.6rem] tracking-wide">
                 {jokerSpent ? 'utilisé' : '1 joker'}
               </span>
             )}

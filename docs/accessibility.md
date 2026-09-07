@@ -45,6 +45,8 @@ Le calcul vit dans `src/lib/contrast.ts`. Chaque paire porte son usage (« bouto
 
 **Retoucher une teinte, c'est repasser par ce test.** Si une couleur ne peut pas descendre sans perdre son caractère, la bonne réponse est souvent de changer le fond sur lequel elle est posée, ou d'inverser le texte (`text-surface` sur aplat plein) plutôt que d'assouplir le seuil.
 
+Ce test lit des tokens, pas des pixels : une **opacité** posée sur du texte lui échappe complètement. Elle compose la couleur avec le fond et peut faire tomber une paire conforme très bas — `opacity-70` sur le sous-libellé « 1 joker » valait 2,7:1, `opacity-50` sur un compteur à zéro 2,0:1. Axe, lui, les voit : c'est exactement ce qu'il a trouvé au premier passage en CI. La règle qui en découle : **on ne dépolit pas du texte**, on change sa couleur ; l'opacité reste aux éléments décoratifs.
+
 Deux tokens échappent volontairement au seuil texte :
 
 - `--faint` ne peint plus que des icônes décoratives ; les deux endroits où il servait de texte (placeholder, référence d'erreur) sont passés à `--ink-muted` ;
@@ -65,7 +67,7 @@ L'anneau reste **opaque**. Ce détail n'en est pas un : le même anneau à 40 % 
 
 ## Lighthouse
 
-`bun run test:lighthouse` lance `@lhci/cli` (épinglé) sur les cinq pages publiques, catégorie Accessibilité seulement, et échoue sous **0,95**. Le binaire Chrome se choisit par `CHROME_PATH` ; en CI c'est le Chromium que Playwright vient d'installer, pour n'avoir qu'une version de navigateur dans le job.
+`bun run test:lighthouse` lance `@lhci/cli` (épinglé) sur les quatre pages réellement publiques — accueil, connexion, pseudo, confidentialité — catégorie Accessibilité seulement, et échoue sous **0,95**. « Rejoindre » n'en fait pas partie : la route est derrière le pseudo, un visiteur anonyme y est renvoyé sur `/setup`. Le binaire Chrome se choisit par `CHROME_PATH` ; en CI c'est le Chromium que Playwright vient d'installer, pour n'avoir qu'une version de navigateur dans le job.
 
 En local, avec la stack Supabase démarrée :
 
