@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 
 import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
 import { SharedListActions } from '@/components/lists/shared-list-actions'
+import { RestaurantThumb } from '@/components/restaurants/restaurant-thumb'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton, SkeletonRow } from '@/components/ui/skeleton'
@@ -76,21 +77,22 @@ export async function SharedListDetail({ params }: { params: Promise<{ code: str
           {restaurants.map((restaurant) => (
             <li
               key={restaurant.id}
-              className="flex items-center gap-3 rounded-md bg-surface px-3 py-2.5 ring-1 ring-line"
+              className="flex items-center gap-3 rounded-md bg-surface py-2 pr-3 pl-2.5 ring-1 ring-line"
             >
+              <RestaurantThumb name={restaurant.name} photoUrl={restaurant.photo_url} size="sm" />
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-sm font-medium">{restaurant.name}</span>
+                {(restaurant.cuisine_type || restaurant.city) && (
+                  <span className="truncate font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
+                    {[restaurant.cuisine_type, restaurant.city].filter(Boolean).join(' · ')}
+                  </span>
+                )}
                 {restaurant.description && (
                   <span className="truncate text-xs text-muted-foreground">
                     {restaurant.description}
                   </span>
                 )}
               </div>
-              {restaurant.cuisine_type && (
-                <span className="shrink-0 font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
-                  {restaurant.cuisine_type}
-                </span>
-              )}
             </li>
           ))}
         </ul>

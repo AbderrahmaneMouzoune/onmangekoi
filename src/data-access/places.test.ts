@@ -18,6 +18,11 @@ const GOOGLE_PLACE = {
   priceLevel: 'PRICE_LEVEL_MODERATE',
   location: { latitude: 45.76, longitude: 4.83 },
   addressComponents: [{ longText: 'Lyon', types: ['locality'] }],
+  rating: 4.5,
+  userRatingCount: 320,
+  regularOpeningHours: {
+    periods: [{ open: { day: 1, hour: 11, minute: 30 }, close: { day: 1, hour: 14, minute: 0 } }],
+  },
 }
 
 /** Les champs enrichis n'existent que sur le détail d'un lieu. */
@@ -25,15 +30,12 @@ const GOOGLE_DETAILS = {
   ...GOOGLE_PLACE,
   editorialSummary: { text: 'Sushis préparés à la commande.' },
   websiteUri: 'https://sakura.example',
-  regularOpeningHours: {
-    periods: [{ open: { day: 1, hour: 11, minute: 30 }, close: { day: 1, hour: 14, minute: 0 } }],
-  },
   photos: [{ name: 'places/ChIJsushi/photos/AbC' }],
 }
 
 const PHOTO_URI = 'https://lh3.googleusercontent.com/places/sakura'
 
-/** Ce qu'une recherche ramène : pas de photo, pas d'horaires, pas de site. */
+/** Ce qu'une recherche ramène : pas de photo, pas de site, pas de résumé. */
 const SUSHI_BAR = {
   placeId: 'ChIJsushi',
   name: 'Sushi Bar Sakura',
@@ -42,9 +44,11 @@ const SUSHI_BAR = {
   cuisineType: 'Japonais',
   priceLevel: 2,
   location: { lat: 45.76, lng: 4.83 },
+  rating: 4.5,
+  ratingCount: 320,
   description: null,
   website: null,
-  openingHours: null,
+  openingHours: { periods: [{ day: 1, open: '11:30', close: '14:00' }] },
   photoName: null,
   photoUrl: null,
 }
@@ -53,7 +57,6 @@ const SUSHI_BAR_DETAILS = {
   ...SUSHI_BAR,
   description: 'Sushis préparés à la commande.',
   website: 'https://sakura.example',
-  openingHours: { periods: [{ day: 1, open: '11:30', close: '14:00' }] },
   photoName: 'places/ChIJsushi/photos/AbC',
   photoUrl: PHOTO_URI,
 }
@@ -90,6 +93,10 @@ describe('data-access/places', () => {
     expect(url).toBe('https://places.googleapis.com/v1/places:searchText')
     expect(init.headers['X-Goog-Api-Key']).toBe('test-google-key')
     expect(init.headers['X-Goog-FieldMask']).toContain('places.id')
+    // Note, avis et horaires relèvent du même palier que le budget : la
+    // liste les affiche sans attendre l'import.
+    expect(init.headers['X-Goog-FieldMask']).toContain('places.rating')
+    expect(init.headers['X-Goog-FieldMask']).toContain('places.regularOpeningHours')
     expect(init.body).not.toContain('test-google-key')
     expect(JSON.parse(init.body)).toMatchObject({
       textQuery: 'Sushi Sakura',
@@ -120,7 +127,7 @@ describe('data-access/places', () => {
     })
   })
 
-  it('should not serve an import from the search cache: a search has no photo or hours', async () => {
+  it('should not serve an import from the search cache: a search has no photo or site', async () => {
     fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ places: [GOOGLE_PLACE] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => GOOGLE_DETAILS })
