@@ -119,7 +119,8 @@ jobs:
       # une seule version de navigateur pour les deux audits.
       - name: Locate Chromium
         run: |
-          echo "CHROME_PATH=$(bun -e \"console.log(require('playwright-core').chromium.executablePath())\")" >> "$GITHUB_ENV"
+          CHROME=$(bun -e 'console.log(require("playwright-core").chromium.executablePath())')
+          echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
 
       - name: Lighthouse Accessibilité (pages publiques)
         run: bun run test:lighthouse
