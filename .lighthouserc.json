@@ -1,0 +1,31 @@
+{
+  "ci": {
+    "collect": {
+      "startServerCommand": "bun run start",
+      "startServerReadyPattern": "Ready in",
+      "startServerReadyTimeout": 120000,
+      "numberOfRuns": 1,
+      "url": [
+        "http://localhost:3000/",
+        "http://localhost:3000/join",
+        "http://localhost:3000/login",
+        "http://localhost:3000/setup",
+        "http://localhost:3000/legal/privacy"
+      ],
+      "settings": {
+        "onlyCategories": ["accessibility"],
+        "preset": "desktop",
+        "chromeFlags": "--no-sandbox --disable-dev-shm-usage"
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:accessibility": ["error", { "minScore": 0.95 }]
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": ".lighthouseci"
+    }
+  }
+}

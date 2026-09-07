@@ -19,6 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:lighthouse": "bunx @lhci/cli@0.15.1 autorun",
     "check": "bun run typecheck && bun run lint && bun run format:check && bun run test",
     "db:types": "supabase gen types typescript --local > src/data-access/models/database.ts && prettier --write src/data-access/models/database.ts",
     "db:test": "for f in supabase/tests/*.test.sql; do psql \"${SUPABASE_DB_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}\" -v ON_ERROR_STOP=1 -f \"$f\" || exit 1; done",
@@ -54,6 +55,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
     "@playwright/test": "^1.63.0",
@@ -69,6 +71,7 @@
     "@typescript-eslint/eslint-plugin": "^8.69.0",
     "@typescript-eslint/parser": "^8.69.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "axe-core": "^4.13.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.4",
     "eslint-config-prettier": "^10.1.8",
