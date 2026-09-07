@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { submitVoteAction } from '@/actions/votes'
 import { VoteCard } from '@/components/session/vote-card'
-import { VoteControls } from '@/components/session/vote-controls'
+import { VoteControls, VOTE_SHORTCUTS } from '@/components/session/vote-controls'
 import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
 import { voteActionByValue } from '@/domain/vote'
@@ -29,11 +29,31 @@ const EXIT_MS = 260
 type Drag = { dx: number; dy: number; active: boolean }
 type Leaving = { id: string; direction: 'left' | 'right' } | null
 
+/** Valeur de vote de chaque touche écoutée par le deck. */
+const KEY_VOTES: Record<string, VoteValue> = {
+  [VOTE_SHORTCUTS.no.key]: 0,
+  [VOTE_SHORTCUTS.yes.key]: 1,
+  [VOTE_SHORTCUTS.fav.key]: 2,
+  [VOTE_SHORTCUTS.veto.key]: -2,
+}
+
+/** Un raccourci ne doit pas voler une touche à un champ, un menu ou une modale. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  if (target.isContentEditable) return true
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return true
+  return Boolean(target.closest('[role="dialog"], [role="alertdialog"], [role="menu"]'))
+}
+
 /**
  * Deck de vote : une carte à la fois, quatre actions. Le swipe horizontal
  * couvre les deux votes courants (gauche = bof, droite = ça me va) ; les
- * jokers ne s'utilisent que par bouton pour éviter tout geste accidentel.
+ * jokers ne s'utilisent que par bouton — ou par touche : haut pour le coup de
+ * cœur, bas pour le veto, hors de portée d'un geste accidentel.
  * Optimiste : la carte part immédiatement, la base est la source de vérité.
+ *
+ * Sur grand écran, la carte garde la largeur d'un téléphone et les commandes
+ * viennent à sa droite : on lit d'un côté, on tranche de l'autre.
  */
 export function VoteDeck({
   sessionId,
@@ -125,23 +145,23 @@ export function VoteDeck({
     ]
   )
 
-  // Clavier : ← bof, → ça me va
+  // Clavier : ← bof, → ça me va, ↑ coup de cœur, ↓ veto. Un joker déjà
+  // dépensé ne répond plus, comme son bouton.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
-      if (event.key === 'ArrowRight') {
-        event.preventDefault()
-        void vote(1)
-      } else if (event.key === 'ArrowLeft') {
-        event.preventDefault()
-        void vote(0)
-      }
+      if (event.defaultPrevented || event.repeat || event.isComposing) return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      if (isTypingTarget(event.target)) return
+      const value = KEY_VOTES[event.key]
+      if (value === undefined) return
+      if (value === 2 && superlikeUsed) return
+      if (value === -2 && superDislikeUsed) return
+      event.preventDefault()
+      void vote(value)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [vote])
+  }, [vote, superlikeUsed, superDislikeUsed])
 
   // Swipe (pointer events, souris et tactile)
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -190,15 +210,21 @@ export function VoteDeck({
       }
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-3">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
+      {/* Annonce de la carte en cours : la carte change sans que la personne
+          ait bougé le focus, un lecteur d'écran doit l'entendre. */}
+      <p aria-live="polite" aria-atomic="true" className="sr-only">
+        Restaurant {done + 1} sur {total} : {current.restaurants.name}
+      </p>
+
+      <div className="mx-auto flex w-full max-w-lg items-center gap-3 lg:order-2 lg:max-w-none">
         <Progress value={done} max={total} label="Progression du vote" className="flex-1" />
         <span className="font-mono text-xs text-muted-foreground tabular">
           {done}/{total}
         </span>
       </div>
 
-      <div className="relative">
+      <div className="relative mx-auto w-full max-w-lg lg:order-1 lg:row-span-3 lg:max-w-none">
         {next?.restaurants && (
           <div aria-hidden="true" className="absolute inset-0 scale-[0.96] opacity-60">
             <VoteCard
@@ -227,19 +253,31 @@ export function VoteDeck({
         </div>
       </div>
 
-      <FormMessage error={error} />
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-5 lg:order-3 lg:max-w-none">
+        <FormMessage error={error} />
 
-      <VoteControls
-        onVote={(value) => void vote(value)}
-        disabled={Boolean(leaving)}
-        superlikeUsed={superlikeUsed}
-        superDislikeUsed={superDislikeUsed}
-      />
+        <VoteControls
+          onVote={(value) => void vote(value)}
+          disabled={Boolean(leaving)}
+          superlikeUsed={superlikeUsed}
+          superDislikeUsed={superDislikeUsed}
+          showShortcuts
+        />
 
-      <p className="text-center text-xs text-muted-foreground">
-        Glisse la carte à droite pour « ça me va », à gauche pour « bof ». Les jokers comptent
-        double et ne s’utilisent qu’une fois.
-      </p>
+        <p className="text-center text-xs text-muted-foreground lg:text-left lg:text-sm">
+          Glisse la carte à droite pour « ça me va », à gauche pour « bof ». Les jokers comptent
+          double et ne s’utilisent qu’une fois.
+        </p>
+        <p className="hidden items-center gap-2 text-xs text-muted-foreground lg:flex">
+          <span>Au clavier :</span>
+          <kbd>←</kbd>
+          <kbd>→</kbd>
+          <span>pour bof / ça me va,</span>
+          <kbd>↑</kbd>
+          <kbd>↓</kbd>
+          <span>pour coup de cœur / veto.</span>
+        </p>
+      </div>
     </div>
   )
 }

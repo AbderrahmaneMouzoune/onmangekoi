@@ -46,10 +46,22 @@ export async function CreateSessionSection() {
  */
 export function CreateSessionSectionFallback() {
   return (
-    <div aria-busy="true" className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <p className="text-sm leading-none font-medium text-ink">Nom de la session</p>
-        <Skeleton className="h-12 w-full rounded-md" />
+    <div
+      aria-busy="true"
+      className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-10"
+    >
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm leading-none font-medium text-ink">Nom de la session</p>
+          <Skeleton className="h-12 w-full rounded-md" />
+        </div>
+        <button
+          type="button"
+          disabled
+          className={cn(buttonVariants({ size: 'lg' }), 'hidden w-full lg:inline-flex')}
+        >
+          Sélectionne des restaurants
+        </button>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -57,7 +69,7 @@ export function CreateSessionSectionFallback() {
         <RestaurantPickerFallback />
       </div>
 
-      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md">
+      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md sm:-mx-6 sm:px-6 lg:hidden">
         <button type="button" disabled className={cn(buttonVariants({ size: 'lg' }), 'w-full')}>
           Sélectionne des restaurants
         </button>

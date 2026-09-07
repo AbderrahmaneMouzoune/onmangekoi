@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { useRovingFocus } from '@/hooks/use-roving-focus'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant } from '@/data-access/models'
@@ -27,7 +28,14 @@ interface RestaurantPickerProps {
   /** name des inputs hidden pour un envoi via formulaire */
   inputName?: string
   emptyLabel?: string
+  /** Pose le focus sur la recherche à l'ouverture (sélecteur affiché à la demande). */
+  autoFocus?: boolean
 }
+
+const SOURCES = [
+  ['base', 'Base'],
+  ['google', 'Google'],
+] as const
 
 export function RestaurantPicker({
   initialPage,
@@ -36,6 +44,7 @@ export function RestaurantPicker({
   lockedIds = [],
   inputName,
   emptyLabel = 'Aucun restaurant ne correspond.',
+  autoFocus = false,
 }: RestaurantPickerProps) {
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 300)
@@ -52,6 +61,9 @@ export function RestaurantPicker({
     () => new Map(initialPage.items.map((r) => [r.id, r]))
   )
   const lastQuery = useRef('')
+  const addButtonRef = useRef<HTMLButtonElement>(null)
+  /** Les flèches changent d'onglet en même temps que de focus (onglets « automatiques »). */
+  const onTabKeyDown = useRovingFocus((index) => setSource(SOURCES[index][0]))
 
   function remember(items: Restaurant[]) {
     setKnown((prev) => {
@@ -118,7 +130,13 @@ export function RestaurantPicker({
     if (!locked.has(restaurant.id) && !selected.has(restaurant.id)) {
       onChange([...value, restaurant.id])
     }
+    closeAddForm()
+  }
+
+  /** Le formulaire disparaît : le focus revient sur le bouton qui l'a ouvert. */
+  function closeAddForm() {
     setIsAdding(false)
+    requestAnimationFrame(() => addButtonRef.current?.focus())
   }
 
   const selectedRestaurants = value
@@ -141,24 +159,27 @@ export function RestaurantPicker({
           placeholder="Chercher un resto ou une cuisine"
           aria-label="Chercher un restaurant"
           autoComplete="off"
+          autoFocus={autoFocus}
           className="pl-10"
         />
         {isSearching && <Spinner className="absolute top-1/2 right-3.5 -translate-y-1/2" />}
       </div>
 
       {sources.google && (
-        <div role="tablist" aria-label="Source des restaurants" className="flex gap-1.5">
-          {(
-            [
-              ['base', 'Base'],
-              ['google', 'Google'],
-            ] as const
-          ).map(([key, label]) => (
+        <div
+          role="tablist"
+          aria-label="Source des restaurants"
+          onKeyDown={onTabKeyDown}
+          className="flex gap-1.5"
+        >
+          {SOURCES.map(([key, label]) => (
             <button
               key={key}
               type="button"
               role="tab"
               id={`${tabId}-tab-${key}`}
+              data-roving
+              tabIndex={source === key ? 0 : -1}
               aria-selected={source === key}
               aria-controls={`${tabId}-panel`}
               onClick={() => setSource(key)}
@@ -207,10 +228,11 @@ export function RestaurantPicker({
               <AddRestaurantForm
                 defaultName={query.trim()}
                 onAdded={addAndSelect}
-                onCancel={() => setIsAdding(false)}
+                onCancel={closeAddForm}
               />
             ) : (
               <Button
+                ref={addButtonRef}
                 type="button"
                 variant="ghost"
                 size="sm"
@@ -229,7 +251,7 @@ export function RestaurantPicker({
             )}
 
             <ul
-              className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line"
+              className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line lg:max-h-[28rem]"
               aria-label="Résultats"
             >
               {page.items.length === 0 && !isSearching && (
@@ -241,7 +263,7 @@ export function RestaurantPicker({
                       <button
                         type="button"
                         onClick={() => setIsAdding(true)}
-                        className="font-semibold text-brand underline-offset-4 hover:underline"
+                        className="rounded-sm font-semibold text-brand underline-offset-4 hover:underline"
                       >
                         Ajoute-le
                       </button>
@@ -262,7 +284,7 @@ export function RestaurantPicker({
                       aria-disabled={isLocked || undefined}
                       onClick={() => toggle(restaurant.id)}
                       className={cn(
-                        'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors',
+                        'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors focus-visible:outline-offset-[-2px]',
                         isSelected ? 'bg-brand-soft' : 'hover:bg-surface-2',
                         isLocked && 'cursor-default opacity-70'
                       )}

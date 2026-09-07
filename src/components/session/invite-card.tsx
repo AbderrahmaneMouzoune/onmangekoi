@@ -59,7 +59,7 @@ export function InviteCard({
   return (
     <section
       aria-labelledby="invite-title"
-      className="flex flex-col gap-5 rounded-lg chalkboard p-5"
+      className="flex flex-col gap-5 rounded-lg chalkboard p-5 lg:sticky lg:top-24 lg:p-6"
     >
       <div className="flex flex-col gap-3">
         <p
@@ -80,7 +80,7 @@ export function InviteCard({
           <div
             aria-label="QR code du lien d’invitation"
             role="img"
-            className="size-28 shrink-0 [&>svg]:size-full"
+            className="size-28 shrink-0 lg:size-36 [&>svg]:size-full"
             dangerouslySetInnerHTML={{ __html: qrSvg }}
           />
           <p className="text-sm text-chalk-muted">

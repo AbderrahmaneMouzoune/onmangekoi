@@ -119,6 +119,33 @@ L'ancienne « Places API » ne suffit pas : c'est **Places API (New)** qu'il fau
 
 Sans clé, l'onglet n'apparaît pas et le reste de l'app fonctionne à l'identique.
 
+## Écran large et clavier
+
+L'app est pensée pour le téléphone, mais un lien de session arrive aussi souvent par Teams ou Slack, sur un poste de travail. À partir de 1024 px, chaque écran se déploie en grille au lieu d'étirer la colonne mobile :
+
+| Écran               | Sur grand écran                                                                   |
+| ------------------- | --------------------------------------------------------------------------------- |
+| Accueil             | accroche et « comment ça marche » face à face, sessions et listes dessous         |
+| Salle d'attente     | invitation (code, QR, liens) à gauche, participants et lancement à droite         |
+| Vote                | la carte garde la largeur d'un téléphone, les quatre boutons viennent à sa droite |
+| Classement          | le gagnant et sa carte à gauche, le reste du classement et le partage à droite    |
+| Création, listes    | nom et bouton d'envoi dans une colonne collante, sélecteur de restos à côté       |
+| Pseudo, code, login | colonne étroite, centrée : un seul geste à faire                                  |
+
+`Shell` (`src/components/layout/shell.tsx`) porte ces trois largeurs (`narrow`, `reading`, `app`) ; l'en-tête gagne une navigation principale marquée `aria-current` sur la page en cours.
+
+Tout se fait au clavier :
+
+| Touche                | Où                                             | Effet                                                                 |
+| --------------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
+| `Tab` (premier appui) | partout                                        | « Aller au contenu » : saute l'en-tête                                |
+| `←` `→`               | vote                                           | bof · ça me va — le sens du swipe                                     |
+| `↑` `↓`               | vote                                           | coup de cœur · veto — les jokers, inaccessibles à un geste accidentel |
+| `←` `→` `Début` `Fin` | onglets Base / Google, budget                  | passe d'un élément à l'autre (un seul arrêt de tabulation par groupe) |
+| `Échap`               | scanner QR, ajout de resto, bouton à confirmer | ferme, annule, désarme                                                |
+
+Le focus est toujours visible (contour tomate, `:focus-visible` global), il revient sur le bouton qui a ouvert un panneau quand celui-ci se ferme, et chaque changement d'état de la session — lancement du vote, clôture — est annoncé aux lecteurs d'écran et reçoit le focus.
+
 ## Stack
 
 | Couche     | Choix                                                                                    |

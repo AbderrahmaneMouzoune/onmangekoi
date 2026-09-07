@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default function ListPage({ params }: Props) {
   return (
-    <Shell>
+    <Shell size="app">
       <Suspense fallback={<ListDetailFallback />}>
         <ListDetail params={params} />
       </Suspense>
