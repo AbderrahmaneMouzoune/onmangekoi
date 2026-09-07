@@ -10,6 +10,7 @@ describe('router', () => {
     expect(router.home()).toBe('/')
     expect(router.join()).toBe('/join')
     expect(router.joinInvite('A3F9B2')).toBe('/join/A3F9B2')
+    expect(router.sessions()).toBe('/sessions')
     expect(router.session('7K3M9P')).toBe('/sessions/7K3M9P')
     expect(router.sessionResults('7K3M9P')).toBe('/sessions/7K3M9P/results')
     expect(router.list('7K3M9P2QWX')).toBe('/lists/7K3M9P2QWX')
@@ -22,6 +23,11 @@ describe('router', () => {
     expect(router.setup('/')).toBe('/setup')
     expect(router.setup()).toBe('/setup')
     expect(router.login('/lists')).toBe('/login?next=%2Flists')
+  })
+
+  it('should page the history by cursor, never by offset', () => {
+    expect(router.sessions({ cursor: null })).toBe('/sessions')
+    expect(router.sessions({ cursor: 'MjAyNi0wOS0wNA' })).toBe('/sessions?cursor=MjAyNi0wOS0wNA')
   })
 
   it('should address a session by its invite code, never by its id', () => {
