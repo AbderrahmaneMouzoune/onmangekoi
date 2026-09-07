@@ -4,7 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 
 import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
 import { ResultsList } from '@/components/session/results-list'
-import { ShareResultsButton } from '@/components/session/share-results-button'
+import { ResultsSharing } from '@/components/session/results-sharing'
 import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,7 +17,7 @@ import {
 } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { countLabel } from '@/lib/format'
-import { absoluteUrl } from '@/lib/site'
+import { absoluteUrl, publicResultsUrl } from '@/lib/site'
 import { cn } from '@/lib/utils'
 
 /** Classement final d'une session : réservé à ses participants (RLS). */
@@ -57,12 +57,16 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
       {winner ? (
         <>
           <ResultsList results={results} participantCount={participants.length} />
+          <ResultsSharing
+            sessionId={session.id}
+            sessionName={session.name}
+            winnerName={winner.name}
+            privateUrl={absoluteUrl(router.sessionResults(session))}
+            publicUrl={publicResultsUrl(session)}
+            isHost={session.host_id === user.id}
+            initialPublic={session.results_public}
+          />
           <div className="flex flex-wrap gap-2">
-            <ShareResultsButton
-              url={absoluteUrl(router.sessionResults(session))}
-              sessionName={session.name}
-              winnerName={winner.name}
-            />
             <Link href={router.sessionNew()} className={cn(buttonVariants())}>
               Nouvelle session
             </Link>

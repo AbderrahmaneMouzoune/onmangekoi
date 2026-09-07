@@ -31,6 +31,20 @@ describe('router', () => {
     expect(router.joinInvite(session)).toBe('/join/7K3M9P')
   })
 
+  it('should address a public ranking by its own results code', () => {
+    const session = {
+      id: 'ffffffff-0000-4000-8000-000000000000',
+      invite_code: '7K3M9P',
+      results_code: 'H4V2Q8ZX0M',
+    }
+    expect(router.publicResults(session)).toBe('/r/H4V2Q8ZX0M')
+    expect(router.publicResults('H4V2Q8ZX0M')).toBe('/r/H4V2Q8ZX0M')
+  })
+
+  it('should keep the public ranking out of the protected prefixes', () => {
+    expect(PROTECTED_PREFIXES).not.toContain('/r')
+  })
+
   it('should address a list by its share code, never by its id', () => {
     const list = { id: 'ffffffff-0000-4000-8000-000000000000', share_code: '7K3M9P2QWX' }
     expect(router.list(list)).toBe('/lists/7K3M9P2QWX')

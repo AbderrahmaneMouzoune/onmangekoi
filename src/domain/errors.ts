@@ -15,6 +15,7 @@ export const OMK_MESSAGES: Record<string, string> = {
   session_not_found: 'Aucune session ne correspond à ce code.',
   session_started: 'Le vote a déjà démarré, il n’est plus possible de rejoindre.',
   session_closed: 'Cette session est terminée.',
+  session_not_closed: 'Le classement n’existe pas encore : clôture d’abord la session.',
   session_already_started: 'La session a déjà été lancée.',
   session_not_voting: 'Le vote n’est pas en cours.',
   not_enough_participants: 'Il faut au moins 2 participants pour lancer le vote.',

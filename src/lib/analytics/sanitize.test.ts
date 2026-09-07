@@ -19,6 +19,11 @@ describe('maskPathname', () => {
     expect(maskPathname('/lists/H4V2Q8ZX0M')).toBe('/lists/[code]')
   })
 
+  it('should mask the code of a public ranking', () => {
+    expect(maskPathname('/r/H4V2Q8ZX0M')).toBe('/r/[code]')
+    expect(maskPathname('/r/h4v2q8zx0m')).toBe('/r/[code]')
+  })
+
   it('should still mask the uuid form of old links', () => {
     expect(maskPathname('/sessions/0f8fad5b-d9cb-469f-a165-70867728950e')).toBe('/sessions/[code]')
     expect(maskPathname('/lists/0f8fad5b-d9cb-469f-a165-70867728950e')).toBe('/lists/[code]')

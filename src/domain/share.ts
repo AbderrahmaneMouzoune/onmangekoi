@@ -1,4 +1,4 @@
-import { INVITE_CODE_LENGTH, SHARE_CODE_LENGTH } from '@/config/router.config'
+import { INVITE_CODE_LENGTH, RESULTS_CODE_LENGTH, SHARE_CODE_LENGTH } from '@/config/router.config'
 import { codeFromSegment } from '@/lib/crockford'
 
 const LEGACY_TOKEN = /^[a-f0-9]{32}$/
@@ -47,6 +47,17 @@ export function parseSessionParam(param: string): RouteIdentifier {
 /** `/lists/7K3M9P2QWX` → code ; un ancien `/lists/<uuid>` reste lu. */
 export function parseListParam(param: string): RouteIdentifier {
   return parseRouteParam(param, SHARE_CODE_LENGTH)
+}
+
+/**
+ * `/r/7K3M9P2QWX` → code du classement public, `null` sinon.
+ *
+ * Ici, pas de repli sur un uuid ni sur un ancien jeton : cette page est la
+ * seule ouverte sans pseudo, elle ne s'atteint que par le code que le host a
+ * décidé de publier.
+ */
+export function parseResultsParam(param: string): string | null {
+  return codeFromSegment(safeDecode(param).trim(), RESULTS_CODE_LENGTH)
 }
 
 /**

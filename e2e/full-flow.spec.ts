@@ -7,6 +7,8 @@ import { expect, test, type Browser, type Page } from '@playwright/test'
  *     automatiquement dans la salle d'attente (le `?next=` est conservé).
  *  3. Le host lance ; chacun vote ; la session se clôture toute seule.
  *  4. Les deux voient le classement, avec le coup de cœur en tête.
+ *  5. Le host ouvre le lien public : un inconnu, sans pseudo ni cookie, lit
+ *     le podium — et n'y trouve le pseudo de personne.
  */
 test.describe('Session de vote complète', () => {
   test.skip(process.env.E2E !== '1', 'Nécessite une stack Supabase locale (E2E=1).')
@@ -70,6 +72,34 @@ test.describe('Session de vote complète', () => {
     await expect(host.getByText(/on mange chez/i)).toBeVisible()
     await expect(host.getByText('+3')).toBeVisible()
     await expect(guest.getByText('−2')).toBeVisible()
+
+    // 5. Partage public : opt-in du host, puis lecture par un inconnu
+    const share = host.getByRole('switch', { name: /rendre le classement public/i })
+    await expect(share).toHaveAttribute('aria-checked', 'false')
+    // L'invité n'est pas host : la bascule n'existe que chez Alex.
+    await expect(guest.getByRole('switch')).toHaveCount(0)
+
+    await share.click()
+    await expect(host.getByRole('switch', { name: /lien public actif/i })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    )
+
+    const publicUrl = await host
+      .getByTestId('results-share-actions')
+      .getAttribute('data-public-url')
+    expect(publicUrl).toMatch(/\/r\/[0-9A-HJKMNP-TV-Z]{10}$/)
+
+    const stranger = await newPage(browser)
+    await stranger.goto(publicUrl as string)
+    await expect(stranger.getByRole('heading', { name: 'E2E lunch' })).toBeVisible()
+    await expect(stranger.getByText(/on mange chez/i)).toBeVisible()
+    await expect(stranger.getByText('2 participants')).toBeVisible()
+    // Aucun pseudo sur la page publique — c'est tout l'enjeu.
+    await expect(stranger.getByText('Alex')).toHaveCount(0)
+    await expect(stranger.getByText('Sam')).toHaveCount(0)
+    // Et rien n'y donne accès à la salle de vote.
+    await expect(stranger).toHaveURL(publicUrl as string)
   })
 })
 

@@ -54,6 +54,20 @@ export async function closeSession(
   return data
 }
 
+/** Ouvre ou referme le lien public du classement — host uniquement (RPC). */
+export async function setResultsPublic(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  isPublic: boolean
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('set_results_public', {
+    p_session_id: sessionId,
+    p_public: isPublic,
+  })
+  if (error) throw error
+  return data
+}
+
 export async function leaveSession(
   supabase: SupabaseClient<Database>,
   sessionId: string,
