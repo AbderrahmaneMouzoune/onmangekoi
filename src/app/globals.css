@@ -4,6 +4,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Silhouettes de chargement : elles ne réservent que ce que la dernière visite
+   a laissé — voir `src/lib/visit-hint.ts`. Sans attribut (première visite,
+   stockage bloqué), aucune de ces variantes ne s'applique. */
+@custom-variant seen-account (&:is(html[data-visit~='account'] *));
+@custom-variant seen-sessions (&:is(html[data-visit~='sessions'] *));
+@custom-variant seen-lists (&:is(html[data-visit~='lists'] *));
+@custom-variant seen-no-lists (&:is(html[data-visit~='account']:not([data-visit~='lists']) *));
+
 /* ================================================================
    CHARTE — « L'ardoise »
    Un fond pierre chaleureux, une encre profonde, un rouge tomate pour

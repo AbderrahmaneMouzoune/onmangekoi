@@ -1,14 +1,12 @@
 import { cn } from '@/lib/utils'
 
-interface ShellProps {
-  children: React.ReactNode
-  className?: string
+interface ShellProps extends React.ComponentProps<'main'> {
   /** Colonne large (listes, résultats) */
   wide?: boolean
 }
 
 /** Colonne de contenu mobile-first, centrée sur grand écran. */
-export function Shell({ children, className, wide = false }: ShellProps) {
+export function Shell({ children, className, wide = false, ...props }: ShellProps) {
   return (
     <main
       className={cn(
@@ -16,6 +14,7 @@ export function Shell({ children, className, wide = false }: ShellProps) {
         wide ? 'max-w-2xl' : 'max-w-lg',
         className
       )}
+      {...props}
     >
       {children}
     </main>

@@ -36,19 +36,36 @@ export async function LoginPanel({ searchParams }: { searchParams: Promise<{ nex
   )
 }
 
+/**
+ * Rien de ce texte ne dépend des données : le titre, l'accroche et les
+ * intitulés du formulaire s'affichent en clair dès le prérendu. Seuls les
+ * champs — que la redirection `?next=` peut encore faire disparaître —
+ * restent en attente.
+ */
 export function LoginPanelFallback() {
   return (
     <div aria-busy="true" className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
-        <Skeleton className="h-3 w-20" />
-        <Skeleton className="h-9 w-3/4" />
-        <Skeleton className="h-4 w-full" />
+        <p className="eyebrow">Compte</p>
+        <h1 className="text-3xl font-extrabold">Retrouver mes listes</h1>
+        <p className="text-sm text-ink-2">
+          Connecte-toi avec l’email et le mot de passe définis depuis ton autre appareil.
+        </p>
       </div>
-      <div className="flex flex-col gap-3">
+
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm leading-none font-medium text-ink">Email</p>
+          <Skeleton className="h-11 w-full rounded-md" />
+        </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-sm leading-none font-medium text-ink">Mot de passe</p>
+          <Skeleton className="h-11 w-full rounded-md" />
+        </div>
         <Skeleton className="h-12 w-full rounded-md" />
-        <Skeleton className="h-12 w-full rounded-md" />
-        <Skeleton className="h-11 w-full rounded-md" />
       </div>
+
+      <Skeleton className="h-5 w-64 max-w-full self-center" />
     </div>
   )
 }
