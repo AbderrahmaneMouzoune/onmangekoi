@@ -28,7 +28,7 @@ export function Brand({ className, size = 'sm', asLink = true }: BrandProps) {
     <Link
       href={router.home()}
       aria-label="onmangekoi, accueil"
-      className="rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+      className="rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring"
     >
       {content}
     </Link>

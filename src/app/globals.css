@@ -17,6 +17,11 @@
    Un fond pierre chaleureux, une encre profonde, un rouge tomate pour
    l'action, et une ardoise sombre réservée à l'objet central du produit :
    la carte de vote. Les quatre valeurs de vote ont chacune leur couleur.
+
+   Contraste : chaque couleur de texte tient 4.5:1 sur les fonds où elle est
+   posée, dans les deux thèmes ; les tokens décoratifs (`--faint`, `--focus`)
+   tiennent 3:1. `src/app/theme-contrast.test.ts` lit ce fichier et échoue sur
+   toute paire qui descend en dessous — retoucher une teinte, c'est y repasser.
    ================================================================ */
 
 /* ── 1. Tokens sémantiques — clair (défaut) ─────────────────── */
@@ -28,14 +33,14 @@
 
   --ink: #1b1a17;
   --ink-2: #4b4842;
-  --ink-muted: #78746b;
-  --faint: #a8a49a;
+  --ink-muted: #6e6a62;
+  --faint: #918c80;
 
   --line: #e1dfd6;
   --line-strong: #c9c6bb;
 
-  --brand: #e8412c;
-  --brand-hover: #d2351f;
+  --brand: #d42c17;
+  --brand-hover: #c8331e;
   --brand-soft: #fde8e4;
   --on-brand: #ffffff;
 
@@ -46,14 +51,14 @@
 
   --v-veto: #8f2318;
   --v-veto-soft: #f6e3e0;
-  --v-no: #6f6b63;
+  --v-no: #6e6a62;
   --v-no-soft: #ecebe4;
-  --v-yes: #2c7a4b;
+  --v-yes: #2c794b;
   --v-yes-soft: #e1f1e6;
-  --v-fav: #d9950f;
+  --v-fav: #91640a;
   --v-fav-soft: #fbefd3;
 
-  --focus: #e8412c;
+  --focus: #d42c17;
 
   --radius: 1rem;
 
@@ -71,8 +76,8 @@
 
   --ink: #f1efe9;
   --ink-2: #c9c6bc;
-  --ink-muted: #8f8b82;
-  --faint: #5f5c55;
+  --ink-muted: #938f86;
+  --faint: #6d6a62;
 
   --line: #2f3236;
   --line-strong: #44484d;
