@@ -26,6 +26,7 @@ export const INVITE_CODE_LENGTH = 6
  */
 export const ROUTE_PATTERNS = {
   list: '/lists/[code]',
+  session: '/sessions/[code]',
   sharedList: '/l/[code]',
 } as const
 

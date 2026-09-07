@@ -24,5 +24,20 @@ export const JoinSessionSchema = z.object({
 
 export const SessionIdSchema = z.uuid()
 
+/** Restaurants apportés à une session en attente, par n'importe quel participant. */
+export const AddSessionRestaurantsSchema = z.object({
+  sessionId: z.uuid(),
+  restaurantIds: z
+    .array(z.uuid())
+    .min(1, 'Sélectionne au moins un restaurant')
+    .max(SESSION_RESTAURANTS_MAX),
+})
+
+export const SessionRestaurantSchema = z.object({
+  sessionId: z.uuid(),
+  restaurantId: z.uuid(),
+})
+
+export type AddSessionRestaurantsInput = z.infer<typeof AddSessionRestaurantsSchema>
 export type CreateSessionInput = z.infer<typeof CreateSessionSchema>
 export type JoinSessionInput = z.infer<typeof JoinSessionSchema>

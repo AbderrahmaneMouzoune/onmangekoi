@@ -37,15 +37,16 @@ Le seul identifiant transmis est l'**UUID du profil Supabase**, opaque, passé �
 
 ## Événements
 
-| Événement         | Émis quand                                                       | Propriétés                                                                        |
-| ----------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `session_created` | le host arrive sur sa session — donc création réellement aboutie | `session_id`, `restaurant_count`, `list_count`                                    |
-| `invite_shared`   | copie du code, copie du lien, partage natif, ou affichage du QR  | `session_id`, `method`                                                            |
-| `session_joined`  | un invité arrive dans une session qu'il vient de rejoindre       | `session_id`, `via` (`code` · `link` · `scan`)                                    |
-| `vote_submitted`  | un vote est enregistré en base (pas une carte déjà votée)        | `session_id`, `value`, `kind`, `position`, `restaurant_count`                     |
-| `session_closed`  | la session passe à `closed` sous les yeux d'un participant       | `session_id`, `reason` (`auto` · `host`), `participant_count`, `restaurant_count` |
-| `list_shared`     | copie du lien de partage d'une liste                             | `method`                                                                          |
-| `$pageview`       | à chaque changement de route, sur la route **masquée**           | —                                                                                 |
+| Événement                   | Émis quand                                                       | Propriétés                                                                        |
+| --------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `session_created`           | le host arrive sur sa session — donc création réellement aboutie | `session_id`, `restaurant_count`, `list_count`                                    |
+| `invite_shared`             | copie du code, copie du lien, partage natif, ou affichage du QR  | `session_id`, `method`                                                            |
+| `session_joined`            | un invité arrive dans une session qu'il vient de rejoindre       | `session_id`, `via` (`code` · `link` · `scan`)                                    |
+| `session_restaurants_added` | un participant apporte des restos en salle d'attente             | `session_id`, `added_count`, `restaurant_count`                                   |
+| `vote_submitted`            | un vote est enregistré en base (pas une carte déjà votée)        | `session_id`, `value`, `kind`, `position`, `restaurant_count`                     |
+| `session_closed`            | la session passe à `closed` sous les yeux d'un participant       | `session_id`, `reason` (`auto` · `host`), `participant_count`, `restaurant_count` |
+| `list_shared`               | copie du lien de partage d'une liste                             | `method`                                                                          |
+| `$pageview`                 | à chaque changement de route, sur la route **masquée**           | —                                                                                 |
 
 Le catalogue est typé (`src/lib/analytics/events.ts`) : une propriété non prévue ne compile pas. C'est le garde-fou qui empêche d'y glisser une donnée personnelle par inadvertance.
 

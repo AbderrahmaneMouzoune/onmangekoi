@@ -38,6 +38,14 @@ export interface AnalyticsEventMap {
     session_id: string
     via: JoinMethod
   }
+  /** Des restos apportés à une session en attente, par n'importe quel participant. */
+  session_restaurants_added: {
+    session_id: string
+    /** Nombre de restaurants ajoutés en une fois */
+    added_count: number
+    /** Taille du deck après l'ajout */
+    restaurant_count: number
+  }
   vote_submitted: {
     session_id: string
     value: VoteValue
