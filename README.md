@@ -114,7 +114,7 @@ Les codes utilisent l'alphabet **Crockford base32** (`0-9`, `A-Z` sans `I`, `L`,
 
 Chaque page redirige vers sa forme canonique : un code tapé en minuscules ou avec des tirets, comme un ancien lien (uuid de session ou de liste, jeton hexadécimal de partage, `/l/<slug>-<CODE>`), retombe sur l'URL du moment. Rien de ce qui a déjà été partagé ne casse.
 
-Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché dans la salle d'attente — par le host comme par n'importe quel participant.
+Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché dans la salle d'attente — par le host comme par n'importe quel participant. Le QR s'y ouvre en plein écran d'une touche : c'est à cette taille qu'il se fait scanner à bout de bras.
 
 ## Fiche restaurant
 
