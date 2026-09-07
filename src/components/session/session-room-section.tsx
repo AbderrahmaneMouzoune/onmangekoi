@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import {
+  getSessionById,
   getSessionByParam,
   getSessionParticipants,
   getSessionRestaurants,
@@ -32,11 +33,13 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
   const canonical = router.session(session)
   if (`/sessions/${code}` !== canonical) redirect(canonical)
 
-  // Les trois lectures restantes sont indépendantes : un seul aller-retour.
-  const [participants, restaurants, votes] = await Promise.all([
+  // Les lectures restantes sont indépendantes : un seul aller-retour. Le
+  // premier tour n'est lu que si cette session en est la suite.
+  const [participants, restaurants, votes, firstRound] = await Promise.all([
     getSessionParticipants(supabase, session.id),
     getSessionRestaurants(supabase, session.id),
     getMyVotes(supabase, session.id),
+    session.parent_session_id ? getSessionById(supabase, session.parent_session_id) : null,
   ])
 
   if (!participants.some((p) => p.profile_id === user.id)) {
@@ -56,6 +59,7 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
       meId={user.id}
       inviteUrl={url}
       qrSvg={qrSvg}
+      firstRoundUrl={firstRound ? router.sessionResults(firstRound) : null}
     />
   )
 }

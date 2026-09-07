@@ -19,6 +19,8 @@ export type Vote = Tables['votes']['Row']
 export type ListRestaurant = Tables['list_restaurants']['Row']
 
 export type SessionStatus = Database['public']['Enums']['session_status']
+/** Comment une égalité de tête a été tranchée : second tour ou tirage au sort. */
+export type TiebreakMethod = Database['public']['Enums']['tiebreak_method']
 
 // Les types suivants réparent ce que le générateur ne peut pas déduire :
 // une colonne de `returns table (...)` ne porte aucune information `NOT NULL`,
@@ -52,11 +54,20 @@ type ResultRestaurantColumns =
   | 'photo_url'
   | 'website'
 
+/**
+ * Place d'une ligne dans le départage de l'égalité de tête :
+ *  - `tied` : ex æquo, rien n'est encore tranché ;
+ *  - `runoff` : un second tour est en cours entre les ex æquo ;
+ *  - `winner` / `loser` : le tirage au sort a désigné, ou écarté, cette ligne.
+ * `null` sur tout ce qui n'est pas concerné — l'immense majorité des cas.
+ */
+export type TiebreakState = 'tied' | 'runoff' | 'winner' | 'loser'
+
 export type SessionResultRow = Omit<
   Functions['session_results']['Returns'][number],
-  ResultRestaurantColumns
+  ResultRestaurantColumns | 'tiebreak'
 > &
-  Pick<Restaurant, ResultRestaurantColumns>
+  Pick<Restaurant, ResultRestaurantColumns> & { tiebreak: TiebreakState | null }
 
 /** Participant avec le profil joint (pseudo) */
 export type ParticipantWithProfile = SessionParticipant & {

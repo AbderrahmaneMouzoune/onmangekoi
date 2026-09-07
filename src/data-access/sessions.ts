@@ -54,6 +54,28 @@ export async function closeSession(
   return data
 }
 
+/** Second tour entre les ex æquo : nouvelle session, mêmes participants. */
+export async function createRunoffSession(
+  supabase: SupabaseClient<Database>,
+  sessionId: string
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('create_runoff_session', {
+    p_session_id: sessionId,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Tirage au sort entre les ex æquo, fait et conservé en base. */
+export async function drawTiebreakWinner(
+  supabase: SupabaseClient<Database>,
+  sessionId: string
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('draw_winner', { p_session_id: sessionId })
+  if (error) throw error
+  return data
+}
+
 export async function leaveSession(
   supabase: SupabaseClient<Database>,
   sessionId: string,
@@ -112,6 +134,23 @@ export const getSessionByParam = cache(
       : getSessionByCode(supabase, identifier.value)
   }
 )
+
+/**
+ * Le second tour d'une session, s'il existe. Aucune RPC : les participants du
+ * premier tour le sont aussi du second, la RLS suffit à le laisser lire.
+ */
+export async function getRunoffSession(
+  supabase: SupabaseClient<Database>,
+  parentSessionId: string
+): Promise<Session | null> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select()
+    .eq('parent_session_id', parentSessionId)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
 
 export async function getSessionParticipants(
   supabase: SupabaseClient<Database>,
@@ -189,5 +228,7 @@ export async function getSessionResults(
 ): Promise<SessionResultRow[]> {
   const { data, error } = await supabase.rpc('session_results', { p_session_id: sessionId })
   if (error) throw error
-  return data
+  // `tiebreak` est un ensemble fermé de valeurs, écrit par la base seule ; le
+  // générateur, lui, ne voit qu'un texte. Voir `SessionResultRow`.
+  return data as SessionResultRow[]
 }

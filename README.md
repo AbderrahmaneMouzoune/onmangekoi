@@ -20,21 +20,39 @@
 | Coup de cœur | +2     | **1 joker par session** |
 | Veto         | −2     | **1 joker par session** |
 
-`Score(restaurant) = Σ des votes`. Les votes manquants comptent 0. En cas d'égalité, le nombre de coups de cœur départage ; à égalité parfaite, le classement l'annonce.
+`Score(restaurant) = Σ des votes`. Les votes manquants comptent 0. En cas d'égalité, le nombre de coups de cœur départage ; à égalité parfaite, le host tranche (voir [Départager une égalité](#départager-une-égalité)).
 
 Les règles (jokers, session en cours, participant, restaurant valide) sont vérifiées **en base** par la fonction `submit_vote`, pas seulement dans l'interface.
 
 ## Règles de session
 
-| Règle               | Comportement                                                                    |
-| ------------------- | ------------------------------------------------------------------------------- |
-| Lancement           | Réservé au host, à partir de 2 participants                                     |
-| Snapshot            | Les restaurants sont figés à la création                                        |
-| Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                  |
-| Clôture automatique | Déclenchée en base dès que 100 % des participants ont terminé                   |
-| Clôture forcée      | Le host peut clôturer à tout moment — les votes manquants comptent 0            |
-| Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)              |
-| Rejoindre           | Impossible une fois le vote lancé ; un participant existant retrouve sa session |
+| Règle               | Comportement                                                                           |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| Lancement           | Réservé au host, à partir de 2 participants                                            |
+| Snapshot            | Les restaurants sont figés à la création                                               |
+| Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                         |
+| Clôture automatique | Déclenchée en base dès que 100 % des participants ont terminé                          |
+| Clôture forcée      | Le host peut clôturer à tout moment — les votes manquants comptent 0                   |
+| Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)                     |
+| Rejoindre           | Impossible une fois le vote lancé ; un participant existant retrouve sa session        |
+| Départage           | À égalité parfaite, le host choisit : second tour entre les ex æquo, ou tirage au sort |
+
+## Départager une égalité
+
+Deux restaurants au même score **et** au même nombre de coups de cœur : le classement l'annonçait, et le groupe repartait en débat. Le host a maintenant deux sorties, depuis la page de classement.
+
+| Sortie             | Ce qui se passe                                                                                                                                             |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Second tour**    | Une session neuve avec les seuls ex æquo, les mêmes participants — personne n'a à rejoindre — et les jokers remis à zéro. Le vote est ouvert d'emblée.      |
+| **Tirage au sort** | Un tirage fait en base avec `gen_random_bytes`, écrit dans la session : tout le monde lit le même gagnant, y compris qui ouvre la page une heure plus tard. |
+
+Le sort n'est **jamais** tiré côté client : un `Math.random()` par navigateur donnerait un gagnant par personne. Comme pour les codes d'invitation, la queue de l'espace tiré qui ne se divise pas en parts égales est rejetée plutôt que repliée — un modulo direct favoriserait les premiers candidats.
+
+`session_results` porte l'état du départage dans une colonne `tiebreak` (`tied`, `runoff`, `winner`, `loser`) : l'interface n'a rien à recompter. Une fois le sort tombé, le désigné passe seul en tête et les ex æquo gardent leur score au rang suivant.
+
+Le second tour retient d'où il vient (`sessions.parent_session_id`) : sa salle renvoie au classement du premier tour, et s'il finit lui-même à égalité, il se départage de la même façon. Une session n'a qu'un second tour, garanti par un index unique et pas seulement par la RPC.
+
+Tant que l'égalité n'est pas tranchée, la page de classement suit la session en direct : le choix du host s'affiche chez les autres sans qu'ils rechargent.
 
 ## URLs, codes et liens de partage
 
@@ -171,7 +189,7 @@ src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`)
                          images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
-supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results), purge, RGPD
+supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results/départage), purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
 ```
@@ -200,6 +218,7 @@ Le catalogue étant partagé, la recherche du sélecteur de restaurants sort du 
 - Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat.
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.
 - La clé Google Places ne quitte jamais le serveur, et aucune policy RLS n'ouvre l'écriture en `source = 'google'` : `upsert_restaurant_from_place` est le seul chemin. Les corps d'erreur renvoyés par Google restent dans les logs serveur.
+- **Le départage d'une égalité est décidé en base.** `draw_winner` tire le gagnant et le conserve dans `sessions.tiebreak_winner_id` : le client n'a rien à choisir, et un second appel ne rejoue pas le sort. `create_runoff_session` recopie elle-même participants et restaurants ; les deux sont réservées au host d'une session close.
 - Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision.
 - Les pages sont rendues avec des chargements parallèles (`Promise.all`) et les lectures par requête sont dédupliquées via `React.cache` (`getCurrentUser`, `getProfile`, `getSessionById`…).
 - **Aucune donnée personnelle n'est mise en cache.** Seul le catalogue public de restaurants est mémorisé, via un client Supabase sans cookie ; voir [Rendu et cache](#rendu-et-cache).

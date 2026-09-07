@@ -3,9 +3,16 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-import { router } from '@/config/router.config'
+import { ROUTE_PATTERNS, router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
-import { closeSession, deleteSession, launchSession, leaveSession } from '@/data-access/sessions'
+import {
+  closeSession,
+  createRunoffSession,
+  deleteSession,
+  drawTiebreakWinner,
+  launchSession,
+  leaveSession,
+} from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { toUserMessage } from '@/domain/errors'
 import { CreateSessionSchema, JoinSessionSchema, SessionIdSchema } from '@/domain/schemas/session'
@@ -93,6 +100,46 @@ export async function closeSessionAction(sessionId: string): Promise<ActionResul
   try {
     const session = await closeSession(supabase, id.data)
     revalidatePath(router.session(session))
+    revalidatePath(router.sessionResults(session))
+    return { ok: true, data: session }
+  } catch (error) {
+    return { ok: false, error: toUserMessage(error) }
+  }
+}
+
+/**
+ * Second tour entre les ex æquo. Le classement du premier tour est revalidé
+ * pour tout le monde : c'est là qu'apparaît le lien vers la suite.
+ */
+export async function createRunoffSessionAction(sessionId: string): Promise<ActionResult<Session>> {
+  const id = SessionIdSchema.safeParse(sessionId)
+  if (!id.success) return { ok: false, error: 'Session invalide' }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { ok: false, error: 'Non authentifié' }
+
+  try {
+    const runoff = await createRunoffSession(supabase, id.data)
+    // Le second tour est la seule chose qu'on récupère : le classement du
+    // premier tour ne se connaît que par son id, d'où le motif de route.
+    revalidatePath(ROUTE_PATTERNS.sessionResults, 'page')
+    revalidatePath(router.home())
+    return { ok: true, data: runoff }
+  } catch (error) {
+    return { ok: false, error: toUserMessage(error) }
+  }
+}
+
+/** Tirage au sort entre les ex æquo — le résultat est décidé et gardé en base. */
+export async function drawWinnerAction(sessionId: string): Promise<ActionResult<Session>> {
+  const id = SessionIdSchema.safeParse(sessionId)
+  if (!id.success) return { ok: false, error: 'Session invalide' }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { ok: false, error: 'Non authentifié' }
+
+  try {
+    const session = await drawTiebreakWinner(supabase, id.data)
     revalidatePath(router.sessionResults(session))
     return { ok: true, data: session }
   } catch (error) {
