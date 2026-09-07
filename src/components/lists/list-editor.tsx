@@ -11,6 +11,7 @@ import {
   setListCollaborativeAction,
 } from '@/actions/lists'
 import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
+import { RestaurantThumb } from '@/components/restaurants/restaurant-thumb'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/copy-button'
 import { FormMessage } from '@/components/ui/form-message'
@@ -220,13 +221,14 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
             {restaurants.map((restaurant) => (
               <li
                 key={restaurant.id}
-                className="flex items-center gap-3 rounded-md bg-surface px-3 py-2.5 ring-1 ring-line"
+                className="flex items-center gap-3 rounded-md bg-surface py-2 pr-2 pl-2.5 ring-1 ring-line"
               >
+                <RestaurantThumb name={restaurant.name} photoUrl={restaurant.photo_url} size="sm" />
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-sm font-medium">{restaurant.name}</span>
-                  {restaurant.cuisine_type && (
-                    <span className="font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
-                      {restaurant.cuisine_type}
+                  {(restaurant.cuisine_type || restaurant.city) && (
+                    <span className="truncate font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
+                      {[restaurant.cuisine_type, restaurant.city].filter(Boolean).join(' · ')}
                     </span>
                   )}
                 </div>

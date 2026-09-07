@@ -103,3 +103,53 @@ export function staticMap(point: GeoPoint, zoom = 15): StaticMap {
     marker: { left: ((x - originX) / 2) * 100, top: ((y - originY) / 2) * 100 },
   }
 }
+
+/** Rayon moyen de la Terre, en mètres (formule de haversine). */
+const EARTH_RADIUS_M = 6_371_000
+
+/**
+ * Distance à vol d'oiseau entre deux points, en mètres.
+ *
+ * Suffisant pour dire « à 350 m » ou « à 1,2 km » dans une liste de résultats :
+ * l'itinéraire réel, lui, reste l'affaire du lien « Itinéraire ».
+ */
+export function distanceBetween(from: GeoPoint, to: GeoPoint): number {
+  const toRad = (degrees: number) => (degrees * Math.PI) / 180
+  const dLat = toRad(to.lat - from.lat)
+  const dLng = toRad(to.lng - from.lng)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(from.lat)) * Math.cos(toRad(to.lat)) * Math.sin(dLng / 2) ** 2
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(a)))
+}
+
+/**
+ * Distance lisible : « 350 m » sous le kilomètre, « 1,2 km » jusqu'à 10 km,
+ * « 24 km » au-delà — la précision baisse avec la distance, comme sur un
+ * panneau.
+ */
+export function formatDistance(meters: number): string {
+  if (!Number.isFinite(meters) || meters < 0) return ''
+  if (meters < 1000) return `${Math.max(10, Math.round(meters / 10) * 10)} m`
+  const km = meters / 1000
+  const formatted = new Intl.NumberFormat('fr', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: km < 10 ? 1 : 0,
+  }).format(km)
+  return `${formatted} km`
+}
+
+/**
+ * Distance entre la personne et un lieu, ou `null` quand l'une des deux
+ * positions manque : la liste affiche alors la carte sans distance plutôt
+ * qu'un « ? km ».
+ */
+export function distanceLabel(
+  from: GeoPoint | null | undefined,
+  to: GeoPoint | Json | null | undefined
+): string | null {
+  if (!from) return null
+  const point = parseGeoPoint(to as Json)
+  if (!point) return null
+  return formatDistance(distanceBetween(from, point))
+}

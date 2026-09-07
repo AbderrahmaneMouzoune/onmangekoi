@@ -10,6 +10,8 @@ import {
   openingHoursFromPlace,
   placesCacheKey,
   priceLevelFromPlace,
+  ratingCountFromPlace,
+  ratingFromPlace,
 } from './places'
 
 const SUSHI = {
@@ -59,6 +61,27 @@ describe('priceLevelFromPlace', () => {
   it('should leave the budget empty when Google says nothing', () => {
     expect(priceLevelFromPlace({ priceLevel: 'PRICE_LEVEL_UNSPECIFIED' })).toBeNull()
     expect(priceLevelFromPlace({})).toBeNull()
+  })
+})
+
+describe('ratingFromPlace / ratingCountFromPlace', () => {
+  it('should read the rating and its number of reviews', () => {
+    const place = { ...SUSHI, rating: 4.5, userRatingCount: 320 }
+    expect(ratingFromPlace(place)).toBe(4.5)
+    expect(ratingCountFromPlace(place)).toBe(320)
+    expect(mapPlace(place)).toMatchObject({ rating: 4.5, ratingCount: 320 })
+  })
+
+  it('should refuse a rating outside the five-star scale', () => {
+    expect(ratingFromPlace({ rating: 7 })).toBeNull()
+    expect(ratingFromPlace({ rating: -1 })).toBeNull()
+    expect(ratingFromPlace({})).toBeNull()
+  })
+
+  it('should not count reviews without a rating, nor a nonsensical count', () => {
+    expect(ratingCountFromPlace({ userRatingCount: 12 })).toBeNull()
+    expect(ratingCountFromPlace({ rating: 4, userRatingCount: 2.5 })).toBeNull()
+    expect(ratingCountFromPlace({ rating: 4 })).toBeNull()
   })
 })
 
@@ -140,6 +163,8 @@ describe('mapPlace', () => {
       cuisineType: 'Japonais',
       priceLevel: 2,
       location: { lat: 45.76, lng: 4.83 },
+      rating: null,
+      ratingCount: null,
       description: null,
       website: null,
       openingHours: null,

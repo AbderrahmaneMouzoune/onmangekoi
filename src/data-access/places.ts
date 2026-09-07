@@ -31,10 +31,13 @@ const PHOTO_ENDPOINT = 'https://places.googleapis.com/v1'
  * Deux masques, deux factures.
  *
  * La recherche ne demande que de quoi afficher une liste : Google facture au
- * champ le plus cher demandé, et une recherche ramène dix résultats. Les
- * champs qui remplissent la fiche (photo, site, horaires, résumé) ne sont
- * demandés que sur le détail d'un lieu — c'est-à-dire une fois, au moment où
- * quelqu'un clique pour importer.
+ * champ le plus cher demandé, et une recherche ramène dix résultats. Le
+ * budget (`priceLevel`) place déjà la recherche dans le palier « Enterprise »
+ * de Text Search : la note, le nombre d'avis et les horaires, qui relèvent du
+ * même palier, ne coûtent donc rien de plus et illustrent la liste sans
+ * attendre l'import. Les champs qui restent chers ou lourds — photo (un appel
+ * de plus par lieu), site, résumé — ne sont demandés que sur le détail d'un
+ * lieu, c'est-à-dire une fois, au moment où quelqu'un clique pour importer.
  */
 const SEARCH_FIELDS = [
   'id',
@@ -44,17 +47,14 @@ const SEARCH_FIELDS = [
   'primaryType',
   'primaryTypeDisplayName',
   'priceLevel',
+  'rating',
+  'userRatingCount',
+  'regularOpeningHours',
   'location',
   'addressComponents',
 ]
 
-const DETAILS_FIELDS = [
-  ...SEARCH_FIELDS,
-  'editorialSummary',
-  'websiteUri',
-  'regularOpeningHours',
-  'photos',
-]
+const DETAILS_FIELDS = [...SEARCH_FIELDS, 'editorialSummary', 'websiteUri', 'photos']
 
 const SEARCH_FIELD_MASK = SEARCH_FIELDS.map((field) => `places.${field}`).join(',')
 const DETAILS_FIELD_MASK = DETAILS_FIELDS.join(',')

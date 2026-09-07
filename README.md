@@ -70,6 +70,9 @@ Chaque restaurant peut porter une photo, une adresse, un site, des coordonnées 
 | `website`        | HTTP(S)                                                                               | bouton « Le site » sur le gagnant                |
 | `location`       | `{"lat": number, "lng": number}`                                                      | lien d'itinéraire et mini-carte du gagnant       |
 | `opening_hours`  | `{"timezone"?: string, "periods": [{"day": 0-6, "open": "HH:MM", "close": "HH:MM"}]}` | badge « ouvert / fermé » sur la carte de vote    |
+| `price_level`    | entier 1–4                                                                            | badge « € » à « €€€€ » sur la carte de vote      |
+
+Pendant le vote, le bouton « Autour de moi » du deck demande la position au navigateur, sur clic seulement : chaque carte géolocalisée affiche alors sa distance à vol d'oiseau, à côté de l'adresse. Un second clic l'oublie. Comme dans le sélecteur, la position ne quitte jamais le navigateur.
 
 `day` suit `Date#getDay` (0 = dimanche) ; une période dont la fermeture précède l'ouverture passe minuit (`22:00 → 02:00`), y compris par-dessus la fin de semaine. Le fuseau est celui du restaurant quand il est connu, celui du visiteur sinon. Les formes `jsonb` sont validées en base (`is_geo_point`, `is_opening_hours`) **et** à la lecture : une donnée importée reste une donnée externe.
 
@@ -87,11 +90,23 @@ La mini-carte du gagnant est un bloc de 2×2 tuiles [OpenStreetMap](https://www.
 
 Le formulaire « Ajouter un resto » est disponible partout où l'on choisit des restaurants — session, liste, liste partagée — et le resto créé est sélectionné aussitôt, sans rechargement.
 
+### Sélecteur de restaurants
+
+Le même sélecteur sert à composer une session, une liste ou une liste partagée. Chaque résultat est une **carte** : vignette (la photo importée, sinon une tuile aux initiales du resto), nom, cuisine, budget, adresse, badge « ouvert / fermé » quand les horaires sont connus.
+
+| Élément           | Comportement                                                                                                                                                                                                                                                     |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| « Autour de moi » | Demande la position au navigateur, sur clic seulement. Elle sert aux deux onglets : chaque resto géolocalisé affiche sa **distance** à vol d'oiseau, et la recherche Google est biaisée sur 5 km. Un second clic l'oublie.                                       |
+| Sélection         | Une bande **d'une seule ligne**, qui défile horizontalement et amène le dernier choisi dans le champ : le sélecteur garde la même hauteur qu'on ait choisi deux restos ou vingt, et la liste de résultats ne descend jamais. « Tout retirer » vide la sélection. |
+| Verrouillés       | Les restos déjà apportés par ailleurs (une liste cochée, une liste en cours d'édition) sont affichés cochés et ne se décochent pas.                                                                                                                              |
+
+La distance est calculée dans le navigateur (`distanceBetween`, `src/lib/maps.ts`) à partir de `location` : sans coordonnées, la carte s'affiche simplement sans distance. La position n'est jamais envoyée ailleurs qu'à la recherche Google, et seulement pendant qu'elle est active.
+
 La déduplication est **souple** : un nom proche (recherche trigram) déclenche un avertissement et propose le resto existant en un clic, mais ne bloque jamais l'ajout — deux restos peuvent légitimement porter le même nom.
 
 ### Import Google Places
 
-Quand `GOOGLE_PLACES_API_KEY` est configurée, un onglet **Google** apparaît à côté de la base : la même saisie cherche chez Google, un clic importe le resto et le sélectionne. Le bouton « Autour de moi » ajoute un biais géographique de 5 km, sur position explicitement autorisée.
+Quand `GOOGLE_PLACES_API_KEY` est configurée, un onglet **Google** apparaît à côté de la base : la même saisie cherche chez Google, un clic importe le resto et le sélectionne. Chaque résultat affiche cuisine, budget, **note et nombre d'avis**, adresse, badge « ouvert / fermé » et, si « Autour de moi » est actif, la distance. La note n'est jamais enregistrée : elle sert à choisir, pas à voter.
 
 | Garantie           | Comment                                                                                                                     |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
@@ -104,7 +119,7 @@ L'import remplit la fiche décrite plus haut : `photo_url`, `website`, `location
 
 Le fuseau des horaires n'est pas demandé à Google : `opening_hours.timezone` reste absent et l'app raisonne dans celui du visiteur.
 
-**Deux masques de champs, deux factures.** Google facture au champ le plus cher demandé, et une recherche ramène dix résultats : elle ne demande donc que de quoi afficher une liste. Photo, site, horaires et résumé ne sont demandés que sur le détail d'un lieu — une fois, au clic sur « importer ». La photo coûte un appel de plus, pour convertir son nom de ressource en adresse servable : celle de l'endpoint media exigerait la clé pour être chargée, on stocke donc le `photoUri` qu'il renvoie, servi par Google sans clé et sur un hôte de `ALLOWED_IMAGE_HOSTS`.
+**Deux masques de champs, deux factures.** Google facture au champ le plus cher demandé, et une recherche ramène dix résultats : elle ne demande donc que de quoi afficher une liste. Le budget la place déjà dans le palier « Enterprise » de Text Search ; la note, le nombre d'avis et les horaires relèvent du même palier et sont donc demandés aussi, sans surcoût. Photo, site et résumé ne sont demandés que sur le détail d'un lieu — une fois, au clic sur « importer ». La photo coûte un appel de plus, pour convertir son nom de ressource en adresse servable : celle de l'endpoint media exigerait la clé pour être chargée, on stocke donc le `photoUri` qu'il renvoie, servi par Google sans clé et sur un hôte de `ALLOWED_IMAGE_HOSTS`.
 
 **Quand la recherche échoue.** Le message affiché nomme la famille de panne plutôt que de renvoyer tout le monde vers un « réessaie » indifférencié, et le log serveur (`places: recherche → <statut> <raison>`) donne la raison exacte renvoyée par Google — `PERMISSION_DENIED`, `SERVICE_DISABLED`, `RESOURCE_EXHAUSTED`…
 

@@ -27,6 +27,12 @@ export interface PlaceResult {
   cuisineType: string | null
   priceLevel: number | null
   location: GeoPoint | null
+  /**
+   * Note Google sur 5 et nombre d'avis : affichés dans les résultats de
+   * recherche seulement, jamais enregistrés — la base n'a pas d'avis.
+   */
+  rating: number | null
+  ratingCount: number | null
   description: string | null
   website: string | null
   openingHours: OpeningHours | null
@@ -73,6 +79,8 @@ const GooglePlaceSchema = z
     primaryType: z.string().optional(),
     primaryTypeDisplayName: LocalizedTextSchema.optional(),
     priceLevel: z.string().optional(),
+    rating: z.number().optional(),
+    userRatingCount: z.number().optional(),
     location: z
       .object({ latitude: z.number().optional(), longitude: z.number().optional() })
       .loose()
@@ -181,6 +189,21 @@ export function priceLevelFromPlace(place: GooglePlace): number | null {
   return place.priceLevel ? (PRICE_LEVEL_BY_ENUM[place.priceLevel] ?? null) : null
 }
 
+/** Note sur 5, ou `null` si Google n'en donne pas ou en donne une aberrante. */
+export function ratingFromPlace(place: GooglePlace): number | null {
+  const rating = place.rating
+  if (typeof rating !== 'number' || !Number.isFinite(rating)) return null
+  return rating >= 0 && rating <= 5 ? rating : null
+}
+
+/** Nombre d'avis, entier positif — `null` sans note, un compte seul ne dit rien. */
+export function ratingCountFromPlace(place: GooglePlace): number | null {
+  if (ratingFromPlace(place) === null) return null
+  const count = place.userRatingCount
+  if (typeof count !== 'number' || !Number.isInteger(count) || count < 0) return null
+  return count
+}
+
 /** Ville = `locality`, avec l'arrondissement (`sublocality`) en repli. */
 export function cityFromPlace(place: GooglePlace): string | null {
   const components = place.addressComponents ?? []
@@ -250,6 +273,8 @@ export function mapPlace(place: GooglePlace): PlaceResult | null {
     cuisineType: cuisineFromPlace(place),
     priceLevel: priceLevelFromPlace(place),
     location: locationFromPlace(place),
+    rating: ratingFromPlace(place),
+    ratingCount: ratingCountFromPlace(place),
     description: clean(place.editorialSummary?.text),
     // La base n'accepte qu'un lien HTTP(S) : un `websiteUri` exotique est
     // écarté ici plutôt que d'être silencieusement effacé par la RPC.
