@@ -12,13 +12,23 @@
  * reconduire un paramètre reçu tel quel (ancien lien, code saisi à la main).
  */
 
-/** Préfixes qui exigent un utilisateur (le proxy redirige vers l'onboarding). */
+/**
+ * Préfixes qui exigent un utilisateur (le proxy redirige vers l'onboarding).
+ * `/r` n'y figure pas et ne doit jamais y figurer : c'est le classement
+ * public, la seule page que quelqu'un sans pseudo est censé pouvoir ouvrir.
+ */
 export const PROTECTED_PREFIXES = ['/sessions', '/join', '/lists', '/l', '/account'] as const
 
 /** Longueur d'un code de partage de liste (Crockford base32). */
 export const SHARE_CODE_LENGTH = 10
 /** Longueur d'un code d'invitation de session (Crockford base32). */
 export const INVITE_CODE_LENGTH = 6
+/**
+ * Longueur du code d'un classement public (Crockford base32). Plus long que
+ * le code d'invitation : celui-ci se dit à voix haute et meurt avec la
+ * session, celui-là traîne dans un fil de discussion.
+ */
+export const RESULTS_CODE_LENGTH = 10
 
 /**
  * Motifs de routes dynamiques, pour `revalidatePath(…, 'page')` quand on ne
@@ -33,6 +43,8 @@ export const ROUTE_PATTERNS = {
 export type SessionTarget = string | { invite_code: string }
 /** Une liste, ou le segment d'URL déjà reçu. */
 export type ListTarget = string | { share_code: string }
+/** Un classement public, ou le segment d'URL déjà reçu. */
+export type ResultsTarget = string | { results_code: string }
 
 function sessionSegment(target: SessionTarget): string {
   return typeof target === 'string' ? target : target.invite_code
@@ -40,6 +52,10 @@ function sessionSegment(target: SessionTarget): string {
 
 function listSegment(target: ListTarget): string {
   return typeof target === 'string' ? target : target.share_code
+}
+
+function resultsSegment(target: ResultsTarget): string {
+  return typeof target === 'string' ? target : target.results_code
 }
 
 function withNext(pathname: string, next?: string | null): string {
@@ -73,6 +89,13 @@ export const router = {
   list: (target: ListTarget) => `/lists/${listSegment(target)}`,
   /** Lien de partage d'une liste : `/l/7K3M9P2QWX`. */
   sharedList: (target: ListTarget) => `/l/${listSegment(target)}`,
+
+  /**
+   * Classement public : `/r/7K3M9P2QWX`. Ouvert à tous, sans pseudo — d'où un
+   * code dédié, pour qu'un lien partagé dans Slack ne donne jamais accès à la
+   * salle de vote.
+   */
+  publicResults: (target: ResultsTarget) => `/r/${resultsSegment(target)}`,
 
   authConfirm: () => '/auth/confirm',
 

@@ -58,6 +58,31 @@ export type SessionResultRow = Omit<
 > &
   Pick<Restaurant, ResultRestaurantColumns>
 
+/**
+ * Une ligne du podium public. Comme `session_results`, la RPC recopie des
+ * colonnes de `restaurants` que `returns table` déclare toutes non nulles :
+ * on leur rend leur nullabilité.
+ */
+type PublicResultRestaurantColumns = 'city' | 'cuisine_type' | 'photo_url'
+
+export type PublicResultRow = Omit<
+  Functions['public_results']['Returns'][number],
+  PublicResultRestaurantColumns | 'closed_at' | 'participant_count' | 'session_name'
+> &
+  Pick<Restaurant, PublicResultRestaurantColumns>
+
+/**
+ * Le classement tel qu'il sort du lien public : le nom de la session, le
+ * nombre de participants, et le podium. Aucun pseudo, aucun détail de vote —
+ * la RPC ne les renvoie pas, et c'est le seul endroit où ça se joue.
+ */
+export interface PublicResults {
+  sessionName: string
+  closedAt: string | null
+  participantCount: number
+  podium: PublicResultRow[]
+}
+
 /** Participant avec le profil joint (pseudo) */
 export type ParticipantWithProfile = SessionParticipant & {
   profiles: Pick<Profile, 'id' | 'pseudo'> | null

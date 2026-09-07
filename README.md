@@ -47,17 +47,28 @@ Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **s
 | Invitation (lien + QR)   | `/join/7K3M9P`             | qui reçoit le lien ou le code |
 | Liste, côté propriétaire | `/lists/H4V2Q8ZX0M`        | propriétaire                  |
 | Liste partagée           | `/l/H4V2Q8ZX0M`            | qui reçoit le lien            |
+| Classement public        | `/r/H4V2Q8ZX0M`            | tout le monde, sans pseudo    |
 
-| Objet   | Code          | Forme         |
-| ------- | ------------- | ------------- |
-| Session | 6 caractères  | `7K3 M9P`     |
-| Liste   | 10 caractères | `H4V2Q-8ZX0M` |
+| Objet             | Code          | Forme         |
+| ----------------- | ------------- | ------------- |
+| Session           | 6 caractères  | `7K3 M9P`     |
+| Liste             | 10 caractères | `H4V2Q-8ZX0M` |
+| Classement public | 10 caractères | `H4V2Q-8ZX0M` |
 
 Les codes utilisent l'alphabet **Crockford base32** (`0-9`, `A-Z` sans `I`, `L`, `O`, `U`) : pas de lettre ambiguë à l'oral ni à l'écrit. La saisie est tolérante — minuscules, espaces, tirets, `I`/`L` lus comme `1`, `O` comme `0` — et un lien collé entier est accepté.
 
 Chaque page redirige vers sa forme canonique : un code tapé en minuscules ou avec des tirets, comme un ancien lien (uuid de session ou de liste, jeton hexadécimal de partage, `/l/<slug>-<CODE>`), retombe sur l'URL du moment. Rien de ce qui a déjà été partagé ne casse.
 
 Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché par le host.
+
+### Partager le classement
+
+`/r/<code>` est la seule page de session ouverte sans pseudo. Elle porte **son propre code**, distinct de celui de l'invitation : un lien collé dans une conversation ne donne jamais accès à la salle de vote, et le refermer ne casse pas l'invitation.
+
+- **Opt-in du host** : `sessions.results_public` est faux par défaut, et seule la RPC `set_results_public` — host, session close — le change.
+- **Ce qui sort** : le nom de la session, le nombre de participants, et le podium (rangs 1 à 3). La RPC `public_results` ne renvoie rien d'autre : ni pseudo, ni détail des votes, ni le reste du classement.
+- **Aperçu** : l'`opengraph-image` de la route affiche le gagnant et son score sur l'ardoise, et se cache une heure — de quoi tenir un lien qui circule.
+- **Refermer** est immédiat : la bascule purge l'entrée de cache du lien, la page redevient introuvable.
 
 ## Fiche restaurant
 
@@ -255,7 +266,7 @@ Le build échoue volontairement si `NEXT_PUBLIC_SUPABASE_URL` ou la clé manque 
 
 - La mesure est **doublement conditionnée** : sans `NEXT_PUBLIC_POSTHOG_KEY`, le module est inerte ; sans consentement explicite, le script PostHog n'est même pas téléchargé — donc aucun cookie, aucun identifiant, aucune requête.
 - Le bandeau propose « Refuser » et « Accepter » au même niveau, et le choix se révise depuis **Mon compte**.
-- **Aucune donnée personnelle ne sort** : ni pseudo, ni email, ni nom de liste ou de restaurant. Les URL sont masquées avant envoi (`/sessions/[code]`, `/join/[code]`, `/l/[code]`), car le code qu'elles portent suffirait à rejoindre une session ou à lire une liste. Le seul identifiant transmis est l'UUID opaque du profil.
+- **Aucune donnée personnelle ne sort** : ni pseudo, ni email, ni nom de liste ou de restaurant. Les URL sont masquées avant envoi (`/sessions/[code]`, `/join/[code]`, `/l/[code]`, `/r/[code]`), car le code qu'elles portent suffirait à rejoindre une session, à lire une liste ou à ouvrir un classement. Le seul identifiant transmis est l'UUID opaque du profil.
 - Le détail — catalogue d'événements, masquage, entonnoirs à construire — est dans [`docs/analytics.md`](docs/analytics.md).
 
 ## Roadmap

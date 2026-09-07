@@ -5,6 +5,7 @@ import { router } from '@/config/router.config'
 import {
   parseInviteIdentifier,
   parseListParam,
+  parseResultsParam,
   parseSessionParam,
   parseSharedListParam,
 } from './share'
@@ -72,6 +73,24 @@ describe('parseListParam', () => {
   })
 })
 
+describe('parseResultsParam', () => {
+  it('should read the results code, in any case and with confusable letters', () => {
+    expect(parseResultsParam('7K3M9P2QWX')).toBe('7K3M9P2QWX')
+    expect(parseResultsParam('7k3m9p2qwx')).toBe('7K3M9P2QWX')
+    expect(parseResultsParam('7k3m9p2qwo')).toBe('7K3M9P2QW0')
+  })
+
+  it('should not open the public page on an id or a legacy token', () => {
+    expect(parseResultsParam(UUID)).toBeNull()
+    expect(parseResultsParam(TOKEN)).toBeNull()
+  })
+
+  it('should not mistake a 6-char invite code for a results code', () => {
+    expect(parseResultsParam('7K3M9P')).toBeNull()
+    expect(parseResultsParam('')).toBeNull()
+  })
+})
+
 describe('parseInviteIdentifier', () => {
   it('should normalize a short code whatever the case and separators', () => {
     expect(parseInviteIdentifier('a3f9b2')).toEqual({ kind: 'code', value: 'A3F9B2' })
@@ -123,6 +142,11 @@ describe('aller-retour lien ↔ code', () => {
       kind: 'code',
       value: '7K3M9P',
     })
+  })
+
+  it('should read back the code of the public results link it builds', () => {
+    const session = { results_code: 'H4V2Q8ZX0M' }
+    expect(parseResultsParam(router.publicResults(session).replace('/r/', ''))).toBe('H4V2Q8ZX0M')
   })
 
   it('should read back the code of every list link it builds', () => {
