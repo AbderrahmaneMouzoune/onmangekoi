@@ -34,7 +34,13 @@ test.describe('Session de vote complète', () => {
     const code = await host.getByTestId('invite-code').getAttribute('data-code')
     expect(code).toMatch(/^[0-9A-HJKMNP-TV-Z]{6}$/)
     const sessionUrl = host.url()
+    // Le QR s'agrandit d'un geste : c'est ainsi qu'on le fait scanner à table
+    const qrTrigger = host.getByRole('button', { name: /agrandir le qr code/i })
+    await expect(qrTrigger).toBeVisible()
+    await qrTrigger.click()
     await expect(host.getByRole('img', { name: /QR code du lien/i })).toBeVisible()
+    await host.getByRole('button', { name: /^fermer$/i }).click()
+    await expect(host.getByRole('img', { name: /QR code du lien/i })).toBeHidden()
 
     // 2. Invité : lien → onboarding → salle d'attente
     await guest.goto('/join')
