@@ -40,6 +40,8 @@ function deckOf(...names: string[]): SessionRestaurantWithRestaurant[] {
     session_id: 'session-1',
     restaurant_id: `r-${position}`,
     position,
+    added_at: '2026-09-05T10:00:00Z',
+    added_by: 'profile-host',
     restaurants: restaurant(name),
   }))
 }
