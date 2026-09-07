@@ -111,6 +111,20 @@ test.describe('Accessibilité', () => {
     await expect(host.getByText(/on mange chez/i)).toBeVisible()
     await auditA11y(host, testInfo, 'classement')
 
+    // Le classement public : la seule page que des inconnus vont ouvrir, donc
+    // celle qu'on ne peut pas se permettre de laisser hors de l'audit.
+    await host.getByRole('switch', { name: /rendre le classement public/i }).click()
+    const shareActions = host.getByTestId('results-share-actions')
+    await expect(shareActions).toHaveAttribute('data-public-url', /\/r\//)
+    const publicUrl = await shareActions.getAttribute('data-public-url')
+    const stranger = await newPage(browser)
+    await stranger.goto(publicUrl as string)
+    await expect(stranger.getByRole('heading', { level: 1 })).toBeVisible()
+    await auditA11y(stranger, testInfo, 'classement public')
+
+    await useDarkTheme(stranger)
+    await auditA11y(stranger, testInfo, 'classement public (sombre)')
+
     await useDarkTheme(host)
     await auditA11y(host, testInfo, 'classement (sombre)')
 
