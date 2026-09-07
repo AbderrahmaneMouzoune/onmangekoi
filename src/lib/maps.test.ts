@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { directionsUrl, parseGeoPoint, staticMap } from './maps'
+import { directionsUrl, distanceKm, parseGeoPoint, roundGeoPoint, staticMap } from './maps'
 
 /** Opéra Garnier, Paris */
 const OPERA = { lat: 48.8719, lng: 2.3316 }
+/** Gare de Lyon, Paris — 4,4 km à vol d'oiseau de l'Opéra */
+const GARE_DE_LYON = { lat: 48.8443, lng: 2.3743 }
 
 describe('parseGeoPoint', () => {
   it('should read a well-formed point', () => {
@@ -16,6 +18,40 @@ describe('parseGeoPoint', () => {
     expect(parseGeoPoint({ lat: 0, lng: 181 })).toBeNull()
     expect(parseGeoPoint({ lat: '48.87', lng: 2.33 })).toBeNull()
     expect(parseGeoPoint('48.87,2.33')).toBeNull()
+  })
+})
+
+describe('distanceKm', () => {
+  it('should measure a known city distance', () => {
+    expect(distanceKm(OPERA, GARE_DE_LYON)).toBeCloseTo(4.38, 2)
+  })
+
+  it('should be zero on the same point and symmetric between two', () => {
+    expect(distanceKm(OPERA, OPERA)).toBe(0)
+    expect(distanceKm(GARE_DE_LYON, OPERA)).toBeCloseTo(distanceKm(OPERA, GARE_DE_LYON), 9)
+  })
+
+  it('should measure across the antimeridian without going around the world', () => {
+    expect(distanceKm({ lat: 0, lng: 179.9 }, { lat: 0, lng: -179.9 })).toBeCloseTo(22.2, 1)
+  })
+
+  it('should measure half the circumference between two antipodes', () => {
+    expect(distanceKm({ lat: 0, lng: 0 }, { lat: 0, lng: 180 })).toBeCloseTo(20015, 0)
+  })
+})
+
+describe('roundGeoPoint', () => {
+  it('should snap to a grid of about 110 m by default', () => {
+    expect(roundGeoPoint({ lat: 48.871932, lng: 2.331612 })).toEqual({ lat: 48.872, lng: 2.332 })
+  })
+
+  it('should stay within the announced precision', () => {
+    const exact = { lat: 48.871932, lng: 2.331612 }
+    expect(distanceKm(exact, roundGeoPoint(exact))).toBeLessThan(0.12)
+  })
+
+  it('should accept another precision', () => {
+    expect(roundGeoPoint({ lat: 48.8719, lng: 2.3316 }, 1)).toEqual({ lat: 48.9, lng: 2.3 })
   })
 })
 

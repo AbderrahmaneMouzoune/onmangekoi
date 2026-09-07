@@ -22,6 +22,45 @@ export function parseGeoPoint(value: Json | null | undefined): GeoPoint | null {
   return parsed.success ? { lat: parsed.data.lat, lng: parsed.data.lng } : null
 }
 
+/** Rayon moyen de la Terre — le même que celui de `geo_distance_km` en base. */
+const EARTH_RADIUS_KM = 6371.0088
+
+const toRadians = (degrees: number): number => (degrees * Math.PI) / 180
+
+/**
+ * Distance orthodromique en kilomètres (haversine).
+ *
+ * Même formule que la fonction `geo_distance_km` de la base : celle-ci trie et
+ * filtre « autour de moi », celle-là affiche la distance de chaque resto. Les
+ * deux doivent donner le même nombre, sans quoi un resto se retrouverait
+ * annoncé hors du rayon qui l'a fait apparaître.
+ */
+export function distanceKm(from: GeoPoint, to: GeoPoint): number {
+  const halfLat = toRadians(to.lat - from.lat) / 2
+  const halfLng = toRadians(to.lng - from.lng) / 2
+  const a =
+    Math.sin(halfLat) ** 2 +
+    Math.cos(toRadians(from.lat)) * Math.cos(toRadians(to.lat)) * Math.sin(halfLng) ** 2
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(a)))
+}
+
+/**
+ * Arrondit un point à `decimals` décimales — trois par défaut, soit une maille
+ * d'environ 110 m.
+ *
+ * C'est ce point-là, jamais la position exacte du GPS, qui part au serveur
+ * pour chercher les restos alentour : de quoi trier un quartier sans confier à
+ * l'application le pas de porte de qui que ce soit. L'affichage des distances,
+ * lui, reste calculé dans le navigateur à partir de la position exacte.
+ */
+export function roundGeoPoint(point: GeoPoint, decimals = 3): GeoPoint {
+  const factor = 10 ** decimals
+  return {
+    lat: Math.round(point.lat * factor) / factor,
+    lng: Math.round(point.lng * factor) / factor,
+  }
+}
+
 export interface PlaceLike {
   name: string
   address?: string | null

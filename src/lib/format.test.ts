@@ -4,6 +4,7 @@ import {
   countLabel,
   DELETED_PARTICIPANT,
   displayPseudo,
+  formatDistance,
   initials,
   participantLabel,
   plural,
@@ -70,5 +71,28 @@ describe('relativeDate', () => {
 
   it('should render an absolute date beyond a month', () => {
     expect(relativeDate('2026-06-01T12:00:00Z', now)).toMatch(/juin/)
+  })
+})
+
+describe('formatDistance', () => {
+  it('should count in metres below a kilometre, rounded to ten', () => {
+    expect(formatDistance(0.234)).toBe('230 m')
+    expect(formatDistance(0.999)).toBe('1000 m')
+  })
+
+  it('should never announce a distance of zero', () => {
+    expect(formatDistance(0)).toBe('10 m')
+    expect(formatDistance(0.002)).toBe('10 m')
+  })
+
+  it('should switch to kilometres with one decimal', () => {
+    expect(formatDistance(1)).toBe('1 km')
+    expect(formatDistance(3.64)).toBe('3,6 km')
+    expect(formatDistance(20)).toBe('20 km')
+  })
+
+  it('should say nothing about a distance it cannot compute', () => {
+    expect(formatDistance(Number.NaN)).toBe('')
+    expect(formatDistance(-1)).toBe('')
   })
 })

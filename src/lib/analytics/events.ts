@@ -55,6 +55,16 @@ export interface AnalyticsEventMap {
   list_shared: {
     method: ShareMethod
   }
+  /**
+   * Recherche « autour de moi » dans le sélecteur de restaurants. Aucune
+   * coordonnée n'est transmise — la position est la donnée personnelle par
+   * excellence : seuls le rayon choisi et le nombre de restos trouvés
+   * remontent, de quoi savoir si la base couvre le quartier des gens.
+   */
+  nearby_browsed: {
+    radius_km: number
+    results: number
+  }
 }
 
 export type AnalyticsEvent = keyof AnalyticsEventMap

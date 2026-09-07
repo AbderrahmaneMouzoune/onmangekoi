@@ -533,6 +533,10 @@ export type Database = {
       }
       generate_invite_code: { Args: never; Returns: string }
       generate_share_code: { Args: never; Returns: string }
+      geo_distance_km: {
+        Args: { p_lat: number; p_lng: number; p_location: Json }
+        Returns: number
+      }
       is_geo_point: { Args: { p_value: Json }; Returns: boolean }
       is_opening_hours: { Args: { p_value: Json }; Returns: boolean }
       is_session_host: { Args: { p_session_id: string }; Returns: boolean }
@@ -630,6 +634,39 @@ export type Database = {
         }[]
       }
       raise_omk: { Args: { p_code: string }; Returns: undefined }
+      restaurants_nearby: {
+        Args: {
+          p_lat: number
+          p_limit?: number
+          p_lng: number
+          p_offset?: number
+          p_query?: string
+          p_radius_km?: number
+        }
+        Returns: {
+          address: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          cuisine_type: string | null
+          description: string | null
+          id: string
+          location: Json | null
+          name: string
+          opening_hours: Json | null
+          photo_url: string | null
+          place_id: string | null
+          price_level: number | null
+          source: string
+          website: string | null
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'restaurants'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       run_maintenance: { Args: never; Returns: Json }
       session_preview: {
         Args: { p_identifier: string }
