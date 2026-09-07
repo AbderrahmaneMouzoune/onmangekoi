@@ -332,13 +332,14 @@ begin
   v_result := public.run_maintenance();
 
   perform pg_temp.check(
-    'les trois compteurs sont renvoyés',
-    v_result ? 'waiting_sessions' and v_result ? 'closed_sessions' and v_result ? 'anonymous_users',
+    'les quatre compteurs sont renvoyés',
+    v_result ? 'waiting_sessions' and v_result ? 'closed_sessions'
+      and v_result ? 'anonymous_users' and v_result ? 'join_attempts',
     v_result::text
   );
   perform pg_temp.check(
-    'les deux tâches sont journalisées',
-    (select count(*) from public.maintenance_runs) = v_before + 2
+    'les trois tâches sont journalisées',
+    (select count(*) from public.maintenance_runs) = v_before + 3
   );
 end;
 $$;

@@ -4,6 +4,7 @@ import { RiArrowRightLine } from '@remixicon/react'
 import { useActionState } from 'react'
 
 import { setupProfileAction } from '@/actions/profile'
+import { TurnstileWidget } from '@/components/onboarding/turnstile-widget'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
@@ -41,6 +42,8 @@ export function PseudoForm({ next, submitLabel = 'C’est parti' }: PseudoFormPr
           C’est le nom que les autres verront. Modifiable à tout moment.
         </p>
       </div>
+
+      <TurnstileWidget action="setup-profile" resetKey={state} />
 
       <FormMessage error={state?.error} />
 

@@ -200,11 +200,30 @@ Le catalogue étant partagé, la recherche du sélecteur de restaurants sort du 
 - Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat.
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.
 - La clé Google Places ne quitte jamais le serveur, et aucune policy RLS n'ouvre l'écriture en `source = 'google'` : `upsert_restaurant_from_place` est le seul chemin. Les corps d'erreur renvoyés par Google restent dans les logs serveur.
-- Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision.
+- Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision. Un code court ne tient que si on ne peut pas l'essayer en boucle : voir [Anti-abus](#anti-abus).
 - Les pages sont rendues avec des chargements parallèles (`Promise.all`) et les lectures par requête sont dédupliquées via `React.cache` (`getCurrentUser`, `getProfile`, `getSessionById`…).
 - **Aucune donnée personnelle n'est mise en cache.** Seul le catalogue public de restaurants est mémorisé, via un client Supabase sans cookie ; voir [Rendu et cache](#rendu-et-cache).
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.
 - Les messages d'erreur Postgres ne remontent jamais tels quels : seuls les codes métier `omk:*` sont traduits.
+
+## Anti-abus
+
+Deux garde-fous, qui ne valent que posés ensemble : limiter les essais sert à peu de chose si créer une identité neuve est gratuit.
+
+| Garde-fou                         | Où                             | Règle                                                                            |
+| --------------------------------- | ------------------------------ | -------------------------------------------------------------------------------- |
+| Limite d'essais sur « Rejoindre » | `join_session` (base)          | 10 essais infructueux par 10 minutes et par compte, puis `omk:too_many_attempts` |
+| Captcha à la création de compte   | `setupProfileAction` (serveur) | Cloudflare Turnstile, vérifié avant `signInAnonymously`                          |
+
+Un essai qui ne tombe sur aucune session est journalisé dans `public.join_attempts` — table sans policy ni grant, invisible depuis l'app. Un code juste efface l'ardoise : deux fautes de frappe suivies d'une réussite ne pèsent jamais sur la tentative d'après. Les essais sont purgés dans les 24 h par le job nocturne (`run_maintenance()`), et la table ne retient qu'un identifiant de compte et un horodatage — jamais d'adresse IP.
+
+Détail d'implémentation qui mérite d'être connu avant de toucher à `join_session` : un code inconnu fait **renvoyer NULL** à la RPC au lieu de lever `omk:session_not_found`. PostgREST exécute chaque appel dans une transaction, et une exception l'annulerait — avec elle, l'essai raté qu'on vient de compter. C'est `joinSession` (`src/data-access/sessions.ts`) qui rétablit l'erreur métier attendue par le reste de l'app. Les refus qui prouvent que le code était bon (session lancée, session close) restent des exceptions et ne comptent pas comme des essais.
+
+Le captcha est **désactivé par défaut** : sans `NEXT_PUBLIC_TURNSTILE_SITE_KEY` **et** `TURNSTILE_SECRET_KEY`, aucun script n'est téléchargé et la vérification serveur laisse passer — c'est ce qui permet aux tests e2e, à la CI et au développement local de tourner sans compte Cloudflare. Le widget est en mode `interaction-only` : invisible, sauf pour les visiteurs que Cloudflare juge douteux. Si Cloudflare est injoignable, on laisse passer et on journalise : un captcha en panne ne doit pas fermer l'onboarding, et la limite d'essais côté base, elle, tient toujours. En l'activant sur un déploiement public, penser à mentionner Cloudflare sur `/legal/privacy`.
+
+**Ce qui reste ouvert.** `session_preview` répond encore sans limite : un visiteur non authentifié obtient le nom et le host de n'importe quelle session `waiting` dont il devine le code court. La limite ci-dessus ne couvre que `join_session`, donc un balayage patient peut toujours _découvrir_ une session par cet oracle avant de la rejoindre en un seul appel. Fermer ce chemin veut dire réserver l'aperçu par code court aux personnes connectées — et donc renoncer à l'aperçu des liens `/join/7K3M9P` dépliés par WhatsApp ou Slack (les liens à jeton long, eux, restent hors de portée d'un balayage). C'est un arbitrage produit, laissé de côté ici volontairement.
+
+Le scénario est rejouable avec `bun run db:test` (`supabase/tests/join-rate-limit.test.sql`).
 
 ## Vie privée
 
@@ -228,6 +247,7 @@ Un pseudo suffit à utiliser l'app, donc chaque pseudo crée un utilisateur anon
 | Anonyme sans activité ni email lié | 90 jours  | supprimé, avec ses listes ; ses sessions survivent |
 | Session `waiting` jamais lancée    | 7 jours   | supprimée                                          |
 | Session `closed`                   | 180 jours | supprimée                                          |
+| Essai de code raté                 | 24 heures | supprimé                                           |
 
 Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adresse email lui est liée — même non confirmée —, ou un téléphone, ou une identité externe. Une session en cours protège aussi tous ses participants. Purger un compte n’efface jamais un classement : ses sessions restent, sans host et sans auteur (voir [Vie privée](#vie-privée)). Chaque passage journalise ses compteurs dans `public.maintenance_runs`. Détail et réglages dans [`docs/local-stack.md`](docs/local-stack.md#entretien).
 
@@ -238,14 +258,16 @@ Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adress
 3. Dans Supabase → Database → Extensions : activer `pg_cron` si ce n'est pas déjà fait, puis rejouer la migration de purge — sans l'extension elle s'applique quand même, mais le job nocturne n'est pas planifié (vérifier avec `select jobname, schedule from cron.job`).
 4. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
 
-| Variable                               | Valeur                                                   |
-| -------------------------------------- | -------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`             | URL du projet (Project Settings → API)                   |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | clé _publishable_ (l'ancienne _anon_ est acceptée aussi) |
-| `NEXT_PUBLIC_SITE_URL`                 | optionnel — surcharge explicite (domaine personnalisé)   |
-| `GOOGLE_PLACES_API_KEY`                | optionnel — active l'import Google (serveur uniquement)  |
-| `NEXT_PUBLIC_POSTHOG_KEY`              | optionnel — sans elle, aucune mesure n'est chargée       |
-| `NEXT_PUBLIC_POSTHOG_HOST`             | optionnel — `https://eu.i.posthog.com` par défaut        |
+| Variable                               | Valeur                                                    |
+| -------------------------------------- | --------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | URL du projet (Project Settings → API)                    |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | clé _publishable_ (l'ancienne _anon_ est acceptée aussi)  |
+| `NEXT_PUBLIC_SITE_URL`                 | optionnel — surcharge explicite (domaine personnalisé)    |
+| `GOOGLE_PLACES_API_KEY`                | optionnel — active l'import Google (serveur uniquement)   |
+| `NEXT_PUBLIC_POSTHOG_KEY`              | optionnel — sans elle, aucune mesure n'est chargée        |
+| `NEXT_PUBLIC_POSTHOG_HOST`             | optionnel — `https://eu.i.posthog.com` par défaut         |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`       | optionnel — active le captcha de l'onboarding             |
+| `TURNSTILE_SECRET_KEY`                 | optionnel — l'autre moitié du captcha (serveur seulement) |
 
 L'URL publique (`env.SITE_URL`, côté serveur) est résolue dans cet ordre : `NEXT_PUBLIC_SITE_URL` si définie et non locale, sinon les variables système Vercel — `VERCEL_PROJECT_PRODUCTION_URL` en production, `VERCEL_BRANCH_URL` / `VERCEL_URL` en preview — et enfin `http://localhost:3000` en développement. Un `localhost` copié par erreur dans les variables Vercel est ignoré.
 

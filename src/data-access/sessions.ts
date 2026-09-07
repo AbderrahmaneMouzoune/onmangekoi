@@ -1,5 +1,6 @@
 import { cache } from 'react'
 
+import { omkError } from '@/domain/errors'
 import { parseSessionParam } from '@/domain/share'
 
 import type {
@@ -27,12 +28,19 @@ export async function createSession(
   return data
 }
 
+/**
+ * `join_session` renvoie NULL — et non une exception — quand le code ne
+ * correspond à aucune session : l'exception annulerait la transaction, donc
+ * l'essai raté que la base vient de compter (voir la migration
+ * `join_attempts_rate_limit`). On rétablit ici le contrat habituel.
+ */
 export async function joinSession(
   supabase: SupabaseClient<Database>,
   identifier: string
 ): Promise<Session> {
   const { data, error } = await supabase.rpc('join_session', { p_identifier: identifier })
   if (error) throw error
+  if (data === null) throw omkError('session_not_found')
   return data
 }
 

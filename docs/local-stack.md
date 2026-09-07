@@ -123,11 +123,12 @@ Deux pièges de plus, rencontrés en rejouant `supabase/tests` :
 
 Les visiteurs qui choisissent un pseudo sans jamais lier d'email restent des utilisateurs anonymes : sans purge, `auth.users` et `sessions` grossissent à chaque session. Le nettoyage est automatisé par la migration `20260905120000_purge_inactive_anonymous.sql`.
 
-| Fonction                                                                 | Rétention par défaut | Ce qui est supprimé                                                 |
-| ------------------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------- |
-| `public.purge_inactive_anonymous(p_older_than)`                          | 90 jours             | les anonymes sans aucune activité ni moyen de reconnexion           |
-| `public.purge_stale_sessions(p_waiting_older_than, p_closed_older_than)` | 7 et 180 jours       | les sessions `waiting` jamais lancées, les sessions `closed` âgées  |
-| `public.run_maintenance()`                                               | —                    | enchaîne les deux, dans cet ordre ; cible du job `pg_cron` nocturne |
+| Fonction                                                                 | Rétention par défaut | Ce qui est supprimé                                                  |
+| ------------------------------------------------------------------------ | -------------------- | -------------------------------------------------------------------- |
+| `public.purge_inactive_anonymous(p_older_than)`                          | 90 jours             | les anonymes sans aucune activité ni moyen de reconnexion            |
+| `public.purge_stale_sessions(p_waiting_older_than, p_closed_older_than)` | 7 et 180 jours       | les sessions `waiting` jamais lancées, les sessions `closed` âgées   |
+| `public.purge_join_attempts(p_older_than)`                               | 1 jour               | les essais de code ratés, journalisés pour la limitation de débit    |
+| `public.run_maintenance()`                                               | —                    | enchaîne les trois, dans cet ordre ; cible du job `pg_cron` nocturne |
 
 Un compte n'est purgé que s'il ne peut plus jamais être retrouvé : **une adresse email liée — même en attente de confirmation —, un changement d'email en cours, un téléphone ou une identité externe le protègent définitivement**. Sont également conservés les comptes dont la création ou la dernière connexion est récente, ceux qui ont hébergé ou rejoint une session récemment, et ceux qui participent à une session non clôturée, quelle que soit son ancienneté. La suppression d'un anonyme emporte en cascade son profil et ses listes. Ses sessions, elles, survivent sans host (`sessions.host_id` et `session_participants.profile_id` sont en `on delete set null` depuis la suppression de compte RGPD) : purger un compte n'efface jamais un classement déjà affiché à d'autres. Les sessions closes finissent par partir via `purge_stale_sessions`.
 
@@ -144,7 +145,7 @@ Chaque passage écrit une ligne dans `public.maintenance_runs` (tâche, durée, 
 select ran_at, task, purged from public.maintenance_runs order by ran_at desc limit 10;
 ```
 
-Les intervalles sont paramétrables à l'appel, avec un plancher d'un jour ; passer `null` à `purge_stale_sessions` conserve la catégorie concernée — c'est le levier à utiliser le jour où les sessions closes alimenteront un historique consultable.
+Les intervalles sont paramétrables à l'appel, avec un plancher d'un jour ; passer `null` à `purge_stale_sessions` conserve la catégorie concernée — c'est le levier à utiliser le jour où les sessions closes alimenteront un historique consultable. `purge_join_attempts` a son propre plancher, à une heure : purger à l'intérieur de la fenêtre de comptage (10 minutes) reviendrait à désactiver la limitation de débit, la fonction refuse.
 
 ## Scénarios SQL
 
@@ -155,10 +156,11 @@ supabase start
 bun run db:test
 ```
 
-| Scénario                  | Ce qu'il prouve                                                                                                              |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `purge.test.sql`          | Purge : protections d'un compte joignable, cascades, compteurs, garde-fous de rétention                                      |
-| `delete-account.test.sql` | Suppression RGPD : classement d'une session close inchangé, votes anonymisés, sessions orphelines traitées, export cloisonné |
+| Scénario                   | Ce qu'il prouve                                                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `purge.test.sql`           | Purge : protections d'un compte joignable, cascades, compteurs, garde-fous de rétention                                                     |
+| `delete-account.test.sql`  | Suppression RGPD : classement d'une session close inchangé, votes anonymisés, sessions orphelines traitées, export cloisonné                |
+| `join-rate-limit.test.sql` | Limitation de débit : un essai raté compté sans exception, deux fautes de frappe sans conséquence, blocage au 11ᵉ, fenêtre glissante, purge |
 
 `SUPABASE_DB_URL` permet de viser une autre base que la locale (`postgresql://postgres:postgres@127.0.0.1:54322/postgres`), y compris le PostgreSQL nu décrit plus haut. La CI les rejoue dans le job `End-to-end`, juste après `supabase start`.
 
