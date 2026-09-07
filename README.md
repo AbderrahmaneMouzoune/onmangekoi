@@ -63,13 +63,13 @@ Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvr
 
 Chaque restaurant peut porter une photo, une adresse, un site, des coordonnées et des horaires. Tout est optionnel : sans la donnée, le bloc concerné disparaît au lieu de s'afficher vide.
 
-| Colonne          | Forme                                                                                 | Usage                                            |
-| ---------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `photo_url`      | HTTPS, hôte autorisé                                                                  | fond de la carte de vote, vignette du classement |
-| `address`/`city` | texte                                                                                 | ligne d'adresse, repli du lien d'itinéraire      |
-| `website`        | HTTP(S)                                                                               | bouton « Le site » sur le gagnant                |
-| `location`       | `{"lat": number, "lng": number}`                                                      | lien d'itinéraire et mini-carte du gagnant       |
-| `opening_hours`  | `{"timezone"?: string, "periods": [{"day": 0-6, "open": "HH:MM", "close": "HH:MM"}]}` | badge « ouvert / fermé » sur la carte de vote    |
+| Colonne          | Forme                                                                                 | Usage                                                |
+| ---------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `photo_url`      | HTTPS, hôte autorisé                                                                  | fond de la carte de vote, vignette du classement     |
+| `address`/`city` | texte                                                                                 | ligne d'adresse, repli du lien d'itinéraire          |
+| `website`        | HTTP(S)                                                                               | bouton « Le site » sur le gagnant                    |
+| `location`       | `{"lat": number, "lng": number}`                                                      | itinéraire, mini-carte du gagnant, « autour de moi » |
+| `opening_hours`  | `{"timezone"?: string, "periods": [{"day": 0-6, "open": "HH:MM", "close": "HH:MM"}]}` | badge « ouvert / fermé » sur la carte de vote        |
 
 `day` suit `Date#getDay` (0 = dimanche) ; une période dont la fermeture précède l'ouverture passe minuit (`22:00 → 02:00`), y compris par-dessus la fin de semaine. Le fuseau est celui du restaurant quand il est connu, celui du visiteur sinon. Les formes `jsonb` sont validées en base (`is_geo_point`, `is_opening_hours`) **et** à la lecture : une donnée importée reste une donnée externe.
 
@@ -89,9 +89,25 @@ Le formulaire « Ajouter un resto » est disponible partout où l'on choisit des
 
 La déduplication est **souple** : un nom proche (recherche trigram) déclenche un avertissement et propose le resto existant en un clic, mais ne bloque jamais l'ajout — deux restos peuvent légitimement porter le même nom.
 
+### Autour de moi
+
+Chercher par nom suppose qu'on sache déjà quoi manger. Le bouton **« Autour de moi »**, à côté du sélecteur, renverse la question : la base est reclassée **du plus proche au plus loin**, chaque ligne affiche sa distance, et trois rayons (**1 km · 5 km · 20 km**) délimitent la promenade acceptable. C'est le mode de qui veut essayer autre chose que la cantine habituelle.
+
+| Garantie                     | Comment                                                                                                                                      |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Position jamais réclamée     | `getCurrentPosition` n'est appelé qu'au clic : sans geste explicite, aucune permission n'est demandée et rien ne change                      |
+| Position jamais exacte       | Le point est arrondi à trois décimales (~110 m, `roundGeoPoint`) **avant** de quitter le navigateur — l'app ne connaît qu'un pâté de maisons |
+| Distances justes quand même  | Elles sont calculées dans le navigateur, au point exact, par la même formule de haversine que la base (`distanceKm` ↔ `geo_distance_km`)     |
+| Une permission, deux onglets | La position vit dans le sélecteur : elle trie la base **et** biaise la recherche Google, sans redemander l'autorisation                      |
+| Coût maîtrisé                | Le point arrondi fait une clé de cache : tout un quartier partage la même page du catalogue                                                  |
+
+Le tri passe par la RPC `restaurants_nearby` — PostgREST ne sait pas trier sur une expression calculée — bornée par une boîte englobante servie par un index d'expression sur la latitude et la longitude, puis par la distance exacte. Un resto **sans coordonnées n'apparaît pas** dans ce mode : on ignore où il est, et l'inventer serait pire que l'omettre. La recherche par nom, elle, continue de le trouver.
+
+Position refusée, indisponible ou navigateur sans géolocalisation : le message le dit et la liste reste celle de toute la base.
+
 ### Import Google Places
 
-Quand `GOOGLE_PLACES_API_KEY` est configurée, un onglet **Google** apparaît à côté de la base : la même saisie cherche chez Google, un clic importe le resto et le sélectionne. Le bouton « Autour de moi » ajoute un biais géographique de 5 km, sur position explicitement autorisée.
+Quand `GOOGLE_PLACES_API_KEY` est configurée, un onglet **Google** apparaît à côté de la base : la même saisie cherche chez Google, un clic importe le resto et le sélectionne. Si « Autour de moi » est actif, la recherche part avec un biais géographique de 5 km autour du point arrondi.
 
 | Garantie           | Comment                                                                                                                     |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------- |

@@ -1,6 +1,6 @@
 'use client'
 
-import { RiAddLine, RiCheckLine, RiCloseLine, RiSearchLine } from '@remixicon/react'
+import { RiAddLine, RiCheckLine, RiCloseLine, RiMapPin2Line, RiSearchLine } from '@remixicon/react'
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from 'react'
 
 import { searchRestaurantsAction } from '@/actions/restaurants'
@@ -8,9 +8,15 @@ import { AddRestaurantForm } from '@/components/restaurants/add-restaurant-form'
 import { GooglePlacesResults } from '@/components/restaurants/google-places-results'
 import { useRestaurantSources } from '@/components/restaurants/restaurant-sources'
 import { Button } from '@/components/ui/button'
+import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { NEARBY_RADII_KM, NEARBY_RADIUS_DEFAULT_KM } from '@/domain/schemas/restaurant'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { useGeolocation } from '@/hooks/use-geolocation'
+import { captureEvent } from '@/lib/analytics/client'
+import { formatDistance } from '@/lib/format'
+import { distanceKm, parseGeoPoint, roundGeoPoint } from '@/lib/maps'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant } from '@/data-access/models'
@@ -51,7 +57,28 @@ export function RestaurantPicker({
   const [known, setKnown] = useState<Map<string, Restaurant>>(
     () => new Map(initialPage.items.map((r) => [r.id, r]))
   )
-  const lastQuery = useRef('')
+
+  // « Autour de moi » : une position, deux usages. Elle trie le catalogue par
+  // distance et biaise la recherche Google — d'où le partage ici plutôt qu'un
+  // bouton par onglet, qui demanderait deux fois la même permission.
+  const geo = useGeolocation()
+  const [radiusKm, setRadiusKm] = useState<number>(NEARBY_RADIUS_DEFAULT_KM)
+
+  /**
+   * Ce qui part au serveur : la position arrondie, jamais celle du GPS. Les
+   * distances affichées, elles, restent calculées ici au point exact.
+   */
+  const near = useMemo(() => {
+    if (!geo.position) return undefined
+    const { lat, lng } = roundGeoPoint(geo.position)
+    return { latitude: lat, longitude: lng, radiusKm }
+  }, [geo.position, radiusKm])
+
+  const searchKey = near
+    ? `${debouncedQuery}|${near.latitude},${near.longitude},${near.radiusKm}`
+    : debouncedQuery
+  /** Recherche déjà servie : `initialPage` couvre la première, sans position. */
+  const lastSearch = useRef(searchKey)
 
   function remember(items: Restaurant[]) {
     setKnown((prev) => {
@@ -65,10 +92,10 @@ export function RestaurantPicker({
   const locked = useMemo(() => new Set(lockedIds), [lockedIds])
 
   useEffect(() => {
-    if (debouncedQuery === lastQuery.current) return
-    lastQuery.current = debouncedQuery
+    if (searchKey === lastSearch.current) return
+    lastSearch.current = searchKey
     startSearch(async () => {
-      const result = await searchRestaurantsAction({ query: debouncedQuery, offset: 0 })
+      const result = await searchRestaurantsAction({ query: debouncedQuery, offset: 0, near })
       if (!result.ok) {
         setError(result.error)
         return
@@ -76,14 +103,21 @@ export function RestaurantPicker({
       setError(null)
       remember(result.data.items)
       setPage(result.data)
+      if (near) {
+        captureEvent('nearby_browsed', {
+          radius_km: near.radiusKm,
+          results: result.data.items.length,
+        })
+      }
     })
-  }, [debouncedQuery])
+  }, [searchKey, debouncedQuery, near])
 
   function loadMore() {
     startLoadMore(async () => {
       const result = await searchRestaurantsAction({
         query: debouncedQuery,
         offset: page.nextOffset,
+        near,
       })
       if (!result.ok) {
         setError(result.error)
@@ -146,34 +180,69 @@ export function RestaurantPicker({
         {isSearching && <Spinner className="absolute top-1/2 right-3.5 -translate-y-1/2" />}
       </div>
 
-      {sources.google && (
-        <div role="tablist" aria-label="Source des restaurants" className="flex gap-1.5">
-          {(
-            [
-              ['base', 'Base'],
-              ['google', 'Google'],
-            ] as const
-          ).map(([key, label]) => (
+      <div
+        className={cn(
+          'flex flex-wrap items-center gap-2',
+          sources.google ? 'justify-between' : 'justify-end'
+        )}
+      >
+        {sources.google && (
+          <div role="tablist" aria-label="Source des restaurants" className="flex gap-1.5">
+            {(
+              [
+                ['base', 'Base'],
+                ['google', 'Google'],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                id={`${tabId}-tab-${key}`}
+                aria-selected={source === key}
+                aria-controls={`${tabId}-panel`}
+                onClick={() => setSource(key)}
+                className={cn(
+                  'h-9 rounded-md px-3 text-sm font-semibold transition-colors',
+                  source === key
+                    ? 'bg-brand-soft text-brand-hover'
+                    : 'text-muted-foreground hover:bg-surface-2 hover:text-ink'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {geo.position ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft py-1 pr-1 pl-3 text-xs font-semibold text-brand-hover">
+            <RiMapPin2Line aria-hidden="true" className="size-3.5" />
+            Autour de moi
             <button
-              key={key}
               type="button"
-              role="tab"
-              id={`${tabId}-tab-${key}`}
-              aria-selected={source === key}
-              aria-controls={`${tabId}-panel`}
-              onClick={() => setSource(key)}
-              className={cn(
-                'h-9 rounded-md px-3 text-sm font-semibold transition-colors',
-                source === key
-                  ? 'bg-brand-soft text-brand-hover'
-                  : 'text-muted-foreground hover:bg-surface-2 hover:text-ink'
-              )}
+              onClick={geo.clear}
+              aria-label="Revenir à toute la base"
+              className="rounded-full p-1 hover:bg-brand hover:text-on-brand"
             >
-              {label}
+              <RiCloseLine aria-hidden="true" className="size-3.5" />
             </button>
-          ))}
-        </div>
-      )}
+          </span>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={geo.request}
+            disabled={geo.status === 'locating'}
+          >
+            {geo.status === 'locating' ? <Spinner /> : <RiMapPin2Line aria-hidden="true" />}
+            Autour de moi
+          </Button>
+        )}
+      </div>
+
+      <FormMessage error={geo.error} />
 
       {selectedRestaurants.length > 0 && (
         <ul className="flex flex-wrap gap-1.5" aria-label="Restaurants sélectionnés">
@@ -200,7 +269,11 @@ export function RestaurantPicker({
         aria-labelledby={sources.google ? `${tabId}-tab-${source}` : undefined}
       >
         {source === 'google' ? (
-          <GooglePlacesResults query={debouncedQuery} onImported={addAndSelect} />
+          <GooglePlacesResults
+            query={debouncedQuery}
+            position={geo.position}
+            onImported={addAndSelect}
+          />
         ) : (
           <>
             {isAdding ? (
@@ -210,16 +283,33 @@ export function RestaurantPicker({
                 onCancel={() => setIsAdding(false)}
               />
             ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="self-start"
-                onClick={() => setIsAdding(true)}
-              >
-                <RiAddLine aria-hidden="true" />
-                Ajouter un resto
-              </Button>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setIsAdding(true)}>
+                  <RiAddLine aria-hidden="true" />
+                  Ajouter un resto
+                </Button>
+
+                {near && (
+                  <div role="group" aria-label="Rayon autour de moi" className="flex gap-1">
+                    {NEARBY_RADII_KM.map((km) => (
+                      <button
+                        key={km}
+                        type="button"
+                        aria-pressed={radiusKm === km}
+                        onClick={() => setRadiusKm(km)}
+                        className={cn(
+                          'h-8 rounded-full px-3 text-xs font-semibold transition-colors',
+                          radiusKm === km
+                            ? 'bg-brand-soft text-brand-hover'
+                            : 'text-muted-foreground hover:bg-surface-2 hover:text-ink'
+                        )}
+                      >
+                        {km} km
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
             {error && (
@@ -230,11 +320,11 @@ export function RestaurantPicker({
 
             <ul
               className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line"
-              aria-label="Résultats"
+              aria-label={near ? 'Restaurants autour de moi' : 'Résultats'}
             >
               {page.items.length === 0 && !isSearching && (
                 <li className="px-3 py-6 text-center text-sm text-muted-foreground">
-                  {emptyLabel}
+                  {near ? 'Aucun resto connu dans ce rayon.' : emptyLabel}
                   {!isAdding && (
                     <>
                       {' '}
@@ -253,6 +343,7 @@ export function RestaurantPicker({
               {page.items.map((restaurant) => {
                 const isLocked = locked.has(restaurant.id)
                 const isSelected = isLocked || selected.has(restaurant.id)
+                const distance = distanceLabel(geo.position, restaurant)
                 return (
                   <li key={restaurant.id}>
                     <button
@@ -284,11 +375,18 @@ export function RestaurantPicker({
                           </span>
                         )}
                       </span>
-                      {restaurant.cuisine_type && (
-                        <span className="shrink-0 font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
-                          {restaurant.cuisine_type}
-                        </span>
-                      )}
+                      <span className="flex shrink-0 flex-col items-end gap-0.5">
+                        {distance && (
+                          <span className="text-[0.68rem] font-semibold text-brand-hover">
+                            à {distance}
+                          </span>
+                        )}
+                        {restaurant.cuisine_type && (
+                          <span className="font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
+                            {restaurant.cuisine_type}
+                          </span>
+                        )}
+                      </span>
                     </button>
                   </li>
                 )
@@ -308,9 +406,30 @@ export function RestaurantPicker({
                 </li>
               )}
             </ul>
+
+            {near && (
+              <p className="text-xs text-muted-foreground">
+                Du plus proche au plus loin. Un resto dont on ignore les coordonnées n’apparaît pas
+                ici — la recherche par nom le trouve toujours, et l’onglet Google en ajoute de
+                nouveaux.
+              </p>
+            )}
           </>
         )}
       </div>
     </div>
   )
+}
+
+/**
+ * Distance affichée sur une ligne de résultat, `null` sans position autorisée
+ * ou sans coordonnées connues pour ce resto.
+ */
+function distanceLabel(
+  position: { lat: number; lng: number } | null,
+  restaurant: Restaurant
+): string | null {
+  if (!position) return null
+  const point = parseGeoPoint(restaurant.location)
+  return point ? formatDistance(distanceKm(position, point)) : null
 }

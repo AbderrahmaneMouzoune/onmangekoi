@@ -31,6 +31,7 @@ Le retrait du consentement (« Mon compte » → _Statistiques d'usage_) appelle
 
   Le masquage passe par `before_send`, donc il s'applique à **toutes** les propriétés d'URL, y compris celles que PostHog ajoute lui-même (`$current_url`, `$referrer`, `$initial_*`…). Une route inconnue voit ses segments identifiants remplacés par `[id]` : une route ajoutée plus tard ne fuite pas par oubli.
 
+- **Aucune coordonnée** : « autour de moi » ne remonte que le rayon choisi et le nombre de restos trouvés. La position n'est même pas envoyée telle quelle à l'application — elle est arrondie à environ 110 m avant d'atteindre le serveur (`roundGeoPoint`), et les distances affichées sont calculées dans le navigateur.
 - **Pas d'autocapture** (`autocapture: false`) : elle enverrait le texte des éléments cliqués, donc des pseudos. Pas d'enregistrement de session non plus.
 
 Le seul identifiant transmis est l'**UUID du profil Supabase**, opaque, passé à `identify()` — c'est lui qui rend la rétention mesurable. `person_profiles: 'identified_only'` : les visiteurs sans pseudo n'ont pas de profil.
@@ -45,6 +46,7 @@ Le seul identifiant transmis est l'**UUID du profil Supabase**, opaque, passé �
 | `vote_submitted`  | un vote est enregistré en base (pas une carte déjà votée)        | `session_id`, `value`, `kind`, `position`, `restaurant_count`                     |
 | `session_closed`  | la session passe à `closed` sous les yeux d'un participant       | `session_id`, `reason` (`auto` · `host`), `participant_count`, `restaurant_count` |
 | `list_shared`     | copie du lien de partage d'une liste                             | `method`                                                                          |
+| `nearby_browsed`  | une recherche « autour de moi » ramène ses résultats             | `radius_km`, `results`                                                            |
 | `$pageview`       | à chaque changement de route, sur la route **masquée**           | —                                                                                 |
 
 Le catalogue est typé (`src/lib/analytics/events.ts`) : une propriété non prévue ne compile pas. C'est le garde-fou qui empêche d'y glisser une donnée personnelle par inadvertance.

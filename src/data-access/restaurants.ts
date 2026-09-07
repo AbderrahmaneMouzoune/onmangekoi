@@ -5,6 +5,7 @@ import { createPublicClient } from '@/data-access/supabase/public'
 import type { Restaurant } from './models'
 import type { Database } from './models/database'
 import type { PlaceResult } from '@/domain/places'
+import type { GeoPoint } from '@/lib/maps'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const RESTAURANT_PAGE_SIZE = 20
@@ -24,10 +25,22 @@ export interface RestaurantPage {
   nextOffset: number
 }
 
+/**
+ * Recherche « autour de moi ». Le point est déjà arrondi par l'appelant
+ * (`roundGeoPoint`) : il sert de clé de cache, une maille de 110 m suffit à
+ * partager la même page entre deux personnes de la même rue.
+ */
+export interface NearbySearchOptions {
+  point: GeoPoint
+  radiusKm: number
+}
+
 export interface RestaurantSearchOptions {
   query?: string
   offset?: number
   limit?: number
+  /** Absent : catalogue complet par ordre alphabétique. */
+  near?: NearbySearchOptions
 }
 
 /** Échappe les jokers ILIKE pour qu'une recherche « 100% » reste littérale. */
@@ -43,6 +56,22 @@ export async function searchRestaurants(
   const offset = Math.max(options.offset ?? 0, 0)
   const query = (options.query ?? '').trim()
 
+  // Tri par distance : seule la base sait le faire, PostgREST ne sachant pas
+  // ordonner sur une expression calculée. La RPC porte aussi le filtre texte,
+  // pour que la recherche et « autour de moi » se combinent.
+  if (options.near) {
+    const { data, error } = await supabase.rpc('restaurants_nearby', {
+      p_lat: options.near.point.lat,
+      p_lng: options.near.point.lng,
+      p_radius_km: options.near.radiusKm,
+      p_query: query || undefined,
+      p_limit: limit + 1,
+      p_offset: offset,
+    })
+    if (error) throw error
+    return paginate(data, limit, offset)
+  }
+
   let request = supabase.from('restaurants').select()
 
   if (query) {
@@ -53,8 +82,13 @@ export async function searchRestaurants(
   const { data, error } = await request.order('name').range(offset, offset + limit)
   if (error) throw error
 
-  const hasMore = data.length > limit
-  const items = hasMore ? data.slice(0, limit) : data
+  return paginate(data, limit, offset)
+}
+
+/** Une ligne de plus a été demandée : sa présence signale la page suivante. */
+function paginate(rows: Restaurant[], limit: number, offset: number): RestaurantPage {
+  const hasMore = rows.length > limit
+  const items = hasMore ? rows.slice(0, limit) : rows
   return { items, hasMore, nextOffset: offset + items.length }
 }
 

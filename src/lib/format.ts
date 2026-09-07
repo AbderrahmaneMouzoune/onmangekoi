@@ -38,6 +38,19 @@ export function participantLabel(
   return profileId === null ? DELETED_PARTICIPANT : displayPseudo(pseudo)
 }
 
+const kilometreFormatter = new Intl.NumberFormat('fr', { maximumFractionDigits: 1 })
+
+/**
+ * Distance à hauteur de piéton : en mètres arrondis à la dizaine sous le
+ * kilomètre, en kilomètres à une décimale au-delà. Personne n'a besoin du
+ * mètre près pour savoir si un resto est « au coin » ou « à l'autre bout ».
+ */
+export function formatDistance(km: number): string {
+  if (!Number.isFinite(km) || km < 0) return ''
+  if (km < 1) return `${Math.max(Math.round((km * 1000) / 10) * 10, 10)} m`
+  return `${kilometreFormatter.format(km)} km`
+}
+
 const relativeFormatter = new Intl.RelativeTimeFormat('fr', { numeric: 'auto' })
 
 export function relativeDate(iso: string, now: Date = new Date()): string {

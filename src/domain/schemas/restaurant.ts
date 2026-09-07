@@ -59,6 +59,29 @@ export const CreateRestaurantSchema = z.object({
   priceLevel: PriceLevelSchema,
 })
 
+/**
+ * Rayons proposés par « autour de moi », en kilomètres : le quartier, la
+ * ville, la campagne. Trois choix suffisent — au-delà on choisit un nombre,
+ * pas un déjeuner.
+ */
+export const NEARBY_RADII_KM = [1, 5, 20] as const
+export const NEARBY_RADIUS_DEFAULT_KM = 5
+export const NEARBY_RADIUS_MAX_KM = 50
+
+/**
+ * Position reçue par la recherche « autour de moi ». Le navigateur envoie un
+ * point déjà arrondi (`roundGeoPoint`) ; la validation borne quand même les
+ * coordonnées, une action serveur n'ayant aucune raison de faire confiance à
+ * ce qu'on lui poste.
+ */
+export const NearbySchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  radiusKm: z.number().min(0.1).max(NEARBY_RADIUS_MAX_KM).default(NEARBY_RADIUS_DEFAULT_KM),
+})
+
+export type NearbyInput = z.infer<typeof NearbySchema>
+
 /** Recherche de doublons : au moins deux caractères, sinon rien à comparer. */
 export const SimilarRestaurantsSchema = z.object({
   name: z.string().trim().min(RESTAURANT_NAME_MIN).max(RESTAURANT_NAME_MAX),

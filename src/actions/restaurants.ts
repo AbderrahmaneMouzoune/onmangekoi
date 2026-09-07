@@ -14,7 +14,11 @@ import {
 } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
 import { toUserMessage } from '@/domain/errors'
-import { CreateRestaurantSchema, SimilarRestaurantsSchema } from '@/domain/schemas/restaurant'
+import {
+  CreateRestaurantSchema,
+  NearbySchema,
+  SimilarRestaurantsSchema,
+} from '@/domain/schemas/restaurant'
 
 import type { ActionResult } from './types'
 import type { Restaurant } from '@/data-access/models'
@@ -22,21 +26,37 @@ import type { Restaurant } from '@/data-access/models'
 const SearchSchema = z.object({
   query: z.string().trim().max(80).default(''),
   offset: z.number().int().min(0).max(10_000).default(0),
+  /** Absent : catalogue complet, par ordre alphabétique. */
+  near: NearbySchema.optional(),
 })
 
 /**
  * Recherche du `RestaurantPicker`. Le catalogue est public : la lecture passe
  * par le cache partagé, donc une même recherche ne touche la base qu'une fois.
+ *
+ * `near` bascule sur le tri par distance. Le point reçu est arrondi côté
+ * navigateur : il fait une clé de cache raisonnable — tout un pâté de maisons
+ * partage la même page — et l'application ne stocke jamais mieux qu'un
+ * quartier de la position de quelqu'un.
  */
 export async function searchRestaurantsAction(input: {
   query?: string
   offset?: number
+  near?: { latitude: number; longitude: number; radiusKm?: number }
 }): Promise<ActionResult<RestaurantPage>> {
   const parsed = SearchSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Recherche invalide' }
 
+  const { near, ...search } = parsed.data
+
   try {
-    const page = await getRestaurantCatalogPage(parsed.data)
+    const page = await getRestaurantCatalogPage({
+      ...search,
+      near: near && {
+        point: { lat: near.latitude, lng: near.longitude },
+        radiusKm: near.radiusKm,
+      },
+    })
     return { ok: true, data: page }
   } catch {
     return { ok: false, error: 'La recherche a échoué. Réessaie.' }
