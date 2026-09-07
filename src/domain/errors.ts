@@ -9,7 +9,8 @@ export const OMK_MESSAGES: Record<string, string> = {
   not_authenticated: 'Tu dois choisir un pseudo pour continuer.',
   profile_incomplete: 'Choisis d’abord un pseudo.',
   invalid_name: 'Le nom doit faire entre 1 et 100 caractères.',
-  no_restaurants: 'Ajoute au moins un restaurant.',
+  not_enough_restaurants:
+    'Il faut au moins 2 restaurants : avec un seul, il n’y a rien à départager.',
   too_many_restaurants: 'Une session ne peut pas dépasser 100 restaurants.',
   invalid_identifier: 'Ce code ou ce lien n’a pas le bon format.',
   session_not_found: 'Aucune session ne correspond à ce code.',

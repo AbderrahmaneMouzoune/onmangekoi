@@ -28,7 +28,7 @@ Les règles (jokers, session en cours, participant, restaurant valide) sont vér
 
 | Règle               | Comportement                                                                    |
 | ------------------- | ------------------------------------------------------------------------------- |
-| Lancement           | Réservé au host, à partir de 2 participants                                     |
+| Lancement           | Réservé au host, à partir de 2 participants et 2 restaurants                    |
 | Snapshot            | Les restaurants sont figés à la création                                        |
 | Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                  |
 | Clôture automatique | Déclenchée en base dès que 100 % des participants ont terminé                   |

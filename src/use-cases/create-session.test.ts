@@ -38,7 +38,7 @@ describe('createSessionUseCase', () => {
 
   it('should not query lists when none are selected', async () => {
     const { client, from } = fakeClient([])
-    await createSessionUseCase(client, { name: 'Lunch', listIds: [], restaurantIds: [R1] })
+    await createSessionUseCase(client, { name: 'Lunch', listIds: [], restaurantIds: [R1, R2] })
     expect(from).not.toHaveBeenCalled()
   })
 
@@ -46,6 +46,22 @@ describe('createSessionUseCase', () => {
     const { client, rpc } = fakeClient([])
     await expect(
       createSessionUseCase(client, { name: 'Lunch', listIds: [L1], restaurantIds: [] })
+    ).rejects.toBeInstanceOf(AppError)
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('should fail before the RPC with a single restaurant', async () => {
+    const { client, rpc } = fakeClient([])
+    await expect(
+      createSessionUseCase(client, { name: 'Lunch', listIds: [], restaurantIds: [R1] })
+    ).rejects.toBeInstanceOf(AppError)
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('should count a restaurant picked twice as one', async () => {
+    const { client, rpc } = fakeClient([{ restaurant_id: R1, added_at: '2026-01-01' }])
+    await expect(
+      createSessionUseCase(client, { name: 'Lunch', listIds: [L1], restaurantIds: [R1] })
     ).rejects.toBeInstanceOf(AppError)
     expect(rpc).not.toHaveBeenCalled()
   })
