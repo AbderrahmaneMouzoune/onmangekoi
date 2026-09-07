@@ -617,6 +617,37 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      my_sessions: {
+        Args: { p_cursor_created_at?: string; p_cursor_id?: string; p_limit?: number }
+        Returns: {
+          closed_at: string
+          created_at: string
+          id: string
+          invite_code: string
+          is_host: boolean
+          name: string
+          participant_count: number
+          restaurant_count: number
+          status: Database['public']['Enums']['session_status']
+          winner_name: string
+          winner_score: number
+        }[]
+      }
+      my_stats: {
+        Args: never
+        Returns: {
+          fav_votes: number
+          favorite_cuisine: string
+          favorite_cuisine_votes: number
+          sessions_closed: number
+          sessions_hosted: number
+          sessions_total: number
+          top_restaurant_name: string
+          top_restaurant_wins: number
+          veto_votes: number
+          votes_total: number
+        }[]
+      }
       normalize_crockford: { Args: { p_input: string }; Returns: string }
       purge_inactive_anonymous: {
         Args: { p_older_than?: string }
@@ -664,6 +695,14 @@ export type Database = {
           superlikes: number
           votes_count: number
           website: string
+        }[]
+      }
+      session_winner: {
+        Args: { p_session_id: string }
+        Returns: {
+          name: string
+          restaurant_id: string
+          score: number
         }[]
       }
       shares_session_with: { Args: { p_profile_id: string }; Returns: boolean }

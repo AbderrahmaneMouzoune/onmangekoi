@@ -34,7 +34,15 @@ export async function HomeDashboard() {
 
       {sessions.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-bold">Tes sessions</h2>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-lg font-bold">Tes sessions</h2>
+            <Link
+              href={router.sessions()}
+              className="text-sm font-medium text-brand hover:underline"
+            >
+              Tout voir
+            </Link>
+          </div>
           <ul className="flex flex-col gap-2">
             {sessions.map((session) => (
               <li key={session.id}>
@@ -119,7 +127,12 @@ export function HomeDashboardFallback() {
   return (
     <>
       <section aria-busy="true" className="hidden flex-col gap-3 seen-sessions:flex">
-        <h2 className="text-lg font-bold">Tes sessions</h2>
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-bold">Tes sessions</h2>
+          <Link href={router.sessions()} className="text-sm font-medium text-brand hover:underline">
+            Tout voir
+          </Link>
+        </div>
         <div className="flex flex-col gap-2">
           <SkeletonRow nameWidth="w-44" badgeWidth="w-20" />
           <SkeletonRow nameWidth="w-32" badgeWidth="w-16" />

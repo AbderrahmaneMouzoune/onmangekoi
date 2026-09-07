@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 
 import { AccountDataSection } from '@/components/account/account-data-section'
 import { AccountDetails, AccountDetailsFallback } from '@/components/account/account-details'
+import { AccountStats, AccountStatsFallback } from '@/components/account/account-stats'
 import { PageHeader } from '@/components/layout/page-header'
 import { Shell } from '@/components/layout/shell'
 import { router } from '@/config/router.config'
@@ -25,6 +26,10 @@ export default function AccountPage({ searchParams }: Props) {
 
       <Suspense fallback={<AccountDetailsFallback />}>
         <AccountDetails searchParams={searchParams} />
+      </Suspense>
+
+      <Suspense fallback={<AccountStatsFallback />}>
+        <AccountStats />
       </Suspense>
 
       <AccountDataSection />

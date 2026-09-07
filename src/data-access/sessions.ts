@@ -1,10 +1,16 @@
 import { cache } from 'react'
 
+import {
+  encodeSessionCursor,
+  parseSessionCursor,
+  SESSION_HISTORY_PAGE_SIZE,
+} from '@/domain/history'
 import { parseSessionParam } from '@/domain/share'
 
 import type {
   ParticipantWithProfile,
   Session,
+  SessionHistoryEntry,
   SessionPreview,
   SessionRestaurantWithRestaurant,
   SessionResultRow,
@@ -169,6 +175,42 @@ export async function getMySessions(
     ...session,
     participant_count: session_participants[0]?.count ?? 0,
   }))
+}
+
+/** Une page d'historique et le curseur qui ouvre la suivante (`null` = fin). */
+export interface SessionHistoryPage {
+  entries: SessionHistoryEntry[]
+  nextCursor: string | null
+}
+
+/**
+ * Historique paginé : mes sessions, hébergées ou rejointes, de la plus
+ * récente à la plus ancienne. On demande une ligne de plus que la page pour
+ * savoir s'il en reste — sans elle, un « plus anciennes » s'afficherait au
+ * bas de la dernière page pour ne rien montrer.
+ */
+export async function getMySessionHistory(
+  supabase: SupabaseClient<Database>,
+  options: { limit?: number; cursor?: string | null } = {}
+): Promise<SessionHistoryPage> {
+  const limit = options.limit ?? SESSION_HISTORY_PAGE_SIZE
+  const cursor = parseSessionCursor(options.cursor)
+
+  const { data, error } = await supabase.rpc('my_sessions', {
+    p_limit: limit + 1,
+    // Omettre la clé plutôt que passer `null` : le paramètre est `default null`
+    // en base, et le type généré ne l'accepte que comme optionnel.
+    p_cursor_created_at: cursor?.createdAt,
+    p_cursor_id: cursor?.id,
+  })
+  if (error) throw error
+
+  const entries = data.slice(0, limit)
+  const last = entries[entries.length - 1]
+  return {
+    entries,
+    nextCursor: data.length > limit && last ? encodeSessionCursor(last) : null,
+  }
 }
 
 /** Aperçu par token ou code — mémoïsé par requête (page, métadonnées, image OG). */

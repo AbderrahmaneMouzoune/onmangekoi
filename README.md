@@ -42,6 +42,7 @@ Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **s
 
 | Route                    | Exemple                    | Qui la voit                   |
 | ------------------------ | -------------------------- | ----------------------------- |
+| Historique               | `/sessions`                | soi-même                      |
 | Salle de session         | `/sessions/7K3M9P`         | participants                  |
 | Classement               | `/sessions/7K3M9P/results` | participants                  |
 | Invitation (lien + QR)   | `/join/7K3M9P`             | qui reçoit le lien ou le code |
@@ -58,6 +59,21 @@ Les codes utilisent l'alphabet **Crockford base32** (`0-9`, `A-Z` sans `I`, `L`,
 Chaque page redirige vers sa forme canonique : un code tapé en minuscules ou avec des tirets, comme un ancien lien (uuid de session ou de liste, jeton hexadécimal de partage, `/l/<slug>-<CODE>`), retombe sur l'URL du moment. Rien de ce qui a déjà été partagé ne casse.
 
 Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché par le host.
+
+## Historique et statistiques
+
+Une session clôturée ne sort plus de la navigation : `/sessions` la garde, hébergée ou rejointe, de la plus récente à la plus ancienne, et son classement s'ouvre en un clic. « Mon compte » y ajoute le résumé de ce que ces sessions racontent.
+
+| Lecture           | RPC                                                | Ce qu'elle rend                                                                         |
+| ----------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Historique paginé | `my_sessions(limit, cursor_created_at, cursor_id)` | statut, date, compteurs, hôte ou non, et le gagnant d'une session close                 |
+| Statistiques      | `my_stats()`                                       | sessions, votes, taux de coups de cœur, cuisine préférée, resto le plus souvent gagnant |
+
+La pagination se fait **par curseur, jamais par offset** : le curseur désigne la dernière ligne rendue — sa date et son id, encodés en base64url dans `?cursor=` —, et la page suivante reprend strictement en dessous. Une session créée entre deux pages n'en décale donc aucune, ne fait sauter aucune ligne et n'en sert jamais deux fois la même. Un curseur illisible retombe sur la première page au lieu de lever.
+
+Les statistiques ne comptent **que mes votes** : `my_stats` n'agrège que les lignes attachées à mes participations. Le seul chiffre issu du groupe est le gagnant d'une session close, qui est déjà l'agrégat que ses participants lisent dans le classement. La règle de départage est partagée avec `session_results` (score, puis coups de cœur, puis ordre de présentation) via un helper `session_winner` qu'aucun rôle ne peut appeler : seules les deux RPC y accèdent, après avoir vérifié la participation.
+
+Le scénario est rejouable avec `bun run db:test` (`supabase/tests/history.test.sql`).
 
 ## Fiche restaurant
 
@@ -161,17 +177,17 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ```
 src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], account, legal, auth, api/places)
+src/app/                 routes App Router (setup, login, join/[code], sessions, sessions/[code], lists/[code], l/[code], account, legal, auth, api/places)
 src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · account/ · restaurants/ · onboarding/
-src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + models/ (types générés)
+src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + stats.ts + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
-src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, horaires, places, schemas/ (Zod)
+src/domain/              règles et vocabulaire métier : votes, codes de partage, curseur d'historique, erreurs, horaires, places, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
                          images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
 src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
-supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results), purge, RGPD
+supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results/my_sessions/my_stats), purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
 ```
@@ -197,7 +213,8 @@ Le catalogue étant partagé, la recherche du sélecteur de restaurants sort du 
 - **Aucune table n'est lisible en `using (true)`.** Les tokens et codes d'invitation ne se résolvent que via des fonctions `security definer` qui prennent le secret en argument et renvoient uniquement la ligne visée. Les codes qui figurent dans les URL privées (`/sessions/…`, `/lists/…`) ne contournent rien : la RLS filtre la lecture comme pour un id.
 - **Aperçu d'invitation** (`session_preview`) : un visiteur non authentifié — typiquement le robot qui déplie le lien dans une conversation — n'obtient un aperçu par code court que sur une session **en attente**, et seulement le nom, le pseudo du host et deux compteurs. Rejoindre exige toujours un compte.
 - **Toutes les écritures métier passent par des RPC** transactionnelles (`create_session`, `join_session`, `launch_session`, `submit_vote`, `close_session`) qui revérifient les règles côté base.
-- Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat.
+- Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat, et `my_stats` ne compte que les votes de son appelant.
+- `my_sessions` et `my_stats` refont le contrôle d'accès en clair (`session_participants.profile_id = auth.uid()`) plutôt que de s'en remettre à la RLS, qui reste inchangée. Le helper `session_winner` n'est exécutable ni par `anon` ni par `authenticated` : sans ça, le gagnant de n'importe quelle session se lirait en devinant un uuid.
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.
 - La clé Google Places ne quitte jamais le serveur, et aucune policy RLS n'ouvre l'écriture en `source = 'google'` : `upsert_restaurant_from_place` est le seul chemin. Les corps d'erreur renvoyés par Google restent dans les logs serveur.
 - Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision.
