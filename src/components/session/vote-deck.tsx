@@ -1,13 +1,17 @@
 'use client'
 
+import { RiMapPin2Fill, RiMapPin2Line } from '@remixicon/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { submitVoteAction } from '@/actions/votes'
 import { VoteCard } from '@/components/session/vote-card'
 import { VoteControls } from '@/components/session/vote-controls'
+import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
+import { Spinner } from '@/components/ui/spinner'
 import { voteActionByValue } from '@/domain/vote'
+import { useUserPosition } from '@/hooks/use-user-position'
 import { captureEvent } from '@/lib/analytics/client'
 import { cn } from '@/lib/utils'
 
@@ -51,6 +55,10 @@ export function VoteDeck({
   const [error, setError] = useState<string | null>(null)
   const busy = useRef(false)
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
+  // Même bouton que dans le sélecteur : la distance de chaque carte aide à
+  // trancher entre deux restos qui se valent, et personne n'a envie de
+  // marcher trois kilomètres à midi.
+  const geo = useUserPosition()
 
   const remaining = restaurants.filter((r) => !votedIds.has(r.id) && r.restaurants)
   const current = remaining[0]
@@ -196,7 +204,34 @@ export function VoteDeck({
         <span className="font-mono text-xs text-muted-foreground tabular">
           {done}/{total}
         </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-pressed={geo.position !== null}
+          onClick={geo.position ? geo.clear : geo.locate}
+          disabled={geo.isLocating}
+          className={cn(
+            '-my-2',
+            geo.position && 'bg-brand-soft text-brand-hover hover:bg-brand-soft'
+          )}
+        >
+          {geo.isLocating ? (
+            <Spinner />
+          ) : geo.position ? (
+            <RiMapPin2Fill aria-hidden="true" />
+          ) : (
+            <RiMapPin2Line aria-hidden="true" />
+          )}
+          {geo.position ? 'Autour de toi' : 'Autour de moi'}
+        </Button>
       </div>
+
+      {geo.error && (
+        <p role="status" className="-mt-3 text-xs text-muted-foreground">
+          {geo.error}
+        </p>
+      )}
 
       <div className="relative">
         {next?.restaurants && (
@@ -206,6 +241,7 @@ export function VoteDeck({
               index={done + 2}
               total={total}
               priority={false}
+              position={geo.position}
             />
           </div>
         )}
@@ -223,6 +259,7 @@ export function VoteDeck({
             style={cardStyle}
             overlay={overlay}
             priority
+            position={geo.position}
           />
         </div>
       </div>

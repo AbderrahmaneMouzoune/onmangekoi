@@ -70,6 +70,9 @@ Chaque restaurant peut porter une photo, une adresse, un site, des coordonnées 
 | `website`        | HTTP(S)                                                                               | bouton « Le site » sur le gagnant                |
 | `location`       | `{"lat": number, "lng": number}`                                                      | lien d'itinéraire et mini-carte du gagnant       |
 | `opening_hours`  | `{"timezone"?: string, "periods": [{"day": 0-6, "open": "HH:MM", "close": "HH:MM"}]}` | badge « ouvert / fermé » sur la carte de vote    |
+| `price_level`    | entier 1–4                                                                            | badge « € » à « €€€€ » sur la carte de vote      |
+
+Pendant le vote, le bouton « Autour de moi » du deck demande la position au navigateur, sur clic seulement : chaque carte géolocalisée affiche alors sa distance à vol d'oiseau, à côté de l'adresse. Un second clic l'oublie. Comme dans le sélecteur, la position ne quitte jamais le navigateur.
 
 `day` suit `Date#getDay` (0 = dimanche) ; une période dont la fermeture précède l'ouverture passe minuit (`22:00 → 02:00`), y compris par-dessus la fin de semaine. Le fuseau est celui du restaurant quand il est connu, celui du visiteur sinon. Les formes `jsonb` sont validées en base (`is_geo_point`, `is_opening_hours`) **et** à la lecture : une donnée importée reste une donnée externe.
 
