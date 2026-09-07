@@ -22,7 +22,7 @@ export function ConsentBanner() {
   return (
     <section
       aria-labelledby="consent-title"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 px-4 py-4 safe-bottom shadow-lg backdrop-blur-md"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 px-4 py-4 safe-bottom shadow-lg backdrop-blur-md lg:inset-x-auto lg:right-6 lg:bottom-6 lg:max-w-md lg:rounded-xl lg:border lg:p-5"
     >
       <div className="mx-auto flex max-w-2xl flex-col gap-3">
         <div className="flex flex-col gap-1">

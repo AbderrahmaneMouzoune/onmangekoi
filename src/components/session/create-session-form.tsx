@@ -28,6 +28,10 @@ interface CreateSessionFormProps {
  * Créer une session, en trois étapes numérotées : un nom, les restos, une
  * échéance. Les restos viennent d'où on veut — une liste entière, le carnet,
  * Google — et se mélangent dans un seul panier.
+ *
+ * Sur grand écran, le nom, l'échéance et le bouton d'envoi tiennent dans une
+ * colonne collante à gauche ; le sélecteur de restos, le plus haut des trois
+ * blocs, occupe la droite. L'ordre du document reste celui des étapes.
  */
 export function CreateSessionForm({ lists, initialPage, defaultName }: CreateSessionFormProps) {
   const [state, formAction, isPending] = useActionState(createSessionAction, null)
@@ -49,8 +53,15 @@ export function CreateSessionForm({ lists, initialPage, defaultName }: CreateSes
     rememberSessionEntry({ kind: 'created', listCount: selectedListIds.length })
   }
 
+  const submitLabel =
+    total > 0 ? `Créer la session · ${countLabel(total, 'resto')}` : 'Sélectionne des restaurants'
+
   return (
-    <form action={formAction} onSubmit={rememberCreation} className="flex flex-col gap-8">
+    <form
+      action={formAction}
+      onSubmit={rememberCreation}
+      className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-x-10"
+    >
       <SessionStep
         number={1}
         title={
@@ -71,22 +82,24 @@ export function CreateSessionForm({ lists, initialPage, defaultName }: CreateSes
         />
       </SessionStep>
 
-      <SessionStep
-        number={2}
-        title={<h2 className="text-base font-semibold">{SESSION_STEPS.restaurants}</h2>}
-        hint={SESSION_STEPS.restaurantsHint}
-      >
-        <RestaurantPicker
-          initialPage={initialPage}
-          value={selectedRestaurantIds}
-          onChange={setSelectedRestaurantIds}
-          inputName="restaurantIds"
-          lists={lists}
-          selectedListIds={selectedListIds}
-          onListsChange={setSelectedListIds}
-          listsInputName="listIds"
-        />
-      </SessionStep>
+      <div className="contents lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:block">
+        <SessionStep
+          number={2}
+          title={<h2 className="text-base font-semibold">{SESSION_STEPS.restaurants}</h2>}
+          hint={SESSION_STEPS.restaurantsHint}
+        >
+          <RestaurantPicker
+            initialPage={initialPage}
+            value={selectedRestaurantIds}
+            onChange={setSelectedRestaurantIds}
+            inputName="restaurantIds"
+            lists={lists}
+            selectedListIds={selectedListIds}
+            onListsChange={setSelectedListIds}
+            listsInputName="listIds"
+          />
+        </SessionStep>
+      </div>
 
       <DeadlinePicker
         legend={
@@ -96,17 +109,13 @@ export function CreateSessionForm({ lists, initialPage, defaultName }: CreateSes
         }
       />
 
-      <FormMessage error={state?.error} />
+      <FormMessage error={state?.error} className="lg:col-start-1" />
 
-      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md">
+      {/* Sur grand écran, le bouton reste sous les étapes, dans la colonne de
+          gauche : plus besoin de la barre du bas. */}
+      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md sm:-mx-6 sm:px-6 lg:static lg:col-start-1 lg:m-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
         <Button type="submit" size="lg" disabled={isPending || total === 0} className="w-full">
-          {isPending ? (
-            <Spinner />
-          ) : total > 0 ? (
-            `Créer la session · ${countLabel(total, 'resto')}`
-          ) : (
-            'Sélectionne des restaurants'
-          )}
+          {isPending ? <Spinner /> : submitLabel}
         </Button>
       </div>
     </form>

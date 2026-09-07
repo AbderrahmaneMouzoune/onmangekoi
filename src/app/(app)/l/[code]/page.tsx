@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default function SharedListPage({ params }: Props) {
   return (
-    <Shell>
+    <Shell size="app">
       <Suspense fallback={<SharedListDetailFallback />}>
         <SharedListDetail params={params} />
       </Suspense>

@@ -200,7 +200,7 @@ export function GooglePlacesResults({
       <FormMessage error={fetchError ?? importError} />
 
       <ul
-        className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line"
+        className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line lg:max-h-[28rem]"
         aria-label="Résultats Google"
         aria-busy={isSearching || status === 'locating' || undefined}
       >

@@ -17,7 +17,8 @@ interface TwoStepButtonProps extends Omit<
 
 /**
  * Bouton à confirmation en deux temps, sans modale : un premier clic arme,
- * un second confirme. Adapté au mobile et aux actions irréversibles.
+ * un second confirme. Adapté au mobile et aux actions irréversibles. Au
+ * clavier, Échap désarme sans attendre le délai.
  */
 export function TwoStepButton({
   label,
@@ -38,6 +39,12 @@ export function TwoStepButton({
     <Button
       type="button"
       aria-live="polite"
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || !armed) return
+        event.preventDefault()
+        event.stopPropagation()
+        setArmed(false)
+      }}
       onClick={() => {
         if (armed) {
           setArmed(false)

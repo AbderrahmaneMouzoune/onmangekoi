@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import './globals.css'
 import { AnalyticsIdentity } from '@/components/analytics/analytics-identity'
 import { AnalyticsProvider } from '@/components/analytics/analytics-provider'
+import { SkipLink } from '@/components/layout/skip-link'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SITE_NAME, SITE_TAGLINE, siteUrl } from '@/lib/site'
 import { cn } from '@/lib/utils'
@@ -78,6 +79,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         {/* Avant le premier pixel : la forme de la dernière visite, pour que
             les silhouettes de chargement ne réservent que ce qui va venir. */}
         <script dangerouslySetInnerHTML={{ __html: VISIT_HINT_SCRIPT }} />
+        <SkipLink />
         <ThemeProvider>{children}</ThemeProvider>
         <AnalyticsProvider />
         <Suspense fallback={null}>

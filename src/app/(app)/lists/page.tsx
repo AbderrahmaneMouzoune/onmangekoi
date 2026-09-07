@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: 'Mes listes' }
 
 export default function ListsPage() {
   return (
-    <Shell>
+    <Shell size="app">
       <PageHeader
         eyebrow="Favoris"
         title="Mes listes"

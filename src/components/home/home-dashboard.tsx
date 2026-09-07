@@ -29,7 +29,7 @@ export async function HomeDashboard() {
   ])
 
   return (
-    <>
+    <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
       <VisitMemo account sessions={sessions.length > 0} lists={lists.length > 0} />
 
       {sessions.length > 0 && (
@@ -61,10 +61,13 @@ export async function HomeDashboard() {
         </section>
       )}
 
-      <section className="flex flex-col gap-3">
+      <section className={cn('flex flex-col gap-3', sessions.length === 0 && 'lg:col-span-2')}>
         <div className="flex items-baseline justify-between">
           <h2 className="text-lg font-bold">Tes listes</h2>
-          <Link href={router.lists()} className="text-sm font-medium text-brand hover:underline">
+          <Link
+            href={router.lists()}
+            className="rounded-sm text-sm font-medium text-brand hover:underline"
+          >
             Tout voir
           </Link>
         </div>
@@ -88,7 +91,7 @@ export async function HomeDashboard() {
           </ul>
         )}
       </section>
-    </>
+    </div>
   )
 }
 
@@ -117,7 +120,7 @@ function FirstListInvite({ className }: { className?: string }) {
  */
 export function HomeDashboardFallback() {
   return (
-    <>
+    <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
       <section aria-busy="true" className="hidden flex-col gap-3 seen-sessions:flex">
         <h2 className="text-lg font-bold">Tes sessions</h2>
         <div className="flex flex-col gap-2">
@@ -126,10 +129,18 @@ export function HomeDashboardFallback() {
         </div>
       </section>
 
-      <section aria-busy="true" className="hidden flex-col gap-3 seen-account:flex">
+      {/* Sans session connue, les listes prennent toute la largeur — comme le
+          vrai tableau de bord le fera. */}
+      <section
+        aria-busy="true"
+        className="hidden flex-col gap-3 lg:col-span-2 seen-account:flex seen-sessions:lg:col-span-1"
+      >
         <div className="flex items-baseline justify-between">
           <h2 className="text-lg font-bold">Tes listes</h2>
-          <Link href={router.lists()} className="text-sm font-medium text-brand hover:underline">
+          <Link
+            href={router.lists()}
+            className="rounded-sm text-sm font-medium text-brand hover:underline"
+          >
             Tout voir
           </Link>
         </div>
@@ -141,6 +152,6 @@ export function HomeDashboardFallback() {
           <Skeleton className="h-9 w-28 rounded-full" />
         </div>
       </section>
-    </>
+    </div>
   )
 }

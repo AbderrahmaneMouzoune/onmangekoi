@@ -8,6 +8,8 @@ interface VoteControlsProps {
   disabled?: boolean
   superlikeUsed: boolean
   superDislikeUsed: boolean
+  /** Affiche la touche principale de chaque action (clavier physique, grand écran). */
+  showShortcuts?: boolean
 }
 
 const ICONS: Record<VoteKind, typeof RiThumbUpLine> = {
@@ -29,9 +31,10 @@ export function VoteControls({
   disabled = false,
   superlikeUsed,
   superDislikeUsed,
+  showShortcuts = false,
 }: VoteControlsProps) {
   return (
-    <div role="group" aria-label="Voter" className="grid grid-cols-4 gap-2">
+    <div role="group" aria-label="Voter" className="grid grid-cols-4 gap-2 lg:grid-cols-2 lg:gap-3">
       {VOTE_ACTIONS.map((action) => {
         const Icon = ICONS[action.kind]
         const jokerSpent =
@@ -47,7 +50,7 @@ export function VoteControls({
             aria-label={`${action.label} — ${action.hint}`}
             aria-keyshortcuts={action.shortcuts.join(' ')}
             className={cn(
-              'flex flex-col items-center justify-center gap-1.5 rounded-lg py-3 text-xs font-semibold transition-[background-color,color,transform] outline-none focus-visible:ring-3 active:not-disabled:scale-95 disabled:cursor-not-allowed disabled:opacity-35',
+              'relative flex flex-col items-center justify-center gap-1.5 rounded-lg py-3 text-xs font-semibold transition-[background-color,color,transform] outline-none focus-visible:ring-3 active:not-disabled:scale-95 disabled:cursor-not-allowed disabled:opacity-35 lg:min-h-28 lg:text-sm',
               action.joker ? 'min-h-20' : 'min-h-24',
               STYLES[action.kind]
             )}
@@ -59,6 +62,14 @@ export function VoteControls({
               <span className="font-mono text-[0.6rem] tracking-wide">
                 {jokerSpent ? 'utilisé' : '1 joker'}
               </span>
+            )}
+            {showShortcuts && (
+              <kbd
+                aria-hidden="true"
+                className="absolute top-2 right-2 hidden border-current/30 bg-transparent text-current lg:inline-flex"
+              >
+                {action.shortcuts[0]}
+              </kbd>
             )}
           </button>
         )

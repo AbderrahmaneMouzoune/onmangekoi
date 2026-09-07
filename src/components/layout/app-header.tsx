@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 
 import { ChangelogNavLink } from '@/components/changelog/changelog-nav-link'
 import { Brand } from '@/components/layout/brand'
+import { NavLinks, StaticNavLinks } from '@/components/layout/nav-links'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -17,12 +18,24 @@ import { AccountNavLink, ChoosePseudoLink } from './account-nav-link'
  * Seul le bloc compte lit les cookies, il est donc isolé dans son `<Suspense>`
  * et diffusé en streaming — sans quoi l'en-tête rendrait *toutes* les pages
  * dynamiques, y compris celles qui n'ont aucune donnée personnelle.
+ *
+ * Sur téléphone, l'accueil est à un geste : la marque suffit. À partir de
+ * `md`, la navigation principale s'affiche en clair, avec la page courante
+ * marquée — le chemin n'étant pas connu au prérendu des routes dynamiques,
+ * la liste sans marquage sert de silhouette.
  */
 export function AppHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-background/85 backdrop-blur-md">
-      <div className="mx-auto flex h-14 w-full max-w-lg items-center justify-between gap-3 px-4">
-        <Brand />
+      <div className="container-app flex h-14 items-center justify-between gap-3 lg:h-16">
+        <div className="flex min-w-0 items-center gap-6">
+          <Brand />
+          <nav aria-label="Principale" className="hidden md:block">
+            <Suspense fallback={<StaticNavLinks />}>
+              <NavLinks />
+            </Suspense>
+          </nav>
+        </div>
         <nav aria-label="Raccourcis" className="flex items-center gap-1">
           <ChangelogNavLink />
           <ThemeToggle />

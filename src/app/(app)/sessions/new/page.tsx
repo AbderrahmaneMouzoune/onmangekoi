@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: 'Nouvelle session' }
 
 export default function NewSessionPage() {
   return (
-    <Shell>
+    <Shell size="app">
       <PageHeader
         eyebrow="Nouvelle session"
         title="Qui décide ce midi ?"

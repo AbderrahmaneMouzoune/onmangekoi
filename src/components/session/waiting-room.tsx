@@ -30,6 +30,11 @@ interface WaitingRoomProps {
   onLaunched: (session: Session) => void
 }
 
+/**
+ * Salle d'attente. Sur grand écran, l'invitation (host) ou l'attente (invité)
+ * occupe la colonne de gauche, les participants et l'action de droite : ce
+ * qu'on partage d'un côté, ce qui arrive de l'autre.
+ */
 export function WaitingRoom({
   session,
   participants,
@@ -84,64 +89,74 @@ export function WaitingRoom({
         <ConnectionIndicator state={connection} />
       </div>
 
-      {isHost && (
-        <InviteCard
-          sessionId={session.id}
-          inviteCode={session.invite_code}
-          inviteUrl={inviteUrl}
-          sessionName={session.name}
-          qrSvg={qrSvg}
-        />
-      )}
-
-      <ParticipantList participants={participants} hostId={session.host_id} meId={meId} />
-
-      <FormMessage error={error} />
-
-      {isHost ? (
-        <div className="flex flex-col gap-2">
-          <Button
-            type="button"
-            size="lg"
-            onClick={launch}
-            disabled={isPending || !canLaunch}
-            className="w-full"
-          >
-            {isPending ? <Spinner /> : <RiPlayLine aria-hidden="true" />}
-            Lancer le vote
-          </Button>
-          <p className="text-center text-xs text-muted-foreground">
-            {canLaunch
-              ? 'Une fois lancé, plus personne ne peut rejoindre.'
-              : `Il faut au moins ${MIN_PARTICIPANTS} participants pour lancer.`}
-          </p>
-          <TwoStepButton
-            variant="ghost"
-            size="sm"
-            className="mt-2 self-center text-muted-foreground hover:text-veto"
-            label="Supprimer la session"
-            confirmLabel="Confirmer la suppression"
-            onConfirm={remove}
-            disabled={isPending}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
+        {isHost ? (
+          <InviteCard
+            sessionId={session.id}
+            inviteCode={session.invite_code}
+            inviteUrl={inviteUrl}
+            sessionName={session.name}
+            qrSvg={qrSvg}
           />
+        ) : (
+          <div className="flex flex-col items-center gap-4 rounded-lg chalkboard p-6 text-center lg:sticky lg:top-24 lg:py-10">
+            <Spinner className="size-6 text-chalk" />
+            <p className="font-display text-xl font-bold text-chalk">
+              En attente du lancement par {displayPseudo(host?.profiles?.pseudo)}…
+            </p>
+            <p className="text-sm text-chalk-muted">
+              Dès que le host lance le vote, les cartes s’affichent ici, sans rien recharger.
+            </p>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-6">
+          <ParticipantList participants={participants} hostId={session.host_id} meId={meId} />
+
+          <FormMessage error={error} />
+
+          {isHost ? (
+            <div className="flex flex-col gap-2">
+              <Button
+                type="button"
+                size="lg"
+                onClick={launch}
+                disabled={isPending || !canLaunch}
+                className="w-full"
+              >
+                {isPending ? <Spinner /> : <RiPlayLine aria-hidden="true" />}
+                Lancer le vote
+              </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                {canLaunch
+                  ? 'Une fois lancé, plus personne ne peut rejoindre.'
+                  : `Il faut au moins ${MIN_PARTICIPANTS} participants pour lancer.`}
+              </p>
+              <TwoStepButton
+                variant="ghost"
+                size="sm"
+                className="mt-2 self-center text-muted-foreground hover:text-veto"
+                label="Supprimer la session"
+                confirmLabel="Confirmer la suppression"
+                onConfirm={remove}
+                disabled={isPending}
+              />
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <TwoStepButton
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-veto"
+                label="Quitter la session"
+                confirmLabel="Confirmer"
+                onConfirm={leave}
+                disabled={isPending}
+              />
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="flex flex-col items-center gap-3">
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Spinner className="size-4" />
-            En attente du lancement par {displayPseudo(host?.profiles?.pseudo)}…
-          </p>
-          <TwoStepButton
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-veto"
-            label="Quitter la session"
-            confirmLabel="Confirmer"
-            onConfirm={leave}
-            disabled={isPending}
-          />
-        </div>
-      )}
+      </div>
     </div>
   )
 }
