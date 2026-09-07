@@ -2,6 +2,8 @@ import { z } from 'zod'
 
 export const SESSION_NAME_MAX = 100
 export const SESSION_RESTAURANTS_MAX = 100
+/** Un seul resto ne se départage pas : le vote n'aurait rien à trancher. */
+export const SESSION_RESTAURANTS_MIN = 2
 
 export const CreateSessionSchema = z
   .object({
@@ -13,6 +15,8 @@ export const CreateSessionSchema = z
     listIds: z.array(z.uuid()).default([]),
     restaurantIds: z.array(z.uuid()).default([]),
   })
+  // Une liste peut à elle seule fournir les deux restos : le compte exact ne
+  // se connaît qu'après résolution, côté use-case. Ici on écarte le vide.
   .refine((data) => data.listIds.length + data.restaurantIds.length > 0, {
     message: 'Sélectionne au moins une liste ou un restaurant',
     path: ['restaurantIds'],

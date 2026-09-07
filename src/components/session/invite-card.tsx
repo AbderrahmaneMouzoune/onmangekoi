@@ -1,11 +1,19 @@
 'use client'
 
-import { RiShareForwardLine } from '@remixicon/react'
+import { RiCloseLine, RiShareForwardLine } from '@remixicon/react'
 import { useEffect } from 'react'
 
 import { InviteCode } from '@/components/session/invite-code'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/copy-button'
+import {
+  DialogClose,
+  DialogDescription,
+  DialogPopup,
+  DialogRoot,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { useCanShare } from '@/hooks/use-can-share'
 import { captureEvent } from '@/lib/analytics/client'
 import { markOnce } from '@/lib/analytics/handoff'
@@ -76,18 +84,48 @@ export function InviteCard({
       </div>
 
       {qrSvg && (
-        <div className="flex items-center gap-4 rounded-md bg-chalk/6 p-3">
-          <div
-            aria-label="QR code du lien d’invitation"
-            role="img"
-            className="size-28 shrink-0 [&>svg]:size-full"
-            dangerouslySetInnerHTML={{ __html: qrSvg }}
-          />
-          <p className="text-sm text-chalk-muted">
-            Les autres scannent ce QR code avec l’appareil photo de leur téléphone, ou depuis « J’ai
-            un code » dans l’app.
-          </p>
-        </div>
+        <DialogRoot>
+          <div className="flex items-center gap-4 rounded-md bg-chalk/6 p-3">
+            {/* Un QR de 7 cm de large se scanne mal à bout de bras : le sortir
+                en plein écran est le seul geste utile qu'il porte. */}
+            <DialogTrigger
+              aria-label="Agrandir le QR code d’invitation"
+              className="size-28 shrink-0 cursor-zoom-in rounded-sm transition-transform outline-none hover:scale-[1.03] focus-visible:ring-3 focus-visible:ring-chalk/40"
+            >
+              <span
+                aria-hidden="true"
+                className="block size-full [&>svg]:size-full"
+                dangerouslySetInnerHTML={{ __html: qrSvg }}
+              />
+            </DialogTrigger>
+            <p className="text-sm text-chalk-muted">
+              Les autres scannent ce QR code avec l’appareil photo de leur téléphone. Touche-le pour
+              l’afficher en grand.
+            </p>
+          </div>
+
+          <DialogPopup className="items-center chalkboard bg-slate ring-chalk/15">
+            <DialogTitle className="text-chalk">Scanner pour rejoindre</DialogTitle>
+            <DialogDescription className="text-center text-chalk-muted">
+              Vise ce code avec l’appareil photo, ou depuis « J’ai un code » dans l’app.
+            </DialogDescription>
+            <div
+              role="img"
+              aria-label="QR code du lien d’invitation"
+              className="w-full max-w-72 [&>svg]:size-full"
+              dangerouslySetInnerHTML={{ __html: qrSvg }}
+            />
+            <InviteCode code={inviteCode} className="w-full max-w-72" />
+            <DialogClose
+              render={
+                <Button type="button" variant="chalk" className="w-full max-w-72">
+                  <RiCloseLine aria-hidden="true" />
+                  Fermer
+                </Button>
+              }
+            />
+          </DialogPopup>
+        </DialogRoot>
       )}
 
       <div className="grid grid-cols-2 gap-2">

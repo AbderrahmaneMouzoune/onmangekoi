@@ -28,7 +28,7 @@ Les règles (jokers, session en cours, participant, restaurant valide) sont vér
 
 | Règle               | Comportement                                                                    |
 | ------------------- | ------------------------------------------------------------------------------- |
-| Lancement           | Réservé au host, à partir de 2 participants                                     |
+| Lancement           | Réservé au host, à partir de 2 participants et 2 restaurants                    |
 | Snapshot            | Les restaurants sont figés à la création                                        |
 | Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                  |
 | Clôture automatique | Déclenchée en base dès que 100 % des participants ont terminé                   |
@@ -57,7 +57,7 @@ Les codes utilisent l'alphabet **Crockford base32** (`0-9`, `A-Z` sans `I`, `L`,
 
 Chaque page redirige vers sa forme canonique : un code tapé en minuscules ou avec des tirets, comme un ancien lien (uuid de session ou de liste, jeton hexadécimal de partage, `/l/<slug>-<CODE>`), retombe sur l'URL du moment. Rien de ce qui a déjà été partagé ne casse.
 
-Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché par le host.
+Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché par le host. Côté host, le QR de la salle d'attente s'ouvre en plein écran d'une touche — c'est à cette taille qu'il se fait scanner à bout de bras.
 
 ## Fiche restaurant
 

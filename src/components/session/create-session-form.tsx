@@ -10,7 +10,7 @@ import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { SESSION_NAME_MAX } from '@/domain/schemas/session'
+import { SESSION_NAME_MAX, SESSION_RESTAURANTS_MIN } from '@/domain/schemas/session'
 import { rememberSessionEntry } from '@/lib/analytics/handoff'
 import { countLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -38,6 +38,9 @@ export function CreateSessionForm({ lists, initialPage, defaultName }: CreateSes
   }, [lists, selectedListIds])
 
   const total = new Set([...fromLists, ...selectedRestaurantIds]).size
+  // Sous deux restos il n'y a rien à départager : la session ne pourrait pas
+  // être lancée, autant ne pas la laisser naître.
+  const enough = total >= SESSION_RESTAURANTS_MIN
 
   function toggleList(id: string) {
     setSelectedListIds((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]))
@@ -129,13 +132,13 @@ export function CreateSessionForm({ lists, initialPage, defaultName }: CreateSes
       <FormMessage error={state?.error} />
 
       <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md">
-        <Button type="submit" size="lg" disabled={isPending || total === 0} className="w-full">
+        <Button type="submit" size="lg" disabled={isPending || !enough} className="w-full">
           {isPending ? (
             <Spinner />
-          ) : total > 0 ? (
+          ) : enough ? (
             `Créer la session · ${countLabel(total, 'resto')}`
           ) : (
-            'Sélectionne des restaurants'
+            `Sélectionne au moins ${SESSION_RESTAURANTS_MIN} restaurants`
           )}
         </Button>
       </div>
