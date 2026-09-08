@@ -7,7 +7,7 @@
 1. Tu choisis des restaurants — dans la base, dans une de tes **listes** de favoris, ou en ajoutant le tien à la volée
 2. Tu lances une **session**, tu envoies le code ou le lien au groupe — ou tu fais scanner le **QR code**
 3. Chacun vote dans son coin, carte par carte : **bof** · **ça me va** · **coup de cœur** · **veto**
-4. Quand tout le monde a voté (ou que le host clôture), le **classement** s'affiche
+4. Quand tout le monde a voté (ou que l'heure limite tombe, ou que le host clôture), le **classement** s'affiche
 
 **Zéro friction** : tout est utilisable avec un simple pseudo. Lier un email et un mot de passe est optionnel et ne sert qu'à retrouver ses listes depuis un autre appareil.
 
@@ -32,9 +32,27 @@ Les règles (jokers, session en cours, participant, restaurant valide) sont vér
 | Snapshot            | Les restaurants sont figés à la création                                        |
 | Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                  |
 | Clôture automatique | Déclenchée en base dès que 100 % des participants ont terminé                   |
+| Clôture à l'heure   | Échéance optionnelle choisie à la création — le vote se ferme tout seul         |
 | Clôture forcée      | Le host peut clôturer à tout moment — les votes manquants comptent 0            |
 | Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)              |
 | Rejoindre           | Impossible une fois le vote lancé ; un participant existant retrouve sa session |
+
+## Vote chronométré
+
+Le blocage le plus courant en vrai usage n'est pas le désaccord, c'est l'attente : une session reste ouverte tant qu'il manque un votant. Le host peut donc poser une **échéance** à la création — « dans 10 min » ou « à 12:00 » —, et la base s'en charge sans que personne n'ait à revenir cliquer.
+
+| Ce qui est posé           | Ce qui se passe                                                                                |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| `sessions.closes_at`      | Instant absolu, optionnel. Sans lui, rien ne change : la session vit comme avant               |
+| Job `pg_cron` à la minute | `close_expired_sessions()` ferme les sessions `voting` échues — les votes manquants comptent 0 |
+| Compte à rebours          | Dans la salle d'attente, dans le deck de vote et sur l'écran d'attente des autres              |
+| `extend_session()`        | Le host se donne 5 minutes de plus d'un clic, tant que la session n'est pas close              |
+
+La clôture par échéance emprunte **exactement** le chemin de la clôture manuelle — `status = 'closed'`, `closed_at = now()` — donc les mêmes événements Realtime, le même classement, la même redirection pour tout le monde.
+
+Une durée (« dans 10 min ») est datée par l'horloge du serveur au moment de la création ; une heure précise (« à 12:00 ») est convertie en instant absolu par le navigateur, seul à connaître le fuseau de la personne. Le compte à rebours se relit sur l'horloge à chaque seconde plutôt que de se décrémenter : un onglet revenu au premier plan affiche le temps réellement restant, pas celui qu'il aurait compté s'il n'avait pas dormi.
+
+Une session **en attente** dont l'échéance tombe n'est jamais clôturée : sans un seul vote, le classement n'aurait aucun sens. `launch_session` refuse de la lancer et invite le host à prolonger — c'est la seule impasse possible, et elle a sa sortie.
 
 ## URLs, codes et liens de partage
 
@@ -170,8 +188,8 @@ src/actions/             Server Actions (validation Zod, auth, revalidate/redire
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
                          images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
-src/hooks/               Realtime de session, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
-supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/results), purge, RGPD
+src/hooks/               Realtime de session, compte à rebours, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
+supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/extend/results), purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
 ```
@@ -235,7 +253,7 @@ Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adress
 
 1. Créer un projet Supabase, puis pousser le schéma : `supabase link --project-ref <ref>` et `supabase db push` (migrations, RLS, RPC, seed). Sans terminal sous la main, les mêmes opérations se pilotent depuis GitHub — voir [`docs/ci-database.md`](docs/ci-database.md).
 2. Dans Supabase → Authentication → URL Configuration : ajouter `https://<domaine>/auth/confirm` aux _Redirect URLs_ (compte optionnel).
-3. Dans Supabase → Database → Extensions : activer `pg_cron` si ce n'est pas déjà fait, puis rejouer la migration de purge — sans l'extension elle s'applique quand même, mais le job nocturne n'est pas planifié (vérifier avec `select jobname, schedule from cron.job`).
+3. Dans Supabase → Database → Extensions : activer `pg_cron` si ce n'est pas déjà fait, puis rejouer les migrations de purge et de vote chronométré — sans l'extension elles s'appliquent quand même, mais leurs jobs ne sont pas planifiés (vérifier avec `select jobname, schedule from cron.job` : `omk-nightly-maintenance` et `omk-close-expired-sessions`).
 4. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
 
 | Variable                               | Valeur                                                   |
