@@ -179,14 +179,15 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ```
 src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], account, legal, auth, api/places)
-src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · account/ · restaurants/ · onboarding/
+src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], account, nouveautes, legal, auth, api/places)
+src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · account/ · restaurants/ · onboarding/ · changelog/
+src/content/changelog/   notes de version produit (schéma Zod + entrées), lues par /nouveautes et son flux RSS
 src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
 src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, horaires, places, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
-                         images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache
+                         images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache, version (semver), changelog-seen
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
 src/hooks/               Realtime de session, compte à rebours, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/extend/results), purge, RGPD
@@ -275,6 +276,23 @@ Le build échoue volontairement si `NEXT_PUBLIC_SUPABASE_URL` ou la clé manque 
 - Le bandeau propose « Refuser » et « Accepter » au même niveau, et le choix se révise depuis **Mon compte**.
 - **Aucune donnée personnelle ne sort** : ni pseudo, ni email, ni nom de liste ou de restaurant. Les URL sont masquées avant envoi (`/sessions/[code]`, `/join/[code]`, `/l/[code]`), car le code qu'elles portent suffirait à rejoindre une session ou à lire une liste. Le seul identifiant transmis est l'UUID opaque du profil.
 - Le détail — catalogue d'événements, masquage, entonnoirs à construire — est dans [`docs/analytics.md`](docs/analytics.md).
+
+## Versions et nouveautés
+
+Deux journaux, deux publics.
+
+| Journal                            | Pour qui          | Écrit par                       | Où on le lit                           |
+| ---------------------------------- | ----------------- | ------------------------------- | -------------------------------------- |
+| `CHANGELOG.md` + releases GitHub   | qui lit le code   | **généré** depuis les commits   | le dépôt                               |
+| `src/content/changelog/entries.ts` | qui utilise l'app | **rédigé** après chaque release | `/nouveautes` et `/nouveautes/rss.xml` |
+
+`commitlint` impose déjà les [Conventional Commits](https://www.conventionalcommits.org/fr/). À partir de là, tout s'enchaîne : à chaque push sur `main`, [release-please](https://github.com/googleapis/release-please) tient à jour une PR de release (version, `CHANGELOG.md`, `package.json`) ; la fusionner publie le tag `vX.Y.Z` et la release GitHub ; le workflow ouvre alors une issue de rédaction avec les commits déjà classés, pour écrire la note **produit**.
+
+Cette dernière étape reste manuelle, et c'est voulu : `feat(routing): adresser les sessions par leur code court` est une phrase de développeur — l'utilisateur, lui, retient « le lien d'invitation tient en six caractères ». Aucun générateur ne fait cette traduction.
+
+Côté site, les notes produit s'affichent sur **`/nouveautes`** (page prérendue, une carte par version), avec un flux **RSS**, un lien en pied de page et une **pastille dans l'en-tête** quand une version est parue depuis la dernière visite. Le repère de lecture est un simple numéro de version dans `localStorage` : rien n'est envoyé au serveur.
+
+Le format d'une note, les règles d'écriture et les garde-fous vérifiés en CI sont dans [`docs/changelog.md`](docs/changelog.md).
 
 ## Roadmap
 

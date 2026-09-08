@@ -77,6 +77,11 @@ export const router = {
   authConfirm: () => '/auth/confirm',
 
   privacy: () => '/legal/privacy',
+
+  /** Journal des versions, côté produit. */
+  changelog: () => '/nouveautes',
+  /** Flux RSS des nouveautés. */
+  changelogFeed: () => '/nouveautes/rss.xml',
 } as const
 
 export type Router = typeof router

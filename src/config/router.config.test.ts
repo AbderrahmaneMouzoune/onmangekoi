@@ -15,6 +15,8 @@ describe('router', () => {
     expect(router.list('7K3M9P2QWX')).toBe('/lists/7K3M9P2QWX')
     expect(router.authConfirm()).toBe('/auth/confirm')
     expect(router.account({ auth: 'expired' })).toBe('/account?auth=expired')
+    expect(router.changelog()).toBe('/nouveautes')
+    expect(router.changelogFeed()).toBe('/nouveautes/rss.xml')
   })
 
   it('should carry the destination through onboarding and login', () => {
