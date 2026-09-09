@@ -42,6 +42,48 @@ describe('createSessionUseCase', () => {
     expect(from).not.toHaveBeenCalled()
   })
 
+  it('should date a duration on the given clock', async () => {
+    const { client, rpc } = fakeClient([])
+    const now = new Date('2026-09-07T10:00:00.000Z')
+
+    await createSessionUseCase(
+      client,
+      { name: 'Lunch', listIds: [], restaurantIds: [R1], closesInMinutes: 10 },
+      now
+    )
+
+    expect(rpc).toHaveBeenCalledWith('create_session', {
+      p_name: 'Lunch',
+      p_restaurant_ids: [R1],
+      p_closes_at: '2026-09-07T10:10:00.000Z',
+    })
+  })
+
+  it('should pass an absolute deadline through untouched', async () => {
+    const { client, rpc } = fakeClient([])
+
+    await createSessionUseCase(client, {
+      name: 'Lunch',
+      listIds: [],
+      restaurantIds: [R1],
+      closesAt: '2026-09-07T12:00:00.000Z',
+    })
+
+    expect(rpc).toHaveBeenCalledWith(
+      'create_session',
+      expect.objectContaining({ p_closes_at: '2026-09-07T12:00:00.000Z' })
+    )
+  })
+
+  it('should say nothing about the deadline when there is none', async () => {
+    const { client, rpc } = fakeClient([])
+    await createSessionUseCase(client, { name: 'Lunch', listIds: [], restaurantIds: [R1] })
+    expect(rpc).toHaveBeenCalledWith('create_session', {
+      p_name: 'Lunch',
+      p_restaurant_ids: [R1],
+    })
+  })
+
   it('should fail before the RPC when nothing resolves', async () => {
     const { client, rpc } = fakeClient([])
     await expect(

@@ -10,12 +10,14 @@ import {
   createRunoffSession,
   deleteSession,
   drawTiebreakWinner,
+  extendSession,
   launchSession,
   leaveSession,
 } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { toUserMessage } from '@/domain/errors'
 import { CreateSessionSchema, JoinSessionSchema, SessionIdSchema } from '@/domain/schemas/session'
+import { EXTEND_MINUTES } from '@/domain/session-deadline'
 import { createSessionUseCase } from '@/use-cases/create-session'
 import { joinSessionUseCase } from '@/use-cases/join-session'
 
@@ -35,6 +37,8 @@ export async function createSessionAction(
     name: formData.get('name'),
     listIds: formData.getAll('listIds'),
     restaurantIds: formData.getAll('restaurantIds'),
+    closesInMinutes: formData.get('closesInMinutes'),
+    closesAt: formData.get('closesAt'),
   })
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? 'Formulaire invalide' }
@@ -101,6 +105,22 @@ export async function closeSessionAction(sessionId: string): Promise<ActionResul
     const session = await closeSession(supabase, id.data)
     revalidatePath(router.session(session))
     revalidatePath(router.sessionResults(session))
+    return { ok: true, data: session }
+  } catch (error) {
+    return { ok: false, error: toUserMessage(error) }
+  }
+}
+
+export async function extendSessionAction(sessionId: string): Promise<ActionResult<Session>> {
+  const id = SessionIdSchema.safeParse(sessionId)
+  if (!id.success) return { ok: false, error: 'Session invalide' }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { ok: false, error: 'Non authentifié' }
+
+  try {
+    const session = await extendSession(supabase, id.data, EXTEND_MINUTES)
+    revalidatePath(router.session(session))
     return { ok: true, data: session }
   } catch (error) {
     return { ok: false, error: toUserMessage(error) }

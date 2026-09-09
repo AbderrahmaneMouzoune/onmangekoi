@@ -37,16 +37,16 @@ Le seul identifiant transmis est l'**UUID du profil Supabase**, opaque, passé �
 
 ## Événements
 
-| Événement          | Émis quand                                                       | Propriétés                                                                        |
-| ------------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `session_created`  | le host arrive sur sa session — donc création réellement aboutie | `session_id`, `restaurant_count`, `list_count`                                    |
-| `invite_shared`    | copie du code, copie du lien, partage natif, ou affichage du QR  | `session_id`, `method`                                                            |
-| `session_joined`   | un invité arrive dans une session qu'il vient de rejoindre       | `session_id`, `via` (`code` · `link` · `scan`)                                    |
-| `vote_submitted`   | un vote est enregistré en base (pas une carte déjà votée)        | `session_id`, `value`, `kind`, `position`, `restaurant_count`                     |
-| `session_closed`   | la session passe à `closed` sous les yeux d'un participant       | `session_id`, `reason` (`auto` · `host`), `participant_count`, `restaurant_count` |
-| `session_tiebreak` | le host tranche une égalité parfaite                             | `session_id`, `method` (`runoff` · `draw`), `tied_count`                          |
-| `list_shared`      | copie du lien de partage d'une liste                             | `method`                                                                          |
-| `$pageview`        | à chaque changement de route, sur la route **masquée**           | —                                                                                 |
+| Événement          | Émis quand                                                       | Propriétés                                                                                     |
+| ------------------ | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `session_created`  | le host arrive sur sa session — donc création réellement aboutie | `session_id`, `restaurant_count`, `list_count`                                                 |
+| `invite_shared`    | copie du code, copie du lien, partage natif, ou affichage du QR  | `session_id`, `method`                                                                         |
+| `session_joined`   | un invité arrive dans une session qu'il vient de rejoindre       | `session_id`, `via` (`code` · `link` · `scan`)                                                 |
+| `vote_submitted`   | un vote est enregistré en base (pas une carte déjà votée)        | `session_id`, `value`, `kind`, `position`, `restaurant_count`                                  |
+| `session_closed`   | la session passe à `closed` sous les yeux d'un participant       | `session_id`, `reason` (`auto` · `deadline` · `host`), `participant_count`, `restaurant_count` |
+| `session_tiebreak` | le host tranche une égalité parfaite                             | `session_id`, `method` (`runoff` · `draw`), `tied_count`                                       |
+| `list_shared`      | copie du lien de partage d'une liste                             | `method`                                                                                       |
+| `$pageview`        | à chaque changement de route, sur la route **masquée**           | —                                                                                              |
 
 Le catalogue est typé (`src/lib/analytics/events.ts`) : une propriété non prévue ne compile pas. C'est le garde-fou qui empêche d'y glisser une donnée personnelle par inadvertance.
 
@@ -74,7 +74,7 @@ Ces objets se configurent côté PostHog, pas dans le dépôt.
    `$pageview` sur `/join/[code]` → `session_joined` → `vote_submitted`.
    À décomposer par `via` : un code dicté à l'oral et un QR scanné n'échouent pas pour les mêmes raisons.
 3. **Rétention hebdomadaire** : cohorte d'entrée `session_created`, action de retour `session_created`.
-4. **Répartition de `session_closed` par `reason`** : la part de clôtures forcées par le host mesure le vote qui n'aboutit pas — c'est l'indicateur qui justifiera (ou non) le vote chronométré (issue #9).
+4. **Répartition de `session_closed` par `reason`** : `auto` (tout le monde a voté), `deadline` (l'échéance est tombée) ou `host` (clôture forcée). La somme des deux dernières mesure le vote qui n'aboutit pas de lui-même ; leur bascule dit si l'échéance sert à quelque chose.
 5. **Abandon en cours de vote** : `vote_submitted` moyen sur `position` rapporté à `restaurant_count`.
 
 ## Déploiement

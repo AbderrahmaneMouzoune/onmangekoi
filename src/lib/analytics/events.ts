@@ -7,6 +7,7 @@
  * — UUID de session — et des compteurs sont transmis.
  */
 
+import type { SessionCloseReason } from '@/domain/session-deadline'
 import type { VoteKind, VoteValue } from '@/domain/vote'
 
 /** Canal par lequel une invitation ou une liste a été diffusée. */
@@ -15,8 +16,8 @@ export type ShareMethod = 'code_copy' | 'link_copy' | 'native_share' | 'qr'
 /** Chemin emprunté pour entrer dans une session. */
 export type JoinMethod = 'code' | 'link' | 'scan'
 
-/** Qui a mis fin à la session : le host, ou la clôture automatique en base. */
-export type CloseReason = 'host' | 'auto'
+/** Qui a mis fin à la session : le host, le vote complet, ou l'échéance. */
+export type CloseReason = SessionCloseReason
 
 /** Comment le host a tranché une égalité parfaite. */
 export type TiebreakChoice = 'runoff' | 'draw'
@@ -63,6 +64,10 @@ export interface AnalyticsEventMap {
   }
   list_shared: {
     method: ShareMethod
+  }
+  /** Ouverture du journal des versions ; la version lue, rien d'autre. */
+  changelog_opened: {
+    version: string
   }
 }
 

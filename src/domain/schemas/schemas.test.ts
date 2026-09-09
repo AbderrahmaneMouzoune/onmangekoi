@@ -43,6 +43,29 @@ describe('CreateSessionSchema', () => {
       false
     )
   })
+
+  it('should read the deadline fields a form leaves empty or absent', () => {
+    const base = { name: 'Lunch', restaurantIds: [UUID] }
+    const parsed = CreateSessionSchema.safeParse({
+      ...base,
+      closesInMinutes: null,
+      closesAt: '',
+    })
+    expect(parsed.success).toBe(true)
+    expect(parsed.data?.closesInMinutes).toBeUndefined()
+    expect(parsed.data?.closesAt).toBeUndefined()
+
+    expect(
+      CreateSessionSchema.safeParse({ ...base, closesInMinutes: '10' }).data?.closesInMinutes
+    ).toBe(10)
+  })
+
+  it('should bound the deadline like the database does', () => {
+    const base = { name: 'Lunch', restaurantIds: [UUID] }
+    expect(CreateSessionSchema.safeParse({ ...base, closesInMinutes: 0 }).success).toBe(false)
+    expect(CreateSessionSchema.safeParse({ ...base, closesInMinutes: 721 }).success).toBe(false)
+    expect(CreateSessionSchema.safeParse({ ...base, closesAt: 'demain midi' }).success).toBe(false)
+  })
 })
 
 describe('JoinSessionSchema', () => {

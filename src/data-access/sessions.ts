@@ -17,11 +17,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function createSession(
   supabase: SupabaseClient<Database>,
-  input: { name: string; restaurantIds: string[] }
+  input: { name: string; restaurantIds: string[]; closesAt?: string | null }
 ): Promise<Session> {
   const { data, error } = await supabase.rpc('create_session', {
     p_name: input.name,
     p_restaurant_ids: input.restaurantIds,
+    // Sans échéance, on n'envoie rien : la valeur par défaut de la RPC parle
+    // pour nous et l'appel reste celui d'avant.
+    ...(input.closesAt ? { p_closes_at: input.closesAt } : {}),
   })
   if (error) throw error
   return data
@@ -50,6 +53,20 @@ export async function closeSession(
   sessionId: string
 ): Promise<Session> {
   const { data, error } = await supabase.rpc('close_session', { p_session_id: sessionId })
+  if (error) throw error
+  return data
+}
+
+/** Repousse l'échéance de clôture. Réservée au host, vérifié en base. */
+export async function extendSession(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  minutes: number
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('extend_session', {
+    p_session_id: sessionId,
+    p_minutes: minutes,
+  })
   if (error) throw error
   return data
 }

@@ -293,6 +293,7 @@ export type Database = {
       sessions: {
         Row: {
           closed_at: string | null
+          closes_at: string | null
           created_at: string
           host_id: string | null
           id: string
@@ -307,6 +308,7 @@ export type Database = {
         }
         Insert: {
           closed_at?: string | null
+          closes_at?: string | null
           created_at?: string
           host_id?: string | null
           id?: string
@@ -321,6 +323,7 @@ export type Database = {
         }
         Update: {
           closed_at?: string | null
+          closes_at?: string | null
           created_at?: string
           host_id?: string | null
           id?: string
@@ -415,10 +418,16 @@ export type Database = {
         Args: { p_restaurant_id: string; p_token: string }
         Returns: undefined
       }
+      assert_valid_deadline: {
+        Args: { p_closes_at: string }
+        Returns: undefined
+      }
+      close_expired_sessions: { Args: never; Returns: number }
       close_session: {
         Args: { p_session_id: string }
         Returns: {
           closed_at: string | null
+          closes_at: string | null
           created_at: string
           host_id: string | null
           id: string
@@ -493,6 +502,7 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: {
           closed_at: string | null
+          closes_at: string | null
           created_at: string
           host_id: string | null
           id: string
@@ -513,9 +523,14 @@ export type Database = {
         }
       }
       create_session: {
-        Args: { p_name: string; p_restaurant_ids: string[] }
+        Args: {
+          p_closes_at?: string
+          p_name: string
+          p_restaurant_ids: string[]
+        }
         Returns: {
           closed_at: string | null
+          closes_at: string | null
           created_at: string
           host_id: string | null
           id: string
@@ -541,6 +556,7 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: {
           closed_at: string | null
+          closes_at: string | null
           created_at: string
           host_id: string | null
           id: string
@@ -561,6 +577,30 @@ export type Database = {
         }
       }
       export_my_data: { Args: never; Returns: Json }
+      extend_session: {
+        Args: { p_minutes?: number; p_session_id: string }
+        Returns: {
+          closed_at: string | null
+          closes_at: string | null
+          created_at: string
+          host_id: string | null
+          id: string
+          invite_code: string
+          invite_token: string
+          launched_at: string | null
+          name: string
+          parent_session_id: string | null
+          status: Database['public']['Enums']['session_status']
+          tiebreak_method: Database['public']['Enums']['tiebreak_method'] | null
+          tiebreak_winner_id: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'sessions'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       find_list_by_share: {
         Args: { p_identifier: string }
         Returns: {
@@ -619,6 +659,7 @@ export type Database = {
         Args: { p_identifier: string }
         Returns: {
           closed_at: string | null
+          closes_at: string | null
           created_at: string
           host_id: string | null
           id: string
@@ -642,6 +683,7 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: {
           closed_at: string | null
+          closes_at: string | null
           created_at: string
           host_id: string | null
           id: string

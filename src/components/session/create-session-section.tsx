@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 
 import { RestaurantPickerFallback } from '@/components/restaurants/restaurant-picker-fallback'
 import { CreateSessionForm } from '@/components/session/create-session-form'
+import { DeadlinePickerFallback } from '@/components/session/deadline-picker'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
@@ -56,6 +57,8 @@ export function CreateSessionSectionFallback() {
         <p className="text-sm font-medium">Restaurants</p>
         <RestaurantPickerFallback />
       </div>
+
+      <DeadlinePickerFallback />
 
       <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md">
         <button type="button" disabled className={cn(buttonVariants({ size: 'lg' }), 'w-full')}>

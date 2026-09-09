@@ -5,6 +5,7 @@ import { useActionState, useMemo, useState } from 'react'
 
 import { createSessionAction } from '@/actions/sessions'
 import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
+import { DeadlinePicker } from '@/components/session/deadline-picker'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
@@ -125,6 +126,8 @@ export function CreateSessionForm({ lists, initialPage, defaultName }: CreateSes
           inputName="restaurantIds"
         />
       </div>
+
+      <DeadlinePicker />
 
       <FormMessage error={state?.error} />
 
