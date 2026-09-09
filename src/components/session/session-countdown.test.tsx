@@ -29,6 +29,9 @@ function session(overrides: Partial<Session> = {}): Session {
     closed_at: null,
     created_at: NOW.toISOString(),
     launched_at: NOW.toISOString(),
+    parent_session_id: null,
+    tiebreak_method: null,
+    tiebreak_winner_id: null,
     ...overrides,
   }
 }

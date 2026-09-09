@@ -3,11 +3,13 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-import { router } from '@/config/router.config'
+import { ROUTE_PATTERNS, router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import {
   closeSession,
+  createRunoffSession,
   deleteSession,
+  drawTiebreakWinner,
   extendSession,
   launchSession,
   leaveSession,
@@ -119,6 +121,46 @@ export async function extendSessionAction(sessionId: string): Promise<ActionResu
   try {
     const session = await extendSession(supabase, id.data, EXTEND_MINUTES)
     revalidatePath(router.session(session))
+    return { ok: true, data: session }
+  } catch (error) {
+    return { ok: false, error: toUserMessage(error) }
+  }
+}
+
+/**
+ * Second tour entre les ex æquo. Le classement du premier tour est revalidé
+ * pour tout le monde : c'est là qu'apparaît le lien vers la suite.
+ */
+export async function createRunoffSessionAction(sessionId: string): Promise<ActionResult<Session>> {
+  const id = SessionIdSchema.safeParse(sessionId)
+  if (!id.success) return { ok: false, error: 'Session invalide' }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { ok: false, error: 'Non authentifié' }
+
+  try {
+    const runoff = await createRunoffSession(supabase, id.data)
+    // Le second tour est la seule chose qu'on récupère : le classement du
+    // premier tour ne se connaît que par son id, d'où le motif de route.
+    revalidatePath(ROUTE_PATTERNS.sessionResults, 'page')
+    revalidatePath(router.home())
+    return { ok: true, data: runoff }
+  } catch (error) {
+    return { ok: false, error: toUserMessage(error) }
+  }
+}
+
+/** Tirage au sort entre les ex æquo — le résultat est décidé et gardé en base. */
+export async function drawWinnerAction(sessionId: string): Promise<ActionResult<Session>> {
+  const id = SessionIdSchema.safeParse(sessionId)
+  if (!id.success) return { ok: false, error: 'Session invalide' }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { ok: false, error: 'Non authentifié' }
+
+  try {
+    const session = await drawTiebreakWinner(supabase, id.data)
+    revalidatePath(router.sessionResults(session))
     return { ok: true, data: session }
   } catch (error) {
     return { ok: false, error: toUserMessage(error) }

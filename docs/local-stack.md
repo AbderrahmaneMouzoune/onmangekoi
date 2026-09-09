@@ -169,6 +169,7 @@ bun run db:test
 | `purge.test.sql`          | Purge : protections d'un compte joignable, cascades, compteurs, garde-fous de rétention                                       |
 | `delete-account.test.sql` | Suppression RGPD : classement d'une session close inchangé, votes anonymisés, sessions orphelines traitées, export cloisonné  |
 | `timed-session.test.sql`  | Vote chronométré : bornes de l'échéance, lancement refusé après l'heure, prolongation réservée au host, clôture et classement |
+| `tiebreak.test.sql`       | Départage : tirage fait et conservé en base, second tour hérité des participants, `tiebreak` exposé, rouages internes fermés  |
 
 `SUPABASE_DB_URL` permet de viser une autre base que la locale (`postgresql://postgres:postgres@127.0.0.1:54322/postgres`), y compris le PostgreSQL nu décrit plus haut. La CI les rejoue dans le job `End-to-end`, juste après `supabase start`.
 

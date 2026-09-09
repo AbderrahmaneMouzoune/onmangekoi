@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -29,6 +30,8 @@ interface SessionRoomProps {
   inviteUrl: string
   /** QR code SVG du lien d'invitation, rendu côté serveur (host, salle d'attente) */
   qrSvg: string | null
+  /** Classement du premier tour, quand cette session en est le second */
+  firstRoundUrl: string | null
 }
 
 /**
@@ -43,6 +46,7 @@ export function SessionRoom({
   meId,
   inviteUrl,
   qrSvg,
+  firstRoundUrl,
 }: SessionRoomProps) {
   const navigation = useRouter()
   const { session, participants, connection, refresh, setSession } = useSessionRoom({
@@ -125,8 +129,20 @@ export function SessionRoom({
     <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="eyebrow">Session</p>
+          <p className="eyebrow">{firstRoundUrl ? 'Second tour' : 'Session'}</p>
           <h1 className="truncate text-2xl font-bold sm:text-3xl">{session.name}</h1>
+          {firstRoundUrl && (
+            <p className="text-sm text-muted-foreground">
+              On départage l’égalité du{' '}
+              <Link
+                href={firstRoundUrl}
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                premier tour
+              </Link>
+              .
+            </p>
+          )}
         </div>
         <SessionStatusBadge status={session.status} />
       </div>

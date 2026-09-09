@@ -5,17 +5,20 @@ import { notFound, redirect } from 'next/navigation'
 import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
 import { ResultsList } from '@/components/session/results-list'
 import { ShareResultsButton } from '@/components/session/share-results-button'
+import { TiebreakPanel } from '@/components/session/tiebreak-panel'
 import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import {
+  getRunoffSession,
   getSessionByParam,
   getSessionParticipants,
   getSessionResults,
 } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
+import { readTiebreak } from '@/domain/tiebreak'
 import { countLabel } from '@/lib/format'
 import { absoluteUrl } from '@/lib/site'
 import { cn } from '@/lib/utils'
@@ -44,6 +47,11 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
   ])
 
   const winner = results[0]
+  const tiebreak = readTiebreak(results)
+
+  // Le second tour ne se lit que s'il existe : une lecture de plus, seulement
+  // pour les rares classements qui en sont là.
+  const runoff = tiebreak?.method === 'runoff' ? await getRunoffSession(supabase, session.id) : null
 
   return (
     <>
@@ -57,6 +65,25 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
       {winner ? (
         <>
           <ResultsList results={results} participantCount={participants.length} />
+          {tiebreak && tiebreak.method !== 'draw' && (
+            <TiebreakPanel
+              sessionId={session.id}
+              tiedNames={tiebreak.tied.map((row) => row.name)}
+              method={tiebreak.method}
+              isHost={session.host_id === user.id}
+              runoff={
+                runoff
+                  ? {
+                      url:
+                        runoff.status === 'closed'
+                          ? router.sessionResults(runoff)
+                          : router.session(runoff),
+                      status: runoff.status,
+                    }
+                  : null
+              }
+            />
+          )}
           <div className="flex flex-wrap gap-2">
             <ShareResultsButton
               url={absoluteUrl(router.sessionResults(session))}

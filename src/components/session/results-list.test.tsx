@@ -29,6 +29,7 @@ function row(overrides: Partial<SessionResultRow>): SessionResultRow {
     super_dislikes: 0,
     votes_count: 0,
     rank: 1,
+    tiebreak: null,
     ...overrides,
   }
 }
@@ -63,13 +64,41 @@ describe('ResultsList', () => {
       <ResultsList
         participantCount={2}
         results={[
-          row({ name: 'A', score: 2, rank: 1 }),
-          row({ name: 'B', score: 2, rank: 1 }),
+          row({ name: 'A', score: 2, rank: 1, tiebreak: 'tied' }),
+          row({ name: 'B', score: 2, rank: 1, tiebreak: 'tied' }),
           row({ name: 'C', score: 0, rank: 3 }),
         ]}
       />
     )
-    expect(screen.getByText(/Égalité parfaite avec B/)).toBeInTheDocument()
+    expect(screen.getByText(/Égalité parfaite avec B\./)).toBeInTheDocument()
+  })
+
+  it('should say when the draw picked the winner', () => {
+    render(
+      <ResultsList
+        participantCount={2}
+        results={[
+          row({ name: 'A', score: 2, rank: 1, tiebreak: 'winner' }),
+          row({ name: 'B', score: 2, rank: 2, tiebreak: 'loser' }),
+        ]}
+      />
+    )
+    expect(
+      screen.getByText(/Désigné par tirage au sort, à égalité parfaite avec B/)
+    ).toBeInTheDocument()
+  })
+
+  it('should say when a runoff is under way', () => {
+    render(
+      <ResultsList
+        participantCount={2}
+        results={[
+          row({ name: 'A', score: 2, rank: 1, tiebreak: 'runoff' }),
+          row({ name: 'B', score: 2, rank: 1, tiebreak: 'runoff' }),
+        ]}
+      />
+    )
+    expect(screen.getByText(/le second tour est en cours/)).toBeInTheDocument()
   })
 
   it('should offer directions and a map for a located winner', () => {
