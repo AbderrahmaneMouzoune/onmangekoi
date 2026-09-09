@@ -264,7 +264,9 @@ export function RestaurantPicker({
                       className={cn(
                         'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors',
                         isSelected ? 'bg-brand-soft' : 'hover:bg-surface-2',
-                        isLocked && 'cursor-default opacity-70'
+                        // `opacity` sur du texte casse le contraste : la ligne
+                        // verrouillée se grise avec une couleur, qui le tient.
+                        isLocked && 'cursor-default text-ink-muted'
                       )}
                     >
                       <span

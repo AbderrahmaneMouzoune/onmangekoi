@@ -92,7 +92,14 @@ export default function PrivacyPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="font-display text-lg font-bold">Ce qu’on conserve</h2>
-        <div className="overflow-x-auto rounded-lg ring-1 ring-line">
+        {/* Le tableau déborde sur petit écran : la zone qui défile doit être
+            atteignable au clavier, donc focalisable et nommée. */}
+        <div
+          tabIndex={0}
+          role="group"
+          aria-label="Ce qu’on conserve"
+          className="overflow-x-auto rounded-lg ring-1 ring-line outline-none focus-visible:ring-3 focus-visible:ring-ring"
+        >
           <table className="w-full min-w-lg border-collapse text-left text-sm">
             <thead className="bg-surface-2 text-xs text-muted-foreground uppercase">
               <tr>

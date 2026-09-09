@@ -18,10 +18,10 @@ const ICONS: Record<VoteKind, typeof RiThumbUpLine> = {
 }
 
 const STYLES: Record<VoteKind, string> = {
-  veto: 'bg-veto-soft text-veto hover:bg-veto hover:text-white focus-visible:ring-veto/40',
-  no: 'bg-no-soft text-no hover:bg-no hover:text-white focus-visible:ring-no/40',
-  yes: 'bg-yes-soft text-yes hover:bg-yes hover:text-white focus-visible:ring-yes/40',
-  fav: 'bg-fav-soft text-fav hover:bg-fav hover:text-white focus-visible:ring-fav/40',
+  veto: 'bg-veto-soft text-veto hover:bg-veto hover:text-surface focus-visible:ring-veto',
+  no: 'bg-no-soft text-no hover:bg-no hover:text-surface focus-visible:ring-no',
+  yes: 'bg-yes-soft text-yes hover:bg-yes hover:text-surface focus-visible:ring-yes',
+  fav: 'bg-fav-soft text-fav hover:bg-fav hover:text-surface focus-visible:ring-fav',
 }
 
 export function VoteControls({
@@ -45,6 +45,7 @@ export function VoteControls({
             disabled={isDisabled}
             title={jokerSpent ? 'Joker déjà utilisé' : action.hint}
             aria-label={`${action.label} — ${action.hint}`}
+            aria-keyshortcuts={action.shortcuts.join(' ')}
             className={cn(
               'flex flex-col items-center justify-center gap-1.5 rounded-lg py-3 text-xs font-semibold transition-[background-color,color,transform] outline-none focus-visible:ring-3 active:not-disabled:scale-95 disabled:cursor-not-allowed disabled:opacity-35',
               action.joker ? 'min-h-20' : 'min-h-24',
@@ -54,7 +55,8 @@ export function VoteControls({
             <Icon aria-hidden="true" className={action.joker ? 'size-6' : 'size-7'} />
             <span>{action.short}</span>
             {action.joker && (
-              <span className="font-mono text-[0.6rem] tracking-wide opacity-70">
+              // Pas d'opacité ici : à 70 % le libellé retombe à 2,7:1 sur son fond.
+              <span className="font-mono text-[0.6rem] tracking-wide">
                 {jokerSpent ? 'utilisé' : '1 joker'}
               </span>
             )}

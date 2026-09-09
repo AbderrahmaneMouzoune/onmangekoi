@@ -149,7 +149,7 @@ Sans clé, l'onglet n'apparaît pas et le reste de l'app fonctionne à l'identiq
 | Auth       | Utilisateur anonyme créé au choix du pseudo · email/mot de passe optionnel               |
 | Validation | Zod 4 · `@t3-oss/env-nextjs`                                                             |
 | Mesure     | PostHog (EU), après consentement — désactivée sans clé                                   |
-| Tests      | Vitest 5 + Testing Library · Playwright                                                  |
+| Tests      | Vitest 5 + Testing Library · Playwright · axe-core · Lighthouse CI                       |
 | Qualité    | ESLint 9 (flat) · Prettier · Husky · commitlint · CI GitHub Actions                      |
 
 ## Démarrer
@@ -165,14 +165,15 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 
 ## Scripts
 
-| Script             | Rôle                                                |
-| ------------------ | --------------------------------------------------- |
-| `bun run dev`      | serveur de développement                            |
-| `bun run build`    | build de production                                 |
-| `bun run check`    | typecheck + lint + format + tests unitaires         |
-| `bun run test`     | Vitest (unitaires + composants)                     |
-| `bun run test:e2e` | Playwright, flow complet host + invité (`E2E=1`)    |
-| `bun run db:types` | régénère les types TypeScript depuis la base locale |
+| Script                    | Rôle                                                          |
+| ------------------------- | ------------------------------------------------------------- |
+| `bun run dev`             | serveur de développement                                      |
+| `bun run build`           | build de production                                           |
+| `bun run check`           | typecheck + lint + format + tests unitaires                   |
+| `bun run test`            | Vitest (unitaires + composants)                               |
+| `bun run test:e2e`        | Playwright, flow complet host + invité et audit axe (`E2E=1`) |
+| `bun run test:lighthouse` | Lighthouse Accessibilité sur les pages publiques              |
+| `bun run db:types`        | régénère les types TypeScript depuis la base locale           |
 
 ## Architecture
 
@@ -210,6 +211,32 @@ Deux règles tiennent l'ensemble :
 - **Rien qui écrit n'est prérendu.** `/join/[code]` inscrit la personne dans la session avant de rediriger : la coquille n'affiche que « on te fait entrer… », le reste est fait à la requête.
 
 Le catalogue étant partagé, la recherche du sélecteur de restaurants sort du cache elle aussi : une même requête ne touche la base qu'une fois par heure, pour tout le monde. Après un import de restaurants, `revalidateTag(RESTAURANTS_CACHE_TAG)` suffit à le rafraîchir.
+
+## Accessibilité
+
+Le deck se vote entièrement au clavier, la charte tient le contraste AA dans ses deux thèmes, et rien de tout ça n'est laissé à la relecture : quatre garde-fous tournent en intégration continue.
+
+| Garde-fou                | Où                               | Ce qu'il tient                                                                                             |
+| ------------------------ | -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Audit axe                | `e2e/accessibility.spec.ts`      | Chaque page du parcours passe sous axe (WCAG 2.1 A et AA) ; toute violation `serious` ou `critical` échoue |
+| Contraste des tokens     | `src/app/theme-contrast.test.ts` | Lit `globals.css` et refuse toute paire texte/fond sous 4.5:1 — en clair comme en sombre                   |
+| Rôle et nom accessible   | `src/components/ui/*.test.tsx`   | Chaque primitive expose le rôle et le nom attendus                                                         |
+| Lighthouse Accessibilité | `.lighthouserc.json`             | Score ≥ 95 sur les pages publiques (accueil, connexion, pseudo, confidentialité)                           |
+
+### Le deck au clavier
+
+| Touche               | Vote         |
+| -------------------- | ------------ |
+| `1`                  | Veto         |
+| `2` ou `←`           | Bof          |
+| `3`, `→` ou `Entrée` | Ça me va     |
+| `4`                  | Coup de cœur |
+
+Les chiffres suivent l'ordre des boutons, de gauche à droite. Les jokers n'ont ni flèche ni geste : un swipe ou une touche de direction ne doit jamais en griller un par accident.
+
+La carte change sans que le focus bouge : une région `aria-live` annonce l'avancement à chaque fois — « Coup de cœur enregistré. Restaurant 2 sur 5 : Chez Marcel. » La progression porte son `aria-valuenow`, les erreurs sortent en `role="alert"`.
+
+Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pas — est dans [`docs/accessibility.md`](docs/accessibility.md).
 
 ## Sécurité
 

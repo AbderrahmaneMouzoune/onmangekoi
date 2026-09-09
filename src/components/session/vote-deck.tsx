@@ -1,13 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 
 import { submitVoteAction } from '@/actions/votes'
 import { VoteCard } from '@/components/session/vote-card'
 import { VoteControls } from '@/components/session/vote-controls'
 import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
-import { voteActionByValue } from '@/domain/vote'
+import { VOTE_ACTIONS, voteActionByKey, voteActionByValue } from '@/domain/vote'
 import { captureEvent } from '@/lib/analytics/client'
 import { cn } from '@/lib/utils'
 
@@ -49,8 +49,11 @@ export function VoteDeck({
   const [leaving, setLeaving] = useState<Leaving>(null)
   const [drag, setDrag] = useState<Drag>({ dx: 0, dy: 0, active: false })
   const [error, setError] = useState<string | null>(null)
+  const [announcement, setAnnouncement] = useState('')
   const busy = useRef(false)
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
+  const announcedId = useRef<string | null>(null)
+  const lastVoteLabel = useRef<string | null>(null)
 
   const remaining = restaurants.filter((r) => !votedIds.has(r.id) && r.restaurants)
   const current = remaining[0]
@@ -69,6 +72,8 @@ export function VoteDeck({
   const vote = useCallback(
     async (value: VoteValue) => {
       if (!current || busy.current || leaving) return
+      // Les boutons désactivés disent déjà non ; le clavier doit dire pareil.
+      if ((value === 2 && superlikeUsed) || (value === -2 && superDislikeUsed)) return
       busy.current = true
       setError(null)
 
@@ -95,6 +100,7 @@ export function VoteDeck({
           busy.current = false
           return
         }
+        lastVoteLabel.current = voteActionByValue(value)?.label ?? null
         setVotedIds((prev) => new Set(prev).add(current.id))
         busy.current = false
 
@@ -120,28 +126,45 @@ export function VoteDeck({
       finish,
       initialSuperlikeUsed,
       initialSuperDislikeUsed,
+      superlikeUsed,
+      superDislikeUsed,
       done,
       total,
     ]
   )
 
-  // Clavier : ← bof, → ça me va
+  /**
+   * Clavier : `1`–`4` dans l'ordre des boutons, ← et → pour les deux votes
+   * courants, Entrée pour « ça me va ». Les jokers n'ont ni flèche ni geste :
+   * seul un choix explicite les dépense.
+   */
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
-      if (event.key === 'ArrowRight') {
-        event.preventDefault()
-        void vote(1)
-      } else if (event.key === 'ArrowLeft') {
-        event.preventDefault()
-        void vote(0)
-      }
+      if (isTypingTarget(event.target)) return
+      const action = voteActionByKey(event.key)
+      if (!action) return
+      // Entrée active déjà le bouton qui a le focus : ne pas voter deux fois.
+      if (event.key === 'Enter' && isActivatable(event.target)) return
+      event.preventDefault()
+      void vote(action.value)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [vote])
+
+  /**
+   * La carte change sans que le focus bouge : sans région live, un lecteur
+   * d'écran ne dirait rien du restaurant suivant ni de l'avancement.
+   */
+  useEffect(() => {
+    const restaurant = current?.restaurants
+    if (!current || !restaurant || announcedId.current === current.id) return
+    announcedId.current = current.id
+    const confirmation = lastVoteLabel.current ? `${lastVoteLabel.current} enregistré. ` : ''
+    lastVoteLabel.current = null
+    setAnnouncement(`${confirmation}Restaurant ${done + 1} sur ${total} : ${restaurant.name}.`)
+  }, [current, done, total])
 
   // Swipe (pointer events, souris et tactile)
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -198,6 +221,12 @@ export function VoteDeck({
         </span>
       </div>
 
+      {/* Le seul canal du deck vers un lecteur d'écran : la carte, elle, change
+          sans reprendre le focus. */}
+      <p aria-live="polite" aria-atomic="true" className="sr-only">
+        {announcement}
+      </p>
+
       <div className="relative">
         {next?.restaurants && (
           <div aria-hidden="true" className="absolute inset-0 scale-[0.96] opacity-60">
@@ -236,10 +265,46 @@ export function VoteDeck({
         superDislikeUsed={superDislikeUsed}
       />
 
-      <p className="text-center text-xs text-muted-foreground">
-        Glisse la carte à droite pour « ça me va », à gauche pour « bof ». Les jokers comptent
-        double et ne s’utilisent qu’une fois.
-      </p>
+      <div className="flex flex-col gap-1.5 text-center text-xs text-muted-foreground">
+        <p>
+          Glisse la carte à droite pour « ça me va », à gauche pour « bof ». Les jokers comptent
+          double et ne s’utilisent qu’une fois.
+        </p>
+        <p>
+          Au clavier :{' '}
+          {VOTE_ACTIONS.map((action, index) => (
+            <Fragment key={action.kind}>
+              {index > 0 && ' · '}
+              <Key>{action.shortcuts[0]}</Key> {action.label.toLowerCase()}
+            </Fragment>
+          ))}
+          . <Key>←</Key> et <Key>→</Key> reprennent « bof » et « ça me va », <Key>Entrée</Key>{' '}
+          valide « ça me va ».
+        </p>
+      </div>
     </div>
   )
+}
+
+function Key({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="rounded border border-line-strong bg-surface px-1 font-mono text-[0.65rem] text-ink-2">
+      {children}
+    </kbd>
+  )
+}
+
+const TYPING_TAGS = ['INPUT', 'TEXTAREA', 'SELECT']
+
+/** Une saisie en cours garde ses touches : on ne vote pas en tapant un pseudo. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  const element = target as HTMLElement | null
+  if (!element || typeof element.tagName !== 'string') return false
+  return TYPING_TAGS.includes(element.tagName) || element.isContentEditable === true
+}
+
+/** Un élément que la touche Entrée active déjà d'elle-même. */
+function isActivatable(target: EventTarget | null): boolean {
+  const element = target as HTMLElement | null
+  return Boolean(element?.closest?.('button, a[href], [role="button"], summary'))
 }

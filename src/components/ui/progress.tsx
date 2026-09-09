@@ -3,7 +3,8 @@ import { cn } from '@/lib/utils'
 interface ProgressProps {
   value: number
   max: number
-  label?: string
+  /** Nom accessible de la barre — obligatoire : sans lui, elle ne dit rien. */
+  label: string
   className?: string
   tone?: 'brand' | 'yes' | 'chalk'
 }
