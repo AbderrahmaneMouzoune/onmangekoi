@@ -99,8 +99,18 @@ const GooglePlaceSchema = z
   .loose()
 
 export const GooglePlacesResponseSchema = z
-  .object({ places: z.array(GooglePlaceSchema).optional() })
+  .object({
+    places: z.array(GooglePlaceSchema).optional(),
+    /** Présent quand Google a d'autres résultats : à renvoyer tel quel pour les obtenir. */
+    nextPageToken: z.string().optional(),
+  })
   .loose()
+
+/** Une page de résultats Google, et de quoi demander la suivante s'il y en a une. */
+export interface PlacesPage {
+  places: PlaceResult[]
+  nextPageToken: string | null
+}
 
 export type GooglePlace = z.infer<typeof GooglePlaceSchema>
 
@@ -274,6 +284,15 @@ export function mapPlacesResponse(payload: unknown): PlaceResult[] {
     results.push(mapped)
   }
   return results
+}
+
+/** La page entière : les lieux exploitables et le jeton de la page suivante. */
+export function mapPlacesPage(payload: unknown): PlacesPage {
+  const parsed = GooglePlacesResponseSchema.safeParse(payload)
+  return {
+    places: mapPlacesResponse(payload),
+    nextPageToken: parsed.success ? clean(parsed.data.nextPageToken) : null,
+  }
 }
 
 /** Idem à partir du JSON brut d'un détail de lieu (`GET /v1/places/{id}`). */

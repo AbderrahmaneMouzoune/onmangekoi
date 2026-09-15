@@ -6,6 +6,7 @@ import {
   locationFromPlace,
   mapPlace,
   mapPlaceDetails,
+  mapPlacesPage,
   mapPlacesResponse,
   nearbyCacheKey,
   openingHoursFromPlace,
@@ -245,5 +246,20 @@ describe('nearbyCacheKey', () => {
     expect(nearbyCacheKey({ latitude: 45.76, longitude: 4.83 })).not.toBe(
       placesCacheKey({ query: '', latitude: 45.76, longitude: 4.83 })
     )
+  })
+})
+
+describe('mapPlacesPage', () => {
+  it('should keep the next page token next to the places', () => {
+    expect(mapPlacesPage({ places: [SUSHI], nextPageToken: 'tok' })).toMatchObject({
+      places: [{ placeId: 'ChIJsushi' }],
+      nextPageToken: 'tok',
+    })
+  })
+
+  it('should end the pagination on a missing, blank or unreadable token', () => {
+    expect(mapPlacesPage({ places: [SUSHI] }).nextPageToken).toBeNull()
+    expect(mapPlacesPage({ places: [SUSHI], nextPageToken: '  ' }).nextPageToken).toBeNull()
+    expect(mapPlacesPage('nope')).toEqual({ places: [], nextPageToken: null })
   })
 })

@@ -21,8 +21,9 @@ interface CatalogResultsProps {
 }
 
 /**
- * Onglet « La base » : le catalogue partagé, filtré par la recherche. Rien ne
- * correspond ? Le resto s'ajoute à la main, sans quitter le formulaire.
+ * Onglet « Le carnet » : tous les restos déjà connus de l'app, filtrés par la
+ * recherche. Rien ne correspond ? Le resto s'ajoute à la main, sans quitter
+ * le formulaire.
  */
 export function CatalogResults({
   page,

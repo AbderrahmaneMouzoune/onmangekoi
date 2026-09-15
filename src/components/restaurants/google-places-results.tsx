@@ -1,9 +1,8 @@
 'use client'
 
 import { RiMapPin2Line } from '@remixicon/react'
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useState } from 'react'
 
-import { importPlaceAction } from '@/actions/places'
 import { ResultRow } from '@/components/restaurants/result-row'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
@@ -14,121 +13,165 @@ import { PRICE_LEVEL_LABELS } from '@/domain/schemas/restaurant'
 import { distanceMeters, formatDistance } from '@/lib/maps'
 
 import type { Restaurant } from '@/data-access/models'
-import type { PlaceResult } from '@/domain/places'
+import type { PlaceResult, PlacesPage } from '@/domain/places'
 import type { Geolocation } from '@/hooks/use-geolocation'
 
 interface GooglePlacesResultsProps {
-  /** Recherche déjà débouncée, partagée avec l'onglet « La base ». */
+  /** Recherche déjà débouncée, partagée avec l'onglet « Le carnet ». */
   query: string
   /** Position de la personne, tenue par le sélecteur pour survivre aux changements d'onglet. */
   geolocation: Geolocation
-  /** Resto déjà en base pour ce lieu Google — importé à l'instant, ou connu du catalogue. */
+  /**
+   * Pages déjà reçues, par demande. Tenues par le sélecteur elles aussi :
+   * quitter l'onglet et y revenir retrouve les résultats sans rien recharger.
+   */
+  cache: ReadonlyMap<string, PlacesPage>
+  onCached: (key: string, page: PlacesPage) => void
+  /** Resto déjà en base pour ce lieu Google — importé à l'instant, ou connu du carnet. */
   restaurantForPlace: (placeId: string) => Restaurant | undefined
   isSelected: (restaurantId: string) => boolean
   isLocked: (restaurantId: string) => boolean
+  /** Lieux dont l'import est en cours : cochés d'avance, le temps que la fiche arrive. */
+  pendingPlaceIds: ReadonlySet<string>
   /** Coche ou décoche un resto déjà en base : aucun appel à Google. */
   onToggle: (restaurant: Restaurant) => void
-  /** Un lieu qu'on ne connaissait pas vient d'être importé, et sélectionné. */
-  onImported: (restaurant: Restaurant) => void
+  /** Importe un lieu qu'on ne connaissait pas — et le sélectionne sans attendre. */
+  onImport: (place: PlaceResult) => void
+  /** Échec du dernier import, affiché ici, là où le geste a eu lieu. */
+  importError: string | null
 }
 
 type Mode = 'search' | 'nearby' | 'none'
+
+interface SearchRequest {
+  query: string
+  latitude: number | null
+  longitude: number | null
+  pageToken?: string
+}
+
+const NETWORK_FAILURE = 'La recherche Google a échoué. Réessaie.'
+
+async function fetchPlaces(request: SearchRequest, signal?: AbortSignal): Promise<PlacesPage> {
+  let response: Response
+  try {
+    response = await fetch('/api/places/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+      signal,
+    })
+  } catch (error) {
+    if (signal?.aborted) throw error
+    throw new Error(NETWORK_FAILURE)
+  }
+  const payload = await response.json().catch(() => null)
+  if (!response.ok) throw new Error(payload?.error ?? GENERIC_ERROR)
+  return { places: payload?.results ?? [], nextPageToken: payload?.nextPageToken ?? null }
+}
+
+/** La page suivante s'ajoute à la précédente, sans jamais répéter un lieu. */
+function appendPage(current: PlacesPage, next: PlacesPage): PlacesPage {
+  const seen = new Set(current.places.map((place) => place.placeId))
+  return {
+    places: [...current.places, ...next.places.filter((place) => !seen.has(place.placeId))],
+    nextPageToken: next.nextPageToken,
+  }
+}
 
 /**
  * Onglet « Google » du sélecteur de restaurants.
  *
  * Il s'ouvre sur les restos les plus proches — la position est demandée en
  * cliquant l'onglet, et tant qu'on ne tape rien, c'est ça qu'on voit. Taper
- * un nom lance une recherche, biaisée par la même position. Un lieu qu'on
- * coche est importé en base (le serveur ne reçoit qu'un `place_id` et relit
- * la fiche chez Google lui-même) puis reste coché comme n'importe quel resto
- * de la base : le décocher ne coûte rien.
+ * un nom lance une recherche, biaisée par la même position. « Voir plus »
+ * demande la page suivante de la même liste.
+ *
+ * Cocher un lieu inconnu l'importe en base (le serveur ne reçoit qu'un
+ * `place_id` et relit la fiche chez Google lui-même) : la ligne se coche
+ * tout de suite, l'import suit. Un lieu déjà en base se coche et se décoche
+ * comme n'importe quel resto du carnet, sans rien demander à Google.
  */
 export function GooglePlacesResults({
   query,
   geolocation,
+  cache,
+  onCached,
   restaurantForPlace,
   isSelected,
   isLocked,
+  pendingPlaceIds,
   onToggle,
-  onImported,
+  onImport,
+  importError,
 }: GooglePlacesResultsProps) {
-  /**
-   * Résultats gardés avec la requête qui les a produits. Tant que la clé ne
-   * correspond pas, c'est qu'une recherche est en cours : pas besoin d'un
-   * `isSearching` à tenir à jour en parallèle.
-   */
-  const [found, setFound] = useState<{ key: string; places: PlaceResult[] }>({
-    key: '',
-    places: [],
-  })
-  const [error, setError] = useState<string | null>(null)
-  const [importing, setImporting] = useState<string | null>(null)
-  const [isImporting, startImport] = useTransition()
-
   const { position, status, locate } = geolocation
   const trimmed = query.trim()
   const mode: Mode = trimmed.length >= PLACES_QUERY_MIN ? 'search' : position ? 'nearby' : 'none'
   const here = position ? `${position.latitude}|${position.longitude}` : ''
   const requestKey =
     mode === 'search' ? `q|${trimmed}|${here}` : mode === 'nearby' ? `near|${here}` : ''
-  const isSearching = mode !== 'none' && found.key !== requestKey
+
+  const page = mode === 'none' ? undefined : cache.get(requestKey)
+  /** Dernier échec, avec la demande qui l'a produit : rien de périmé à l'écran. */
+  const [failure, setFailure] = useState<{ key: string; message: string } | null>(null)
+  const [isLoadingMore, setLoadingMore] = useState(false)
+
+  const fetchError = failure?.key === requestKey ? failure.message : null
+  const isSearching = mode !== 'none' && !page && !fetchError
 
   useEffect(() => {
-    if (mode === 'none') return
+    if (mode === 'none' || cache.has(requestKey) || failure?.key === requestKey) return
 
     let cancelled = false
     const controller = new AbortController()
 
-    fetch('/api/places/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    fetchPlaces(
+      {
         query: mode === 'search' ? trimmed : '',
         latitude: position?.latitude ?? null,
         longitude: position?.longitude ?? null,
-      }),
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const payload = await response.json().catch(() => null)
-        if (cancelled) return
-        setError(response.ok ? null : (payload?.error ?? GENERIC_ERROR))
-        setFound({ key: requestKey, places: response.ok ? (payload?.results ?? []) : [] })
+      },
+      controller.signal
+    )
+      .then((result) => {
+        if (!cancelled) onCached(requestKey, result)
       })
-      .catch(() => {
-        if (cancelled) return
-        setError('La recherche Google a échoué. Réessaie.')
-        setFound({ key: requestKey, places: [] })
+      .catch((error: Error) => {
+        if (!cancelled) setFailure({ key: requestKey, message: error.message || NETWORK_FAILURE })
       })
 
     return () => {
       cancelled = true
       controller.abort()
     }
-  }, [mode, requestKey, trimmed, position])
+  }, [mode, requestKey, cache, failure, onCached, trimmed, position])
 
-  function importPlace(place: PlaceResult) {
-    setError(null)
-    setImporting(place.placeId)
-    startImport(async () => {
-      const result = await importPlaceAction(place.placeId)
-      setImporting(null)
-      if (!result.ok) {
-        setError(result.error)
-        return
-      }
-      onImported(result.data)
+  function loadMore() {
+    const token = page?.nextPageToken
+    if (!page || !token || isLoadingMore) return
+    setLoadingMore(true)
+    fetchPlaces({
+      query: mode === 'search' ? trimmed : '',
+      latitude: position?.latitude ?? null,
+      longitude: position?.longitude ?? null,
+      pageToken: token,
     })
+      .then((next) => onCached(requestKey, appendPage(page, next)))
+      .catch((error: Error) =>
+        setFailure({ key: requestKey, message: error.message || NETWORK_FAILURE })
+      )
+      .finally(() => setLoadingMore(false))
   }
 
   function toggle(place: PlaceResult) {
+    if (pendingPlaceIds.has(place.placeId)) return
     const known = restaurantForPlace(place.placeId)
     if (known) onToggle(known)
-    else importPlace(place)
+    else onImport(place)
   }
 
-  const places = found.key === requestKey ? found.places : []
+  const places = page?.places ?? []
   const canLocate = status !== 'locating' && status !== 'ready'
 
   const caption =
@@ -154,7 +197,7 @@ export function GooglePlacesResults({
         )}
       </div>
 
-      <FormMessage error={error} />
+      <FormMessage error={fetchError ?? importError} />
 
       <ul
         className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line"
@@ -178,20 +221,28 @@ export function GooglePlacesResults({
             <Spinner />
           </li>
         )}
-        {mode === 'search' && !isSearching && places.length === 0 && !error && (
+        {fetchError && !page && (
+          <li className="flex justify-center p-1">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setFailure(null)}>
+              Réessayer
+            </Button>
+          </li>
+        )}
+        {mode === 'search' && page && places.length === 0 && (
           <li className="px-3 py-6 text-center text-sm text-muted-foreground">
             Google ne trouve rien pour « {trimmed} ».
           </li>
         )}
-        {mode === 'nearby' && !isSearching && places.length === 0 && !error && (
+        {mode === 'nearby' && page && places.length === 0 && (
           <li className="px-3 py-6 text-center text-sm text-muted-foreground">
             Rien à moins de deux kilomètres. Cherche un resto par son nom.
           </li>
         )}
         {places.map((place) => {
           const known = restaurantForPlace(place.placeId)
+          const pending = pendingPlaceIds.has(place.placeId)
           const locked = known ? isLocked(known.id) : false
-          const checked = known ? locked || isSelected(known.id) : false
+          const checked = known ? locked || isSelected(known.id) : pending
           const distance =
             position && place.location
               ? formatDistance(
@@ -217,19 +268,32 @@ export function GooglePlacesResults({
                 }
                 checked={checked}
                 locked={locked}
-                busy={isImporting && importing === place.placeId}
-                disabled={isImporting && importing !== place.placeId}
+                busy={pending}
                 onToggle={() => toggle(place)}
               />
             </li>
           )
         })}
+        {page?.nextPageToken && (
+          <li className="p-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full"
+              onClick={loadMore}
+              disabled={isLoadingMore}
+            >
+              {isLoadingMore ? <Spinner /> : 'Voir plus'}
+            </Button>
+          </li>
+        )}
       </ul>
 
       {places.length > 0 && (
         <p className="text-xs text-muted-foreground">
-          Cocher un resto importe sa fiche — photo, adresse, horaires — et l’ajoute à la sélection.
-          Un lieu déjà importé rejoint la sélection sans créer de doublon.
+          Cocher un resto l’ajoute à la sélection et importe sa fiche — photo, adresse, horaires. Un
+          lieu déjà importé rejoint la sélection sans créer de doublon.
         </p>
       )}
     </div>

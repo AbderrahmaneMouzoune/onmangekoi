@@ -26,7 +26,7 @@ interface CreateSessionFormProps {
 
 /**
  * Créer une session, en trois étapes numérotées : un nom, les restos, une
- * échéance. Les restos viennent d'où on veut — une liste entière, la base,
+ * échéance. Les restos viennent d'où on veut — une liste entière, le carnet,
  * Google — et se mélangent dans un seul panier.
  */
 export function CreateSessionForm({ lists, initialPage, defaultName }: CreateSessionFormProps) {

@@ -195,6 +195,18 @@ describe('SearchPlacesSchema', () => {
     ).toBe(true)
   })
 
+  it('should carry an opaque page token, and refuse a garbled one', () => {
+    expect(
+      SearchPlacesSchema.safeParse({ query: 'sushi', pageToken: 'AbC_-123' }).data?.pageToken
+    ).toBe('AbC_-123')
+    expect(SearchPlacesSchema.safeParse({ query: 'sushi', pageToken: null }).success).toBe(true)
+    expect(SearchPlacesSchema.safeParse({ query: 'sushi', pageToken: '' }).success).toBe(false)
+    expect(SearchPlacesSchema.safeParse({ query: 'sushi', pageToken: 'a b' }).success).toBe(false)
+    expect(
+      SearchPlacesSchema.safeParse({ query: 'sushi', pageToken: 'a'.repeat(4097) }).success
+    ).toBe(false)
+  })
+
   it('should refuse a search with neither text nor position', () => {
     const empty = SearchPlacesSchema.safeParse({ query: '' })
     expect(empty.success).toBe(false)

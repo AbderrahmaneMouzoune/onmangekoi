@@ -16,7 +16,7 @@ interface ListSourcePanelProps {
 /**
  * Onglet « Mes listes » : chaque liste se coche d'un bloc et verse tous ses
  * restos dans la sélection. On peut en cocher plusieurs, puis compléter
- * depuis la base ou Google — les restos déjà couverts y apparaissent cochés
+ * depuis le carnet ou Google — les restos déjà couverts y apparaissent cochés
  * et verrouillés, pour ne pas les compter deux fois.
  */
 export function ListSourcePanel({ lists, selectedIds, onToggle }: ListSourcePanelProps) {
@@ -68,7 +68,7 @@ export function ListSourcePanel({ lists, selectedIds, onToggle }: ListSourcePane
         })}
       </ul>
       <p className="text-xs text-muted-foreground">
-        Coche autant de listes que tu veux, puis complète depuis la base ou Google.
+        Coche autant de listes que tu veux, puis complète depuis le carnet ou Google.
       </p>
     </div>
   )

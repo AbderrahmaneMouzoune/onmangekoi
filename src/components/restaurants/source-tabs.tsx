@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils'
 
-/** D'où viennent les restos qu'on pioche : ses listes, la base, ou Google. */
+/** D'où viennent les restos qu'on pioche : ses listes, le carnet, ou Google. */
 export type RestaurantSource = 'lists' | 'base' | 'google'
 
 export interface SourceTab {

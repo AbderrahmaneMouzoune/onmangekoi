@@ -3,12 +3,13 @@
 import {
   RiAddLine,
   RiBookmarkLine,
-  RiDatabase2Line,
+  RiContactsBook2Line,
   RiGoogleLine,
   RiSearchLine,
 } from '@remixicon/react'
-import { useEffect, useId, useMemo, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from 'react'
 
+import { importPlaceAction } from '@/actions/places'
 import { searchRestaurantsAction } from '@/actions/restaurants'
 import { AddRestaurantForm } from '@/components/restaurants/add-restaurant-form'
 import { CatalogResults } from '@/components/restaurants/catalog-results'
@@ -32,6 +33,7 @@ import { useGeolocation } from '@/hooks/use-geolocation'
 import type { ListWithRestaurantIds } from '@/data-access/lists'
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { PlaceResult, PlacesPage } from '@/domain/places'
 
 const NO_LISTS: ListWithRestaurantIds[] = []
 const NO_IDS: string[] = []
@@ -43,7 +45,7 @@ const SEARCH_PLACEHOLDER: Record<RestaurantSource, string> = {
 }
 
 interface RestaurantPickerProps {
-  /** Première page du catalogue, chargée côté serveur */
+  /** Première page du carnet, chargée côté serveur */
   initialPage: RestaurantPage
   /** Ids sélectionnés à l'unité (contrôlé) */
   value: string[]
@@ -54,7 +56,7 @@ interface RestaurantPickerProps {
   inputName?: string
   emptyLabel?: string
   /**
-   * Listes de favoris proposées comme source, au même niveau que la base et
+   * Listes de favoris proposées comme source, au même niveau que le carnet et
    * Google. Une liste cochée verse tous ses restos dans la sélection ; ils
    * apparaissent alors cochés et verrouillés dans les autres onglets.
    */
@@ -68,10 +70,12 @@ interface RestaurantPickerProps {
 /**
  * Sélecteur de restaurants.
  *
- * Trois sources au même niveau — mes listes, la base, Google — et un seul
- * panier : on pioche dans l'une, on complète dans l'autre, et ce qu'on a pris
- * reste visible au-dessus des onglets quel que soit celui qui est ouvert.
- * L'onglet Google s'ouvre sur les restos autour de soi, sans rien taper.
+ * Trois sources au même niveau — mes listes, le carnet des restos déjà
+ * connus, Google — et un seul panier : on pioche dans l'une, on complète
+ * dans l'autre, et ce qu'on a pris reste visible au-dessus des onglets quel
+ * que soit celui qui est ouvert. L'onglet Google s'ouvre sur les restos
+ * autour de soi, sans rien taper, et garde ses résultats d'un passage à
+ * l'autre.
  */
 export function RestaurantPicker({
   initialPage,
@@ -79,7 +83,7 @@ export function RestaurantPicker({
   onChange,
   lockedIds = NO_IDS,
   inputName,
-  emptyLabel = 'Aucun restaurant ne correspond.',
+  emptyLabel = 'Aucun resto du carnet ne correspond.',
   lists = NO_LISTS,
   selectedListIds = NO_IDS,
   onListsChange,
@@ -100,7 +104,11 @@ export function RestaurantPicker({
             },
           ]
         : []),
-      { key: 'base' as const, label: 'La base', icon: <RiDatabase2Line aria-hidden="true" /> },
+      {
+        key: 'base' as const,
+        label: 'Le carnet',
+        icon: <RiContactsBook2Line aria-hidden="true" />,
+      },
       ...(sources.google
         ? [{ key: 'google' as const, label: 'Google', icon: <RiGoogleLine aria-hidden="true" /> }]
         : []),
@@ -123,6 +131,16 @@ export function RestaurantPicker({
     () => new Map(initialPage.items.map((r) => [r.id, r]))
   )
   const lastQuery = useRef('')
+
+  /** Pages Google déjà reçues : l'onglet les retrouve telles quelles quand on y revient. */
+  const [placesCache, setPlacesCache] = useState<Map<string, PlacesPage>>(() => new Map())
+  const cachePlaces = useCallback((key: string, placesPage: PlacesPage) => {
+    setPlacesCache((prev) => new Map(prev).set(key, placesPage))
+  }, [])
+
+  /** Lieux Google cochés dont la fiche est encore en route : sélectionnés d'avance. */
+  const [pendingPlaces, setPendingPlaces] = useState<Map<string, PlaceResult>>(() => new Map())
+  const [importError, setImportError] = useState<string | null>(null)
 
   function remember(items: Restaurant[]) {
     setKnown((prev) => {
@@ -153,6 +171,16 @@ export function RestaurantPicker({
     }
     return index
   }, [known])
+
+  /**
+   * La sélection telle qu'elle est *maintenant*, pour les gestes qui
+   * aboutissent plus tard (un import) : entre-temps la personne a pu cocher
+   * d'autres restos, et la fermeture du clic ne les connaît pas.
+   */
+  const latest = useRef({ value, selected, locked })
+  useEffect(() => {
+    latest.current = { value, selected, locked }
+  })
 
   useEffect(() => {
     if (debouncedQuery === lastQuery.current) return
@@ -217,7 +245,7 @@ export function RestaurantPicker({
 
   /**
    * Resto tout juste ajouté ou importé (ou doublon existant retenu à sa
-   * place) : il rejoint le catalogue en tête et devient sélectionné
+   * place) : il rejoint le carnet en tête et devient sélectionné
    * immédiatement, sans attendre une nouvelle recherche.
    */
   function addAndSelect(restaurant: Restaurant) {
@@ -227,10 +255,33 @@ export function RestaurantPicker({
         ? prev
         : { ...prev, items: [restaurant, ...prev.items] }
     )
-    if (!locked.has(restaurant.id) && !selected.has(restaurant.id)) {
-      onChange([...value, restaurant.id])
+    const current = latest.current
+    if (!current.locked.has(restaurant.id) && !current.selected.has(restaurant.id)) {
+      onChange([...current.value, restaurant.id])
     }
     setIsAdding(false)
+  }
+
+  /**
+   * Import d'un lieu Google, optimiste : la ligne et le panier le montrent
+   * coché à l'instant du clic, la fiche arrive derrière. Si l'import échoue,
+   * il disparaît de la sélection et l'onglet dit pourquoi.
+   */
+  function importPlace(place: PlaceResult) {
+    setImportError(null)
+    setPendingPlaces((prev) => new Map(prev).set(place.placeId, place))
+    importPlaceAction(place.placeId).then((result) => {
+      setPendingPlaces((prev) => {
+        const next = new Map(prev)
+        next.delete(place.placeId)
+        return next
+      })
+      if (!result.ok) {
+        setImportError(result.error)
+        return
+      }
+      addAndSelect(result.data)
+    })
   }
 
   const selectedRestaurants = value
@@ -239,7 +290,9 @@ export function RestaurantPicker({
   const selectedLists = lists
     .filter((list) => selectedListIds.includes(list.id))
     .map((list) => ({ id: list.id, name: list.name, restaurantCount: list.restaurant_ids.length }))
-  const total = new Set([...fromLists, ...value]).size
+  const pending = [...pendingPlaces.values()]
+  const pendingIds = useMemo(() => new Set(pendingPlaces.keys()), [pendingPlaces])
+  const total = new Set([...fromLists, ...value]).size + pending.length
 
   const showSearch = source !== 'lists' && !isAdding
   const hasTabs = tabs.length > 1
@@ -255,6 +308,7 @@ export function RestaurantPicker({
       <SelectionBasket
         lists={selectedLists}
         restaurants={selectedRestaurants}
+        pending={pending}
         total={total}
         onRemoveList={toggleList}
         onRemoveRestaurant={(id) => onChange(value.filter((v) => v !== id))}
@@ -303,11 +357,15 @@ export function RestaurantPicker({
           <GooglePlacesResults
             query={debouncedQuery}
             geolocation={geolocation}
+            cache={placesCache}
+            onCached={cachePlaces}
             restaurantForPlace={(placeId) => knownByPlaceId.get(placeId)}
             isSelected={(id) => selected.has(id)}
             isLocked={(id) => locked.has(id)}
+            pendingPlaceIds={pendingIds}
             onToggle={toggle}
-            onImported={addAndSelect}
+            onImport={importPlace}
+            importError={importError}
           />
         ) : (
           <>

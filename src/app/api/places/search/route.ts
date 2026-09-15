@@ -5,14 +5,15 @@ import { isPlacesSearchEnabled, searchNearbyPlaces, searchPlaces } from '@/data-
 import { AppError, GENERIC_ERROR } from '@/domain/errors'
 import { hasPosition, PLACES_QUERY_MIN, SearchPlacesSchema } from '@/domain/schemas/place'
 
-import type { PlaceResult } from '@/domain/places'
+import type { PlacesPage } from '@/domain/places'
 
 /**
  * `POST /api/places/search` — recherche de restaurants chez Google.
  *
  * Avec un texte, c'est une recherche, que la position — si la personne l'a
  * autorisée — ne fait que biaiser. Sans texte mais avec une position, ce sont
- * les restos les plus proches. La clé Places reste côté serveur, et les
+ * les restos les plus proches. Un `pageToken` rendu avec une réponse donne la
+ * page suivante de la même demande. La clé Places reste côté serveur, et les
  * réponses sont mises en cache 24 h dans `data-access/places.ts`.
  *
  * Réservé aux personnes connectées : une recherche coûte un appel facturé.
@@ -47,13 +48,13 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   try {
     const input = parsed.data
-    const results: PlaceResult[] =
+    const page: PlacesPage =
       input.query.length >= PLACES_QUERY_MIN
         ? await searchPlaces(input)
         : hasPosition(input)
           ? await searchNearbyPlaces(input)
-          : []
-    return NextResponse.json({ results })
+          : { places: [], nextPageToken: null }
+    return NextResponse.json({ results: page.places, nextPageToken: page.nextPageToken })
   } catch (error) {
     if (error instanceof AppError) {
       return NextResponse.json({ error: error.message }, { status: 502 })

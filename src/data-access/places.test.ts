@@ -84,17 +84,54 @@ describe('data-access/places', () => {
     const { searchPlaces, isPlacesSearchEnabled } = await importPlaces()
 
     expect(isPlacesSearchEnabled()).toBe(true)
-    expect(await searchPlaces({ query: 'Sushi Sakura' })).toEqual([SUSHI_BAR])
+    expect(await searchPlaces({ query: 'Sushi Sakura' })).toEqual({
+      places: [SUSHI_BAR],
+      nextPageToken: null,
+    })
 
     const [url, init] = fetchMock.mock.calls[0]!
     expect(url).toBe('https://places.googleapis.com/v1/places:searchText')
     expect(init.headers['X-Goog-Api-Key']).toBe('test-google-key')
     expect(init.headers['X-Goog-FieldMask']).toContain('places.id')
+    expect(init.headers['X-Goog-FieldMask']).toContain('nextPageToken')
     expect(init.body).not.toContain('test-google-key')
     expect(JSON.parse(init.body)).toMatchObject({
       textQuery: 'Sushi Sakura',
       includedType: 'restaurant',
+      pageSize: 20,
     })
+    expect(JSON.parse(init.body).pageToken).toBeUndefined()
+  })
+
+  it('should hand back the next page token and fetch that page on demand, once', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ places: [GOOGLE_PLACE], nextPageToken: 'page-2' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ places: [{ ...GOOGLE_PLACE, id: 'ChIJramen' }] }),
+      })
+    const { searchPlaces } = await importPlaces()
+
+    const first = await searchPlaces({ query: 'sushi' })
+    expect(first.nextPageToken).toBe('page-2')
+
+    const second = await searchPlaces({ query: 'sushi', pageToken: 'page-2' })
+    expect(second).toEqual({
+      places: [{ ...SUSHI_BAR, placeId: 'ChIJramen' }],
+      nextPageToken: null,
+    })
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body)).toMatchObject({
+      textQuery: 'sushi',
+      pageToken: 'page-2',
+    })
+
+    // Chaque page a sa propre entrée de cache.
+    await searchPlaces({ query: 'sushi' })
+    await searchPlaces({ query: 'sushi', pageToken: 'page-2' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('should serve a repeated search from the cache, whatever the casing', async () => {
@@ -121,22 +158,34 @@ describe('data-access/places', () => {
   })
 
   it('should ask Google for the closest restaurants when there is nothing to type', async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ places: [GOOGLE_PLACE] }) })
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ places: [GOOGLE_PLACE], nextPageToken: 'more' }),
+    })
     const { searchNearbyPlaces } = await importPlaces()
 
-    expect(await searchNearbyPlaces({ latitude: 45.76, longitude: 4.83 })).toEqual([SUSHI_BAR])
+    expect(await searchNearbyPlaces({ latitude: 45.76, longitude: 4.83 })).toEqual({
+      places: [SUSHI_BAR],
+      nextPageToken: 'more',
+    })
 
     const [url, init] = fetchMock.mock.calls[0]!
-    expect(url).toBe('https://places.googleapis.com/v1/places:searchNearby')
+    // Une Text Search classée par distance, et non une Nearby Search : elle se pagine.
+    expect(url).toBe('https://places.googleapis.com/v1/places:searchText')
     expect(init.headers['X-Goog-Api-Key']).toBe('test-google-key')
     // Même masque que la recherche : une liste, pas des fiches.
     expect(init.headers['X-Goog-FieldMask']).toContain('places.id')
     expect(init.headers['X-Goog-FieldMask']).not.toContain('photos')
     expect(JSON.parse(init.body)).toMatchObject({
-      includedTypes: ['restaurant'],
+      textQuery: 'restaurant',
+      includedType: 'restaurant',
       rankPreference: 'DISTANCE',
-      locationRestriction: { circle: { center: { latitude: 45.76, longitude: 4.83 } } },
+      pageSize: 20,
+      locationBias: { circle: { center: { latitude: 45.76, longitude: 4.83 } } },
     })
+
+    await searchNearbyPlaces({ latitude: 45.76, longitude: 4.83, pageToken: 'more' })
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body)).toMatchObject({ pageToken: 'more' })
   })
 
   it('should serve the same neighbourhood from the cache, a few metres apart', async () => {

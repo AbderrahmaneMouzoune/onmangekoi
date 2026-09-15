@@ -86,6 +86,14 @@ const SUSHI_PLACE: PlaceResult = {
   photoUrl: null,
 }
 
+const RAMEN_PLACE: PlaceResult = {
+  ...SUSHI_PLACE,
+  placeId: 'ChIJramen',
+  name: 'Ramen Ichiban',
+  address: '4 rue Sainte-Anne, Paris',
+  location: { lat: 48.866, lng: 2.335 },
+}
+
 const getCurrentPosition = vi.fn()
 const fetchMock = vi.fn()
 
@@ -159,13 +167,13 @@ describe('RestaurantPicker', () => {
     vi.unstubAllGlobals()
   })
 
-  it('should put my lists, the base and Google side by side, opening on my lists', () => {
+  it('should put my lists, the address book and Google side by side, opening on my lists', () => {
     render(<Harness lists={[list({ restaurant_ids: [MARCEL.id] })]} />)
 
     const tabs = within(
       screen.getByRole('tablist', { name: 'Source des restaurants' })
     ).getAllByRole('tab')
-    expect(tabs.map((tab) => tab.textContent)).toEqual(['Mes listes', 'La base', 'Google'])
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['Mes listes', 'Le carnet', 'Google'])
     expect(screen.getByRole('tab', { name: 'Mes listes' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('list', { name: 'Mes listes' })).toBeInTheDocument()
   })
@@ -191,8 +199,8 @@ describe('RestaurantPicker', () => {
     ).toBeVisible()
     expect(within(basket).getByText('2 restos')).toBeInTheDocument()
 
-    // Dans la base, les restos de la liste sont déjà là — cochés, verrouillés.
-    await userEvent.click(screen.getByRole('tab', { name: 'La base' }))
+    // Dans le carnet, les restos de la liste sont déjà là — cochés, verrouillés.
+    await userEvent.click(screen.getByRole('tab', { name: 'Le carnet' }))
     const results = screen.getByRole('list', { name: 'Résultats' })
     const marcel = within(results).getByRole('checkbox', { name: /chez marcel/i })
     expect(marcel).toBeChecked()
@@ -258,6 +266,49 @@ describe('RestaurantPicker', () => {
     })
   })
 
+  it('should keep the Google results when leaving the tab and coming back', async () => {
+    grantPosition()
+    googleAnswers([SUSHI_PLACE])
+    render(<Harness />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+    await screen.findByRole('checkbox', { name: /sushi bar sakura/i })
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Le carnet' }))
+    expect(screen.queryByRole('list', { name: 'Résultats Google' })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+    // Tout de suite là, sans spinner ni nouvel appel.
+    expect(screen.getByRole('checkbox', { name: /sushi bar sakura/i })).toBeVisible()
+    expect(screen.getByRole('list', { name: 'Résultats Google' })).not.toHaveAttribute('aria-busy')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(getCurrentPosition).toHaveBeenCalledTimes(1)
+  })
+
+  it('should show the next twenty on « Voir plus », and stop when Google has no more', async () => {
+    grantPosition()
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ results: [SUSHI_PLACE], nextPageToken: 'page-2' }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ results: [RAMEN_PLACE] }) })
+    render(<Harness />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+    await screen.findByRole('checkbox', { name: /sushi bar sakura/i })
+    const more = screen.getByRole('button', { name: 'Voir plus' })
+
+    await userEvent.click(more)
+    expect(await screen.findByRole('checkbox', { name: /ramen ichiban/i })).toBeVisible()
+    expect(screen.getByRole('checkbox', { name: /sushi bar sakura/i })).toBeVisible()
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body)).toMatchObject({
+      query: '',
+      pageToken: 'page-2',
+    })
+    expect(screen.queryByRole('button', { name: 'Voir plus' })).not.toBeInTheDocument()
+  })
+
   it('should import a Google place when checked, then toggle it without asking Google again', async () => {
     grantPosition()
     googleAnswers([SUSHI_PLACE])
@@ -266,16 +317,28 @@ describe('RestaurantPicker', () => {
       source: 'google',
       place_id: SUSHI_PLACE.placeId,
     })
-    importPlaceAction.mockResolvedValue({ ok: true, data: imported })
+    let finishImport: (result: unknown) => void = () => {}
+    importPlaceAction.mockReturnValue(new Promise((resolve) => (finishImport = resolve)))
     const onChange = vi.fn()
     render(<Harness onChange={onChange} />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
     const row = await screen.findByRole('checkbox', { name: /sushi bar sakura/i })
 
+    // Coché à l'instant du clic, dans la liste comme dans le panier : la fiche suit.
     await userEvent.click(row)
+    expect(row).toBeChecked()
+    expect(row).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('status', { name: 'Sushi Bar Sakura, import en cours' })).toBeVisible()
+    expect(
+      within(screen.getByRole('region', { name: 'Ta sélection' })).getByText('1 resto')
+    ).toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
+
+    finishImport({ ok: true, data: imported })
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith([imported.id]))
     expect(importPlaceAction).toHaveBeenCalledWith(SUSHI_PLACE.placeId)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: /sushi bar sakura/i })).toBeChecked()
     expect(screen.getByRole('button', { name: 'Retirer Sushi Bar Sakura' })).toBeVisible()
 
@@ -284,11 +347,27 @@ describe('RestaurantPicker', () => {
     expect(importPlaceAction).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('checkbox', { name: /sushi bar sakura/i })).not.toBeChecked()
 
-    // L'import est aussi arrivé dans la base, coché comme les autres.
+    // L'import est aussi arrivé dans le carnet, coché comme les autres.
     await userEvent.click(screen.getByRole('checkbox', { name: /sushi bar sakura/i }))
-    await userEvent.click(screen.getByRole('tab', { name: 'La base' }))
+    await userEvent.click(screen.getByRole('tab', { name: 'Le carnet' }))
     const results = screen.getByRole('list', { name: 'Résultats' })
     expect(within(results).getByRole('checkbox', { name: /sushi bar sakura/i })).toBeChecked()
+  })
+
+  it('should take a failed import back out of the selection and say why', async () => {
+    grantPosition()
+    googleAnswers([SUSHI_PLACE])
+    importPlaceAction.mockResolvedValue({ ok: false, error: 'Ce lieu n’existe plus chez Google.' })
+    const onChange = vi.fn()
+    render(<Harness onChange={onChange} />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+    await userEvent.click(await screen.findByRole('checkbox', { name: /sushi bar sakura/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ce lieu n’existe plus chez Google.')
+    expect(screen.getByRole('checkbox', { name: /sushi bar sakura/i })).not.toBeChecked()
+    expect(screen.queryByRole('region', { name: 'Ta sélection' })).not.toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('should let a restaurant be added by hand from any source, prefilled with the search', async () => {
@@ -315,8 +394,8 @@ describe('RestaurantPicker', () => {
 
     screen.getByRole('tab', { name: 'Mes listes' }).focus()
     await userEvent.keyboard('{ArrowRight}')
-    expect(screen.getByRole('tab', { name: 'La base' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tab', { name: 'La base' })).toHaveFocus()
+    expect(screen.getByRole('tab', { name: 'Le carnet' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Le carnet' })).toHaveFocus()
     expect(screen.getByRole('list', { name: 'Résultats' })).toBeInTheDocument()
 
     await userEvent.keyboard('{End}')

@@ -4,7 +4,8 @@ import { cn } from '@/lib/utils'
 export const SESSION_STEPS = {
   name: 'Nom de la session',
   restaurants: 'Les restos à départager',
-  restaurantsHint: 'Tes listes, la base, Google : pioche où tu veux et mélange.',
+  restaurantsHint:
+    'Tes listes, le carnet des restos déjà connus, Google : pioche où tu veux et mélange.',
   deadline: 'Clôture automatique',
 } as const
 

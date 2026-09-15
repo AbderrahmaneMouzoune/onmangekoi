@@ -27,13 +27,22 @@ export function hasPosition(input: {
  * Deux façons de chercher, et une seule route : avec un texte (au moins deux
  * caractères, la position ne fait que biaiser les résultats), ou sans texte
  * mais avec une position — Google renvoie alors les restos les plus proches.
- * Ni l'un ni l'autre, et il n'y a rien à demander.
+ * Ni l'un ni l'autre, et il n'y a rien à demander. Le jeton de page, lui,
+ * accompagne exactement la même demande pour en obtenir la suite.
  */
 export const SearchPlacesSchema = z
   .object({
     query: z.string().trim().max(PLACES_QUERY_MAX, 'Recherche trop longue').default(''),
     latitude: LatitudeSchema.nullish(),
     longitude: LongitudeSchema.nullish(),
+    /** Jeton opaque rendu par Google avec la page précédente : « voir plus ». */
+    pageToken: z
+      .string()
+      .trim()
+      .min(1, 'Page invalide')
+      .max(4096, 'Page invalide')
+      .regex(/^\S+$/, 'Page invalide')
+      .nullish(),
   })
   .refine((data) => data.query.length >= PLACES_QUERY_MIN || hasPosition(data), {
     message: 'Entre au moins deux caractères, ou autorise ta position.',
