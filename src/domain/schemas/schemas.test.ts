@@ -185,6 +185,22 @@ describe('SearchPlacesSchema', () => {
     expect(SearchPlacesSchema.safeParse({ query: 'sushi', longitude: -181 }).success).toBe(false)
     expect(SearchPlacesSchema.safeParse({ query: 'sushi', latitude: '45' }).success).toBe(false)
   })
+
+  it('should accept no text at all when a position is given: that is « autour de moi »', () => {
+    const nearby = SearchPlacesSchema.safeParse({ latitude: 45.76, longitude: 4.83 })
+    expect(nearby.success).toBe(true)
+    expect(nearby.data?.query).toBe('')
+    expect(
+      SearchPlacesSchema.safeParse({ query: ' ', latitude: 45.76, longitude: 4.83 }).success
+    ).toBe(true)
+  })
+
+  it('should refuse a search with neither text nor position', () => {
+    const empty = SearchPlacesSchema.safeParse({ query: '' })
+    expect(empty.success).toBe(false)
+    expect(empty.error?.issues[0]?.message).toMatch(/autorise ta position/)
+    expect(SearchPlacesSchema.safeParse({ query: 'a', latitude: 45.76 }).success).toBe(false)
+  })
 })
 
 describe('ImportPlaceSchema', () => {

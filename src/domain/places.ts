@@ -293,3 +293,13 @@ export function placesCacheKey(input: {
     typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) : ''
   return `${query}|${round(input.latitude)}|${round(input.longitude)}`
 }
+
+/**
+ * Clé de cache d'une recherche « autour de moi » : la position arrondie à
+ * ~100 m. Plus fin que le biais d'une recherche textuelle, parce qu'ici la
+ * position n'oriente pas les résultats, elle les définit — à un kilomètre
+ * près, deux bureaux verraient les mêmes « plus proches » qui ne le sont pas.
+ */
+export function nearbyCacheKey(input: { latitude: number; longitude: number }): string {
+  return `near|${input.latitude.toFixed(3)}|${input.longitude.toFixed(3)}`
+}

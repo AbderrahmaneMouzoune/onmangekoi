@@ -18,7 +18,7 @@ export default function NewListPage() {
       <PageHeader
         eyebrow="Favoris"
         title="Nouvelle liste"
-        description="Nomme-la, puis ajoute tes restos."
+        description="Nomme-la, remplis-la : tu la ressortiras dans tes sessions."
         back={{ href: router.lists(), label: 'Mes listes' }}
       />
       <Suspense fallback={<CreateListSectionFallback />}>

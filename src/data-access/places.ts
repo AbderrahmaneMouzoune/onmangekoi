@@ -4,6 +4,7 @@ import { AppError } from '@/domain/errors'
 import {
   mapPlaceDetails,
   mapPlacesResponse,
+  nearbyCacheKey,
   placesCacheKey,
   type PlaceResult,
 } from '@/domain/places'
@@ -24,6 +25,7 @@ import { TtlCache } from '@/lib/ttl-cache'
  */
 
 const SEARCH_ENDPOINT = 'https://places.googleapis.com/v1/places:searchText'
+const NEARBY_ENDPOINT = 'https://places.googleapis.com/v1/places:searchNearby'
 const DETAILS_ENDPOINT = 'https://places.googleapis.com/v1/places'
 const PHOTO_ENDPOINT = 'https://places.googleapis.com/v1'
 
@@ -64,11 +66,21 @@ const PHOTO_MAX_WIDTH_PX = 1200
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const MAX_RESULTS = 10
+/** Une recherche « autour de moi » a droit au maximum que Google accorde. */
+const NEARBY_MAX_RESULTS = 20
 /** Rayon du biais géographique quand une position est fournie (5 km). */
 const BIAS_RADIUS_M = 5000
+/**
+ * Rayon d'une recherche « autour de moi » (2 km). Assez large pour qu'un
+ * village y trouve quelque chose, assez serré pour qu'en ville les vingt
+ * résultats soient vraiment ceux d'à côté — ils sont classés par distance.
+ */
+const NEARBY_RADIUS_M = 2000
 const REQUEST_TIMEOUT_MS = 8000
 
 const searchCache = new TtlCache<PlaceResult[]>({ ttlMs: CACHE_TTL_MS, maxEntries: 200 })
+/** Recherches « autour de moi », par position arrondie (~100 m). */
+const nearbyCache = new TtlCache<PlaceResult[]>({ ttlMs: CACHE_TTL_MS, maxEntries: 200 })
 /**
  * Fiches détaillées uniquement. Une recherche ne les alimente plus : ses
  * résultats n'ont pas les champs enrichis, et les servir ici ferait importer
@@ -199,6 +211,51 @@ export async function searchPlaces(input: {
 
   const results = mapPlacesResponse(payload)
   searchCache.set(key, results)
+  return results
+}
+
+/**
+ * Les restaurants les plus proches d'une position, sans texte à taper.
+ *
+ * C'est ce que l'onglet Google affiche d'emblée : la personne l'ouvre, voit
+ * ce qu'il y a autour, et ne cherche un nom que si le resto qu'elle a en tête
+ * n'y est pas. Même masque de champs que la recherche textuelle — donc même
+ * facture par lieu —, classement par distance, rayon fixe.
+ */
+export async function searchNearbyPlaces(input: {
+  latitude: number
+  longitude: number
+}): Promise<PlaceResult[]> {
+  const apiKey = requireApiKey()
+  const key = nearbyCacheKey(input)
+  const cached = nearbyCache.get(key)
+  if (cached) return cached
+
+  const payload = await callGoogle(
+    'autour de moi',
+    NEARBY_ENDPOINT,
+    {
+      method: 'POST',
+      headers: { 'X-Goog-FieldMask': SEARCH_FIELD_MASK },
+      body: JSON.stringify({
+        includedTypes: ['restaurant'],
+        languageCode: 'fr',
+        regionCode: 'FR',
+        maxResultCount: NEARBY_MAX_RESULTS,
+        rankPreference: 'DISTANCE',
+        locationRestriction: {
+          circle: {
+            center: { latitude: input.latitude, longitude: input.longitude },
+            radius: NEARBY_RADIUS_M,
+          },
+        },
+      }),
+    },
+    apiKey
+  )
+
+  const results = mapPlacesResponse(payload)
+  nearbyCache.set(key, results)
   return results
 }
 

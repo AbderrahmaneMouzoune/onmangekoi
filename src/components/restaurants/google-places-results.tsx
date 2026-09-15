@@ -1,41 +1,60 @@
 'use client'
 
-import { RiAddLine, RiMapPin2Line } from '@remixicon/react'
+import { RiMapPin2Line } from '@remixicon/react'
 import { useEffect, useState, useTransition } from 'react'
 
 import { importPlaceAction } from '@/actions/places'
+import { ResultRow } from '@/components/restaurants/result-row'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
 import { GENERIC_ERROR } from '@/domain/errors'
 import { PLACES_QUERY_MIN } from '@/domain/schemas/place'
 import { PRICE_LEVEL_LABELS } from '@/domain/schemas/restaurant'
+import { distanceMeters, formatDistance } from '@/lib/maps'
 
 import type { Restaurant } from '@/data-access/models'
 import type { PlaceResult } from '@/domain/places'
+import type { Geolocation } from '@/hooks/use-geolocation'
 
 interface GooglePlacesResultsProps {
-  /** Recherche déjà débouncée, partagée avec l'onglet « Base ». */
+  /** Recherche déjà débouncée, partagée avec l'onglet « La base ». */
   query: string
+  /** Position de la personne, tenue par le sélecteur pour survivre aux changements d'onglet. */
+  geolocation: Geolocation
+  /** Resto déjà en base pour ce lieu Google — importé à l'instant, ou connu du catalogue. */
+  restaurantForPlace: (placeId: string) => Restaurant | undefined
+  isSelected: (restaurantId: string) => boolean
+  isLocked: (restaurantId: string) => boolean
+  /** Coche ou décoche un resto déjà en base : aucun appel à Google. */
+  onToggle: (restaurant: Restaurant) => void
+  /** Un lieu qu'on ne connaissait pas vient d'être importé, et sélectionné. */
   onImported: (restaurant: Restaurant) => void
 }
 
-interface Position {
-  latitude: number
-  longitude: number
-}
+type Mode = 'search' | 'nearby' | 'none'
 
 /**
  * Onglet « Google » du sélecteur de restaurants.
  *
- * La recherche passe par `POST /api/places/search` : la clé Places ne quitte
- * jamais le serveur. Un clic sur un résultat l'importe en base — le serveur
- * ne reçoit qu'un `place_id` et relit les champs chez Google lui-même, donc
- * rien de ce qui est enregistré ne vient du navigateur.
+ * Il s'ouvre sur les restos les plus proches — la position est demandée en
+ * cliquant l'onglet, et tant qu'on ne tape rien, c'est ça qu'on voit. Taper
+ * un nom lance une recherche, biaisée par la même position. Un lieu qu'on
+ * coche est importé en base (le serveur ne reçoit qu'un `place_id` et relit
+ * la fiche chez Google lui-même) puis reste coché comme n'importe quel resto
+ * de la base : le décocher ne coûte rien.
  */
-export function GooglePlacesResults({ query, onImported }: GooglePlacesResultsProps) {
+export function GooglePlacesResults({
+  query,
+  geolocation,
+  restaurantForPlace,
+  isSelected,
+  isLocked,
+  onToggle,
+  onImported,
+}: GooglePlacesResultsProps) {
   /**
-   * Résultats gardés avec la recherche qui les a produits. Tant que la clé ne
+   * Résultats gardés avec la requête qui les a produits. Tant que la clé ne
    * correspond pas, c'est qu'une recherche est en cours : pas besoin d'un
    * `isSearching` à tenir à jour en parallèle.
    */
@@ -44,18 +63,19 @@ export function GooglePlacesResults({ query, onImported }: GooglePlacesResultsPr
     places: [],
   })
   const [error, setError] = useState<string | null>(null)
-  const [position, setPosition] = useState<Position | null>(null)
-  const [isLocating, setIsLocating] = useState(false)
   const [importing, setImporting] = useState<string | null>(null)
   const [isImporting, startImport] = useTransition()
 
+  const { position, status, locate } = geolocation
   const trimmed = query.trim()
-  const canSearch = trimmed.length >= PLACES_QUERY_MIN
-  const searchKey = `${trimmed}|${position?.latitude ?? ''}|${position?.longitude ?? ''}`
-  const isSearching = canSearch && found.key !== searchKey
+  const mode: Mode = trimmed.length >= PLACES_QUERY_MIN ? 'search' : position ? 'nearby' : 'none'
+  const here = position ? `${position.latitude}|${position.longitude}` : ''
+  const requestKey =
+    mode === 'search' ? `q|${trimmed}|${here}` : mode === 'nearby' ? `near|${here}` : ''
+  const isSearching = mode !== 'none' && found.key !== requestKey
 
   useEffect(() => {
-    if (!canSearch) return
+    if (mode === 'none') return
 
     let cancelled = false
     const controller = new AbortController()
@@ -64,7 +84,7 @@ export function GooglePlacesResults({ query, onImported }: GooglePlacesResultsPr
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        query: trimmed,
+        query: mode === 'search' ? trimmed : '',
         latitude: position?.latitude ?? null,
         longitude: position?.longitude ?? null,
       }),
@@ -74,38 +94,19 @@ export function GooglePlacesResults({ query, onImported }: GooglePlacesResultsPr
         const payload = await response.json().catch(() => null)
         if (cancelled) return
         setError(response.ok ? null : (payload?.error ?? GENERIC_ERROR))
-        setFound({ key: searchKey, places: response.ok ? (payload?.results ?? []) : [] })
+        setFound({ key: requestKey, places: response.ok ? (payload?.results ?? []) : [] })
       })
       .catch(() => {
         if (cancelled) return
         setError('La recherche Google a échoué. Réessaie.')
-        setFound({ key: searchKey, places: [] })
+        setFound({ key: requestKey, places: [] })
       })
 
     return () => {
       cancelled = true
       controller.abort()
     }
-  }, [searchKey, trimmed, canSearch, position])
-
-  function locate() {
-    if (!('geolocation' in navigator)) {
-      setError('Ton navigateur ne sait pas donner ta position.')
-      return
-    }
-    setIsLocating(true)
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        setPosition({ latitude: coords.latitude, longitude: coords.longitude })
-        setIsLocating(false)
-      },
-      () => {
-        setError('Position refusée : la recherche reste sans biais géographique.')
-        setIsLocating(false)
-      },
-      { timeout: 8000, maximumAge: 5 * 60 * 1000 }
-    )
-  }
+  }, [mode, requestKey, trimmed, position])
 
   function importPlace(place: PlaceResult) {
     setError(null)
@@ -121,17 +122,33 @@ export function GooglePlacesResults({ query, onImported }: GooglePlacesResultsPr
     })
   }
 
-  const places = found.key === searchKey ? found.places : []
+  function toggle(place: PlaceResult) {
+    const known = restaurantForPlace(place.placeId)
+    if (known) onToggle(known)
+    else importPlace(place)
+  }
+
+  const places = found.key === requestKey ? found.places : []
+  const canLocate = status !== 'locating' && status !== 'ready'
+
+  const caption =
+    mode === 'nearby'
+      ? 'Les plus proches de toi'
+      : mode === 'search'
+        ? position
+          ? 'Résultats Google, autour de toi'
+          : 'Résultats Google'
+        : status === 'locating'
+          ? 'On regarde ce qu’il y a autour de toi…'
+          : 'Résultats Google'
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
-          {position ? 'Résultats autour de toi' : 'Résultats Google'}
-        </p>
-        {!position && (
-          <Button type="button" variant="ghost" size="sm" onClick={locate} disabled={isLocating}>
-            {isLocating ? <Spinner /> : <RiMapPin2Line aria-hidden="true" />}
+      <div className="flex min-h-9 items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">{caption}</p>
+        {canLocate && (
+          <Button type="button" variant="ghost" size="sm" onClick={locate}>
+            <RiMapPin2Line aria-hidden="true" />
             Autour de moi
           </Button>
         )}
@@ -142,11 +159,18 @@ export function GooglePlacesResults({ query, onImported }: GooglePlacesResultsPr
       <ul
         className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line"
         aria-label="Résultats Google"
-        aria-busy={isSearching}
+        aria-busy={isSearching || status === 'locating' || undefined}
       >
-        {!canSearch && (
+        {mode === 'none' && status === 'locating' && (
+          <li className="flex flex-col items-center gap-2 px-3 py-6 text-center text-sm text-muted-foreground">
+            <Spinner />
+            On cherche les restos autour de toi…
+          </li>
+        )}
+        {mode === 'none' && status !== 'locating' && (
           <li className="px-3 py-6 text-center text-sm text-muted-foreground">
-            Tape le nom d’un resto pour le chercher chez Google.
+            {geolocation.error ??
+              'Autorise ta position pour voir les restos autour de toi, ou cherche un nom.'}
           </li>
         )}
         {isSearching && (
@@ -154,46 +178,49 @@ export function GooglePlacesResults({ query, onImported }: GooglePlacesResultsPr
             <Spinner />
           </li>
         )}
-        {canSearch && !isSearching && places.length === 0 && !error && (
+        {mode === 'search' && !isSearching && places.length === 0 && !error && (
           <li className="px-3 py-6 text-center text-sm text-muted-foreground">
             Google ne trouve rien pour « {trimmed} ».
           </li>
         )}
+        {mode === 'nearby' && !isSearching && places.length === 0 && !error && (
+          <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+            Rien à moins de deux kilomètres. Cherche un resto par son nom.
+          </li>
+        )}
         {places.map((place) => {
-          const isBusy = isImporting && importing === place.placeId
+          const known = restaurantForPlace(place.placeId)
+          const locked = known ? isLocked(known.id) : false
+          const checked = known ? locked || isSelected(known.id) : false
+          const distance =
+            position && place.location
+              ? formatDistance(
+                  distanceMeters(
+                    { lat: position.latitude, lng: position.longitude },
+                    place.location
+                  )
+                )
+              : ''
           return (
             <li key={place.placeId}>
-              <button
-                type="button"
-                onClick={() => importPlace(place)}
-                disabled={isImporting}
-                className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-surface-2 disabled:opacity-60"
-              >
-                <span
-                  aria-hidden="true"
-                  className="flex size-5 shrink-0 items-center justify-center rounded-full border border-line-strong"
-                >
-                  {isBusy ? <Spinner className="size-3" /> : <RiAddLine className="size-3.5" />}
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-sm font-medium">{place.name}</span>
-                  {place.address && (
-                    <span className="truncate text-xs text-muted-foreground">{place.address}</span>
-                  )}
-                </span>
-                <span className="flex shrink-0 flex-col items-end gap-0.5">
-                  {place.cuisineType && (
-                    <span className="font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
-                      {place.cuisineType}
-                    </span>
-                  )}
-                  {place.priceLevel && (
-                    <span className="text-[0.68rem] text-muted-foreground">
-                      {PRICE_LEVEL_LABELS[place.priceLevel]}
-                    </span>
-                  )}
-                </span>
-              </button>
+              <ResultRow
+                name={place.name}
+                subtitle={place.address}
+                meta={
+                  <>
+                    {distance && <span className="font-medium text-ink-2">{distance}</span>}
+                    {place.cuisineType && (
+                      <span className="font-mono tracking-wide uppercase">{place.cuisineType}</span>
+                    )}
+                    {place.priceLevel && <span>{PRICE_LEVEL_LABELS[place.priceLevel]}</span>}
+                  </>
+                }
+                checked={checked}
+                locked={locked}
+                busy={isImporting && importing === place.placeId}
+                disabled={isImporting && importing !== place.placeId}
+                onToggle={() => toggle(place)}
+              />
             </li>
           )
         })}
@@ -201,8 +228,8 @@ export function GooglePlacesResults({ query, onImported }: GooglePlacesResultsPr
 
       {places.length > 0 && (
         <p className="text-xs text-muted-foreground">
-          Un clic importe le resto et le sélectionne. Un lieu déjà importé rejoint la sélection sans
-          créer de doublon.
+          Cocher un resto importe sa fiche — photo, adresse, horaires — et l’ajoute à la sélection.
+          Un lieu déjà importé rejoint la sélection sans créer de doublon.
         </p>
       )}
     </div>

@@ -120,6 +120,38 @@ describe('data-access/places', () => {
     })
   })
 
+  it('should ask Google for the closest restaurants when there is nothing to type', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ places: [GOOGLE_PLACE] }) })
+    const { searchNearbyPlaces } = await importPlaces()
+
+    expect(await searchNearbyPlaces({ latitude: 45.76, longitude: 4.83 })).toEqual([SUSHI_BAR])
+
+    const [url, init] = fetchMock.mock.calls[0]!
+    expect(url).toBe('https://places.googleapis.com/v1/places:searchNearby')
+    expect(init.headers['X-Goog-Api-Key']).toBe('test-google-key')
+    // Même masque que la recherche : une liste, pas des fiches.
+    expect(init.headers['X-Goog-FieldMask']).toContain('places.id')
+    expect(init.headers['X-Goog-FieldMask']).not.toContain('photos')
+    expect(JSON.parse(init.body)).toMatchObject({
+      includedTypes: ['restaurant'],
+      rankPreference: 'DISTANCE',
+      locationRestriction: { circle: { center: { latitude: 45.76, longitude: 4.83 } } },
+    })
+  })
+
+  it('should serve the same neighbourhood from the cache, a few metres apart', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ places: [GOOGLE_PLACE] }) })
+    const { searchNearbyPlaces } = await importPlaces()
+
+    await searchNearbyPlaces({ latitude: 45.7601, longitude: 4.8302 })
+    await searchNearbyPlaces({ latitude: 45.7603, longitude: 4.8299 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    // À un kilomètre de là, ce ne sont plus les mêmes « plus proches ».
+    await searchNearbyPlaces({ latitude: 45.77, longitude: 4.83 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   it('should not serve an import from the search cache: a search has no photo or hours', async () => {
     fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ places: [GOOGLE_PLACE] }) })
