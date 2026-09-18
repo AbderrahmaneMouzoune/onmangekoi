@@ -1,14 +1,19 @@
 'use client'
 
+import { RiMapPin2Fill, RiMapPin2Line } from '@remixicon/react'
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 
 import { submitVoteAction } from '@/actions/votes'
 import { VoteCard } from '@/components/session/vote-card'
 import { VoteControls } from '@/components/session/vote-controls'
+import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
+import { Spinner } from '@/components/ui/spinner'
 import { VOTE_ACTIONS, voteActionByKey, voteActionByValue } from '@/domain/vote'
+import { useGeolocation } from '@/hooks/use-geolocation'
 import { captureEvent } from '@/lib/analytics/client'
+import { geoPoint } from '@/lib/maps'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant, SessionRestaurantWithRestaurant } from '@/data-access/models'
@@ -54,6 +59,11 @@ export function VoteDeck({
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
   const announcedId = useRef<string | null>(null)
   const lastVoteLabel = useRef<string | null>(null)
+  // Même bouton que dans le sélecteur : la distance de chaque carte aide à
+  // trancher entre deux restos qui se valent, et personne n'a envie de
+  // marcher trois kilomètres à midi.
+  const geo = useGeolocation()
+  const here = geoPoint(geo.position)
 
   const remaining = restaurants.filter((r) => !votedIds.has(r.id) && r.restaurants)
   const current = remaining[0]
@@ -219,7 +229,34 @@ export function VoteDeck({
         <span className="font-mono text-xs text-muted-foreground tabular">
           {done}/{total}
         </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-pressed={geo.position !== null}
+          onClick={geo.position ? geo.clear : geo.locate}
+          disabled={geo.status === 'locating'}
+          className={cn(
+            '-my-2',
+            geo.position && 'bg-brand-soft text-brand-hover hover:bg-brand-soft'
+          )}
+        >
+          {geo.status === 'locating' ? (
+            <Spinner />
+          ) : geo.position ? (
+            <RiMapPin2Fill aria-hidden="true" />
+          ) : (
+            <RiMapPin2Line aria-hidden="true" />
+          )}
+          {geo.position ? 'Autour de toi' : 'Autour de moi'}
+        </Button>
       </div>
+
+      {geo.error && !geo.position && (
+        <p role="status" className="-mt-3 text-xs text-muted-foreground">
+          {geo.error}
+        </p>
+      )}
 
       {/* Le seul canal du deck vers un lecteur d'écran : la carte, elle, change
           sans reprendre le focus. */}
@@ -235,6 +272,7 @@ export function VoteDeck({
               index={done + 2}
               total={total}
               priority={false}
+              position={here}
             />
           </div>
         )}
@@ -252,6 +290,7 @@ export function VoteDeck({
             style={cardStyle}
             overlay={overlay}
             priority
+            position={here}
           />
         </div>
       </div>

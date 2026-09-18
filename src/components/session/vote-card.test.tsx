@@ -52,6 +52,40 @@ describe('VoteCard', () => {
     expect(screen.getByText('12 rue de la Paix, Paris')).toBeInTheDocument()
   })
 
+  it('should show the distance when the visitor gave their position', () => {
+    /** Opéra Garnier → Notre-Dame : environ 2,4 km */
+    const notreDame = restaurant({ location: { lat: 48.853, lng: 2.3499 } })
+    render(
+      <VoteCard
+        restaurant={notreDame}
+        index={1}
+        total={3}
+        position={{ lat: 48.8719, lng: 2.3316 }}
+      />
+    )
+    expect(screen.getByText(/2,\d km/)).toBeInTheDocument()
+  })
+
+  it('should say nothing about distance without a position or coordinates', () => {
+    const { rerender } = render(<VoteCard restaurant={restaurant()} index={1} total={3} />)
+    expect(screen.queryByText(/km/)).not.toBeInTheDocument()
+
+    rerender(
+      <VoteCard
+        restaurant={restaurant()}
+        index={1}
+        total={3}
+        position={{ lat: 48.87, lng: 2.33 }}
+      />
+    )
+    expect(screen.queryByText(/km/)).not.toBeInTheDocument()
+  })
+
+  it('should badge the budget when it is known', () => {
+    render(<VoteCard restaurant={restaurant({ price_level: 3 })} index={1} total={3} />)
+    expect(screen.getByLabelText('Budget €€€')).toHaveTextContent('€€€')
+  })
+
   it('should badge a restaurant open right now', () => {
     render(<VoteCard restaurant={restaurant({ opening_hours: LUNCH })} index={1} total={3} />)
     expect(screen.getByText('Ouvert')).toBeInTheDocument()
