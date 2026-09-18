@@ -84,6 +84,42 @@ describe('createSessionUseCase', () => {
     })
   })
 
+  it('should carry custom rules to the RPC', async () => {
+    const { client, rpc } = fakeClient([])
+
+    await createSessionUseCase(client, {
+      name: 'Lunch',
+      listIds: [],
+      restaurantIds: [R1],
+      vetos: 2,
+      closeAtRatio: 0.8,
+    })
+
+    expect(rpc).toHaveBeenCalledWith('create_session', {
+      p_name: 'Lunch',
+      p_restaurant_ids: [R1],
+      p_rules: { superlikes: 1, vetos: 2, close_at_ratio: 0.8 },
+    })
+  })
+
+  it('should say nothing about the rules when they are the usual ones', async () => {
+    const { client, rpc } = fakeClient([])
+
+    await createSessionUseCase(client, {
+      name: 'Lunch',
+      listIds: [],
+      restaurantIds: [R1],
+      superlikes: 1,
+      vetos: 1,
+      closeAtRatio: 1,
+    })
+
+    expect(rpc).toHaveBeenCalledWith('create_session', {
+      p_name: 'Lunch',
+      p_restaurant_ids: [R1],
+    })
+  })
+
   it('should fail before the RPC when nothing resolves', async () => {
     const { client, rpc } = fakeClient([])
     await expect(

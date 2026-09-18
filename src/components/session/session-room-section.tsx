@@ -43,6 +43,13 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
     redirect(router.joinInvite(session))
   }
 
+  // Les jokers se comptent sur les votes eux-mêmes : la base reste seule à
+  // décider ce qui reste, le deck n'en affiche que le reflet.
+  const jokersUsed = {
+    fav: votes.filter((vote) => vote.value === 2).length,
+    veto: votes.filter((vote) => vote.value === -2).length,
+  }
+
   const url = inviteUrl(session)
   const isHost = session.host_id === user.id
   const qrSvg = isHost && session.status === 'waiting' ? await qrCodeSvg(url) : null
@@ -53,6 +60,7 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
       participants={participants}
       restaurants={restaurants}
       myVotedIds={votes.map((vote) => vote.session_restaurant_id)}
+      myJokersUsed={jokersUsed}
       meId={user.id}
       inviteUrl={url}
       qrSvg={qrSvg}

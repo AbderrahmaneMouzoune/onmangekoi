@@ -2,6 +2,7 @@ import { getRestaurantIdsForLists } from '@/data-access/lists'
 import { createSession } from '@/data-access/sessions'
 import { AppError } from '@/domain/errors'
 import { resolveClosesAt } from '@/domain/session-deadline'
+import { resolveRules } from '@/domain/session-rules'
 
 import type { Session } from '@/data-access/models'
 import type { Database } from '@/data-access/models/database'
@@ -10,8 +11,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Résout les restaurants depuis les listes choisies + la sélection directe,
- * dédoublonne en conservant l'ordre, résout l'échéance de clôture, puis
- * délègue à la RPC transactionnelle.
+ * dédoublonne en conservant l'ordre, résout l'échéance de clôture et les
+ * règles du vote, puis délègue à la RPC transactionnelle.
  *
  * `now` est injectable pour les tests ; en production c'est l'horloge du
  * serveur qui date une échéance choisie en durée — jamais celle du navigateur,
@@ -33,5 +34,6 @@ export async function createSessionUseCase(
     name: input.name,
     restaurantIds,
     closesAt: resolveClosesAt(input, now),
+    rules: resolveRules(input),
   })
 }

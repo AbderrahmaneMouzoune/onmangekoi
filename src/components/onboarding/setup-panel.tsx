@@ -2,11 +2,13 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { PseudoForm } from '@/components/onboarding/pseudo-form'
+import { RulesSummary } from '@/components/session/rules-summary'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
+import { parseSessionRules } from '@/domain/session-rules'
 import { countLabel, displayPseudo } from '@/lib/format'
 import { sanitizeNextPath } from '@/lib/routing'
 
@@ -43,6 +45,7 @@ export async function SetupPanel({ searchParams }: { searchParams: Promise<{ nex
             {countLabel(preview.restaurant_count, 'resto')} ·{' '}
             {countLabel(preview.participant_count, 'participant')}
           </p>
+          <RulesSummary rules={parseSessionRules(preview.rules)} tone="chalk" />
         </div>
       ) : (
         <div className="flex flex-col gap-2">

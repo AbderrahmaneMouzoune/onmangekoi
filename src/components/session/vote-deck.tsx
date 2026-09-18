@@ -7,19 +7,23 @@ import { VoteCard } from '@/components/session/vote-card'
 import { VoteControls } from '@/components/session/vote-controls'
 import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
+import { jokerQuotas, jokersSentence } from '@/domain/session-rules'
 import { VOTE_ACTIONS, voteActionByKey, voteActionByValue } from '@/domain/vote'
 import { captureEvent } from '@/lib/analytics/client'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant, SessionRestaurantWithRestaurant } from '@/data-access/models'
+import type { JokerKind, SessionRules } from '@/domain/session-rules'
 import type { VoteValue } from '@/domain/vote'
 
 interface VoteDeckProps {
   sessionId: string
   restaurants: SessionRestaurantWithRestaurant[]
   initialVotedIds: string[]
-  initialSuperlikeUsed: boolean
-  initialSuperDislikeUsed: boolean
+  /** Règles de la session, figées à son lancement */
+  rules: SessionRules
+  /** Jokers déjà dépensés, comptés en base — un rechargement les retrouve */
+  initialJokersUsed: Record<JokerKind, number>
   onFinished: () => void
 }
 
@@ -32,20 +36,21 @@ type Leaving = { id: string; direction: 'left' | 'right' } | null
 /**
  * Deck de vote : une carte à la fois, quatre actions. Le swipe horizontal
  * couvre les deux votes courants (gauche = bof, droite = ça me va) ; les
- * jokers ne s'utilisent que par bouton pour éviter tout geste accidentel.
- * Optimiste : la carte part immédiatement, la base est la source de vérité.
+ * jokers ne s'utilisent que par bouton pour éviter tout geste accidentel, et
+ * leur quota vient des règles de la session — un veto dans un groupe, deux
+ * dans un autre. Optimiste : la carte part immédiatement, la base est la
+ * source de vérité et recompte les jokers à chaque vote.
  */
 export function VoteDeck({
   sessionId,
   restaurants,
   initialVotedIds,
-  initialSuperlikeUsed,
-  initialSuperDislikeUsed,
+  rules,
+  initialJokersUsed,
   onFinished,
 }: VoteDeckProps) {
   const [votedIds, setVotedIds] = useState<Set<string>>(() => new Set(initialVotedIds))
-  const [superlikeUsed, setSuperlikeUsed] = useState(initialSuperlikeUsed)
-  const [superDislikeUsed, setSuperDislikeUsed] = useState(initialSuperDislikeUsed)
+  const [jokersUsed, setJokersUsed] = useState(initialJokersUsed)
   const [leaving, setLeaving] = useState<Leaving>(null)
   const [drag, setDrag] = useState<Drag>({ dx: 0, dy: 0, active: false })
   const [error, setError] = useState<string | null>(null)
@@ -55,6 +60,7 @@ export function VoteDeck({
   const announcedId = useRef<string | null>(null)
   const lastVoteLabel = useRef<string | null>(null)
 
+  const jokers = jokerQuotas(rules, jokersUsed)
   const remaining = restaurants.filter((r) => !votedIds.has(r.id) && r.restaurants)
   const current = remaining[0]
   const next = remaining[1]
@@ -72,8 +78,10 @@ export function VoteDeck({
   const vote = useCallback(
     async (value: VoteValue) => {
       if (!current || busy.current || leaving) return
+      const kind = voteActionByValue(value)?.kind
+      const joker: JokerKind | null = kind === 'fav' || kind === 'veto' ? kind : null
       // Les boutons désactivés disent déjà non ; le clavier doit dire pareil.
-      if ((value === 2 && superlikeUsed) || (value === -2 && superDislikeUsed)) return
+      if (joker && jokerQuotas(rules, jokersUsed)[joker].remaining <= 0) return
       busy.current = true
       setError(null)
 
@@ -81,8 +89,7 @@ export function VoteDeck({
       setLeaving({ id: current.id, direction })
       setDrag({ dx: 0, dy: 0, active: false })
 
-      if (value === 2) setSuperlikeUsed(true)
-      if (value === -2) setSuperDislikeUsed(true)
+      if (joker) setJokersUsed((prev) => ({ ...prev, [joker]: prev[joker] + 1 }))
 
       const result = await submitVoteAction({
         sessionId,
@@ -94,8 +101,7 @@ export function VoteDeck({
         setLeaving(null)
         if (!result.ok) {
           // Retour arrière : la carte revient, le joker est rendu
-          if (value === 2) setSuperlikeUsed(initialSuperlikeUsed)
-          if (value === -2) setSuperDislikeUsed(initialSuperDislikeUsed)
+          if (joker) setJokersUsed((prev) => ({ ...prev, [joker]: Math.max(0, prev[joker] - 1) }))
           setError(result.error)
           busy.current = false
           return
@@ -119,18 +125,7 @@ export function VoteDeck({
         if (result.data.finished) finish()
       }, EXIT_MS)
     },
-    [
-      current,
-      leaving,
-      sessionId,
-      finish,
-      initialSuperlikeUsed,
-      initialSuperDislikeUsed,
-      superlikeUsed,
-      superDislikeUsed,
-      done,
-      total,
-    ]
+    [current, leaving, sessionId, finish, rules, jokersUsed, done, total]
   )
 
   /**
@@ -261,14 +256,12 @@ export function VoteDeck({
       <VoteControls
         onVote={(value) => void vote(value)}
         disabled={Boolean(leaving)}
-        superlikeUsed={superlikeUsed}
-        superDislikeUsed={superDislikeUsed}
+        jokers={jokers}
       />
 
       <div className="flex flex-col gap-1.5 text-center text-xs text-muted-foreground">
         <p>
-          Glisse la carte à droite pour « ça me va », à gauche pour « bof ». Les jokers comptent
-          double et ne s’utilisent qu’une fois.
+          Glisse la carte à droite pour « ça me va », à gauche pour « bof ». {jokersSentence(rules)}
         </p>
         <p>
           Au clavier :{' '}

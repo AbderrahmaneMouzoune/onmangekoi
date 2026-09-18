@@ -13,16 +13,16 @@
 
 ## Système de vote
 
-| Action       | Valeur | Contrainte              |
-| ------------ | ------ | ----------------------- |
-| Bof          | 0      | Illimité                |
-| Ça me va     | +1     | Illimité                |
-| Coup de cœur | +2     | **1 joker par session** |
-| Veto         | −2     | **1 joker par session** |
+| Action       | Valeur | Contrainte                           |
+| ------------ | ------ | ------------------------------------ |
+| Bof          | 0      | Illimité                             |
+| Ça me va     | +1     | Illimité                             |
+| Coup de cœur | +2     | **Quota par session** — 1 par défaut |
+| Veto         | −2     | **Quota par session** — 1 par défaut |
 
 `Score(restaurant) = Σ des votes`. Les votes manquants comptent 0. En cas d'égalité, le nombre de coups de cœur départage ; à égalité parfaite, le classement l'annonce.
 
-Les règles (jokers, session en cours, participant, restaurant valide) sont vérifiées **en base** par la fonction `submit_vote`, pas seulement dans l'interface.
+Les quotas de jokers et le seuil de clôture se règlent **à la création** — voir « Règles personnalisables » plus bas. Les règles (jokers restants, session en cours, participant, restaurant valide) sont vérifiées **en base** par la fonction `submit_vote`, pas seulement dans l'interface.
 
 ## Règles de session
 
@@ -31,7 +31,7 @@ Les règles (jokers, session en cours, participant, restaurant valide) sont vér
 | Lancement           | Réservé au host, à partir de 2 participants                                     |
 | Snapshot            | Les restaurants sont figés à la création                                        |
 | Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                  |
-| Clôture automatique | Déclenchée en base dès que 100 % des participants ont terminé                   |
+| Clôture automatique | Déclenchée en base dès que le seuil de votants est atteint — 100 % par défaut   |
 | Clôture à l'heure   | Échéance optionnelle choisie à la création — le vote se ferme tout seul         |
 | Clôture forcée      | Le host peut clôturer à tout moment — les votes manquants comptent 0            |
 | Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)              |
@@ -53,6 +53,22 @@ La clôture par échéance emprunte **exactement** le chemin de la clôture manu
 Une durée (« dans 10 min ») est datée par l'horloge du serveur au moment de la création ; une heure précise (« à 12:00 ») est convertie en instant absolu par le navigateur, seul à connaître le fuseau de la personne. Le compte à rebours se relit sur l'horloge à chaque seconde plutôt que de se décrémenter : un onglet revenu au premier plan affiche le temps réellement restant, pas celui qu'il aurait compté s'il n'avait pas dormi.
 
 Une session **en attente** dont l'échéance tombe n'est jamais clôturée : sans un seul vote, le classement n'aurait aucun sens. `launch_session` refuse de la lancer et invite le host à prolonger — c'est la seule impasse possible, et elle a sa sortie.
+
+## Règles personnalisables
+
+Un coup de cœur, un veto, classement quand tout le monde a voté : ces règles conviennent à une tablée de quatre. À douze, il manque toujours quelqu'un, et un seul veto ne suffit plus à écarter ce qui ne passe pas. Le host règle donc les trois à la création, dans une section repliée — dépliée ou non, le résumé dit ce qu'on s'apprête à lancer.
+
+| Règle            | Valeurs                  | Par défaut |
+| ---------------- | ------------------------ | ---------- |
+| Coups de cœur    | 0 à 5 par personne       | 1          |
+| Vetos            | 0 à 5 par personne       | 1          |
+| Seuil de clôture | 50 % à 100 % des votants | 100 %      |
+
+Tout tient dans `sessions.rules`, un objet jsonb à trois clés dont le défaut reproduit exactement les règles d'avant : une session qui ne dit rien vit comme avant. Une contrainte `check` en borne les valeurs, et `create_session` complète les clés absentes — le formulaire n'envoie que ce qu'il change.
+
+La base reste seule juge : `submit_vote` compte les jokers déjà posés au lieu de lire un booléen, et le trigger de clôture compare le nombre de votants arrivés au bout à `ceil(participants × seuil)`, jamais moins d'un. Sous 100 %, le classement tombe avant que tout le monde ait voté — les bulletins manquants comptent 0, comme lors d'une clôture forcée — et le deck de celui qui votait encore s'arrête proprement sur le classement.
+
+Les règles sont **figées au lancement** : un trigger refuse toute écriture de `rules` sur une session qui n'est plus en attente, quel que soit le rôle. Changer les quotas alors que des vetos sont déjà posés invaliderait des bulletins après coup. `session_preview` les expose enfin à l'écran d'invitation : savoir qu'on n'aura pas de veto fait partie de ce à quoi on dit oui.
 
 ## URLs, codes et liens de partage
 

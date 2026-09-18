@@ -1,13 +1,21 @@
 import { RiForbid2Line, RiHeart3Fill, RiThumbDownLine, RiThumbUpLine } from '@remixicon/react'
 
+import { jokerBadge } from '@/domain/session-rules'
 import { VOTE_ACTIONS, type VoteKind, type VoteValue } from '@/domain/vote'
 import { cn } from '@/lib/utils'
+
+import type { JokerKind, JokerQuotas } from '@/domain/session-rules'
 
 interface VoteControlsProps {
   onVote: (value: VoteValue) => void
   disabled?: boolean
-  superlikeUsed: boolean
-  superDislikeUsed: boolean
+  /** Ce que les règles de la session accordent, et ce qu'il en reste */
+  jokers: JokerQuotas
+}
+
+/** Les deux actions à quota — les deux autres sont illimitées. */
+function jokerKind(kind: VoteKind): JokerKind | null {
+  return kind === 'fav' || kind === 'veto' ? kind : null
 }
 
 const ICONS: Record<VoteKind, typeof RiThumbUpLine> = {
@@ -24,27 +32,27 @@ const STYLES: Record<VoteKind, string> = {
   fav: 'bg-fav-soft text-fav hover:bg-fav hover:text-surface focus-visible:ring-fav',
 }
 
-export function VoteControls({
-  onVote,
-  disabled = false,
-  superlikeUsed,
-  superDislikeUsed,
-}: VoteControlsProps) {
+export function VoteControls({ onVote, disabled = false, jokers }: VoteControlsProps) {
   return (
     <div role="group" aria-label="Voter" className="grid grid-cols-4 gap-2">
       {VOTE_ACTIONS.map((action) => {
         const Icon = ICONS[action.kind]
-        const jokerSpent =
-          (action.kind === 'fav' && superlikeUsed) || (action.kind === 'veto' && superDislikeUsed)
-        const isDisabled = disabled || jokerSpent
+        const kind = jokerKind(action.kind)
+        const quota = kind ? jokers[kind] : null
+        const badge = quota ? jokerBadge(quota) : null
+        const isDisabled = disabled || (quota !== null && quota.remaining === 0)
         return (
           <button
             key={action.kind}
             type="button"
             onClick={() => onVote(action.value)}
             disabled={isDisabled}
-            title={jokerSpent ? 'Joker déjà utilisé' : action.hint}
-            aria-label={`${action.label} — ${action.hint}`}
+            title={badge ? `${action.hint} ${badge}` : action.hint}
+            aria-label={
+              badge
+                ? `${action.label} — ${action.hint} ${badge}`
+                : `${action.label} — ${action.hint}`
+            }
             aria-keyshortcuts={action.shortcuts.join(' ')}
             className={cn(
               'flex flex-col items-center justify-center gap-1.5 rounded-lg py-3 text-xs font-semibold transition-[background-color,color,transform] outline-none focus-visible:ring-3 active:not-disabled:scale-95 disabled:cursor-not-allowed disabled:opacity-35',
@@ -54,11 +62,9 @@ export function VoteControls({
           >
             <Icon aria-hidden="true" className={action.joker ? 'size-6' : 'size-7'} />
             <span>{action.short}</span>
-            {action.joker && (
+            {badge && (
               // Pas d'opacité ici : à 70 % le libellé retombe à 2,7:1 sur son fond.
-              <span className="font-mono text-[0.6rem] tracking-wide">
-                {jokerSpent ? 'utilisé' : '1 joker'}
-              </span>
+              <span className="font-mono text-[0.6rem] tracking-wide">{badge}</span>
             )}
           </button>
         )

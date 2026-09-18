@@ -37,6 +37,9 @@ export async function createSessionAction(
     restaurantIds: formData.getAll('restaurantIds'),
     closesInMinutes: formData.get('closesInMinutes'),
     closesAt: formData.get('closesAt'),
+    superlikes: formData.get('superlikes'),
+    vetos: formData.get('vetos'),
+    closeAtRatio: formData.get('closeAtRatio'),
   })
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? 'Formulaire invalide' }

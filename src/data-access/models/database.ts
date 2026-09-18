@@ -301,6 +301,7 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }
         Insert: {
@@ -313,6 +314,7 @@ export type Database = {
           invite_token?: string
           launched_at?: string | null
           name: string
+          rules?: Json
           status?: Database['public']['Enums']['session_status']
         }
         Update: {
@@ -325,6 +327,7 @@ export type Database = {
           invite_token?: string
           launched_at?: string | null
           name?: string
+          rules?: Json
           status?: Database['public']['Enums']['session_status']
         }
         Relationships: [
@@ -412,6 +415,7 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -477,6 +481,7 @@ export type Database = {
           p_closes_at?: string
           p_name: string
           p_restaurant_ids: string[]
+          p_rules?: Json
         }
         Returns: {
           closed_at: string | null
@@ -488,6 +493,7 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -498,6 +504,7 @@ export type Database = {
         }
       }
       crockford_code: { Args: { p_length: number }; Returns: string }
+      default_session_rules: { Args: never; Returns: Json }
       delete_my_account: { Args: never; Returns: undefined }
       export_my_data: { Args: never; Returns: Json }
       extend_session: {
@@ -512,6 +519,7 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -587,6 +595,7 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -608,6 +617,7 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -655,6 +665,7 @@ export type Database = {
         }
       }
       normalize_crockford: { Args: { p_input: string }; Returns: string }
+      normalize_rules: { Args: { p_rules: Json }; Returns: Json }
       purge_inactive_anonymous: {
         Args: { p_older_than?: string }
         Returns: number
@@ -667,6 +678,7 @@ export type Database = {
         }[]
       }
       raise_omk: { Args: { p_code: string }; Returns: undefined }
+      rules_are_valid: { Args: { p_rules: Json }; Returns: boolean }
       run_maintenance: { Args: never; Returns: Json }
       session_preview: {
         Args: { p_identifier: string }
@@ -676,6 +688,7 @@ export type Database = {
           name: string
           participant_count: number
           restaurant_count: number
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }[]
       }

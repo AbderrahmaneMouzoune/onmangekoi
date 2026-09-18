@@ -7,6 +7,7 @@ import { deleteSessionAction, launchSessionAction, leaveSessionAction } from '@/
 import { ConnectionIndicator } from '@/components/session/connection-indicator'
 import { InviteCard } from '@/components/session/invite-card'
 import { ParticipantList } from '@/components/session/participant-list'
+import { RulesSummary } from '@/components/session/rules-summary'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
@@ -14,6 +15,7 @@ import { TwoStepButton } from '@/components/ui/two-step-button'
 import { countLabel, displayPseudo } from '@/lib/format'
 
 import type { ParticipantWithProfile, Session } from '@/data-access/models'
+import type { SessionRules } from '@/domain/session-rules'
 import type { ConnectionState } from '@/hooks/use-session-room'
 
 const MIN_PARTICIPANTS = 2
@@ -26,6 +28,7 @@ interface WaitingRoomProps {
   inviteUrl: string
   qrSvg: string | null
   restaurantCount: number
+  rules: SessionRules
   connection: ConnectionState
   onLaunched: (session: Session) => void
 }
@@ -38,6 +41,7 @@ export function WaitingRoom({
   inviteUrl,
   qrSvg,
   restaurantCount,
+  rules,
   connection,
   onLaunched,
 }: WaitingRoomProps) {
@@ -83,6 +87,8 @@ export function WaitingRoom({
         </p>
         <ConnectionIndicator state={connection} />
       </div>
+
+      <RulesSummary rules={rules} />
 
       {isHost && (
         <InviteCard

@@ -11,20 +11,27 @@ import type {
   SessionSummary,
 } from './models'
 import type { Database } from './models/database'
+import type { SessionRules } from '@/domain/session-rules'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ─── Écritures (RPC transactionnelles, règles vérifiées en base) ───
 
 export async function createSession(
   supabase: SupabaseClient<Database>,
-  input: { name: string; restaurantIds: string[]; closesAt?: string | null }
+  input: {
+    name: string
+    restaurantIds: string[]
+    closesAt?: string | null
+    rules?: SessionRules | null
+  }
 ): Promise<Session> {
   const { data, error } = await supabase.rpc('create_session', {
     p_name: input.name,
     p_restaurant_ids: input.restaurantIds,
-    // Sans échéance, on n'envoie rien : la valeur par défaut de la RPC parle
-    // pour nous et l'appel reste celui d'avant.
+    // Sans échéance ni règles particulières, on n'envoie rien : les valeurs
+    // par défaut de la RPC parlent pour nous et l'appel reste celui d'avant.
     ...(input.closesAt ? { p_closes_at: input.closesAt } : {}),
+    ...(input.rules ? { p_rules: input.rules } : {}),
   })
   if (error) throw error
   return data

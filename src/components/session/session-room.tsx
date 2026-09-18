@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { FinishedPanel } from '@/components/session/finished-panel'
 import { SessionCountdown } from '@/components/session/session-countdown'
@@ -10,6 +10,7 @@ import { VoteDeck } from '@/components/session/vote-deck'
 import { WaitingRoom } from '@/components/session/waiting-room'
 import { router } from '@/config/router.config'
 import { closeAttribution } from '@/domain/session-deadline'
+import { parseSessionRules } from '@/domain/session-rules'
 import { useSessionRoom } from '@/hooks/use-session-room'
 import { captureEvent } from '@/lib/analytics/client'
 import { markOnce, takeSessionEntry } from '@/lib/analytics/handoff'
@@ -19,12 +20,15 @@ import type {
   Session,
   SessionRestaurantWithRestaurant,
 } from '@/data-access/models'
+import type { JokerKind } from '@/domain/session-rules'
 
 interface SessionRoomProps {
   session: Session
   participants: ParticipantWithProfile[]
   restaurants: SessionRestaurantWithRestaurant[]
   myVotedIds: string[]
+  /** Jokers déjà dépensés par la personne, comptés en base */
+  myJokersUsed: Record<JokerKind, number>
   meId: string
   inviteUrl: string
   /** QR code SVG du lien d'invitation, rendu côté serveur (host, salle d'attente) */
@@ -40,6 +44,7 @@ export function SessionRoom({
   participants: initialParticipants,
   restaurants,
   myVotedIds,
+  myJokersUsed,
   meId,
   inviteUrl,
   qrSvg,
@@ -53,6 +58,9 @@ export function SessionRoom({
 
   const me = participants.find((p) => p.profile_id === meId)
   const isHost = session.host_id === meId
+  // Les règles sont figées au lancement : les relire une fois suffit, et le
+  // deck s'appuie sur leur identité pour ne pas se réabonner au clavier.
+  const rules = useMemo(() => parseSessionRules(session.rules), [session.rules])
 
   const [finishedLocally, setFinishedLocally] = useState(
     myVotedIds.length >= restaurants.length && restaurants.length > 0
@@ -71,6 +79,9 @@ export function SessionRoom({
         session_id: initialSession.id,
         restaurant_count: restaurants.length,
         list_count: entry.listCount,
+        superlikes: rules.superlikes,
+        vetos: rules.vetos,
+        close_at_ratio: rules.close_at_ratio,
       })
       return
     }
@@ -79,7 +90,7 @@ export function SessionRoom({
     if (entry || !isHost) {
       captureEvent('session_joined', { session_id: initialSession.id, via })
     }
-  }, [initialSession.id, isHost, restaurants.length])
+  }, [initialSession.id, isHost, restaurants.length, rules])
 
   const closeTracked = useRef(false)
 
@@ -149,6 +160,7 @@ export function SessionRoom({
           inviteUrl={inviteUrl}
           qrSvg={qrSvg}
           restaurantCount={restaurants.length}
+          rules={rules}
           connection={connection}
           onLaunched={setSession}
         />
@@ -159,8 +171,8 @@ export function SessionRoom({
           sessionId={session.id}
           restaurants={restaurants}
           initialVotedIds={myVotedIds}
-          initialSuperlikeUsed={me?.superlike_used ?? false}
-          initialSuperDislikeUsed={me?.super_dislike_used ?? false}
+          rules={rules}
+          initialJokersUsed={myJokersUsed}
           onFinished={handleFinished}
         />
       )}
