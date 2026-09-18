@@ -21,6 +21,8 @@ export interface Geolocation {
   error: string | null
   /** Demande la position. Une fois accordée, le navigateur ne redemande pas. */
   locate: () => void
+  /** Oublie la position : les distances disparaissent, Google cherche sans biais. */
+  clear: () => void
 }
 
 /** `GeolocationPositionError.PERMISSION_DENIED` — la constante n'existe pas sur tous les bouchons. */
@@ -65,5 +67,11 @@ export function useGeolocation(): Geolocation {
     )
   }, [])
 
-  return { position, status, error, locate }
+  const clear = useCallback(() => {
+    setPosition(null)
+    setStatus('idle')
+    setError(null)
+  }, [])
+
+  return { position, status, error, locate, clear }
 }

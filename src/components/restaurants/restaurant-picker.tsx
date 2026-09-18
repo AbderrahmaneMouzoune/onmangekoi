@@ -312,6 +312,10 @@ export function RestaurantPicker({
         total={total}
         onRemoveList={toggleList}
         onRemoveRestaurant={(id) => onChange(value.filter((v) => v !== id))}
+        onClear={() => {
+          onChange([])
+          if (selectedListIds.length > 0) onListsChange?.([])
+        }}
       />
 
       {hasTabs && (
@@ -376,6 +380,7 @@ export function RestaurantPicker({
             )}
             <CatalogResults
               page={page}
+              geolocation={geolocation}
               isSearching={isSearching}
               isLoadingMore={isLoadingMore}
               onLoadMore={loadMore}
