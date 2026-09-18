@@ -59,6 +59,9 @@ const TEXT_PAIRS: Pair[] = [
   { fg: 'v-no', bg: 'surface', usage: 'ligne de classement' },
   { fg: 'v-yes', bg: 'surface', usage: 'ligne de classement' },
   { fg: 'v-fav', bg: 'surface', usage: 'ligne de classement' },
+  { fg: 'v-fav', bg: 'v-fav-soft', usage: 'pastille d’une liste dans la sélection' },
+  { fg: 'ink', bg: 'v-fav-soft', usage: 'carte d’identité d’une liste' },
+  { fg: 'ink-2', bg: 'v-fav-soft', usage: 'rappel de contexte d’une liste' },
   // Survol des boutons de vote : l'aplat prend la couleur, le texte s'inverse.
   { fg: 'surface', bg: 'v-veto', usage: 'bouton Veto survolé' },
   { fg: 'surface', bg: 'v-no', usage: 'bouton Bof survolé' },

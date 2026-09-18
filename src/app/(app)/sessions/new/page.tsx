@@ -18,7 +18,7 @@ export default function NewSessionPage() {
       <PageHeader
         eyebrow="Nouvelle session"
         title="Qui décide ce midi ?"
-        description="Choisis les restos à départager, puis invite le groupe."
+        description="Trois étapes, puis tu invites le groupe à voter."
         back={{ href: router.home(), label: 'Accueil' }}
       />
       <Suspense fallback={<CreateSessionSectionFallback />}>

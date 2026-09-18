@@ -175,7 +175,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
         </div>
 
         {adding && (
-          <div className="flex flex-col gap-3 rounded-lg bg-surface-2 p-3">
+          <div className="flex flex-col gap-3 rounded-lg border border-dashed border-line-strong p-3">
             <RestaurantPicker
               initialPage={initialPage}
               value={pickerIds}

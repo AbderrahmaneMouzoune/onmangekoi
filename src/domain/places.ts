@@ -99,8 +99,18 @@ const GooglePlaceSchema = z
   .loose()
 
 export const GooglePlacesResponseSchema = z
-  .object({ places: z.array(GooglePlaceSchema).optional() })
+  .object({
+    places: z.array(GooglePlaceSchema).optional(),
+    /** Présent quand Google a d'autres résultats : à renvoyer tel quel pour les obtenir. */
+    nextPageToken: z.string().optional(),
+  })
   .loose()
+
+/** Une page de résultats Google, et de quoi demander la suivante s'il y en a une. */
+export interface PlacesPage {
+  places: PlaceResult[]
+  nextPageToken: string | null
+}
 
 export type GooglePlace = z.infer<typeof GooglePlaceSchema>
 
@@ -276,6 +286,15 @@ export function mapPlacesResponse(payload: unknown): PlaceResult[] {
   return results
 }
 
+/** La page entière : les lieux exploitables et le jeton de la page suivante. */
+export function mapPlacesPage(payload: unknown): PlacesPage {
+  const parsed = GooglePlacesResponseSchema.safeParse(payload)
+  return {
+    places: mapPlacesResponse(payload),
+    nextPageToken: parsed.success ? clean(parsed.data.nextPageToken) : null,
+  }
+}
+
 /** Idem à partir du JSON brut d'un détail de lieu (`GET /v1/places/{id}`). */
 export function mapPlaceDetails(payload: unknown): PlaceResult | null {
   const parsed = GooglePlaceSchema.safeParse(payload)
@@ -292,4 +311,14 @@ export function placesCacheKey(input: {
   const round = (value: number | null | undefined) =>
     typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) : ''
   return `${query}|${round(input.latitude)}|${round(input.longitude)}`
+}
+
+/**
+ * Clé de cache d'une recherche « autour de moi » : la position arrondie à
+ * ~100 m. Plus fin que le biais d'une recherche textuelle, parce qu'ici la
+ * position n'oriente pas les résultats, elle les définit — à un kilomètre
+ * près, deux bureaux verraient les mêmes « plus proches » qui ne le sont pas.
+ */
+export function nearbyCacheKey(input: { latitude: number; longitude: number }): string {
+  return `near|${input.latitude.toFixed(3)}|${input.longitude.toFixed(3)}`
 }

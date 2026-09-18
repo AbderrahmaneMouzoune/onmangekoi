@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { RestaurantPickerFallback } from '@/components/restaurants/restaurant-picker-fallback'
 import { CreateSessionForm } from '@/components/session/create-session-form'
 import { DeadlinePickerFallback } from '@/components/session/deadline-picker'
+import { SESSION_STEPS, SessionStep, StepTitle } from '@/components/session/session-step'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
@@ -41,24 +42,38 @@ export async function CreateSessionSection() {
 }
 
 /**
- * Silhouette du formulaire : intitulés et bouton d'envoi sont les mêmes pour
- * tout le monde, écrits en clair dans leur état de départ. Seuls le nom
- * proposé, les listes de la personne et le catalogue attendent le serveur.
+ * Silhouette du formulaire : les trois étapes et le bouton d'envoi sont les
+ * mêmes pour tout le monde, écrits en clair dans leur état de départ. Seuls
+ * le nom proposé, les listes de la personne et le catalogue attendent le
+ * serveur.
  */
 export function CreateSessionSectionFallback() {
   return (
-    <div aria-busy="true" className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <p className="text-sm leading-none font-medium text-ink">Nom de la session</p>
+    <div aria-busy="true" className="flex flex-col gap-8">
+      <SessionStep
+        number={1}
+        title={
+          <p className="text-base leading-none font-semibold text-ink">{SESSION_STEPS.name}</p>
+        }
+      >
         <Skeleton className="h-12 w-full rounded-md" />
-      </div>
+      </SessionStep>
 
-      <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium">Restaurants</p>
+      <SessionStep
+        number={2}
+        title={<p className="text-base font-semibold">{SESSION_STEPS.restaurants}</p>}
+        hint={SESSION_STEPS.restaurantsHint}
+      >
         <RestaurantPickerFallback />
-      </div>
+      </SessionStep>
 
-      <DeadlinePickerFallback />
+      <DeadlinePickerFallback
+        legend={
+          <StepTitle number={3}>
+            <span className="text-base font-semibold">{SESSION_STEPS.deadline}</span>
+          </StepTitle>
+        }
+      />
 
       <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md">
         <button type="button" disabled className={cn(buttonVariants({ size: 'lg' }), 'w-full')}>
