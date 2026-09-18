@@ -43,6 +43,7 @@ export async function createSessionAction(
     name: formData.get('name'),
     listIds: formData.getAll('listIds'),
     restaurantIds: formData.getAll('restaurantIds'),
+    groupIds: formData.getAll('groupIds'),
     closesInMinutes: formData.get('closesInMinutes'),
     closesAt: formData.get('closesAt'),
     excludeRecentWinners: formData.get('excludeRecentWinners'),

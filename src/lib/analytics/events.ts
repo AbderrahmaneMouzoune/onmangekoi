@@ -64,6 +64,15 @@ export interface AnalyticsEventMap {
   list_shared: {
     method: ShareMethod
   }
+  /** Un groupe récurrent est sauvegardé depuis un classement. */
+  group_saved: {
+    member_count: number
+  }
+  /** Un groupe est pré-invité : combien de personnes sont attendues. */
+  group_invited: {
+    session_id: string
+    invited_count: number
+  }
   /** Ouverture du journal des versions ; la version lue, rien d'autre. */
   changelog_opened: {
     version: string

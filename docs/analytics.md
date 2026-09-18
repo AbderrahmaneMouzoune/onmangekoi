@@ -46,6 +46,8 @@ Le seul identifiant transmis est l'**UUID du profil Supabase**, opaque, passé �
 | `vote_submitted`            | un vote est enregistré en base (pas une carte déjà votée)        | `session_id`, `value`, `kind`, `position`, `restaurant_count`                                  |
 | `session_closed`            | la session passe à `closed` sous les yeux d'un participant       | `session_id`, `reason` (`auto` · `deadline` · `host`), `participant_count`, `restaurant_count` |
 | `list_shared`               | copie du lien de partage d'une liste                             | `method`                                                                                       |
+| `group_saved`               | un groupe récurrent est sauvegardé depuis un classement          | `member_count`                                                                                 |
+| `group_invited`             | un groupe est pré-invité depuis la salle d'attente               | `session_id`, `invited_count`                                                                  |
 | `$pageview`                 | à chaque changement de route, sur la route **masquée**           | —                                                                                              |
 
 Le catalogue est typé (`src/lib/analytics/events.ts`) : une propriété non prévue ne compile pas. C'est le garde-fou qui empêche d'y glisser une donnée personnelle par inadvertance.

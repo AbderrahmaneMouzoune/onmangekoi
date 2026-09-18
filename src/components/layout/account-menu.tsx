@@ -3,6 +3,7 @@
 import {
   RiArrowDownSLine,
   RiBookmarkLine,
+  RiGroupLine,
   RiLogoutBoxRLine,
   RiUserSettingsLine,
 } from '@remixicon/react'
@@ -81,6 +82,10 @@ export function AccountMenu({ pseudo, isAnonymous }: AccountMenuProps) {
           <DropdownMenuLinkItem render={<Link href={router.lists()} />}>
             <RiBookmarkLine aria-hidden="true" />
             Mes listes
+          </DropdownMenuLinkItem>
+          <DropdownMenuLinkItem render={<Link href={router.groups()} />}>
+            <RiGroupLine aria-hidden="true" />
+            Mes groupes
           </DropdownMenuLinkItem>
 
           <DropdownMenuSeparator />

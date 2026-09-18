@@ -37,11 +37,12 @@ describe('AccountMenu', () => {
     expect(await screen.findByRole('menu', { name: /alex/i })).toBeInTheDocument()
   })
 
-  it('should keep the account page one click away, next to the lists', async () => {
+  it('should keep the account page one click away, next to the lists and groups', async () => {
     await openMenu()
 
     expect(screen.getByRole('menuitem', { name: 'Mon compte' })).toHaveAttribute('href', '/account')
     expect(screen.getByRole('menuitem', { name: 'Mes listes' })).toHaveAttribute('href', '/lists')
+    expect(screen.getByRole('menuitem', { name: 'Mes groupes' })).toHaveAttribute('href', '/groups')
   })
 
   it('should confirm before signing out', async () => {

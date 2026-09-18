@@ -1,6 +1,6 @@
 'use client'
 
-import { RiCheckLine } from '@remixicon/react'
+import { RiCheckLine, RiGroupLine } from '@remixicon/react'
 import { useActionState, useId, useMemo, useState } from 'react'
 
 import { createSessionAction } from '@/actions/sessions'
@@ -13,17 +13,21 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { RECENT_WINNER_WINDOW_DAYS, recentWinnerCount } from '@/domain/recent-winners'
+import { GROUPS_PER_SESSION_MAX } from '@/domain/schemas/group'
 import { SESSION_NAME_MAX } from '@/domain/schemas/session'
 import { rememberSessionEntry } from '@/lib/analytics/handoff'
 import { countLabel, plural } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import type { ListWithRestaurantIds } from '@/data-access/lists'
+import type { GroupWithMembers } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
 
 interface CreateSessionFormProps {
   lists: ListWithRestaurantIds[]
+  /** Groupes récurrents de la personne — vide, l'étape n'existe pas. */
+  groups: GroupWithMembers[]
   initialPage: RestaurantPage
   defaultName: string
   /** Anti-fatigue : ce qui a gagné récemment, et quand */
@@ -34,15 +38,22 @@ interface CreateSessionFormProps {
  * Créer une session, en trois étapes numérotées : un nom, les restos, une
  * échéance. Les restos viennent d'où on veut — une liste entière, le carnet,
  * Google — et se mélangent dans un seul panier.
+ *
+ * Une quatrième étape s'ajoute à qui a déjà sauvegardé un groupe : la
+ * réinviter d'un clic. Elle vient après les trois autres, pour que la
+ * silhouette prérendue — qui ne sait pas si on a des groupes — n'ait jamais à
+ * renuméroter quoi que ce soit.
  */
 export function CreateSessionForm({
   lists,
+  groups,
   initialPage,
   defaultName,
   recentWinners,
 }: CreateSessionFormProps) {
   const [state, formAction, isPending] = useActionState(createSessionAction, null)
   const [selectedListIds, setSelectedListIds] = useState<string[]>([])
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([])
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState<string[]>([])
   const [excludeRecent, setExcludeRecent] = useState(false)
 
@@ -61,6 +72,16 @@ export function CreateSessionForm({
   }, [lists, selectedListIds, selectedRestaurantIds, excludeRecent, recentWinners])
 
   const recentCount = recentWinnerCount(recentWinners)
+
+  function toggleGroup(id: string) {
+    setSelectedGroupIds((previous) =>
+      previous.includes(id)
+        ? previous.filter((value) => value !== id)
+        : previous.length >= GROUPS_PER_SESSION_MAX
+          ? previous
+          : [...previous, id]
+    )
+  }
 
   // L'action redirige : elle ne rend jamais la main. On note l'intention ici,
   // la page de session la transforme en `session_created` — et seulement si la
@@ -127,6 +148,34 @@ export function CreateSessionForm({
         }
       />
 
+      {groups.length > 0 && (
+        <SessionStep
+          number={4}
+          title={<h2 className="text-base font-semibold">{SESSION_STEPS.groups}</h2>}
+          hint={SESSION_STEPS.groupsHint}
+        >
+          {selectedGroupIds.map((id) => (
+            <input key={id} type="hidden" name="groupIds" value={id} />
+          ))}
+          <ul className="flex flex-col gap-2" aria-label="Mes groupes">
+            {groups.map((group) => (
+              <li key={group.id}>
+                <GroupToggle
+                  name={group.name}
+                  memberCount={group.members.length}
+                  selected={selectedGroupIds.includes(group.id)}
+                  onToggle={() => toggleGroup(group.id)}
+                />
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted-foreground">
+            Les membres reçoivent une invitation en attente. Ils ne comptent comme participants
+            qu’une fois la session ouverte — personne ne bloque le vote sans être là.
+          </p>
+        </SessionStep>
+      )}
+
       <FormMessage error={state?.error} />
 
       <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md">
@@ -143,6 +192,48 @@ export function CreateSessionForm({
         </Button>
       </div>
     </form>
+  )
+}
+
+interface GroupToggleProps {
+  name: string
+  memberCount: number
+  selected: boolean
+  onToggle: () => void
+}
+
+/** Un groupe à pré-inviter, coché d'un bloc comme une liste de favoris. */
+function GroupToggle({ name, memberCount, selected, onToggle }: GroupToggleProps) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={selected}
+      onClick={onToggle}
+      className={cn(
+        'flex w-full items-center justify-between gap-3 rounded-lg border p-3.5 text-left transition-colors',
+        selected ? 'border-brand bg-brand-soft' : 'border-line bg-surface hover:bg-surface-2'
+      )}
+    >
+      <span className="flex min-w-0 items-center gap-3">
+        <span
+          aria-hidden="true"
+          className={cn(
+            'flex size-5 shrink-0 items-center justify-center rounded-full border',
+            selected ? 'border-brand bg-brand text-on-brand' : 'border-line-strong'
+          )}
+        >
+          {selected && <RiCheckLine className="size-3.5" />}
+        </span>
+        <span className="flex min-w-0 items-center gap-2">
+          <RiGroupLine aria-hidden="true" className="size-4 shrink-0 text-brand" />
+          <span className="truncate font-medium">{name}</span>
+        </span>
+      </span>
+      <span className="shrink-0 font-mono text-xs text-muted-foreground tabular">
+        {countLabel(memberCount, 'membre')}
+      </span>
+    </button>
   )
 }
 

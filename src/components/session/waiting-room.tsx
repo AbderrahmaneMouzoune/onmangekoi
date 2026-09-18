@@ -7,6 +7,7 @@ import { deleteSessionAction, launchSessionAction, leaveSessionAction } from '@/
 import { ConnectionIndicator } from '@/components/session/connection-indicator'
 import { InviteCard } from '@/components/session/invite-card'
 import { ParticipantList } from '@/components/session/participant-list'
+import { PendingInvitees } from '@/components/session/pending-invitees'
 import { SessionRestaurantsPanel } from '@/components/session/session-restaurants-panel'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
@@ -15,6 +16,8 @@ import { TwoStepButton } from '@/components/ui/two-step-button'
 import { displayPseudo } from '@/lib/format'
 
 import type {
+  GroupWithMembers,
+  InvitationWithProfile,
   ParticipantWithProfile,
   Session,
   SessionRestaurantWithRestaurant,
@@ -35,6 +38,10 @@ interface WaitingRoomProps {
   /** Première page du catalogue, pour le sélecteur de restaurants */
   restaurantCatalog: RestaurantPage | null
   connection: ConnectionState
+  /** Invités pré-ajoutés qui n'ont pas encore ouvert la session (host). */
+  invitations: InvitationWithProfile[]
+  /** Groupes du host, pour en inviter un depuis la salle d'attente. */
+  groups: GroupWithMembers[]
   onLaunched: (session: Session) => void
   /** Resynchronise la salle après un ajout ou un retrait de restaurant */
   onRestaurantsChanged: () => void
@@ -50,6 +57,8 @@ export function WaitingRoom({
   restaurants,
   restaurantCatalog,
   connection,
+  invitations,
+  groups,
   onLaunched,
   onRestaurantsChanged,
 }: WaitingRoomProps) {
@@ -114,6 +123,17 @@ export function WaitingRoom({
       />
 
       <ParticipantList participants={participants} hostId={session.host_id} meId={meId} />
+
+      {isHost && (
+        <PendingInvitees
+          sessionId={session.id}
+          invitations={invitations}
+          groups={groups}
+          arrivedIds={participants
+            .map((participant) => participant.profile_id)
+            .filter((id): id is string => id !== null)}
+        />
+      )}
 
       <FormMessage error={error} />
 
