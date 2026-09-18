@@ -50,6 +50,7 @@ function renderDeck(props: Partial<React.ComponentProps<typeof VoteDeck>> = {}) 
       sessionId="session-1"
       restaurants={deckOf('Chez Marcel', 'Sushi Sakura')}
       initialVotedIds={[]}
+      lastWins={{}}
       initialSuperlikeUsed={false}
       initialSuperDislikeUsed={false}
       onFinished={vi.fn()}

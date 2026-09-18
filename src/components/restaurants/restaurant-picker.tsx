@@ -10,11 +10,13 @@ import { useRestaurantSources } from '@/components/restaurants/restaurant-source
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { NO_RECENT_WINNERS, recentWinLabel } from '@/domain/recent-winners'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { RecentWinnerDates } from '@/domain/recent-winners'
 
 interface RestaurantPickerProps {
   /** Première page, chargée côté serveur */
@@ -24,6 +26,10 @@ interface RestaurantPickerProps {
   onChange: (ids: string[]) => void
   /** Ids déjà présents ailleurs (ex. via une liste) : affichés cochés, non modifiables */
   lockedIds?: string[]
+  /** Anti-fatigue : date du dernier sacre, par restaurant — badgée sur la ligne */
+  recentWinners?: RecentWinnerDates
+  /** Anti-fatigue actif : les gagnants récents sont écartés, donc ni cochés ni cochables */
+  excludeRecent?: boolean
   /** name des inputs hidden pour un envoi via formulaire */
   inputName?: string
   emptyLabel?: string
@@ -34,6 +40,8 @@ export function RestaurantPicker({
   value,
   onChange,
   lockedIds = [],
+  recentWinners = NO_RECENT_WINNERS,
+  excludeRecent = false,
   inputName,
   emptyLabel = 'Aucun restaurant ne correspond.',
 }: RestaurantPickerProps) {
@@ -98,8 +106,13 @@ export function RestaurantPicker({
     })
   }
 
+  /** Écarté par l'anti-fatigue : la ligne se voit, mais ne se coche plus. */
+  function isExcluded(id: string) {
+    return excludeRecent && recentWinners[id] !== undefined
+  }
+
   function toggle(id: string) {
-    if (locked.has(id)) return
+    if (locked.has(id) || isExcluded(id)) return
     onChange(selected.has(id) ? value.filter((v) => v !== id) : [...value, id])
   }
 
@@ -115,13 +128,16 @@ export function RestaurantPicker({
         ? prev
         : { ...prev, items: [restaurant, ...prev.items] }
     )
-    if (!locked.has(restaurant.id) && !selected.has(restaurant.id)) {
+    if (!locked.has(restaurant.id) && !selected.has(restaurant.id) && !isExcluded(restaurant.id)) {
       onChange([...value, restaurant.id])
     }
     setIsAdding(false)
   }
 
+  // Un resto écarté par l'anti-fatigue reste dans `value` — décocher la case
+  // le fait revenir — mais il n'a plus à s'afficher comme retenu.
   const selectedRestaurants = value
+    .filter((id) => !isExcluded(id))
     .map((id) => known.get(id))
     .filter((r): r is Restaurant => Boolean(r))
 
@@ -251,22 +267,25 @@ export function RestaurantPicker({
                 </li>
               )}
               {page.items.map((restaurant) => {
+                const excluded = isExcluded(restaurant.id)
                 const isLocked = locked.has(restaurant.id)
-                const isSelected = isLocked || selected.has(restaurant.id)
+                const isSelected = !excluded && (isLocked || selected.has(restaurant.id))
+                const wonAt = recentWinners[restaurant.id]
                 return (
                   <li key={restaurant.id}>
                     <button
                       type="button"
                       role="checkbox"
                       aria-checked={isSelected}
-                      aria-disabled={isLocked || undefined}
+                      aria-disabled={isLocked || excluded || undefined}
                       onClick={() => toggle(restaurant.id)}
                       className={cn(
                         'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors',
                         isSelected ? 'bg-brand-soft' : 'hover:bg-surface-2',
                         // `opacity` sur du texte casse le contraste : la ligne
                         // verrouillée se grise avec une couleur, qui le tient.
-                        isLocked && 'cursor-default text-ink-muted'
+                        (isLocked || excluded) && 'cursor-default text-ink-muted',
+                        excluded && 'hover:bg-transparent'
                       )}
                     >
                       <span
@@ -279,13 +298,27 @@ export function RestaurantPicker({
                         {isSelected && <RiCheckLine className="size-3.5" />}
                       </span>
                       <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-sm font-medium">{restaurant.name}</span>
+                        <span
+                          className={cn('truncate text-sm font-medium', excluded && 'line-through')}
+                        >
+                          {restaurant.name}
+                        </span>
                         {restaurant.description && (
                           <span className="truncate text-xs text-muted-foreground">
                             {restaurant.description}
                           </span>
                         )}
                       </span>
+                      {wonAt && (
+                        <span
+                          className={cn(
+                            'shrink-0 rounded-full px-2 py-0.5 text-[0.68rem] font-medium',
+                            excluded ? 'bg-surface-2 text-ink-muted' : 'bg-fav-soft text-fav'
+                          )}
+                        >
+                          {excluded ? 'Écarté' : recentWinLabel(wonAt)}
+                        </span>
+                      )}
                       {restaurant.cuisine_type && (
                         <span className="shrink-0 font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
                           {restaurant.cuisine_type}

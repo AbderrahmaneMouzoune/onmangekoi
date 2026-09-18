@@ -30,6 +30,11 @@ export const CreateSessionSchema = z
     ),
     /** « à 12:00 » : l'instant est calculé par le navigateur, seul à connaître son fuseau. */
     closesAt: z.preprocess(absent, z.iso.datetime().optional()),
+    /**
+     * Anti-fatigue. Une case décochée n'envoie rien du tout : le `null` que
+     * rend `formData.get` se lit comme un non, et l'absence du champ aussi.
+     */
+    excludeRecentWinners: z.coerce.boolean().optional(),
   })
   .refine((data) => data.listIds.length + data.restaurantIds.length > 0, {
     message: 'Sélectionne au moins une liste ou un restaurant',
