@@ -11,6 +11,7 @@ import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
+import { NO_FILTERS, restaurantFiltersToParams } from '@/domain/restaurant-filters'
 import { SESSION_NAME_MAX } from '@/domain/schemas/session'
 import { rememberSessionEntry } from '@/lib/analytics/handoff'
 import { countLabel } from '@/lib/format'
@@ -18,14 +19,36 @@ import { cn } from '@/lib/utils'
 
 import type { ListWithRestaurantIds } from '@/data-access/lists'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { RestaurantFilters } from '@/domain/restaurant-filters'
 
 interface CreateSessionFormProps {
   lists: ListWithRestaurantIds[]
   initialPage: RestaurantPage
   defaultName: string
+  /** Filtres lus dans l'URL, déjà appliqués à `initialPage` */
+  initialFilters?: RestaurantFilters
 }
 
-export function CreateSessionForm({ lists, initialPage, defaultName }: CreateSessionFormProps) {
+/**
+ * Reflète les filtres dans la barre d'adresse — `?budget=2&tags=vegan` — pour
+ * qu'un tri se partage tel quel.
+ *
+ * `history.replaceState` plutôt qu'un `router.replace` : l'URL change sans
+ * relancer le rendu serveur, donc sans faire clignoter le formulaire ni
+ * risquer la sélection en cours. Elle n'a pas non plus à peupler l'historique :
+ * « Retour » doit ramener à l'accueil, pas dérouler chaque clic sur un chip.
+ */
+function syncFiltersToUrl(filters: RestaurantFilters) {
+  const query = restaurantFiltersToParams(filters).toString()
+  window.history.replaceState(null, '', query ? `?${query}` : window.location.pathname)
+}
+
+export function CreateSessionForm({
+  lists,
+  initialPage,
+  defaultName,
+  initialFilters = NO_FILTERS,
+}: CreateSessionFormProps) {
   const [state, formAction, isPending] = useActionState(createSessionAction, null)
   const [selectedListIds, setSelectedListIds] = useState<string[]>([])
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState<string[]>([])
@@ -124,6 +147,8 @@ export function CreateSessionForm({ lists, initialPage, defaultName }: CreateSes
           onChange={setSelectedRestaurantIds}
           lockedIds={[...fromLists]}
           inputName="restaurantIds"
+          defaultFilters={initialFilters}
+          onFiltersChange={syncFiltersToUrl}
         />
       </div>
 

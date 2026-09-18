@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { RESTAURANT_NAME_MAX, RESTAURANT_NAME_MIN } from '@/domain/schemas/restaurant'
 
 import type { OpeningHours } from '@/domain/opening-hours'
+import type { RestaurantTag } from '@/domain/schemas/restaurant'
 import type { GeoPoint } from '@/lib/maps'
 
 /**
@@ -27,6 +28,11 @@ export interface PlaceResult {
   cuisineType: string | null
   priceLevel: number | null
   location: GeoPoint | null
+  /**
+   * Régimes servis. Google n'en connaît qu'un — `servesVegetarianFood` — et ne
+   * le renseigne pas partout : la liste est donc souvent vide, jamais fausse.
+   */
+  tags: RestaurantTag[]
   description: string | null
   website: string | null
   openingHours: OpeningHours | null
@@ -95,6 +101,7 @@ const GooglePlaceSchema = z
       .loose()
       .optional(),
     photos: z.array(z.object({ name: z.string().optional() }).loose()).optional(),
+    servesVegetarianFood: z.boolean().optional(),
   })
   .loose()
 
@@ -189,6 +196,16 @@ export function cityFromPlace(place: GooglePlace): string | null {
   return clean(locality?.longText) ?? clean(sublocality?.longText)
 }
 
+/**
+ * Régimes déduits de la fiche Google. Seul `servesVegetarianFood` existe, et
+ * seulement sur le détail d'un lieu : une recherche rend toujours un tableau
+ * vide. `false` et l'absence de réponse se valent — on ne déclare un régime
+ * que lorsque Google l'affirme.
+ */
+export function tagsFromPlace(place: GooglePlace): RestaurantTag[] {
+  return place.servesVegetarianFood === true ? ['vegetarian'] : []
+}
+
 /** Coordonnées, ou `null` si Google ne les donne pas ou les donne hors bornes. */
 export function locationFromPlace(place: GooglePlace): GeoPoint | null {
   const lat = place.location?.latitude
@@ -250,6 +267,7 @@ export function mapPlace(place: GooglePlace): PlaceResult | null {
     cuisineType: cuisineFromPlace(place),
     priceLevel: priceLevelFromPlace(place),
     location: locationFromPlace(place),
+    tags: tagsFromPlace(place),
     description: clean(place.editorialSummary?.text),
     // La base n'accepte qu'un lien HTTP(S) : un `websiteUri` exotique est
     // écarté ici plutôt que d'être silencieusement effacé par la RPC.

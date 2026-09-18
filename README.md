@@ -88,6 +88,7 @@ Chaque restaurant peut porter une photo, une adresse, un site, des coordonnées 
 | `website`        | HTTP(S)                                                                               | bouton « Le site » sur le gagnant                |
 | `location`       | `{"lat": number, "lng": number}`                                                      | lien d'itinéraire et mini-carte du gagnant       |
 | `opening_hours`  | `{"timezone"?: string, "periods": [{"day": 0-6, "open": "HH:MM", "close": "HH:MM"}]}` | badge « ouvert / fermé » sur la carte de vote    |
+| `tags`           | `text[]` parmi `vegetarian`, `vegan`, `halal`, `kosher`, `gluten_free`                | filtre « régime », chips sur la carte de vote    |
 
 `day` suit `Date#getDay` (0 = dimanche) ; une période dont la fermeture précède l'ouverture passe minuit (`22:00 → 02:00`), y compris par-dessus la fin de semaine. Le fuseau est celui du restaurant quand il est connu, celui du visiteur sinon. Les formes `jsonb` sont validées en base (`is_geo_point`, `is_opening_hours`) **et** à la lecture : une donnée importée reste une donnée externe.
 
@@ -97,11 +98,11 @@ La mini-carte du gagnant est un bloc de 2×2 tuiles [OpenStreetMap](https://www.
 
 ## Base de restaurants
 
-| Source   | Origine                                              | Qui peut modifier |
-| -------- | ---------------------------------------------------- | ----------------- |
-| `seed`   | livrée avec le schéma                                | personne          |
-| `manual` | ajoutée depuis l'app (nom, cuisine, adresse, budget) | son créateur      |
-| `google` | importée depuis Google Places                        | son importateur   |
+| Source   | Origine                                                       | Qui peut modifier |
+| -------- | ------------------------------------------------------------- | ----------------- |
+| `seed`   | livrée avec le schéma                                         | personne          |
+| `manual` | ajoutée depuis l'app (nom, cuisine, adresse, budget, régimes) | son créateur      |
+| `google` | importée depuis Google Places                                 | son importateur   |
 
 Le formulaire « Ajouter un resto » est disponible partout où l'on choisit des restaurants — session, liste, liste partagée — et le resto créé est sélectionné aussitôt, sans rechargement.
 
@@ -120,6 +121,8 @@ Quand `GOOGLE_PLACES_API_KEY` est configurée, un onglet **Google** apparaît à
 
 L'import remplit la fiche décrite plus haut : `photo_url`, `website`, `location`, `opening_hours` et `description`. Un lieu réimporté rafraîchit ces champs sans jamais en effacer un déjà connu — ce qui fait aussi office d'entretien, l'adresse d'une photo Google n'étant pas éternelle.
 
+Google ne connaît qu'un régime alimentaire, `servesVegetarianFood`. Il est demandé sur le détail d'un lieu, au même palier de facturation que le résumé déjà demandé : un import arrive donc tagué « végétarien » quand Google l'affirme, et ce régime s'ajoute à ceux déjà posés à la main au lieu de les remplacer.
+
 Le fuseau des horaires n'est pas demandé à Google : `opening_hours.timezone` reste absent et l'app raisonne dans celui du visiteur.
 
 **Deux masques de champs, deux factures.** Google facture au champ le plus cher demandé, et une recherche ramène dix résultats : elle ne demande donc que de quoi afficher une liste. Photo, site, horaires et résumé ne sont demandés que sur le détail d'un lieu — une fois, au clic sur « importer ». La photo coûte un appel de plus, pour convertir son nom de ressource en adresse servable : celle de l'endpoint media exigerait la clé pour être chargée, on stocke donc le `photoUri` qu'il renvoie, servi par Google sans clé et sur un hôte de `ALLOWED_IMAGE_HOSTS`.
@@ -136,6 +139,24 @@ Le fuseau des horaires n'est pas demandé à Google : `opening_hours.timezone` r
 L'ancienne « Places API » ne suffit pas : c'est **Places API (New)** qu'il faut activer, les deux se ressemblant beaucoup dans la console.
 
 Sans clé, l'onglet n'apparaît pas et le reste de l'app fonctionne à l'identique.
+
+## Filtres du catalogue
+
+Trois filtres au-dessus du sélecteur de restaurants, à la création d'une session comme d'une liste. Ils se combinent, et leur état se lit dans l'URL de la création de session — un lien part donc déjà trié.
+
+| Filtre   | Paramètre               | Ce qu'il garde                                       |
+| -------- | ----------------------- | ---------------------------------------------------- |
+| Budget   | `budget=1`…`4`          | `price_level` inférieur ou égal au cran choisi       |
+| Régime   | `tags=vegan,halal`      | les restos qui servent **tous** les régimes demandés |
+| Distance | `km=0.5`, `1`, `2`, `5` | les restos à moins de n km de la position            |
+
+Tout est filtré **en base**, par la RPC `search_restaurants` : c'est ce qui garde la pagination juste. Une page réduite après coup côté navigateur sauterait des résultats à chaque « Afficher plus ». La distance est une haversine sur `location` (`geo_distance_km`), sans PostGIS : un rayon de quartier n'en demande pas tant. Rayon actif, le classement passe du plus proche au plus loin.
+
+**Une donnée absente n'est pas une donnée favorable.** Budget inconnu sous « ≤ €€ », aucun régime déclaré sous « vegan », coordonnées manquantes sous un rayon : le resto sort des résultats, et l'interface le dit sous les chips plutôt que de laisser croire à un catalogue plus pauvre qu'il n'est.
+
+**La distance est optionnelle de bout en bout.** Sans géolocalisation — navigateur qui ne sait pas faire, ou refus — le filtre n'apparaît pas du tout. La position n'est jamais stockée ni mesurée, ne sert qu'à la requête en cours, et elle est arrondie à ~110 m avant de servir de clé de cache : deux personnes du même bureau partagent la même entrée au lieu d'en créer une par GPS. Un lien portant `?km=1` arrive donc sans filtre distance tant que personne n'a autorisé sa position — le serveur, lui, ne la connaîtra jamais.
+
+Les régimes (`vegetarian`, `vegan`, `halal`, `kosher`, `gluten_free`) sont une liste blanche tenue **en base** par `restaurant_tag_values()`, que la contrainte `restaurants_tags_allowed` fait respecter : en ajouter un demande une migration. Ils se déclarent à l'ajout manuel d'un resto, et la carte de vote les affiche.
 
 ## Stack
 

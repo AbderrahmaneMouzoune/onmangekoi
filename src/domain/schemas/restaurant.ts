@@ -11,6 +11,31 @@ export const PRICE_LEVELS = [1, 2, 3, 4] as const
 export const PRICE_LEVEL_LABELS: Record<number, string> = { 1: '€', 2: '€€', 3: '€€€', 4: '€€€€' }
 
 /**
+ * Régimes qu'un resto sait servir. Même liste qu'en base
+ * (`restaurant_tag_values()`), qui la fait respecter par contrainte : ajouter
+ * un régime demande donc une migration, pas seulement une ligne ici.
+ *
+ * L'ordre est celui d'affichage — la base, elle, range les régimes par ordre
+ * alphabétique pour que deux restos tagués pareil aient le même tableau.
+ */
+export const RESTAURANT_TAGS = ['vegetarian', 'vegan', 'halal', 'kosher', 'gluten_free'] as const
+export type RestaurantTag = (typeof RESTAURANT_TAGS)[number]
+
+export const RESTAURANT_TAG_LABELS: Record<RestaurantTag, string> = {
+  vegetarian: 'Végétarien',
+  vegan: 'Vegan',
+  halal: 'Halal',
+  kosher: 'Casher',
+  gluten_free: 'Sans gluten',
+}
+
+/** Régimes d'un formulaire : absents, dédoublonnés, jamais inventés. */
+export const RestaurantTagsSchema = z
+  .union([z.array(z.enum(RESTAURANT_TAGS)), z.null()])
+  .default(null)
+  .transform((value) => [...new Set(value ?? [])])
+
+/**
  * Champ facultatif venant d'un formulaire : `FormData.get` renvoie `null`
  * quand l'input est absent et `''` quand il est vide. Les deux valent
  * « non renseigné », et la valeur normalisée est `null` — jamais `''`, pour
@@ -57,6 +82,7 @@ export const CreateRestaurantSchema = z.object({
     `La ville ne peut pas dépasser ${RESTAURANT_CITY_MAX} caractères`
   ),
   priceLevel: PriceLevelSchema,
+  tags: RestaurantTagsSchema,
 })
 
 /** Recherche de doublons : au moins deux caractères, sinon rien à comparer. */

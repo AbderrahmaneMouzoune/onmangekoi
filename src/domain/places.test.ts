@@ -140,6 +140,7 @@ describe('mapPlace', () => {
       cuisineType: 'Japonais',
       priceLevel: 2,
       location: { lat: 45.76, lng: 4.83 },
+      tags: [],
       description: null,
       website: null,
       openingHours: null,

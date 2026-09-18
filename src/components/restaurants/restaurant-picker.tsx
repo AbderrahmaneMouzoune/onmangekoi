@@ -6,15 +6,19 @@ import { useEffect, useId, useMemo, useRef, useState, useTransition } from 'reac
 import { searchRestaurantsAction } from '@/actions/restaurants'
 import { AddRestaurantForm } from '@/components/restaurants/add-restaurant-form'
 import { GooglePlacesResults } from '@/components/restaurants/google-places-results'
+import { RestaurantFiltersBar } from '@/components/restaurants/restaurant-filters'
 import { useRestaurantSources } from '@/components/restaurants/restaurant-sources'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { countActiveFilters, NO_FILTERS } from '@/domain/restaurant-filters'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { useGeolocation } from '@/hooks/use-geolocation'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { RestaurantFilters } from '@/domain/restaurant-filters'
 
 interface RestaurantPickerProps {
   /** Première page, chargée côté serveur */
@@ -27,6 +31,10 @@ interface RestaurantPickerProps {
   /** name des inputs hidden pour un envoi via formulaire */
   inputName?: string
   emptyLabel?: string
+  /** Filtres de départ — ceux de l'URL, déjà appliqués à `initialPage` */
+  defaultFilters?: RestaurantFilters
+  /** Appelé à chaque changement de filtre, pour les refléter dans l'URL */
+  onFiltersChange?: (filters: RestaurantFilters) => void
 }
 
 export function RestaurantPicker({
@@ -36,6 +44,8 @@ export function RestaurantPicker({
   lockedIds = [],
   inputName,
   emptyLabel = 'Aucun restaurant ne correspond.',
+  defaultFilters = NO_FILTERS,
+  onFiltersChange,
 }: RestaurantPickerProps) {
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 300)
@@ -51,7 +61,8 @@ export function RestaurantPicker({
   const [known, setKnown] = useState<Map<string, Restaurant>>(
     () => new Map(initialPage.items.map((r) => [r.id, r]))
   )
-  const lastQuery = useRef('')
+  const [filters, setFilters] = useState<RestaurantFilters>(defaultFilters)
+  const geolocation = useGeolocation()
 
   function remember(items: Restaurant[]) {
     setKnown((prev) => {
@@ -64,11 +75,38 @@ export function RestaurantPicker({
   const selected = useMemo(() => new Set(value), [value])
   const locked = useMemo(() => new Set(lockedIds), [lockedIds])
 
+  const origin = geolocation.position
+
+  /**
+   * Ce qui définit une recherche. Tout est envoyé à la base, filtres compris :
+   * c'est la seule façon de garder la pagination juste quand ils se combinent.
+   * Le rayon n'a de sens qu'avec une position — sans elle, il ne part pas.
+   */
+  const criteria = useMemo(
+    () => ({
+      query: debouncedQuery,
+      priceMax: filters.priceMax,
+      tags: filters.tags,
+      withinKm: origin ? filters.withinKm : null,
+      origin,
+    }),
+    [debouncedQuery, filters.priceMax, filters.tags, filters.withinKm, origin]
+  )
+  const criteriaKey = JSON.stringify(criteria)
+  /**
+   * La première page vient du serveur, déjà filtrée par ce que portait l'URL :
+   * la relancer au montage serait un aller-retour pour rien.
+   */
+  const lastCriteria = useRef(criteriaKey)
+
   useEffect(() => {
-    if (debouncedQuery === lastQuery.current) return
-    lastQuery.current = debouncedQuery
+    if (criteriaKey === lastCriteria.current) return
+    lastCriteria.current = criteriaKey
     startSearch(async () => {
-      const result = await searchRestaurantsAction({ query: debouncedQuery, offset: 0 })
+      const result = await searchRestaurantsAction({ ...criteria, offset: 0 })
+      // Une recherche plus récente est partie pendant l'aller-retour : c'est
+      // elle qui fait foi, ce résultat-ci est déjà périmé.
+      if (lastCriteria.current !== criteriaKey) return
       if (!result.ok) {
         setError(result.error)
         return
@@ -77,14 +115,11 @@ export function RestaurantPicker({
       remember(result.data.items)
       setPage(result.data)
     })
-  }, [debouncedQuery])
+  }, [criteria, criteriaKey])
 
   function loadMore() {
     startLoadMore(async () => {
-      const result = await searchRestaurantsAction({
-        query: debouncedQuery,
-        offset: page.nextOffset,
-      })
+      const result = await searchRestaurantsAction({ ...criteria, offset: page.nextOffset })
       if (!result.ok) {
         setError(result.error)
         return
@@ -96,6 +131,11 @@ export function RestaurantPicker({
         nextOffset: result.data.nextOffset,
       }))
     })
+  }
+
+  function changeFilters(next: RestaurantFilters) {
+    setFilters(next)
+    onFiltersChange?.(next)
   }
 
   function toggle(id: string) {
@@ -203,6 +243,12 @@ export function RestaurantPicker({
           <GooglePlacesResults query={debouncedQuery} onImported={addAndSelect} />
         ) : (
           <>
+            <RestaurantFiltersBar
+              value={filters}
+              onChange={changeFilters}
+              geolocation={geolocation}
+            />
+
             {isAdding ? (
               <AddRestaurantForm
                 defaultName={query.trim()}
@@ -235,18 +281,35 @@ export function RestaurantPicker({
               {page.items.length === 0 && !isSearching && (
                 <li className="px-3 py-6 text-center text-sm text-muted-foreground">
                   {emptyLabel}
-                  {!isAdding && (
+                  {/* Filtres posés : le catalogue n'est pas vide, il est
+                      restreint — proposer de les lever avant de proposer
+                      d'ajouter un resto qui existe peut-être déjà. */}
+                  {countActiveFilters(filters) > 0 ? (
                     <>
                       {' '}
                       <button
                         type="button"
-                        onClick={() => setIsAdding(true)}
+                        onClick={() => changeFilters(NO_FILTERS)}
                         className="font-semibold text-brand underline-offset-4 hover:underline"
                       >
-                        Ajoute-le
+                        Efface les filtres
                       </button>
                       .
                     </>
+                  ) : (
+                    !isAdding && (
+                      <>
+                        {' '}
+                        <button
+                          type="button"
+                          onClick={() => setIsAdding(true)}
+                          className="font-semibold text-brand underline-offset-4 hover:underline"
+                        >
+                          Ajoute-le
+                        </button>
+                        .
+                      </>
+                    )
                   )}
                 </li>
               )}

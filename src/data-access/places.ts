@@ -54,6 +54,10 @@ const DETAILS_FIELDS = [
   'websiteUri',
   'regularOpeningHours',
   'photos',
+  // Seul régime que Google expose. Il appartient au même palier de
+  // facturation qu'`editorialSummary`, déjà demandé ici : le détail ne coûte
+  // donc pas un centime de plus, et un import arrive tagué « végétarien ».
+  'servesVegetarianFood',
 ]
 
 const SEARCH_FIELD_MASK = SEARCH_FIELDS.map((field) => `places.${field}`).join(',')

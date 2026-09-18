@@ -3,6 +3,7 @@
 import { RiMapPin2Line } from '@remixicon/react'
 import Image from 'next/image'
 
+import { RESTAURANT_TAG_LABELS, RESTAURANT_TAGS } from '@/domain/schemas/restaurant'
 import { useOpenNow } from '@/hooks/use-open-now'
 import { remoteImageUrl } from '@/lib/images'
 import { cn } from '@/lib/utils'
@@ -37,6 +38,9 @@ export function VoteCard({
   const place = [restaurant.address, restaurant.city].filter(Boolean).join(', ')
   const photo = remoteImageUrl(restaurant.photo_url)
   const openNow = useOpenNow(restaurant.opening_hours)
+  // Ordre du catalogue plutôt que celui de la base, qui range par ordre
+  // alphabétique : « Végétarien » avant « Sans gluten », comme dans les filtres.
+  const tags = RESTAURANT_TAGS.filter((tag) => restaurant.tags.includes(tag))
 
   return (
     <article
@@ -96,6 +100,18 @@ export function VoteCard({
         </h2>
         {restaurant.description && (
           <p className="line-clamp-3 text-base text-chalk/80">{restaurant.description}</p>
+        )}
+        {tags.length > 0 && (
+          <ul aria-label="Régimes servis" className="flex flex-wrap gap-1.5">
+            {tags.map((tag) => (
+              <li
+                key={tag}
+                className="rounded-full bg-chalk/10 px-2.5 py-1 text-xs font-semibold text-chalk"
+              >
+                {RESTAURANT_TAG_LABELS[tag]}
+              </li>
+            ))}
+          </ul>
         )}
         {place && (
           <p className="flex items-center gap-1.5 text-sm text-chalk-muted">
