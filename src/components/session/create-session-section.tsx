@@ -11,6 +11,7 @@ import { getCurrentUser } from '@/data-access/auth'
 import { getListsWithRestaurantIds } from '@/data-access/lists'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
+import { parseRestaurantFilters } from '@/domain/restaurant-filters'
 import { cn } from '@/lib/utils'
 
 const DAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
@@ -21,23 +22,41 @@ function defaultSessionName(now = new Date()): string {
   return `${meal} du ${DAY_NAMES[now.getDay()]}`
 }
 
+interface CreateSessionSectionProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
+
 /**
  * Formulaire de création de session. Personnalisé (les listes de la personne)
  * et daté (le nom par défaut dépend de l'heure) : il ne peut pas être prérendu
  * et vit donc dans son `<Suspense>`. Le catalogue de restaurants, lui, sort du
- * cache partagé.
+ * cache partagé — filtres compris, puisqu'ils font partie de la clé de cache.
  */
-export async function CreateSessionSection() {
-  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+export async function CreateSessionSection({ searchParams }: CreateSessionSectionProps) {
+  const [supabase, user, params] = await Promise.all([
+    createServerClient(),
+    getCurrentUser(),
+    searchParams,
+  ])
   if (!user) redirect(router.setup(router.sessionNew()))
+
+  const filters = parseRestaurantFilters(params)
 
   const [lists, initialPage] = await Promise.all([
     getListsWithRestaurantIds(supabase, user.id),
-    getRestaurantCatalogPage(),
+    // Le rayon reste au vestiaire : le serveur ne connaît pas la position de
+    // la personne. Il s'applique dès que le navigateur la donne — d'ici là,
+    // un lien partagé avec `?km=1` arrive simplement sans filtre distance.
+    getRestaurantCatalogPage({ priceMax: filters.priceMax, tags: filters.tags }),
   ])
 
   return (
-    <CreateSessionForm lists={lists} initialPage={initialPage} defaultName={defaultSessionName()} />
+    <CreateSessionForm
+      lists={lists}
+      initialPage={initialPage}
+      defaultName={defaultSessionName()}
+      initialFilters={filters}
+    />
   )
 }
 

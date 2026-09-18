@@ -16,11 +16,14 @@ import {
   RESTAURANT_CUISINE_MAX,
   RESTAURANT_NAME_MAX,
   RESTAURANT_NAME_MIN,
+  RESTAURANT_TAG_LABELS,
+  RESTAURANT_TAGS,
 } from '@/domain/schemas/restaurant'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant } from '@/data-access/models'
+import type { RestaurantTag } from '@/domain/schemas/restaurant'
 
 interface AddRestaurantFormProps {
   /** Pré-remplit le nom avec ce que la personne cherchait. */
@@ -44,6 +47,7 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
   const [cuisineType, setCuisineType] = useState('')
   const [address, setAddress] = useState('')
   const [priceLevel, setPriceLevel] = useState<number | null>(null)
+  const [tags, setTags] = useState<RestaurantTag[]>([])
   const [error, setError] = useState<string | null>(null)
   /** Résultats gardés avec le nom qui les a produits : rien de périmé à l'écran. */
   const [similar, setSimilar] = useState<{ name: string; items: Restaurant[] }>({
@@ -76,13 +80,17 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
     if (name.trim().length < RESTAURANT_NAME_MIN || isSubmitting) return
     setError(null)
     startSubmit(async () => {
-      const result = await createRestaurantAction({ name, cuisineType, address, priceLevel })
+      const result = await createRestaurantAction({ name, cuisineType, address, priceLevel, tags })
       if (!result.ok) {
         setError(result.error)
         return
       }
       onAdded(result.data)
     })
+  }
+
+  function toggleTag(tag: RestaurantTag) {
+    setTags((prev) => (prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]))
   }
 
   function submitOnEnter(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -187,6 +195,36 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
                 )}
               >
                 {PRICE_LEVEL_LABELS[level]}
+              </button>
+            )
+          })}
+        </div>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="mb-1.5 text-sm leading-none font-medium text-ink">
+          Régime <span className="text-muted-foreground">(optionnel)</span>
+        </legend>
+        {/* Ce qu'on déclare ici alimente les filtres de la création de
+            session : un resto tagué évite un veto prévisible. */}
+        <div role="group" aria-label="Régime alimentaire" className="flex flex-wrap gap-1.5">
+          {RESTAURANT_TAGS.map((tag) => {
+            const isSelected = tags.includes(tag)
+            return (
+              <button
+                key={tag}
+                type="button"
+                role="checkbox"
+                aria-checked={isSelected}
+                onClick={() => toggleTag(tag)}
+                className={cn(
+                  'h-9 rounded-full border px-3 text-sm font-semibold transition-colors',
+                  isSelected
+                    ? 'border-brand bg-brand-soft text-brand-hover'
+                    : 'border-line-strong bg-surface text-ink-2 hover:bg-surface-2'
+                )}
+              >
+                {RESTAURANT_TAG_LABELS[tag]}
               </button>
             )
           })}

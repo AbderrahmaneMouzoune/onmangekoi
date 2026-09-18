@@ -4,7 +4,7 @@ import { LoginSchema, SetPasswordSchema } from './auth'
 import { CreateListSchema } from './list'
 import { ImportPlaceSchema, SearchPlacesSchema } from './place'
 import { PseudoSchema, SetupProfileSchema } from './profile'
-import { CreateRestaurantSchema, PriceLevelSchema } from './restaurant'
+import { CreateRestaurantSchema, PriceLevelSchema, RestaurantTagsSchema } from './restaurant'
 import { CreateSessionSchema, JoinSessionSchema } from './session'
 import { SubmitVoteSchema } from './vote'
 
@@ -133,6 +133,7 @@ describe('CreateRestaurantSchema', () => {
       address: null,
       city: null,
       priceLevel: null,
+      tags: [],
     })
   })
 
@@ -143,6 +144,24 @@ describe('CreateRestaurantSchema', () => {
     expect(
       CreateRestaurantSchema.safeParse({ name: 'Wok Garden', address: 'a'.repeat(201) }).success
     ).toBe(false)
+  })
+})
+
+describe('RestaurantTagsSchema', () => {
+  it('should keep the known diets, once each', () => {
+    expect(RestaurantTagsSchema.safeParse(['vegan', 'vegan', 'halal']).data).toEqual([
+      'vegan',
+      'halal',
+    ])
+  })
+
+  it('should treat a missing choice as « aucun régime »', () => {
+    expect(RestaurantTagsSchema.safeParse(null).data).toEqual([])
+    expect(RestaurantTagsSchema.safeParse(undefined).data).toEqual([])
+  })
+
+  it('should reject a diet the base would refuse anyway', () => {
+    expect(RestaurantTagsSchema.safeParse(['pizza']).success).toBe(false)
   })
 })
 

@@ -25,6 +25,7 @@ function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
     source: 'seed',
     price_level: null,
     place_id: null,
+    tags: [],
     ...overrides,
   }
 }
@@ -101,6 +102,20 @@ describe('VoteCard', () => {
     render(<VoteCard restaurant={restaurant()} index={1} total={3} />)
     expect(screen.queryByText('Ouvert')).not.toBeInTheDocument()
     expect(screen.queryByText('Fermé')).not.toBeInTheDocument()
+  })
+
+  it('should list the diets a restaurant serves', () => {
+    render(
+      <VoteCard restaurant={restaurant({ tags: ['gluten_free', 'vegan'] })} index={1} total={3} />
+    )
+    const list = screen.getByRole('list', { name: 'Régimes servis' })
+    // Ordre du catalogue, pas celui de la base : « Vegan » avant « Sans gluten »
+    expect(list.textContent).toBe('VeganSans gluten')
+  })
+
+  it('should say nothing about diets it does not know', () => {
+    render(<VoteCard restaurant={restaurant()} index={1} total={3} />)
+    expect(screen.queryByRole('list', { name: 'Régimes servis' })).not.toBeInTheDocument()
   })
 
   it('should render the photo of an allowed host as a decorative background', () => {
