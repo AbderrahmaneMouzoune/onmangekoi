@@ -7,13 +7,19 @@ import { deleteSessionAction, launchSessionAction, leaveSessionAction } from '@/
 import { ConnectionIndicator } from '@/components/session/connection-indicator'
 import { InviteCard } from '@/components/session/invite-card'
 import { ParticipantList } from '@/components/session/participant-list'
+import { PendingInvitees } from '@/components/session/pending-invitees'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
 import { TwoStepButton } from '@/components/ui/two-step-button'
 import { countLabel, displayPseudo } from '@/lib/format'
 
-import type { ParticipantWithProfile, Session } from '@/data-access/models'
+import type {
+  GroupWithMembers,
+  InvitationWithProfile,
+  ParticipantWithProfile,
+  Session,
+} from '@/data-access/models'
 import type { ConnectionState } from '@/hooks/use-session-room'
 
 const MIN_PARTICIPANTS = 2
@@ -27,6 +33,10 @@ interface WaitingRoomProps {
   qrSvg: string | null
   restaurantCount: number
   connection: ConnectionState
+  /** Invités pré-ajoutés qui n'ont pas encore ouvert la session (host). */
+  invitations: InvitationWithProfile[]
+  /** Groupes du host, pour en inviter un depuis la salle d'attente. */
+  groups: GroupWithMembers[]
   onLaunched: (session: Session) => void
 }
 
@@ -39,6 +49,8 @@ export function WaitingRoom({
   qrSvg,
   restaurantCount,
   connection,
+  invitations,
+  groups,
   onLaunched,
 }: WaitingRoomProps) {
   const [error, setError] = useState<string | null>(null)
@@ -95,6 +107,17 @@ export function WaitingRoom({
       )}
 
       <ParticipantList participants={participants} hostId={session.host_id} meId={meId} />
+
+      {isHost && (
+        <PendingInvitees
+          sessionId={session.id}
+          invitations={invitations}
+          groups={groups}
+          arrivedIds={participants
+            .map((participant) => participant.profile_id)
+            .filter((id): id is string => id !== null)}
+        />
+      )}
 
       <FormMessage error={error} />
 

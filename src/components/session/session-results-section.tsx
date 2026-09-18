@@ -2,6 +2,7 @@ import { RiTrophyLine } from '@remixicon/react'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 
+import { SaveGroupForm } from '@/components/groups/save-group-form'
 import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
 import { ResultsList } from '@/components/session/results-list'
 import { ShareResultsButton } from '@/components/session/share-results-button'
@@ -66,6 +67,7 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
             <Link href={router.sessionNew()} className={cn(buttonVariants())}>
               Nouvelle session
             </Link>
+            <SaveGroupForm sessionId={session.id} memberCount={participants.length} />
           </div>
         </>
       ) : (

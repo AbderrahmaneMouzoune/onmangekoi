@@ -15,6 +15,8 @@ import { captureEvent } from '@/lib/analytics/client'
 import { markOnce, takeSessionEntry } from '@/lib/analytics/handoff'
 
 import type {
+  GroupWithMembers,
+  InvitationWithProfile,
   ParticipantWithProfile,
   Session,
   SessionRestaurantWithRestaurant,
@@ -29,6 +31,10 @@ interface SessionRoomProps {
   inviteUrl: string
   /** QR code SVG du lien d'invitation, rendu côté serveur (host, salle d'attente) */
   qrSvg: string | null
+  /** Invités pré-ajoutés en attente — vide pour qui n'est pas le host. */
+  invitations: InvitationWithProfile[]
+  /** Groupes du host, à inviter depuis la salle d'attente. */
+  groups: GroupWithMembers[]
 }
 
 /**
@@ -43,6 +49,8 @@ export function SessionRoom({
   meId,
   inviteUrl,
   qrSvg,
+  invitations,
+  groups,
 }: SessionRoomProps) {
   const navigation = useRouter()
   const { session, participants, connection, refresh, setSession } = useSessionRoom({
@@ -150,6 +158,8 @@ export function SessionRoom({
           qrSvg={qrSvg}
           restaurantCount={restaurants.length}
           connection={connection}
+          invitations={invitations}
+          groups={groups}
           onLaunched={setSession}
         />
       )}

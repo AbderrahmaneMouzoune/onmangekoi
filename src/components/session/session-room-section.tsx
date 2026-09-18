@@ -4,6 +4,7 @@ import { SessionRoom } from '@/components/session/session-room'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
+import { getMyGroups, getSessionInvitations } from '@/data-access/groups'
 import {
   getSessionByParam,
   getSessionParticipants,
@@ -45,7 +46,15 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
 
   const url = inviteUrl(session)
   const isHost = session.host_id === user.id
-  const qrSvg = isHost && session.status === 'waiting' ? await qrCodeSvg(url) : null
+  const isWaitingHost = isHost && session.status === 'waiting'
+
+  // Invitations et groupes ne servent qu'au host, dans la salle d'attente :
+  // ailleurs, ce sont deux allers-retours pour rien.
+  const [qrSvg, invitations, groups] = await Promise.all([
+    isWaitingHost ? qrCodeSvg(url) : null,
+    isWaitingHost ? getSessionInvitations(supabase, session.id) : [],
+    isWaitingHost ? getMyGroups(supabase) : [],
+  ])
 
   return (
     <SessionRoom
@@ -56,6 +65,8 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
       meId={user.id}
       inviteUrl={url}
       qrSvg={qrSvg}
+      invitations={invitations}
+      groups={groups}
     />
   )
 }

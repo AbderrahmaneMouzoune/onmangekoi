@@ -13,6 +13,7 @@ describe('router', () => {
     expect(router.session('7K3M9P')).toBe('/sessions/7K3M9P')
     expect(router.sessionResults('7K3M9P')).toBe('/sessions/7K3M9P/results')
     expect(router.list('7K3M9P2QWX')).toBe('/lists/7K3M9P2QWX')
+    expect(router.groups()).toBe('/groups')
     expect(router.authConfirm()).toBe('/auth/confirm')
     expect(router.account({ auth: 'expired' })).toBe('/account?auth=expired')
     expect(router.changelog()).toBe('/nouveautes')

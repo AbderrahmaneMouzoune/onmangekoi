@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { GROUPS_PER_SESSION_MAX } from '@/domain/schemas/group'
 import { DEADLINE_MAX_MINUTES, DEADLINE_MIN_MINUTES } from '@/domain/session-deadline'
 
 export const SESSION_NAME_MAX = 100
@@ -18,6 +19,8 @@ export const CreateSessionSchema = z
       .max(SESSION_NAME_MAX, `Le nom ne peut pas dépasser ${SESSION_NAME_MAX} caractères`),
     listIds: z.array(z.uuid()).default([]),
     restaurantIds: z.array(z.uuid()).default([]),
+    /** Groupes récurrents à pré-inviter — des invitations, pas des participants. */
+    groupIds: z.array(z.uuid()).max(GROUPS_PER_SESSION_MAX).default([]),
     /** « dans 10 min » : la durée est résolue côté serveur, sur son horloge. */
     closesInMinutes: z.preprocess(
       absent,

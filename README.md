@@ -37,6 +37,23 @@ Les règles (jokers, session en cours, participant, restaurant valide) sont vér
 | Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)              |
 | Rejoindre           | Impossible une fois le vote lancé ; un participant existant retrouve sa session |
 
+## Groupes récurrents
+
+Les mêmes collègues votent chaque midi et retapaient le code à chaque session. À la fin d'une session, **« Sauvegarder ce groupe »** garde l'équipe du jour ; à la création de la suivante, **« Inviter un groupe »** la rappelle d'un clic.
+
+| Geste                 | Où                                | Ce qui se passe                                                                      |
+| --------------------- | --------------------------------- | ------------------------------------------------------------------------------------ |
+| Sauvegarder ce groupe | classement d'une session          | `create_group_from_session` recopie les participants — jamais une liste de noms      |
+| Inviter un groupe     | création de session, ou l'attente | `invite_group_to_session` pose une **invitation en attente** par membre              |
+| Rejoindre             | accueil, « On t'attend »          | l'invitation devient une participation, et disparaît                                 |
+| Quitter un groupe     | `/account` ou `/groups`           | `leave_group` — on n'est plus pré-invité, les sessions déjà rejointes ne bougent pas |
+
+**Une invitation n'est pas une participation.** C'est toute la règle : un membre pré-ajouté ne compte ni dans le nombre de participants, ni dans le quorum de lancement, ni dans les « 100 % ont voté » tant qu'il n'a pas ouvert la session. Sans cette séparation, une équipe de six pré-invités gèlerait le déjeuner de ceux qui sont là. La conversion se fait à un seul endroit — un trigger sur `session_participants` consomme l'invitation —, donc par n'importe quel chemin d'entrée : lien, code ou QR.
+
+Un groupe ne se crée **que depuis une session vécue** : impossible d'y ajouter quelqu'un qu'on n'a pas croisé. Seuls ses membres le voient, seul son propriétaire le renomme ou le supprime, et c'est la RLS qui le dit. Le propriétaire ne peut pas le quitter — il le supprime, sinon le groupe survivrait sans personne pour le tenir.
+
+Faute de notifications push (issue #7, qui attend le service worker de #11), l'invité est prévenu **dans l'app** : la session apparaît sur son accueil sous « On t'attend », avec un bouton pour la rejoindre ou la décliner. Le host, lui, voit les invités encore attendus dans la salle d'attente et garde son lien à copier.
+
 ## Vote chronométré
 
 Le blocage le plus courant en vrai usage n'est pas le désaccord, c'est l'attente : une session reste ouverte tant qu'il manque un votant. Le host peut donc poser une **échéance** à la création — « dans 10 min » ou « à 12:00 » —, et la base s'en charge sans que personne n'ait à revenir cliquer.
@@ -64,6 +81,7 @@ Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **s
 | Classement               | `/sessions/7K3M9P/results` | participants                  |
 | Invitation (lien + QR)   | `/join/7K3M9P`             | qui reçoit le lien ou le code |
 | Liste, côté propriétaire | `/lists/H4V2Q8ZX0M`        | propriétaire                  |
+| Mes groupes              | `/groups`                  | membres des groupes           |
 | Liste partagée           | `/l/H4V2Q8ZX0M`            | qui reçoit le lien            |
 
 | Objet   | Code          | Forme         |
@@ -180,8 +198,8 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ```
 src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], account, nouveautes, legal, auth, api/places)
-src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · account/ · restaurants/ · onboarding/ · changelog/
+src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], groups, account, nouveautes, legal, auth, api/places)
+src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · groups/ · account/ · restaurants/ · onboarding/ · changelog/
 src/content/changelog/   notes de version produit (schéma Zod + entrées), lues par /nouveautes et son flux RSS
 src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
@@ -191,7 +209,7 @@ src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`)
                          images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache, version (semver), changelog-seen
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
 src/hooks/               Realtime de session, compte à rebours, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
-supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/extend/results), purge, RGPD
+supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/extend/results, groupes), purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
 ```
@@ -244,6 +262,7 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - **Aperçu d'invitation** (`session_preview`) : un visiteur non authentifié — typiquement le robot qui déplie le lien dans une conversation — n'obtient un aperçu par code court que sur une session **en attente**, et seulement le nom, le pseudo du host et deux compteurs. Rejoindre exige toujours un compte.
 - **Toutes les écritures métier passent par des RPC** transactionnelles (`create_session`, `join_session`, `launch_session`, `submit_vote`, `close_session`) qui revérifient les règles côté base.
 - Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat.
+- Un **groupe** n'est visible que de ses membres et modifiable que par son propriétaire (RLS) ; la création, l'invitation et le départ passent par des RPC (`create_group_from_session`, `invite_group_to_session`, `leave_group`) qui revérifient tout en base. Une invitation en attente n'ouvre aucun accès à la session : l'invité n'en lit que le nécessaire, via `my_session_invitations`.
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.
 - La clé Google Places ne quitte jamais le serveur, et aucune policy RLS n'ouvre l'écriture en `source = 'google'` : `upsert_restaurant_from_place` est le seul chemin. Les corps d'erreur renvoyés par Google restent dans les logs serveur.
 - Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision.
@@ -256,10 +275,10 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 
 L'app est utilisable avec un simple pseudo, et les deux droits qui comptent au quotidien sont en libre-service depuis « Mon compte » :
 
-| Droit                | Chemin            | Effet                                                                                                                       |
-| -------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Export (portabilité) | `/account/export` | JSON téléchargeable — profil, listes, sessions hébergées, participations et votes — assemblé en base par `export_my_data()` |
-| Suppression          | « Mon compte »    | `delete_my_account()` : profil, listes et compte auth supprimés en une transaction                                          |
+| Droit                | Chemin            | Effet                                                                                                                                |
+| -------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Export (portabilité) | `/account/export` | JSON téléchargeable — profil, listes, groupes, sessions hébergées, participations et votes — assemblé en base par `export_my_data()` |
+| Suppression          | « Mon compte »    | `delete_my_account()` : profil, listes, groupes et compte auth supprimés en une transaction                                          |
 
 Supprimer un compte ne réécrit pas l'histoire des autres. Les votes déjà comptés dans une **session terminée** restent dans le classement mais perdent leur auteur (`Participant supprimé`) ; les sessions **en attente ou en cours** que le compte hébergeait sont supprimées, puisque sans host elles ne peuvent plus aboutir. La garantie est portée par le schéma (`on delete set null` sur `sessions.host_id` et `session_participants.profile_id`), pas seulement par la RPC : une suppression faite depuis le dashboard Supabase donne le même résultat.
 

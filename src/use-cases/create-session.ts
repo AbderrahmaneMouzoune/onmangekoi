@@ -1,3 +1,4 @@
+import { inviteGroupToSession } from '@/data-access/groups'
 import { getRestaurantIdsForLists } from '@/data-access/lists'
 import { createSession } from '@/data-access/sessions'
 import { AppError } from '@/domain/errors'
@@ -29,9 +30,22 @@ export async function createSessionUseCase(
     throw new AppError('Sélectionne au moins un restaurant.')
   }
 
-  return createSession(supabase, {
+  const session = await createSession(supabase, {
     name: input.name,
     restaurantIds,
     closesAt: resolveClosesAt(input, now),
   })
+
+  // Les invitations viennent après coup : la session existe déjà, on ne la
+  // renie pas parce qu'un groupe n'a pas pu être prévenu. La salle d'attente
+  // affiche qui est réellement invité, et le host peut réinviter de là.
+  for (const groupId of input.groupIds) {
+    try {
+      await inviteGroupToSession(supabase, groupId, session.id)
+    } catch {
+      // Groupe quitté entre-temps, réseau : rien qui doive annuler la session.
+    }
+  }
+
+  return session
 }

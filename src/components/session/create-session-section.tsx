@@ -7,6 +7,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
+import { getMyGroups } from '@/data-access/groups'
 import { getListsWithRestaurantIds } from '@/data-access/lists'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
@@ -21,22 +22,28 @@ function defaultSessionName(now = new Date()): string {
 }
 
 /**
- * Formulaire de création de session. Personnalisé (les listes de la personne)
- * et daté (le nom par défaut dépend de l'heure) : il ne peut pas être prérendu
- * et vit donc dans son `<Suspense>`. Le catalogue de restaurants, lui, sort du
- * cache partagé.
+ * Formulaire de création de session. Personnalisé (les listes et les groupes
+ * de la personne) et daté (le nom par défaut dépend de l'heure) : il ne peut
+ * pas être prérendu et vit donc dans son `<Suspense>`. Le catalogue de
+ * restaurants, lui, sort du cache partagé.
  */
 export async function CreateSessionSection() {
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
   if (!user) redirect(router.setup(router.sessionNew()))
 
-  const [lists, initialPage] = await Promise.all([
+  const [lists, groups, initialPage] = await Promise.all([
     getListsWithRestaurantIds(supabase, user.id),
+    getMyGroups(supabase),
     getRestaurantCatalogPage(),
   ])
 
   return (
-    <CreateSessionForm lists={lists} initialPage={initialPage} defaultName={defaultSessionName()} />
+    <CreateSessionForm
+      lists={lists}
+      groups={groups}
+      initialPage={initialPage}
+      defaultName={defaultSessionName()}
+    />
   )
 }
 

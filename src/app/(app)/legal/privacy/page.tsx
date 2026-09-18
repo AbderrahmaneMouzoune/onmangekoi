@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 }
 
 /** Dernière révision du texte — à remonter à chaque modification de fond. */
-const LAST_UPDATED = '5 septembre 2026'
+const LAST_UPDATED = '18 septembre 2026'
 
 const RETENTION = [
   {
@@ -33,6 +33,11 @@ const RETENTION = [
     data: 'Listes de restaurants',
     why: 'Rejouer une sélection d’une session à l’autre',
     kept: 'Jusqu’à la suppression du compte ou de la liste',
+  },
+  {
+    data: 'Groupes récurrents',
+    why: 'Réinviter la même équipe sans retaper le code à chaque session',
+    kept: 'Jusqu’à la suppression du compte, du groupe, ou jusqu’à ce que tu le quittes',
   },
   {
     data: 'Sessions et participations',
@@ -132,6 +137,10 @@ export default function PrivacyPage() {
           <li>
             Le profil, le pseudo, l’email, le mot de passe et les listes sont supprimés
             définitivement.
+          </li>
+          <li>
+            Les groupes dont le compte est propriétaire disparaissent pour tous leurs membres, et le
+            compte sort de ceux qu’il avait rejoints.
           </li>
           <li>
             Les votes déjà comptés dans une session terminée sont conservés dans le classement, mais
