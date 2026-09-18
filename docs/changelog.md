@@ -101,4 +101,13 @@ src/lib/version.ts                  comparaison de versions sémantiques
 
 ## Secrets et permissions
 
-Le workflow tourne avec le `GITHUB_TOKEN` par défaut (`contents: write`, `pull-requests: write`, `issues: write`). Un secret `GH_PAT` est utilisé s'il existe : sans lui, la PR ouverte par le bot ne déclenche pas la CI — limitation GitHub, pas du projet. Le reste fonctionne à l'identique.
+Le workflow tourne avec le `GITHUB_TOKEN` par défaut (`contents: write`, `pull-requests: write`, `issues: write`). Une case du dépôt conditionne tout le reste :
+
+> Settings → Actions → General → Workflow permissions
+> ☑ **Allow GitHub Actions to create and approve pull requests**
+
+Décochée — et elle l'est par défaut — `GITHUB_TOKEN` n'a pas le droit d'ouvrir une PR. release-please pousse alors sa branche `release-please--branches--main--…`, se fait refuser la PR (« GitHub Actions is not permitted to create or approve pull requests »), et le workflow échoue : la branche existe, la PR de release non, et rien ne sort jamais. Si ça arrive, le workflow le dit maintenant en toutes lettres dans son résumé de run.
+
+Un secret `GH_PAT` remplace cette case : un jeton personnel n'est pas soumis à la restriction. Il apporte au passage ce que `GITHUB_TOKEN` ne peut pas donner — la CI qui tourne sur la PR de release, GitHub n'enchaînant pas les workflows déclenchés par son propre jeton. Portée `repo` pour un jeton classique, Contents + Pull requests + Issues en lecture-écriture pour un jeton _fine-grained_.
+
+Dans les deux cas, le réglage se fait une fois pour le dépôt. Un run déjà échoué se rejoue sans nouveau commit : Actions → Release → Run workflow.
