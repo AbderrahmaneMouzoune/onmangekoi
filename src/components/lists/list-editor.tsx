@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { TwoStepButton } from '@/components/ui/two-step-button'
 import { LIST_NAME_MAX } from '@/domain/schemas/list'
+import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
 import { captureEvent } from '@/lib/analytics/client'
 import { groupCode } from '@/lib/crockford'
 import { countLabel } from '@/lib/format'
@@ -41,6 +42,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
   const [adding, setAdding] = useState(false)
   const [pickerIds, setPickerIds] = useState<string[]>([])
   const addButtonRef = useRef<HTMLButtonElement>(null)
+  const onRowsKeyDown = useArrowNavigation()
 
   /** Le sélecteur se referme : le focus revient sur « Ajouter ». */
   function closePicker() {
@@ -250,7 +252,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
               Liste vide. Ajoute des restos pour pouvoir l’importer dans une session.
             </p>
           ) : (
-            <ul className="flex flex-col gap-1.5">
+            <ul onKeyDown={onRowsKeyDown} className="flex flex-col gap-1.5">
               {restaurants.map((restaurant) => (
                 <li
                   key={restaurant.id}

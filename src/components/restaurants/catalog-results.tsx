@@ -3,6 +3,7 @@
 import { ResultRow } from '@/components/restaurants/result-row'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
 
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
@@ -36,8 +37,10 @@ export function CatalogResults({
   emptyLabel,
   onAddManually,
 }: CatalogResultsProps) {
+  const onKeyDown = useArrowNavigation()
   return (
     <ul
+      onKeyDown={onKeyDown}
       className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line lg:max-h-[28rem]"
       aria-label="Résultats"
       aria-busy={isSearching || undefined}

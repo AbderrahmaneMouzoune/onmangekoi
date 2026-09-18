@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { ChangelogNavLink } from '@/components/changelog/changelog-nav-link'
 import { Brand } from '@/components/layout/brand'
 import { NavLinks, StaticNavLinks } from '@/components/layout/nav-links'
+import { ShortcutsHelpButton } from '@/components/layout/shortcuts-help-button'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -37,6 +38,7 @@ export function AppHeader() {
           </nav>
         </div>
         <nav aria-label="Raccourcis" className="flex items-center gap-1">
+          <ShortcutsHelpButton />
           <ChangelogNavLink />
           <ThemeToggle />
           <Suspense fallback={<AccountNavFallback />}>

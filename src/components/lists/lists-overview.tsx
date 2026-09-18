@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { VisitMemo } from '@/components/layout/visit-memo'
+import { ArrowKeyList } from '@/components/ui/arrow-key-list'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -33,7 +34,11 @@ export async function ListsOverview() {
   return (
     <>
       <VisitMemo account lists />
-      <ul className="grid gap-2 sm:grid-cols-2 lg:gap-3">
+      <ArrowKeyList
+        orientation="both"
+        aria-label="Mes listes"
+        className="grid gap-2 sm:grid-cols-2 lg:gap-3"
+      >
         {lists.map((list) => (
           <li key={list.id}>
             <Link
@@ -56,7 +61,7 @@ export async function ListsOverview() {
             </Link>
           </li>
         ))}
-      </ul>
+      </ArrowKeyList>
     </>
   )
 }

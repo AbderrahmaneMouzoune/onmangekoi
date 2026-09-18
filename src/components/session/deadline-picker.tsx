@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { DEADLINE_PRESETS, nextOccurrence } from '@/domain/session-deadline'
+import { useRovingFocus } from '@/hooks/use-roving-focus'
 import { cn } from '@/lib/utils'
 
 type Choice = 'none' | 'at' | `in:${number}`
@@ -56,17 +57,26 @@ export function DeadlinePicker({ legend }: DeadlinePickerProps = {}) {
 
   const target = useMemo(() => (choice === 'at' ? nextOccurrence(time) : null), [choice, time])
   const minutes = choice.startsWith('in:') ? Number(choice.slice(3)) : null
+  /** Les flèches passent d'une option à l'autre et la choisissent (radios). */
+  const onOptionsKeyDown = useRovingFocus((index) => setChoice(OPTIONS[index].value))
 
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="mb-2">{legend ?? <DefaultLegend />}</legend>
 
-      <div role="radiogroup" aria-label={LEGEND} className="flex flex-wrap gap-2">
+      <div
+        role="radiogroup"
+        aria-label={LEGEND}
+        onKeyDown={onOptionsKeyDown}
+        className="flex flex-wrap gap-2"
+      >
         {OPTIONS.map((option) => (
           <button
             key={option.value}
             type="button"
             role="radio"
+            data-roving
+            tabIndex={choice === option.value ? 0 : -1}
             aria-checked={choice === option.value}
             onClick={() => setChoice(option.value)}
             className={cn(optionClassName(choice === option.value), 'hover:bg-surface-2')}

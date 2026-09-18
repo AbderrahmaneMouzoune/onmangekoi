@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import './globals.css'
 import { AnalyticsIdentity } from '@/components/analytics/analytics-identity'
 import { AnalyticsProvider } from '@/components/analytics/analytics-provider'
+import { KeyboardShortcuts } from '@/components/layout/keyboard-shortcuts'
 import { SkipLink } from '@/components/layout/skip-link'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SITE_NAME, SITE_TAGLINE, siteUrl } from '@/lib/site'
@@ -81,6 +82,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script dangerouslySetInnerHTML={{ __html: VISIT_HINT_SCRIPT }} />
         <SkipLink />
         <ThemeProvider>{children}</ThemeProvider>
+        <KeyboardShortcuts />
         <AnalyticsProvider />
         <Suspense fallback={null}>
           <AnalyticsIdentity />

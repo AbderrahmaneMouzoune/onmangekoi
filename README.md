@@ -171,17 +171,23 @@ L'app est pensée pour le téléphone, mais un lien de session arrive aussi souv
 
 `Shell` (`src/components/layout/shell.tsx`) porte ces trois largeurs (`narrow`, `reading`, `app`) ; l'en-tête gagne une navigation principale marquée `aria-current` sur la page en cours.
 
-Tout se fait au clavier :
+Tout se fait au clavier, et `?` affiche l'aide dans l'app :
 
-| Touche                | Où                                             | Effet                                                                 |
-| --------------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
-| `Tab` (premier appui) | partout                                        | « Aller au contenu » : saute l'en-tête                                |
-| `←` `→`               | vote                                           | bof · ça me va — le sens du swipe                                     |
-| `↑` `↓`               | vote                                           | coup de cœur · veto — les jokers, inaccessibles à un geste accidentel |
-| `←` `→` `Début` `Fin` | onglets Base / Google, budget                  | passe d'un élément à l'autre (un seul arrêt de tabulation par groupe) |
-| `Échap`               | scanner QR, ajout de resto, bouton à confirmer | ferme, annule, désarme                                                |
+| Touches                    | Où                                                   | Effet                                                                 |
+| -------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------- |
+| `n` puis `s`               | partout                                              | nouvelle session                                                      |
+| `n` puis `l`               | partout                                              | nouvelle liste                                                        |
+| `g` puis `h` `j` `l` `a`   | partout                                              | aller à l'accueil, rejoindre, mes listes, mon compte                  |
+| `/`                        | partout                                              | chercher un resto (focus sur le champ de recherche)                   |
+| `?`                        | partout                                              | l'aide des raccourcis                                                 |
+| `Tab` (premier appui)      | partout                                              | « Aller au contenu » : saute l'en-tête                                |
+| `↑` `↓` (`←` `→` en ligne) | sessions, listes, résultats, sélection               | se balader d'un élément au suivant, `Début` et `Fin` aux extrémités   |
+| `1` `2` `3` `4`            | vote                                                 | veto · bof · ça me va · coup de cœur, dans l'ordre des boutons        |
+| `←` `→` `Entrée`           | vote                                                 | bof · ça me va · ça me va — le sens du swipe                          |
+| `←` `→` `Début` `Fin`      | onglets des sources, budget, échéance                | passe d'une option à l'autre (un seul arrêt de tabulation par groupe) |
+| `Échap`                    | scanner QR, ajout de resto, bouton à confirmer, aide | ferme, annule, désarme                                                |
 
-Le focus est toujours visible (contour tomate, `:focus-visible` global), il revient sur le bouton qui a ouvert un panneau quand celui-ci se ferme, et chaque changement d'état de la session — lancement du vote, clôture — est annoncé aux lecteurs d'écran et reçoit le focus.
+Les séquences (`src/lib/shortcuts.ts`) ne se déclenchent jamais dans un champ de saisie ni dans une modale, et une lettre tenue avec `Ctrl`, `Alt` ou `⌘` reste au navigateur. Le focus est toujours visible (contour tomate, `:focus-visible` global), il revient sur le bouton qui a ouvert un panneau quand celui-ci se ferme, et chaque changement d'état de la session — lancement du vote, clôture — est annoncé aux lecteurs d'écran et reçoit le focus.
 
 ## Stack
 

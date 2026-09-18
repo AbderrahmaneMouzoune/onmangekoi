@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 import { router } from '@/config/router.config'
+import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
+import { describeSequence, shortcutFor } from '@/lib/shortcuts'
 import { cn } from '@/lib/utils'
 
 export const NAV_ITEMS = [
@@ -36,15 +38,20 @@ export function NavLinks({ className }: { className?: string }) {
 }
 
 export function StaticNavLinks({ pathname = null, className }: NavLinksProps) {
+  // ← → passent d'un lien à l'autre, en plus de Tab.
+  const onKeyDown = useArrowNavigation('horizontal')
   return (
-    <ul className={cn('flex items-center gap-1', className)}>
+    <ul onKeyDown={onKeyDown} className={cn('flex items-center gap-1', className)}>
       {NAV_ITEMS.map((item) => {
         const current = pathname !== null && isCurrent(pathname, item)
+        const shortcut = shortcutFor(item.href)
         return (
           <li key={item.href}>
             <Link
               href={item.href}
               aria-current={current ? 'page' : undefined}
+              title={shortcut ? `Raccourci : ${describeSequence(shortcut)}` : undefined}
+              aria-keyshortcuts={shortcut ? shortcut.keys.join(' ') : undefined}
               className={cn(
                 'inline-flex h-9 items-center rounded-md px-3 text-sm font-medium transition-colors',
                 current ? 'bg-surface-2 text-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink'

@@ -3,6 +3,7 @@ import Link from 'next/link'
 
 import { VisitMemo } from '@/components/layout/visit-memo'
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
+import { ArrowKeyList } from '@/components/ui/arrow-key-list'
 import { Skeleton, SkeletonRow } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
@@ -35,7 +36,7 @@ export async function HomeDashboard() {
       {sessions.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-bold">Tes sessions</h2>
-          <ul className="flex flex-col gap-2">
+          <ArrowKeyList aria-label="Tes sessions" className="flex flex-col gap-2">
             {sessions.map((session) => (
               <li key={session.id}>
                 <Link
@@ -57,7 +58,7 @@ export async function HomeDashboard() {
                 </Link>
               </li>
             ))}
-          </ul>
+          </ArrowKeyList>
         </section>
       )}
 
@@ -74,7 +75,7 @@ export async function HomeDashboard() {
         {lists.length === 0 ? (
           <FirstListInvite />
         ) : (
-          <ul className="flex flex-wrap gap-2">
+          <ArrowKeyList orientation="both" aria-label="Tes listes" className="flex flex-wrap gap-2">
             {lists.slice(0, 6).map((list) => (
               <li key={list.id}>
                 <Link
@@ -88,7 +89,7 @@ export async function HomeDashboard() {
                 </Link>
               </li>
             ))}
-          </ul>
+          </ArrowKeyList>
         )}
       </section>
     </div>

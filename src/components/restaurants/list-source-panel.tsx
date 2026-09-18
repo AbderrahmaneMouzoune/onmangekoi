@@ -2,6 +2,7 @@
 
 import { RiBookmarkLine, RiCheckLine } from '@remixicon/react'
 
+import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
 import { countLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -20,9 +21,10 @@ interface ListSourcePanelProps {
  * et verrouillés, pour ne pas les compter deux fois.
  */
 export function ListSourcePanel({ lists, selectedIds, onToggle }: ListSourcePanelProps) {
+  const onKeyDown = useArrowNavigation()
   return (
     <div className="flex flex-col gap-2">
-      <ul className="flex flex-col gap-2" aria-label="Mes listes">
+      <ul onKeyDown={onKeyDown} className="flex flex-col gap-2" aria-label="Mes listes">
         {lists.map((list) => {
           const isSelected = selectedIds.includes(list.id)
           const isEmpty = list.restaurant_ids.length === 0
