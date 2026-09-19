@@ -1,11 +1,14 @@
 'use client'
 
+import { RecentWinnerBadge } from '@/components/restaurants/recent-winner-badge'
 import { ResultRow } from '@/components/restaurants/result-row'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
 
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { RecentWinnerDates } from '@/domain/recent-winners'
 
 interface CatalogResultsProps {
   page: RestaurantPage
@@ -18,6 +21,10 @@ interface CatalogResultsProps {
   emptyLabel: string
   /** Ouvre l'ajout manuel, prérempli avec la recherche en cours. */
   onAddManually: () => void
+  /** Anti-fatigue : date du dernier sacre, par restaurant */
+  recentWinners?: RecentWinnerDates
+  /** Anti-fatigue actif : un gagnant récent est écarté, donc ni coché ni cochable */
+  excludeRecent?: boolean
 }
 
 /**
@@ -35,6 +42,8 @@ export function CatalogResults({
   onToggle,
   emptyLabel,
   onAddManually,
+  recentWinners = NO_RECENT_WINNERS,
+  excludeRecent = false,
 }: CatalogResultsProps) {
   return (
     <ul
@@ -56,20 +65,29 @@ export function CatalogResults({
         </li>
       )}
       {page.items.map((restaurant) => {
-        const locked = isLocked(restaurant.id)
+        const wonAt = recentWinners[restaurant.id]
+        const excluded = excludeRecent && wonAt !== undefined
+        // Écartée, la ligne se grise comme une ligne verrouillée — mais
+        // décochée : c'est bien ce qui n'ira pas dans la session.
+        const locked = excluded || isLocked(restaurant.id)
         return (
           <li key={restaurant.id}>
             <ResultRow
               name={restaurant.name}
               subtitle={restaurant.description}
               meta={
-                restaurant.cuisine_type ? (
-                  <span className="font-mono tracking-wide uppercase">
-                    {restaurant.cuisine_type}
-                  </span>
+                wonAt || restaurant.cuisine_type ? (
+                  <>
+                    {wonAt && <RecentWinnerBadge wonAt={wonAt} excluded={excluded} />}
+                    {restaurant.cuisine_type && (
+                      <span className="font-mono tracking-wide uppercase">
+                        {restaurant.cuisine_type}
+                      </span>
+                    )}
+                  </>
                 ) : undefined
               }
-              checked={locked || isSelected(restaurant.id)}
+              checked={!excluded && (locked || isSelected(restaurant.id))}
               locked={locked}
               onToggle={() => onToggle(restaurant)}
             />

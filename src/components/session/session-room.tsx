@@ -19,12 +19,15 @@ import type {
   Session,
   SessionRestaurantWithRestaurant,
 } from '@/data-access/models'
+import type { RecentWinnerDates } from '@/domain/recent-winners'
 
 interface SessionRoomProps {
   session: Session
   participants: ParticipantWithProfile[]
   restaurants: SessionRestaurantWithRestaurant[]
   myVotedIds: string[]
+  /** Anti-fatigue : ce qui a déjà gagné récemment, chargé avec la session */
+  recentWinners: RecentWinnerDates
   meId: string
   inviteUrl: string
   /** QR code SVG du lien d'invitation, rendu côté serveur (host, salle d'attente) */
@@ -40,6 +43,7 @@ export function SessionRoom({
   participants: initialParticipants,
   restaurants,
   myVotedIds,
+  recentWinners,
   meId,
   inviteUrl,
   qrSvg,
@@ -159,6 +163,7 @@ export function SessionRoom({
           sessionId={session.id}
           restaurants={restaurants}
           initialVotedIds={myVotedIds}
+          lastWins={recentWinners}
           initialSuperlikeUsed={me?.superlike_used ?? false}
           initialSuperDislikeUsed={me?.super_dislike_used ?? false}
           onFinished={handleFinished}

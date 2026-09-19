@@ -3,17 +3,20 @@
 import { RiMapPin2Line } from '@remixicon/react'
 import { useEffect, useState } from 'react'
 
+import { RecentWinnerBadge } from '@/components/restaurants/recent-winner-badge'
 import { ResultRow } from '@/components/restaurants/result-row'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
 import { GENERIC_ERROR } from '@/domain/errors'
+import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
 import { PLACES_QUERY_MIN } from '@/domain/schemas/place'
 import { PRICE_LEVEL_LABELS } from '@/domain/schemas/restaurant'
 import { distanceMeters, formatDistance } from '@/lib/maps'
 
 import type { Restaurant } from '@/data-access/models'
 import type { PlaceResult, PlacesPage } from '@/domain/places'
+import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { Geolocation } from '@/hooks/use-geolocation'
 
 interface GooglePlacesResultsProps {
@@ -39,6 +42,10 @@ interface GooglePlacesResultsProps {
   onImport: (place: PlaceResult) => void
   /** Échec du dernier import, affiché ici, là où le geste a eu lieu. */
   importError: string | null
+  /** Anti-fatigue : date du dernier sacre, pour un lieu déjà connu du carnet */
+  recentWinners?: RecentWinnerDates
+  /** Anti-fatigue actif : un gagnant récent est écarté, donc ni coché ni cochable */
+  excludeRecent?: boolean
 }
 
 type Mode = 'search' | 'nearby' | 'none'
@@ -104,6 +111,8 @@ export function GooglePlacesResults({
   onToggle,
   onImport,
   importError,
+  recentWinners = NO_RECENT_WINNERS,
+  excludeRecent = false,
 }: GooglePlacesResultsProps) {
   const { position, status, locate } = geolocation
   const trimmed = query.trim()
@@ -241,8 +250,13 @@ export function GooglePlacesResults({
         {places.map((place) => {
           const known = restaurantForPlace(place.placeId)
           const pending = pendingPlaceIds.has(place.placeId)
-          const locked = known ? isLocked(known.id) : false
-          const checked = known ? locked || isSelected(known.id) : pending
+          // Un lieu que le carnet connaît déjà peut avoir gagné récemment :
+          // l'onglet Google le dit comme le carnet, sinon cocher la case
+          // écarterait une ligne qui a l'air disponible.
+          const wonAt = known ? recentWinners[known.id] : undefined
+          const excluded = excludeRecent && wonAt !== undefined
+          const locked = known ? excluded || isLocked(known.id) : false
+          const checked = known ? !excluded && (locked || isSelected(known.id)) : pending
           const distance =
             position && place.location
               ? formatDistance(
@@ -259,6 +273,7 @@ export function GooglePlacesResults({
                 subtitle={place.address}
                 meta={
                   <>
+                    {wonAt && <RecentWinnerBadge wonAt={wonAt} excluded={excluded} />}
                     {distance && <span className="font-medium text-ink-2">{distance}</span>}
                     {place.cuisineType && (
                       <span className="font-mono tracking-wide uppercase">{place.cuisineType}</span>

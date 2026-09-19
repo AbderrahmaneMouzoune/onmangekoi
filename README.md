@@ -54,6 +54,24 @@ Une durée (« dans 10 min ») est datée par l'horloge du serveur au moment de 
 
 Une session **en attente** dont l'échéance tombe n'est jamais clôturée : sans un seul vote, le classement n'aurait aucun sens. `launch_session` refuse de la lancer et invite le host à prolonger — c'est la seule impasse possible, et elle a sa sortie.
 
+## Anti-fatigue
+
+Le même restaurant gagne trois vendredis de suite et le vote devient une formalité. L'app ne l'interdit pas — elle le **dit**, et propose de l'écarter d'un clic.
+
+| Où                  | Ce qui s'affiche                                                                                                |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Choix des restos    | Badge doré « Gagnant il y a 6 jours » sur la ligne — dans le carnet comme chez Google                           |
+| Création de session | Case « Exclure les gagnants récents » — la ligne écartée se grise et se décoche, le panier et le bouton suivent |
+| Carte de vote       | Mention discrète « Déjà gagnant le 28 août », chargée avec la session                                           |
+
+La source est la RPC `recent_winners()` : les restaurants sortis **premiers** des sessions closes auxquelles la personne a participé dans les 30 derniers jours, avec la date du dernier sacre. Elle ne prend pas d'identifiant — elle répond pour `auth.uid()`, jamais pour quelqu'un d'autre — et ne renvoie que le gagnant : ni score, ni classement complet, ni qui a voté quoi.
+
+Un classement où personne n'a dit oui (score nul ou négatif en tête) ne sacre personne : cette session-là n'a fatigué personne, et écarter toute la liste à la suivante n'aurait aucun sens. Deux restaurants à égalité parfaite en tête sont deux gagnants, comme à l'écran de classement.
+
+L'exclusion est appliquée **côté serveur**, dans le use-case de création : une liste apporte des restaurants que l'écran n'a jamais montrés un par un. Si elle ne laisse rien, la session n'est pas créée — le formulaire le dit plutôt que de partir avec zéro resto.
+
+La fenêtre de 30 jours est une constante : `recent_winners_window()` en base, `RECENT_WINNER_WINDOW_DAYS` côté application, les deux figées par `supabase/tests/recent-winners.test.sql`.
+
 ## URLs, codes et liens de partage
 
 Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **son code court**, celui qu'on se dit à voix haute.
@@ -202,15 +220,15 @@ src/config/              router.config.ts : préfixes protégés, longueurs de c
 src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], account, nouveautes, legal, auth, api/places)
 src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · account/ · restaurants/ · onboarding/ · changelog/
 src/content/changelog/   notes de version produit (schéma Zod + entrées), lues par /nouveautes et son flux RSS
-src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + models/ (types générés)
+src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + recent-winners.ts (anti-fatigue) + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
-src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, horaires, places, schemas/ (Zod)
+src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, horaires, places, anti-fatigue, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
                          images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache, version (semver), changelog-seen
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
 src/hooks/               Realtime de session, compte à rebours, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
-supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/extend/results), purge, RGPD
+supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/extend/results/recent_winners), purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
 ```
@@ -263,6 +281,7 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - **Aperçu d'invitation** (`session_preview`) : un visiteur non authentifié — typiquement le robot qui déplie le lien dans une conversation — n'obtient un aperçu par code court que sur une session **en attente**, et seulement le nom, le pseudo du host et deux compteurs. Rejoindre exige toujours un compte.
 - **Toutes les écritures métier passent par des RPC** transactionnelles (`create_session`, `join_session`, `launch_session`, `submit_vote`, `close_session`) qui revérifient les règles côté base.
 - Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat.
+- **Anti-fatigue** (`recent_winners`) : la fonction ne prend aucun identifiant et se borne à `auth.uid()` — impossible de demander ce qui fatigue quelqu'un d'autre. Elle ne rend que le restaurant gagnant et la date de clôture : le reste du classement et le détail des votes n'en sortent pas.
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.
 - La clé Google Places ne quitte jamais le serveur, et aucune policy RLS n'ouvre l'écriture en `source = 'google'` : `upsert_restaurant_from_place` est le seul chemin. Les corps d'erreur renvoyés par Google restent dans les logs serveur.
 - Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision.
