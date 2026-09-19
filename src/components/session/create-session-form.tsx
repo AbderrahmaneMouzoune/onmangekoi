@@ -6,6 +6,7 @@ import { useActionState, useId, useMemo, useState } from 'react'
 import { createSessionAction } from '@/actions/sessions'
 import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
 import { DeadlinePicker } from '@/components/session/deadline-picker'
+import { SESSION_STEPS, SessionStep, StepTitle } from '@/components/session/session-step'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
@@ -29,6 +30,11 @@ interface CreateSessionFormProps {
   recentWinners: RecentWinnerDates
 }
 
+/**
+ * Créer une session, en trois étapes numérotées : un nom, les restos, une
+ * échéance. Les restos viennent d'où on veut — une liste entière, le carnet,
+ * Google — et se mélangent dans un seul panier.
+ */
 export function CreateSessionForm({
   lists,
   initialPage,
@@ -40,26 +46,21 @@ export function CreateSessionForm({
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState<string[]>([])
   const [excludeRecent, setExcludeRecent] = useState(false)
 
-  const fromLists = useMemo(() => {
-    const ids = new Set<string>()
+  // `chosen` compte ce qu'on a pris, `total` ce qui partira vraiment : le
+  // serveur refait ce tri, une liste apportant des restos que cet écran n'a
+  // jamais montrés un par un.
+  const { chosen, total } = useMemo(() => {
+    const ids = new Set(selectedRestaurantIds)
     for (const list of lists) {
       if (selectedListIds.includes(list.id)) list.restaurant_ids.forEach((id) => ids.add(id))
     }
-    return ids
-  }, [lists, selectedListIds])
+    const kept = excludeRecent
+      ? [...ids].filter((id) => recentWinners[id] === undefined).length
+      : ids.size
+    return { chosen: ids.size, total: kept }
+  }, [lists, selectedListIds, selectedRestaurantIds, excludeRecent, recentWinners])
 
-  const chosen = new Set([...fromLists, ...selectedRestaurantIds])
-  // Ce que l'anti-fatigue retirerait de la sélection courante. Le serveur
-  // refait le calcul : une liste peut apporter des restos jamais affichés ici.
-  const excluded = excludeRecent
-    ? [...chosen].filter((id) => recentWinners[id] !== undefined).length
-    : 0
-  const total = chosen.size - excluded
   const recentCount = recentWinnerCount(recentWinners)
-
-  function toggleList(id: string) {
-    setSelectedListIds((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]))
-  }
 
   // L'action redirige : elle ne rend jamais la main. On note l'intention ici,
   // la page de session la transforme en `session_created` — et seulement si la
@@ -69,13 +70,15 @@ export function CreateSessionForm({
   }
 
   return (
-    <form action={formAction} onSubmit={rememberCreation} className="flex flex-col gap-6">
-      {selectedListIds.map((id) => (
-        <input key={id} type="hidden" name="listIds" value={id} />
-      ))}
-
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="name">Nom de la session</Label>
+    <form action={formAction} onSubmit={rememberCreation} className="flex flex-col gap-8">
+      <SessionStep
+        number={1}
+        title={
+          <Label htmlFor="name" className="text-base font-semibold">
+            {SESSION_STEPS.name}
+          </Label>
+        }
+      >
         <Input
           id="name"
           name="name"
@@ -86,76 +89,43 @@ export function CreateSessionForm({
           autoComplete="off"
           className="h-12 text-lg"
         />
-      </div>
+      </SessionStep>
 
-      {lists.length > 0 && (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-2 text-sm font-medium">Depuis mes listes</legend>
-          <ul className="flex flex-col gap-2">
-            {lists.map((list) => {
-              const isSelected = selectedListIds.includes(list.id)
-              return (
-                <li key={list.id}>
-                  <button
-                    type="button"
-                    role="checkbox"
-                    aria-checked={isSelected}
-                    onClick={() => toggleList(list.id)}
-                    className={cn(
-                      'flex w-full items-center justify-between gap-3 rounded-lg border p-3.5 text-left transition-colors',
-                      isSelected
-                        ? 'border-brand bg-brand-soft'
-                        : 'border-line bg-surface hover:bg-surface-2'
-                    )}
-                  >
-                    <span className="flex items-center gap-3">
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          'flex size-5 items-center justify-center rounded-full border',
-                          isSelected ? 'border-brand bg-brand text-on-brand' : 'border-line-strong'
-                        )}
-                      >
-                        {isSelected && <RiCheckLine className="size-3.5" />}
-                      </span>
-                      <span className="font-medium">{list.name}</span>
-                    </span>
-                    <span className="font-mono text-xs text-muted-foreground tabular">
-                      {countLabel(list.restaurant_ids.length, 'resto')}
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </fieldset>
-      )}
-
-      <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium">
-          {lists.length > 0 ? 'Ajouter des restaurants' : 'Restaurants'}
-        </p>
+      <SessionStep
+        number={2}
+        title={<h2 className="text-base font-semibold">{SESSION_STEPS.restaurants}</h2>}
+        hint={SESSION_STEPS.restaurantsHint}
+      >
         <RestaurantPicker
           initialPage={initialPage}
           value={selectedRestaurantIds}
           onChange={setSelectedRestaurantIds}
-          lockedIds={[...fromLists]}
           recentWinners={recentWinners}
           excludeRecent={excludeRecent}
           inputName="restaurantIds"
+          lists={lists}
+          selectedListIds={selectedListIds}
+          onListsChange={setSelectedListIds}
+          listsInputName="listIds"
         />
-      </div>
 
-      {recentCount > 0 && (
-        <AntiFatigueToggle
-          checked={excludeRecent}
-          onChange={setExcludeRecent}
-          recentCount={recentCount}
-          excludedCount={excluded}
-        />
-      )}
+        {recentCount > 0 && (
+          <AntiFatigueToggle
+            checked={excludeRecent}
+            onChange={setExcludeRecent}
+            recentCount={recentCount}
+            excludedCount={chosen - total}
+          />
+        )}
+      </SessionStep>
 
-      <DeadlinePicker />
+      <DeadlinePicker
+        legend={
+          <StepTitle number={3}>
+            <span className="text-base font-semibold">{SESSION_STEPS.deadline}</span>
+          </StepTitle>
+        }
+      />
 
       <FormMessage error={state?.error} />
 
@@ -165,7 +135,7 @@ export function CreateSessionForm({
             <Spinner />
           ) : total > 0 ? (
             `Créer la session · ${countLabel(total, 'resto')}`
-          ) : chosen.size > 0 ? (
+          ) : chosen > 0 ? (
             'Tout est écarté par l’anti-fatigue'
           ) : (
             'Sélectionne des restaurants'
@@ -185,8 +155,6 @@ interface AntiFatigueToggleProps {
   excludedCount: number
 }
 
-const ANTI_FATIGUE_LEGEND = 'Anti-fatigue'
-
 /**
  * La case qui écarte d'un coup les restaurants sortis gagnants dans le dernier
  * mois. Elle n'apparaît que s'il y en a — proposer d'exclure le vide n'aiderait
@@ -202,9 +170,7 @@ function AntiFatigueToggle({
   const hintId = useId()
 
   return (
-    <fieldset className="flex flex-col gap-2">
-      <legend className="mb-2 text-sm font-medium">{ANTI_FATIGUE_LEGEND}</legend>
-
+    <div className="flex flex-col gap-2">
       <button
         type="button"
         role="checkbox"
@@ -237,6 +203,6 @@ function AntiFatigueToggle({
             ? `${countLabel(excludedCount, 'resto')} ${plural(excludedCount, 'écarté', 'écartés')} de cette session.`
             : 'Aucun de tes choix n’a gagné récemment.'}
       </p>
-    </fieldset>
+    </div>
   )
 }

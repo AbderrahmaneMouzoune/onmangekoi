@@ -6,7 +6,9 @@ import {
   locationFromPlace,
   mapPlace,
   mapPlaceDetails,
+  mapPlacesPage,
   mapPlacesResponse,
+  nearbyCacheKey,
   openingHoursFromPlace,
   placesCacheKey,
   priceLevelFromPlace,
@@ -229,5 +231,35 @@ describe('placesCacheKey', () => {
     expect(placesCacheKey({ query: 'sushi', latitude: 45.76, longitude: 4.83 })).not.toBe(
       placesCacheKey({ query: 'sushi' })
     )
+  })
+})
+
+describe('nearbyCacheKey', () => {
+  it('should round the position to about a hundred metres', () => {
+    expect(nearbyCacheKey({ latitude: 45.76012, longitude: 4.83049 })).toBe('near|45.760|4.830')
+    expect(nearbyCacheKey({ latitude: 45.76049, longitude: 4.83012 })).toBe(
+      nearbyCacheKey({ latitude: 45.76012, longitude: 4.83049 })
+    )
+  })
+
+  it('should never collide with a text search key', () => {
+    expect(nearbyCacheKey({ latitude: 45.76, longitude: 4.83 })).not.toBe(
+      placesCacheKey({ query: '', latitude: 45.76, longitude: 4.83 })
+    )
+  })
+})
+
+describe('mapPlacesPage', () => {
+  it('should keep the next page token next to the places', () => {
+    expect(mapPlacesPage({ places: [SUSHI], nextPageToken: 'tok' })).toMatchObject({
+      places: [{ placeId: 'ChIJsushi' }],
+      nextPageToken: 'tok',
+    })
+  })
+
+  it('should end the pagination on a missing, blank or unreadable token', () => {
+    expect(mapPlacesPage({ places: [SUSHI] }).nextPageToken).toBeNull()
+    expect(mapPlacesPage({ places: [SUSHI], nextPageToken: '  ' }).nextPageToken).toBeNull()
+    expect(mapPlacesPage('nope')).toEqual({ places: [], nextPageToken: null })
   })
 })

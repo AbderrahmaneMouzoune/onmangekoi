@@ -26,6 +26,10 @@ const HINTS = {
 
 const LEGEND = 'Clôture automatique'
 
+function DefaultLegend() {
+  return <span className="text-sm font-medium">{LEGEND}</span>
+}
+
 function optionClassName(isSelected: boolean) {
   return cn(
     'rounded-full border px-3.5 py-1.5 text-sm transition-colors',
@@ -41,7 +45,12 @@ function optionClassName(isSelected: boolean) {
  * création ; une heure précise est convertie ici en instant absolu, le
  * navigateur étant le seul à connaître le fuseau de la personne.
  */
-export function DeadlinePicker() {
+interface DeadlinePickerProps {
+  /** Intitulé du bloc ; par défaut « Clôture automatique », en petit. */
+  legend?: React.ReactNode
+}
+
+export function DeadlinePicker({ legend }: DeadlinePickerProps = {}) {
   const [choice, setChoice] = useState<Choice>('none')
   const [time, setTime] = useState('')
 
@@ -50,7 +59,7 @@ export function DeadlinePicker() {
 
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-2 text-sm font-medium">{LEGEND}</legend>
+      <legend className="mb-2">{legend ?? <DefaultLegend />}</legend>
 
       <div role="radiogroup" aria-label={LEGEND} className="flex flex-wrap gap-2">
         {OPTIONS.map((option) => (
@@ -95,10 +104,10 @@ export function DeadlinePicker() {
  * Rien ici n'attend le serveur — seule la place doit être tenue le temps que
  * le formulaire arrive.
  */
-export function DeadlinePickerFallback() {
+export function DeadlinePickerFallback({ legend }: DeadlinePickerProps = {}) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="mb-2 text-sm font-medium">{LEGEND}</p>
+      <p className="mb-2">{legend ?? <DefaultLegend />}</p>
       {/* Les pastilles ne sont pas encore des boutons : les annoncer comme des
           choix serait mentir le temps d'un battement de cil. */}
       <div aria-hidden="true" className="flex flex-wrap gap-2">

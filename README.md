@@ -4,7 +4,7 @@
 
 ## Le principe
 
-1. Tu choisis des restaurants — dans la base, dans une de tes **listes** de favoris, ou en ajoutant le tien à la volée
+1. Tu choisis des restaurants — dans une de tes **listes** de favoris, dans le **carnet** des restos déjà connus, chez **Google** (ceux autour de toi, d'abord), ou en ajoutant le tien à la volée — et tu mélanges
 2. Tu lances une **session**, tu envoies le code ou le lien au groupe — ou tu fais scanner le **QR code**
 3. Chacun vote dans son coin, carte par carte : **bof** · **ça me va** · **coup de cœur** · **veto**
 4. Quand tout le monde a voté (ou que l'heure limite tombe, ou que le host clôture), le **classement** s'affiche
@@ -58,11 +58,11 @@ Une session **en attente** dont l'échéance tombe n'est jamais clôturée : san
 
 Le même restaurant gagne trois vendredis de suite et le vote devient une formalité. L'app ne l'interdit pas — elle le **dit**, et propose de l'écarter d'un clic.
 
-| Où                  | Ce qui s'affiche                                                                                 |
-| ------------------- | ------------------------------------------------------------------------------------------------ |
-| Choix des restos    | Badge « Gagnant il y a 6 jours » sur la ligne concernée                                          |
-| Création de session | Case « Exclure les gagnants récents » — les lignes écartées se barrent, le compte du bouton suit |
-| Carte de vote       | Mention discrète « Déjà gagnant le 28 août », chargée avec la session                            |
+| Où                  | Ce qui s'affiche                                                                                                |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Choix des restos    | Badge doré « Gagnant il y a 6 jours » sur la ligne — dans le carnet comme chez Google                           |
+| Création de session | Case « Exclure les gagnants récents » — la ligne écartée se grise et se décoche, le panier et le bouton suivent |
+| Carte de vote       | Mention discrète « Déjà gagnant le 28 août », chargée avec la session                                           |
 
 La source est la RPC `recent_winners()` : les restaurants sortis **premiers** des sessions closes auxquelles la personne a participé dans les 30 derniers jours, avec la date du dernier sacre. Elle ne prend pas d'identifiant — elle répond pour `auth.uid()`, jamais pour quelqu'un d'autre — et ne renvoie que le gagnant : ni score, ni classement complet, ni qui a voté quoi.
 
@@ -121,26 +121,45 @@ La mini-carte du gagnant est un bloc de 2×2 tuiles [OpenStreetMap](https://www.
 | `manual` | ajoutée depuis l'app (nom, cuisine, adresse, budget) | son créateur      |
 | `google` | importée depuis Google Places                        | son importateur   |
 
-Le formulaire « Ajouter un resto » est disponible partout où l'on choisit des restaurants — session, liste, liste partagée — et le resto créé est sélectionné aussitôt, sans rechargement.
+Le formulaire « Ajouter un resto à la main » est disponible partout où l'on choisit des restaurants — session, liste, liste partagée — et le resto créé est sélectionné aussitôt, sans rechargement.
 
 La déduplication est **souple** : un nom proche (recherche trigram) déclenche un avertissement et propose le resto existant en un clic, mais ne bloque jamais l'ajout — deux restos peuvent légitimement porter le même nom.
 
+### Choisir des restaurants
+
+Le sélecteur (`components/restaurants/restaurant-picker.tsx`) met les sources **au même niveau** — un onglet chacune, dans un rail commun — et les verse dans un **seul panier** :
+
+| Onglet         | Ce qu'on y coche                                                                                                               |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Mes listes** | Une liste entière, d'un bloc — plusieurs si on veut. Ses restos apparaissent alors cochés et verrouillés ailleurs              |
+| **Le carnet**  | Tous les restos déjà connus de l'app — livrés avec le schéma, ajoutés à la main, importés de Google — filtrés par la recherche |
+| **Google**     | D'abord les restos **autour de soi**, sans rien taper ; puis ce qu'on cherche par son nom                                      |
+
+Le panier reste visible au-dessus des onglets, quel que soit celui qui est ouvert : une pastille dorée par liste, une rouge par resto pioché à l'unité, un clic retire l'une ou l'autre. Mélanger une liste, deux restos du carnet et un import Google est le cas normal, pas une exception. L'onglet « Mes listes » n'existe que là où ça a un sens — la création de session — et « Google » que si la clé est configurée ; avec une seule source, le rail disparaît.
+
+Deux écrans se ressemblaient trop : **créer une liste** et **créer une session** choisissent tous deux des restos. Ils ont désormais chacun leur signature. La session avance en **trois étapes numérotées en rouge** (nom, restos, clôture) et se termine par « Créer la session » ; la liste s'ouvre sur une **carte dorée au signet** qui dit ce qu'elle est — une réserve à ressortir, pas un vote — et se termine par « Enregistrer la liste ».
+
 ### Import Google Places
 
-Quand `GOOGLE_PLACES_API_KEY` est configurée, un onglet **Google** apparaît à côté de la base : la même saisie cherche chez Google, un clic importe le resto et le sélectionne. Le bouton « Autour de moi » ajoute un biais géographique de 5 km, sur position explicitement autorisée.
+Quand `GOOGLE_PLACES_API_KEY` est configurée, un onglet **Google** apparaît dans le sélecteur. Il s'ouvre sur les **restos les plus proches** : la position est demandée au clic sur l'onglet, et tant qu'on ne tape rien, c'est ça qu'on voit — classés par distance, avec la distance à côté de chaque nom. Taper un nom lance une recherche, biaisée par la même position quand elle est connue. Sans position (refus, navigateur muet), l'onglet le dit et la recherche par nom reste possible. « **Voir plus** », en bas de la liste, demande les vingt suivants tant que Google en a.
 
-| Garantie           | Comment                                                                                                                     |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| Clé jamais exposée | La recherche passe par `POST /api/places/search`, côté serveur ; la variable n'est pas préfixée `NEXT_PUBLIC_`              |
-| Zéro doublon       | `upsert_restaurant_from_place` est idempotente sur `place_id`, garantie par un index unique                                 |
-| Données de source  | Le navigateur n'envoie qu'un `place_id` à l'import ; les champs enregistrés sont relus côté serveur, jamais reçus du client |
-| Coût maîtrisé      | Réponses gardées 24 h en mémoire, et deux masques de champs distincts (voir ci-dessous)                                     |
+Les pages reçues restent en mémoire le temps du formulaire : quitter l'onglet et y revenir retrouve les résultats tels quels, sans rechargement ni nouvel appel.
+
+Cocher un résultat le **sélectionne à l'instant** — la ligne et le panier le montrent coché, avec une roue le temps que la fiche arrive — puis l'import suit ; s'il échoue, le resto ressort de la sélection et l'onglet dit pourquoi. Un lieu déjà en base — importé à l'instant ou connu du carnet — se coche et se décoche sans rien demander à Google.
+
+| Garantie           | Comment                                                                                                                                      |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Clé jamais exposée | La recherche passe par `POST /api/places/search`, côté serveur ; la variable n'est pas préfixée `NEXT_PUBLIC_`                               |
+| Zéro doublon       | `upsert_restaurant_from_place` est idempotente sur `place_id`, garantie par un index unique                                                  |
+| Données de source  | Le navigateur n'envoie qu'un `place_id` à l'import ; les champs enregistrés sont relus côté serveur, jamais reçus du client                  |
+| Coût maîtrisé      | Réponses gardées 24 h en mémoire, par page ; deux masques de champs distincts (voir ci-dessous)                                              |
+| Autour de moi      | Text Search (New) sur « restaurant », `rankPreference: DISTANCE`, biais de 2 km, vingt lieux par page ; cache par position arrondie à ~100 m |
 
 L'import remplit la fiche décrite plus haut : `photo_url`, `website`, `location`, `opening_hours` et `description`. Un lieu réimporté rafraîchit ces champs sans jamais en effacer un déjà connu — ce qui fait aussi office d'entretien, l'adresse d'une photo Google n'étant pas éternelle.
 
 Le fuseau des horaires n'est pas demandé à Google : `opening_hours.timezone` reste absent et l'app raisonne dans celui du visiteur.
 
-**Deux masques de champs, deux factures.** Google facture au champ le plus cher demandé, et une recherche ramène dix résultats : elle ne demande donc que de quoi afficher une liste. Photo, site, horaires et résumé ne sont demandés que sur le détail d'un lieu — une fois, au clic sur « importer ». La photo coûte un appel de plus, pour convertir son nom de ressource en adresse servable : celle de l'endpoint media exigerait la clé pour être chargée, on stocke donc le `photoUri` qu'il renvoie, servi par Google sans clé et sur un hôte de `ALLOWED_IMAGE_HOSTS`.
+**Deux masques de champs, deux factures.** Google facture au champ le plus cher demandé, et une recherche ramène vingt résultats : elle ne demande donc que de quoi afficher une liste. Photo, site, horaires et résumé ne sont demandés que sur le détail d'un lieu — une fois, au clic sur « importer ». La photo coûte un appel de plus, pour convertir son nom de ressource en adresse servable : celle de l'endpoint media exigerait la clé pour être chargée, on stocke donc le `photoUri` qu'il renvoie, servi par Google sans clé et sur un hôte de `ALLOWED_IMAGE_HOSTS`.
 
 **Quand la recherche échoue.** Le message affiché nomme la famille de panne plutôt que de renvoyer tout le monde vers un « réessaie » indifférencié, et le log serveur (`places: recherche → <statut> <raison>`) donne la raison exacte renvoyée par Google — `PERMISSION_DENIED`, `SERVICE_DISABLED`, `RESOURCE_EXHAUSTED`…
 
