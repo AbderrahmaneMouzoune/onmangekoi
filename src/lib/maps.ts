@@ -51,6 +51,31 @@ export function formatDistance(meters: number): string {
   return `${kmFormatter.format(meters / 1000)} km`
 }
 
+/**
+ * Point de la géolocalisation du navigateur (`latitude` / `longitude`) ramené
+ * à la forme stockée en base (`lat` / `lng`), ou `null` s'il manque.
+ */
+export function geoPoint(
+  position: { latitude: number; longitude: number } | null | undefined
+): GeoPoint | null {
+  return position ? { lat: position.latitude, lng: position.longitude } : null
+}
+
+/**
+ * Distance entre la personne et un lieu, prête à afficher — ou `null` quand
+ * l'une des deux positions manque : la carte se passe alors de distance
+ * plutôt que d'afficher un « ? km ».
+ */
+export function distanceLabel(
+  from: GeoPoint | null | undefined,
+  to: GeoPoint | Json | null | undefined
+): string | null {
+  if (!from) return null
+  const point = parseGeoPoint(to as Json)
+  if (!point) return null
+  return formatDistance(distanceMeters(from, point))
+}
+
 export interface PlaceLike {
   name: string
   address?: string | null
