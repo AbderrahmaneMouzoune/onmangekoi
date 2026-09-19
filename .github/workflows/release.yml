@@ -14,9 +14,23 @@ run-name: 🚀 release · ${{ github.sha }}
 #      sur /nouveautes. Rien n'est généré automatiquement à leur place : une
 #      note produit se rédige, elle ne se déduit pas d'un `feat(scope):`.
 #
+# Avant que quoi que ce soit tourne, une case à cocher — une seule :
+#
+#   Settings → Actions → General → Workflow permissions
+#   ☑ Allow GitHub Actions to create and approve pull requests
+#
+# Décochée (c'est le défaut), `GITHUB_TOKEN` n'a pas le droit d'ouvrir une PR :
+# release-please pousse sa branche `release-please--branches--main--…`, puis se
+# fait refuser la PR avec « GitHub Actions is not permitted to create or approve
+# pull requests ». Le workflow échoue et aucune PR de release n'existe jamais.
+#
 # Secrets (Settings → Secrets and variables → Actions) :
-#   GH_PAT  optionnel — sans lui, les PR ouvertes par le bot ne déclenchent pas
-#           la CI (limitation GitHub sur `GITHUB_TOKEN`) ; le reste fonctionne.
+#   GH_PAT  facultatif, et il dispense de la case ci-dessus : un jeton personnel
+#           n'est pas soumis à cette restriction. Il fait en plus tourner la CI
+#           sur la PR de release, ce que `GITHUB_TOKEN` ne fait pas — GitHub
+#           n'enchaîne pas les workflows déclenchés par son propre jeton.
+#           Portée : `repo` (classique), ou Contents + Pull requests + Issues en
+#           lecture-écriture (fine-grained).
 
 on:
   push:
@@ -39,10 +53,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      released: ${{ steps.release.outputs.release_created || steps.release.outputs.releases_created }}
+      # `release_created` vaut la chaîne « false » quand rien n'est publié, et
+      # `a || b` renvoie `a` dès qu'il est non vide — « false » compris. Sans
+      # comparaison explicite, un non se lit comme un oui.
+      released: ${{ steps.release.outputs.release_created == 'true' || steps.release.outputs.releases_created == 'true' }}
       tag: ${{ steps.release.outputs.tag_name }}
       version: ${{ steps.release.outputs.version }}
     steps:
+      - name: Quel jeton ouvre la PR
+        id: token
+        env:
+          HAS_PAT: ${{ secrets.GH_PAT != '' }}
+        run: |
+          echo "pat=${HAS_PAT}" >> "$GITHUB_OUTPUT"
+          if [ "$HAS_PAT" = 'true' ]; then
+            echo "Jeton : GH_PAT — la PR de release déclenchera la CI."
+          else
+            echo "Jeton : GITHUB_TOKEN — la case « Allow GitHub Actions to create and approve pull requests » doit être cochée (Settings → Actions → General → Workflow permissions), sans quoi la PR de release ne peut pas s'ouvrir."
+          fi
+
       - name: Release Please
         id: release
         uses: googleapis/release-please-action@v4
@@ -50,6 +79,13 @@ jobs:
           token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # L'erreur de release-please ne dit pas quoi faire, et la branche qu'elle
+      # laisse derrière elle donne l'illusion que la release est partie.
+      - name: Pourquoi la PR de release n'est pas ouverte
+        if: failure() && steps.release.outcome == 'failure' && steps.token.outputs.pat != 'true'
+        run: |
+          echo "::error title=GITHUB_TOKEN ne peut pas ouvrir la PR de release::Cocher Settings → Actions → General → Workflow permissions → « Allow GitHub Actions to create and approve pull requests » puis relancer (Actions → Release → Run workflow). Autre voie : un secret GH_PAT de portée repo — il échappe à cette restriction et fait tourner la CI sur la PR de release."
 
   product-note:
     name: Note de version produit
