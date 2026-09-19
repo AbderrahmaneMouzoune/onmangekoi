@@ -1,16 +1,16 @@
 'use client'
 
-import { RiMapPin2Line } from '@remixicon/react'
+import { RiMapPin2Line, RiStarFill } from '@remixicon/react'
 import { useEffect, useState } from 'react'
 
+import { Facts } from '@/components/restaurants/catalog-results'
 import { ResultRow } from '@/components/restaurants/result-row'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
 import { GENERIC_ERROR } from '@/domain/errors'
 import { PLACES_QUERY_MIN } from '@/domain/schemas/place'
-import { PRICE_LEVEL_LABELS } from '@/domain/schemas/restaurant'
-import { distanceMeters, formatDistance } from '@/lib/maps'
+import { distanceLabel, geoPoint } from '@/lib/maps'
 
 import type { Restaurant } from '@/data-access/models'
 import type { PlaceResult, PlacesPage } from '@/domain/places'
@@ -51,6 +51,22 @@ interface SearchRequest {
 }
 
 const NETWORK_FAILURE = 'La recherche Google a échoué. Réessaie.'
+
+const ratingFormatter = new Intl.NumberFormat('fr', { maximumFractionDigits: 1 })
+
+/** Note Google sur 5 et nombre d'avis : de quoi choisir, jamais enregistré. */
+function Rating({ value, count }: { value: number; count: number | null }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 text-fav">
+      <RiStarFill aria-hidden="true" className="size-3" />
+      {ratingFormatter.format(value)}
+      {count !== null && (
+        <span className="text-muted-foreground">({ratingFormatter.format(count)})</span>
+      )}
+      <span className="sr-only"> sur 5</span>
+    </span>
+  )
+}
 
 async function fetchPlaces(request: SearchRequest, signal?: AbortSignal): Promise<PlacesPage> {
   let response: Response
@@ -108,9 +124,10 @@ export function GooglePlacesResults({
   const { position, status, locate } = geolocation
   const trimmed = query.trim()
   const mode: Mode = trimmed.length >= PLACES_QUERY_MIN ? 'search' : position ? 'nearby' : 'none'
-  const here = position ? `${position.latitude}|${position.longitude}` : ''
+  const here = geoPoint(position)
+  const at = position ? `${position.latitude}|${position.longitude}` : ''
   const requestKey =
-    mode === 'search' ? `q|${trimmed}|${here}` : mode === 'nearby' ? `near|${here}` : ''
+    mode === 'search' ? `q|${trimmed}|${at}` : mode === 'nearby' ? `near|${at}` : ''
 
   const page = mode === 'none' ? undefined : cache.get(requestKey)
   /** Dernier échec, avec la demande qui l'a produit : rien de périmé à l'écran. */
@@ -200,7 +217,7 @@ export function GooglePlacesResults({
       <FormMessage error={fetchError ?? importError} />
 
       <ul
-        className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line"
+        className="flex max-h-[26rem] flex-col gap-1 overflow-y-auto overscroll-contain rounded-lg bg-surface p-1.5 ring-1 ring-line"
         aria-label="Résultats Google"
         aria-busy={isSearching || status === 'locating' || undefined}
       >
@@ -243,28 +260,23 @@ export function GooglePlacesResults({
           const pending = pendingPlaceIds.has(place.placeId)
           const locked = known ? isLocked(known.id) : false
           const checked = known ? locked || isSelected(known.id) : pending
-          const distance =
-            position && place.location
-              ? formatDistance(
-                  distanceMeters(
-                    { lat: position.latitude, lng: position.longitude },
-                    place.location
-                  )
-                )
-              : ''
+          const distance = distanceLabel(here, place.location)
           return (
             <li key={place.placeId}>
               <ResultRow
                 name={place.name}
-                subtitle={place.address}
-                meta={
-                  <>
-                    {distance && <span className="font-medium text-ink-2">{distance}</span>}
-                    {place.cuisineType && (
-                      <span className="font-mono tracking-wide uppercase">{place.cuisineType}</span>
+                photoUrl={known?.photo_url}
+                facts={
+                  <Facts cuisine={place.cuisineType} price={place.priceLevel}>
+                    {place.rating !== null && (
+                      <Rating value={place.rating} count={place.ratingCount} />
                     )}
-                    {place.priceLevel && <span>{PRICE_LEVEL_LABELS[place.priceLevel]}</span>}
-                  </>
+                  </Facts>
+                }
+                subtitle={place.address}
+                openingHours={place.openingHours}
+                meta={
+                  distance ? <span className="font-medium text-ink-2">{distance}</span> : undefined
                 }
                 checked={checked}
                 locked={locked}

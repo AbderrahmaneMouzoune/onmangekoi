@@ -62,7 +62,15 @@ function list(overrides: Partial<ListWithRestaurantIds> = {}): ListWithRestauran
   }
 }
 
-const MARCEL = restaurant({ name: 'Chez Marcel', cuisine_type: 'Français' })
+const MARCEL = restaurant({
+  name: 'Chez Marcel',
+  cuisine_type: 'Français',
+  price_level: 2,
+  address: '3 rue du Four',
+  city: 'Paris',
+  /** Notre-Dame : environ 2,4 km de l'Opéra. */
+  location: { lat: 48.853, lng: 2.3499 },
+})
 const SAKURA = restaurant({ name: 'Sakura', cuisine_type: 'Japonais' })
 const WOK = restaurant({ name: 'Wok Garden', cuisine_type: 'Chinois' })
 const PAGE: RestaurantPage = { items: [MARCEL, SAKURA, WOK], hasMore: false, nextOffset: 3 }
@@ -79,6 +87,8 @@ const SUSHI_PLACE: PlaceResult = {
   cuisineType: 'Japonais',
   priceLevel: 2,
   location: { lat: 48.869, lng: 2.3316 },
+  rating: 4.5,
+  ratingCount: 320,
   description: null,
   website: null,
   openingHours: null,
@@ -387,6 +397,76 @@ describe('RestaurantPicker', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Annuler' }))
     expect(screen.getByRole('list', { name: 'Résultats Google' })).toBeInTheDocument()
+  })
+
+  it('should show each restaurant as an illustrated card with its facts', async () => {
+    render(<Harness />)
+
+    const marcel = screen.getByRole('checkbox', { name: /chez marcel/i })
+    expect(marcel).toHaveTextContent('Français')
+    expect(marcel).toHaveTextContent('€€')
+    expect(marcel).toHaveTextContent('3 rue du Four, Paris')
+    // Pas de photo : la vignette porte les initiales du resto.
+    expect(within(marcel).getByText('CM')).toBeInTheDocument()
+    expect(marcel).not.toHaveTextContent(/km/)
+
+    // « Autour de moi » dans le carnet : la distance de chaque resto géolocalisé.
+    grantPosition()
+    await userEvent.click(screen.getByRole('button', { name: 'Autour de moi' }))
+    expect(marcel).toHaveTextContent(/2,\d km/)
+    expect(screen.getByRole('checkbox', { name: /wok garden/i })).not.toHaveTextContent(/km/)
+
+    // Un second clic oublie la position.
+    await userEvent.click(screen.getByRole('button', { name: 'Autour de toi' }))
+    expect(marcel).not.toHaveTextContent(/km/)
+  })
+
+  it('should keep the basket on a single scrolling line, and empty it in one click', async () => {
+    // jsdom ne défile pas : on lui prête un `scrollTo` pour vérifier l'appel.
+    const scrollTo = vi.fn()
+    Object.defineProperty(Element.prototype, 'scrollTo', { value: scrollTo, configurable: true })
+    const bureau = list({ name: 'Restos du bureau', restaurant_ids: [SAKURA.id] })
+    render(<Harness lists={[bureau]} />)
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /restos du bureau/i }))
+    await userEvent.click(screen.getByRole('tab', { name: 'Le carnet' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: /chez marcel/i }))
+    await userEvent.click(screen.getByRole('checkbox', { name: /wok garden/i }))
+
+    const strip = screen.getByRole('list', { name: 'Sélection' })
+    expect(within(strip).getAllByRole('listitem')).toHaveLength(3)
+    expect(strip).toHaveClass('overflow-x-auto')
+    expect(strip).not.toHaveClass('flex-wrap')
+    // Le dernier pris est amené dans le champ.
+    expect(scrollTo).toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tout retirer' }))
+    expect(screen.queryByRole('region', { name: 'Ta sélection' })).not.toBeInTheDocument()
+    expect(hiddenValues('restaurantIds')).toEqual([])
+    expect(hiddenValues('listIds')).toEqual([])
+    expect(screen.getByRole('checkbox', { name: /chez marcel/i })).not.toBeChecked()
+    Reflect.deleteProperty(Element.prototype, 'scrollTo')
+  })
+
+  it('should illustrate a Google result with its rating and opening badge', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    // Lundi 2026-09-07, 12:30 — en plein service
+    vi.setSystemTime(new Date(2026, 8, 7, 12, 30))
+    grantPosition()
+    googleAnswers([
+      { ...SUSHI_PLACE, openingHours: { periods: [{ day: 1, open: '11:30', close: '14:30' }] } },
+    ])
+    render(<Harness />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+    const row = await screen.findByRole('checkbox', { name: /sushi bar sakura/i })
+    expect(row).toHaveTextContent('Japonais')
+    expect(row).toHaveTextContent('€€')
+    expect(row).toHaveTextContent('4,5')
+    expect(row).toHaveTextContent('(320)')
+    expect(within(row).getByText('Ouvert')).toBeInTheDocument()
+    expect(within(row).getByText('320 m')).toBeInTheDocument()
+    vi.useRealTimers()
   })
 
   it('should move between sources with the arrow keys', async () => {
