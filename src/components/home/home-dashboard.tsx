@@ -3,6 +3,7 @@ import Link from 'next/link'
 
 import { VisitMemo } from '@/components/layout/visit-memo'
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
+import { ArrowKeyList } from '@/components/ui/arrow-key-list'
 import { Skeleton, SkeletonRow } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
@@ -29,13 +30,13 @@ export async function HomeDashboard() {
   ])
 
   return (
-    <>
+    <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
       <VisitMemo account sessions={sessions.length > 0} lists={lists.length > 0} />
 
       {sessions.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-bold">Tes sessions</h2>
-          <ul className="flex flex-col gap-2">
+          <ArrowKeyList aria-label="Tes sessions" className="flex flex-col gap-2">
             {sessions.map((session) => (
               <li key={session.id}>
                 <Link
@@ -57,21 +58,24 @@ export async function HomeDashboard() {
                 </Link>
               </li>
             ))}
-          </ul>
+          </ArrowKeyList>
         </section>
       )}
 
-      <section className="flex flex-col gap-3">
+      <section className={cn('flex flex-col gap-3', sessions.length === 0 && 'lg:col-span-2')}>
         <div className="flex items-baseline justify-between">
           <h2 className="text-lg font-bold">Tes listes</h2>
-          <Link href={router.lists()} className="text-sm font-medium text-brand hover:underline">
+          <Link
+            href={router.lists()}
+            className="rounded-sm text-sm font-medium text-brand hover:underline"
+          >
             Tout voir
           </Link>
         </div>
         {lists.length === 0 ? (
           <FirstListInvite />
         ) : (
-          <ul className="flex flex-wrap gap-2">
+          <ArrowKeyList orientation="both" aria-label="Tes listes" className="flex flex-wrap gap-2">
             {lists.slice(0, 6).map((list) => (
               <li key={list.id}>
                 <Link
@@ -85,10 +89,10 @@ export async function HomeDashboard() {
                 </Link>
               </li>
             ))}
-          </ul>
+          </ArrowKeyList>
         )}
       </section>
-    </>
+    </div>
   )
 }
 
@@ -117,7 +121,7 @@ function FirstListInvite({ className }: { className?: string }) {
  */
 export function HomeDashboardFallback() {
   return (
-    <>
+    <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
       <section aria-busy="true" className="hidden flex-col gap-3 seen-sessions:flex">
         <h2 className="text-lg font-bold">Tes sessions</h2>
         <div className="flex flex-col gap-2">
@@ -126,10 +130,18 @@ export function HomeDashboardFallback() {
         </div>
       </section>
 
-      <section aria-busy="true" className="hidden flex-col gap-3 seen-account:flex">
+      {/* Sans session connue, les listes prennent toute la largeur — comme le
+          vrai tableau de bord le fera. */}
+      <section
+        aria-busy="true"
+        className="hidden flex-col gap-3 lg:col-span-2 seen-account:flex seen-sessions:lg:col-span-1"
+      >
         <div className="flex items-baseline justify-between">
           <h2 className="text-lg font-bold">Tes listes</h2>
-          <Link href={router.lists()} className="text-sm font-medium text-brand hover:underline">
+          <Link
+            href={router.lists()}
+            className="rounded-sm text-sm font-medium text-brand hover:underline"
+          >
             Tout voir
           </Link>
         </div>
@@ -141,6 +153,6 @@ export function HomeDashboardFallback() {
           <Skeleton className="h-9 w-28 rounded-full" />
         </div>
       </section>
-    </>
+    </div>
   )
 }

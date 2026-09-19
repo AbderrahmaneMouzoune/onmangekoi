@@ -24,8 +24,16 @@ export function CreateListForm({ initialPage }: { initialPage: RestaurantPage })
   const [state, formAction, isPending] = useActionState(createListAction, null)
   const [restaurantIds, setRestaurantIds] = useState<string[]>([])
 
+  const submitLabel =
+    restaurantIds.length > 0
+      ? `Enregistrer la liste · ${countLabel(restaurantIds.length, 'resto')}`
+      : LIST_FORM.submitEmpty
+
   return (
-    <form action={formAction} className="flex flex-col gap-8">
+    <form
+      action={formAction}
+      className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-x-10"
+    >
       <ListIdentityCard>
         <div className="flex flex-col gap-2">
           <Label htmlFor="name">{LIST_FORM.name}</Label>
@@ -42,7 +50,7 @@ export function CreateListForm({ initialPage }: { initialPage: RestaurantPage })
         </div>
       </ListIdentityCard>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-3 lg:col-start-2 lg:row-span-3 lg:row-start-1">
         <div className="flex flex-col gap-1">
           <h2 className="text-base font-semibold">{LIST_FORM.restaurants}</h2>
           <p className="text-sm text-muted-foreground">{LIST_FORM.restaurantsHint}</p>
@@ -55,17 +63,11 @@ export function CreateListForm({ initialPage }: { initialPage: RestaurantPage })
         />
       </section>
 
-      <FormMessage error={state?.error} />
+      <FormMessage error={state?.error} className="lg:col-start-1" />
 
-      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md">
+      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md sm:-mx-6 sm:px-6 lg:static lg:col-start-1 lg:m-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
         <Button type="submit" size="lg" disabled={isPending} className="w-full">
-          {isPending ? (
-            <Spinner />
-          ) : restaurantIds.length > 0 ? (
-            `Enregistrer la liste · ${countLabel(restaurantIds.length, 'resto')}`
-          ) : (
-            LIST_FORM.submitEmpty
-          )}
+          {isPending ? <Spinner /> : submitLabel}
         </Button>
       </div>
     </form>

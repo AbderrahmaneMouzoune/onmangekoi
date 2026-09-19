@@ -61,48 +61,55 @@ export async function SharedListDetail({ params }: { params: Promise<{ code: str
         }
       />
 
-      {isOwner && (
-        <Link href={router.list(preview)} className={cn(buttonVariants({ variant: 'outline' }))}>
-          C’est ta liste — la modifier
-        </Link>
-      )}
-
-      {restaurants.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line-strong p-6 text-center text-sm text-muted-foreground">
-          Cette liste est encore vide.
-        </p>
-      ) : (
-        <ul className="flex flex-col gap-1.5">
-          {restaurants.map((restaurant) => (
-            <li
-              key={restaurant.id}
-              className="flex items-center gap-3 rounded-md bg-surface px-3 py-2.5 ring-1 ring-line"
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:gap-10">
+        <div className="flex flex-col gap-6">
+          {isOwner && (
+            <Link
+              href={router.list(preview)}
+              className={cn(buttonVariants({ variant: 'outline' }), 'lg:self-start')}
             >
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm font-medium">{restaurant.name}</span>
-                {restaurant.description && (
-                  <span className="truncate text-xs text-muted-foreground">
-                    {restaurant.description}
-                  </span>
-                )}
-              </div>
-              {restaurant.cuisine_type && (
-                <span className="shrink-0 font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
-                  {restaurant.cuisine_type}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+              C’est ta liste — la modifier
+            </Link>
+          )}
 
-      <SharedListActions
-        identifier={preview.share_code}
-        isCollaborative={preview.is_collaborative}
-        isOwner={isOwner}
-        existingIds={restaurants.map((r) => r.id)}
-        initialPage={initialPage}
-      />
+          {restaurants.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-line-strong p-6 text-center text-sm text-muted-foreground">
+              Cette liste est encore vide.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-1.5">
+              {restaurants.map((restaurant) => (
+                <li
+                  key={restaurant.id}
+                  className="flex items-center gap-3 rounded-md bg-surface px-3 py-2.5 ring-1 ring-line"
+                >
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm font-medium">{restaurant.name}</span>
+                    {restaurant.description && (
+                      <span className="truncate text-xs text-muted-foreground">
+                        {restaurant.description}
+                      </span>
+                    )}
+                  </div>
+                  {restaurant.cuisine_type && (
+                    <span className="shrink-0 font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
+                      {restaurant.cuisine_type}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <SharedListActions
+          identifier={preview.share_code}
+          isCollaborative={preview.is_collaborative}
+          isOwner={isOwner}
+          existingIds={restaurants.map((r) => r.id)}
+          initialPage={initialPage}
+        />
+      </div>
     </>
   )
 }

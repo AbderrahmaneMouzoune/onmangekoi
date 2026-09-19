@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 /** Classement : `/sessions/7K3M9P/results`. */
 export default function ResultsPage({ params }: Props) {
   return (
-    <Shell wide>
+    <Shell size="app">
       <Suspense fallback={<SessionResultsFallback />}>
         <SessionResultsSection params={params} />
       </Suspense>

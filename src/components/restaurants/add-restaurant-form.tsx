@@ -18,6 +18,7 @@ import {
   RESTAURANT_NAME_MIN,
 } from '@/domain/schemas/restaurant'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { useRovingFocus } from '@/hooks/use-roving-focus'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant } from '@/data-access/models'
@@ -36,7 +37,7 @@ interface AddRestaurantFormProps {
  * Ce n'est volontairement pas un `<form>` : le composant est monté à
  * l'intérieur du formulaire de création de session ou de liste, et un
  * formulaire imbriqué est du HTML invalide. La soumission passe donc par le
- * bouton et par la touche Entrée.
+ * bouton et par la touche Entrée ; Échap annule, comme pour une modale.
  */
 export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRestaurantFormProps) {
   const fieldId = useId()
@@ -56,6 +57,8 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
   const candidate = debouncedName.trim()
   const canLookup = candidate.length >= RESTAURANT_NAME_MIN
   const lastLookup = useRef<string | null>(null)
+  /** Les flèches passent d'un budget à l'autre et le sélectionnent (radios). */
+  const onBudgetKeyDown = useRovingFocus((index) => setPriceLevel(PRICE_LEVELS[index]))
 
   useEffect(() => {
     if (!canLookup || candidate === lastLookup.current) return
@@ -91,8 +94,20 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
     submit()
   }
 
+  function cancelOnEscape(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'Escape' || isSubmitting) return
+    event.preventDefault()
+    event.stopPropagation()
+    onCancel()
+  }
+
   return (
-    <div className="flex flex-col gap-3 rounded-lg bg-surface p-3 ring-1 ring-line">
+    <div
+      role="group"
+      aria-label="Ajouter un resto"
+      onKeyDown={cancelOnEscape}
+      className="flex flex-col gap-3 rounded-lg bg-surface p-3 ring-1 ring-line"
+    >
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${fieldId}-name`}>Nom du resto</Label>
         <Input
@@ -168,14 +183,23 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
         <legend className="mb-1.5 text-sm leading-none font-medium text-ink">
           Budget <span className="text-muted-foreground">(optionnel)</span>
         </legend>
-        <div role="radiogroup" aria-label="Budget" className="flex gap-1.5">
-          {PRICE_LEVELS.map((level) => {
+        <div
+          role="radiogroup"
+          aria-label="Budget"
+          onKeyDown={onBudgetKeyDown}
+          className="flex gap-1.5"
+        >
+          {PRICE_LEVELS.map((level, index) => {
             const isSelected = priceLevel === level
+            // Un seul arrêt de tabulation : le budget choisi, sinon le premier.
+            const isTabStop = priceLevel === null ? index === 0 : isSelected
             return (
               <button
                 key={level}
                 type="button"
                 role="radio"
+                data-roving
+                tabIndex={isTabStop ? 0 : -1}
                 aria-checked={isSelected}
                 aria-label={PRICE_LEVEL_LABELS[level]}
                 onClick={() => setPriceLevel(isSelected ? null : level)}

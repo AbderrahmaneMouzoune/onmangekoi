@@ -3,6 +3,7 @@
 import { RiBookmarkFill, RiCloseLine } from '@remixicon/react'
 
 import { Spinner } from '@/components/ui/spinner'
+import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
 import { countLabel } from '@/lib/format'
 
 import type { Restaurant } from '@/data-access/models'
@@ -42,6 +43,7 @@ export function SelectionBasket({
   onRemoveList,
   onRemoveRestaurant,
 }: SelectionBasketProps) {
+  const onKeyDown = useArrowNavigation('both')
   if (lists.length === 0 && restaurants.length === 0 && pending.length === 0) return null
 
   return (
@@ -52,7 +54,7 @@ export function SelectionBasket({
           {countLabel(total, 'resto')}
         </span>
       </p>
-      <ul className="flex flex-wrap gap-1.5" aria-label="Sélection">
+      <ul onKeyDown={onKeyDown} className="flex flex-wrap gap-1.5" aria-label="Sélection">
         {lists.map((list) => (
           <li key={list.id}>
             <button

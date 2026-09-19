@@ -32,7 +32,10 @@ export async function CreateListSection() {
  */
 export function CreateListSectionFallback() {
   return (
-    <div aria-busy="true" className="flex flex-col gap-8">
+    <div
+      aria-busy="true"
+      className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-x-10"
+    >
       <ListIdentityCard>
         <div className="flex flex-col gap-2">
           <p className="text-sm leading-none font-medium text-ink">{LIST_FORM.name}</p>
@@ -40,7 +43,7 @@ export function CreateListSectionFallback() {
         </div>
       </ListIdentityCard>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 lg:col-start-2 lg:row-span-3 lg:row-start-1">
         <div className="flex flex-col gap-1">
           <p className="text-base font-semibold">{LIST_FORM.restaurants}</p>
           <p className="text-sm text-muted-foreground">{LIST_FORM.restaurantsHint}</p>
@@ -48,7 +51,7 @@ export function CreateListSectionFallback() {
         <RestaurantPickerFallback />
       </div>
 
-      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md">
+      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md sm:-mx-6 sm:px-6 lg:static lg:col-start-1 lg:m-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
         <button type="button" disabled className={cn(buttonVariants({ size: 'lg' }), 'w-full')}>
           {LIST_FORM.submitEmpty}
         </button>

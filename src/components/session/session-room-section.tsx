@@ -64,23 +64,30 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
  * Silhouette du salon — réutilisée telle quelle par `loading.tsx`, pour que la
  * coquille ne bouge pas d'un pixel quand le salon arrive. Le surtitre est le
  * même pour toutes les sessions : il s'affiche en clair, seul le nom attend.
+ * La grille est celle du deck de vote, l'écran que la plupart des liens
+ * ouvrent : la carte à gauche, les commandes à droite sur grand écran.
  */
 export function SessionRoomFallback() {
   return (
-    <div aria-busy="true" className="flex flex-col gap-6">
+    <div aria-busy="true" className="flex flex-col gap-6 lg:gap-8">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <p className="eyebrow">Session</p>
-          <Skeleton className="h-8 w-48 sm:h-9" />
+          <Skeleton className="h-8 w-48 sm:h-9 lg:h-10" />
         </div>
         <Skeleton className="h-6 w-24 rounded-full" />
       </div>
-      <Skeleton className="aspect-[4/5] w-full rounded-xl sm:aspect-[5/6]" />
-      <div className="grid grid-cols-4 gap-2">
-        <Skeleton className="h-20 rounded-lg" />
-        <Skeleton className="h-24 rounded-lg" />
-        <Skeleton className="h-24 rounded-lg" />
-        <Skeleton className="h-20 rounded-lg" />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <Skeleton className="mx-auto aspect-[4/5] w-full max-w-lg rounded-xl sm:aspect-[5/6] lg:aspect-[4/5]" />
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-5 lg:max-w-none">
+          <Skeleton className="h-1.5 w-full rounded-full" />
+          <div className="grid grid-cols-4 gap-2 lg:grid-cols-2">
+            <Skeleton className="h-20 rounded-lg lg:h-24" />
+            <Skeleton className="h-24 rounded-lg" />
+            <Skeleton className="h-24 rounded-lg" />
+            <Skeleton className="h-20 rounded-lg lg:h-24" />
+          </div>
+        </div>
       </div>
     </div>
   )

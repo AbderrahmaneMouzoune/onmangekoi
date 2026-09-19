@@ -49,7 +49,10 @@ export async function CreateSessionSection() {
  */
 export function CreateSessionSectionFallback() {
   return (
-    <div aria-busy="true" className="flex flex-col gap-8">
+    <div
+      aria-busy="true"
+      className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-x-10"
+    >
       <SessionStep
         number={1}
         title={
@@ -59,13 +62,15 @@ export function CreateSessionSectionFallback() {
         <Skeleton className="h-12 w-full rounded-md" />
       </SessionStep>
 
-      <SessionStep
-        number={2}
-        title={<p className="text-base font-semibold">{SESSION_STEPS.restaurants}</p>}
-        hint={SESSION_STEPS.restaurantsHint}
-      >
-        <RestaurantPickerFallback />
-      </SessionStep>
+      <div className="contents lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:block">
+        <SessionStep
+          number={2}
+          title={<p className="text-base font-semibold">{SESSION_STEPS.restaurants}</p>}
+          hint={SESSION_STEPS.restaurantsHint}
+        >
+          <RestaurantPickerFallback />
+        </SessionStep>
+      </div>
 
       <DeadlinePickerFallback
         legend={
@@ -75,7 +80,7 @@ export function CreateSessionSectionFallback() {
         }
       />
 
-      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md">
+      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md sm:-mx-6 sm:px-6 lg:static lg:col-start-1 lg:m-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
         <button type="button" disabled className={cn(buttonVariants({ size: 'lg' }), 'w-full')}>
           Sélectionne des restaurants
         </button>
