@@ -26,6 +26,8 @@ import type { RestaurantPage } from '@/data-access/restaurants'
 import type { ConnectionState } from '@/hooks/use-session-room'
 
 const MIN_PARTICIPANTS = 2
+/** Un seul resto ne se départage pas : le vote n'aurait rien à trancher. */
+const MIN_RESTAURANTS = 2
 
 interface WaitingRoomProps {
   session: Session
@@ -68,7 +70,9 @@ export function WaitingRoom({
   const host = participants.find(
     (p) => session.host_id !== null && p.profile_id === session.host_id
   )
-  const canLaunch = participants.length >= MIN_PARTICIPANTS
+  const missingParticipants = participants.length < MIN_PARTICIPANTS
+  const missingRestaurants = restaurants.length < MIN_RESTAURANTS
+  const canLaunch = !missingParticipants && !missingRestaurants
 
   function launch() {
     setError(null)
@@ -150,9 +154,7 @@ export function WaitingRoom({
             Lancer le vote
           </Button>
           <p className="text-center text-xs text-muted-foreground">
-            {canLaunch
-              ? 'Une fois lancé, plus personne ne peut rejoindre.'
-              : `Il faut au moins ${MIN_PARTICIPANTS} participants pour lancer.`}
+            {launchHint({ missingParticipants, missingRestaurants })}
           </p>
           <TwoStepButton
             variant="ghost"
@@ -183,4 +185,27 @@ export function WaitingRoom({
       )}
     </div>
   )
+}
+
+/**
+ * Ce qui manque pour lancer, dit en une phrase — et ce que lancer implique
+ * quand plus rien ne manque.
+ */
+function launchHint({
+  missingParticipants,
+  missingRestaurants,
+}: {
+  missingParticipants: boolean
+  missingRestaurants: boolean
+}): string {
+  if (missingParticipants && missingRestaurants) {
+    return `Il faut au moins ${MIN_PARTICIPANTS} participants et ${MIN_RESTAURANTS} restos pour lancer.`
+  }
+  if (missingParticipants) {
+    return `Il faut au moins ${MIN_PARTICIPANTS} participants pour lancer.`
+  }
+  if (missingRestaurants) {
+    return 'Avec un seul resto, il n’y a rien à départager : chacun peut apporter le sien.'
+  }
+  return 'Une fois lancé, plus personne ne peut rejoindre.'
 }
