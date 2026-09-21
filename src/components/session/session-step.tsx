@@ -1,12 +1,18 @@
 import { cn } from '@/lib/utils'
 
-/** Intitulés des trois étapes — partagés avec la silhouette, qui les écrit en clair. */
+/**
+ * Intitulés des étapes — partagés avec la silhouette, qui les écrit en clair.
+ * Les trois premières sont pour tout le monde ; la quatrième n'existe que si
+ * on a déjà sauvegardé un groupe, et la silhouette ne la réserve donc pas.
+ */
 export const SESSION_STEPS = {
   name: 'Nom de la session',
   restaurants: 'Les restos à départager',
   restaurantsHint:
     'Tes listes, le carnet des restos déjà connus, Google : pioche où tu veux et mélange.',
   deadline: 'Clôture automatique',
+  groups: 'Inviter un groupe',
+  groupsHint: 'L’équipe du déjeuner, prévenue d’un clic — sans que personne ne retape le code.',
 } as const
 
 interface StepTitleProps {

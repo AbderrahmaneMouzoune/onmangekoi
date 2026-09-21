@@ -17,6 +17,9 @@ export type SessionParticipant = Tables['session_participants']['Row']
 export type SessionRestaurant = Tables['session_restaurants']['Row']
 export type Vote = Tables['votes']['Row']
 export type ListRestaurant = Tables['list_restaurants']['Row']
+export type Group = Tables['groups']['Row']
+export type GroupMember = Tables['group_members']['Row']
+export type SessionInvitation = Tables['session_invitations']['Row']
 
 export type SessionStatus = Database['public']['Enums']['session_status']
 
@@ -43,6 +46,16 @@ export type SharedListPreview = Functions['list_by_share_token']['Returns'][numb
  * générateur qui ne peut pas le savoir d'un `returns table (...)`.
  */
 export type RecentWinner = Functions['recent_winners']['Returns'][number]
+
+/**
+ * Invitation en attente, vue par l'invité. Le pseudo du host est nul quand
+ * il a supprimé son compte ; le nom du groupe l'est quand le groupe a été
+ * supprimé depuis l'invitation — la session, elle, reste rejoignable.
+ */
+export type PendingInvitation = Omit<
+  Functions['my_session_invitations']['Returns'][number],
+  'host_pseudo' | 'group_name'
+> & { host_pseudo: string | null; group_name: string | null }
 
 /**
  * Colonnes que `session_results` recopie de `restaurants`, toutes nullables en
@@ -85,3 +98,16 @@ export type ListWithRestaurants = List & {
 
 /** Session avec le nombre de participants (page d'accueil) */
 export type SessionSummary = Session & { participant_count: number }
+
+/** Membre d'un groupe avec le profil joint (pseudo) */
+export type GroupMemberWithProfile = GroupMember & {
+  profiles: Pick<Profile, 'id' | 'pseudo'> | null
+}
+
+/** Groupe avec ses membres, dans l'ordre d'ajout */
+export type GroupWithMembers = Group & { members: GroupMemberWithProfile[] }
+
+/** Invité en attente d'une session, vu par le host */
+export type InvitationWithProfile = SessionInvitation & {
+  profiles: Pick<Profile, 'id' | 'pseudo'> | null
+}

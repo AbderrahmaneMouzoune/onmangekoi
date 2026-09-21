@@ -13,7 +13,14 @@
  */
 
 /** Préfixes qui exigent un utilisateur (le proxy redirige vers l'onboarding). */
-export const PROTECTED_PREFIXES = ['/sessions', '/join', '/lists', '/l', '/account'] as const
+export const PROTECTED_PREFIXES = [
+  '/sessions',
+  '/join',
+  '/lists',
+  '/l',
+  '/groups',
+  '/account',
+] as const
 
 /** Longueur d'un code de partage de liste (Crockford base32). */
 export const SHARE_CODE_LENGTH = 10
@@ -67,6 +74,9 @@ export const router = {
   /** Salle de session : `/sessions/7K3M9P`. */
   session: (target: SessionTarget) => `/sessions/${sessionSegment(target)}`,
   sessionResults: (target: SessionTarget) => `/sessions/${sessionSegment(target)}/results`,
+
+  /** Groupes récurrents : « l'équipe du déjeuner », à réinviter d'un clic. */
+  groups: () => '/groups',
 
   lists: () => '/lists',
   listNew: () => '/lists/new',

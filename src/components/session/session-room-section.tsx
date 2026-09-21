@@ -4,6 +4,7 @@ import { SessionRoom } from '@/components/session/session-room'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
+import { getMyGroups, getSessionInvitations } from '@/data-access/groups'
 import { getRecentWinners } from '@/data-access/recent-winners'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import {
@@ -51,13 +52,18 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
 
   const url = inviteUrl(session)
   const waiting = session.status === 'waiting'
+  // Pré-inviter un groupe reste la main du host : c'est lui qui compose la
+  // salle. Inviter par lien, lui, n'appartient à personne.
+  const waitingHost = waiting && session.host_id === user.id
 
   // Salle d'attente : chacun peut inviter et apporter un resto, donc le QR et
   // le catalogue partent pour tout le monde — jamais pendant le vote, où ils
   // ne serviraient qu'à alourdir la charge utile.
-  const [qrSvg, restaurantCatalog] = await Promise.all([
+  const [qrSvg, restaurantCatalog, invitations, groups] = await Promise.all([
     waiting ? qrCodeSvg(url) : null,
     waiting ? getRestaurantCatalogPage() : null,
+    waitingHost ? getSessionInvitations(supabase, session.id) : [],
+    waitingHost ? getMyGroups(supabase) : [],
   ])
 
   return (
@@ -71,6 +77,8 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
       meId={user.id}
       inviteUrl={url}
       qrSvg={qrSvg}
+      invitations={invitations}
+      groups={groups}
     />
   )
 }

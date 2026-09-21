@@ -37,6 +37,12 @@ export const OMK_MESSAGES: Record<string, string> = {
   super_dislike_used: 'Tu as déjà utilisé ton veto.',
   list_not_found: 'Cette liste n’existe pas ou le lien est invalide.',
   list_not_collaborative: 'Cette liste n’est pas collaborative.',
+  invalid_group_name: 'Le nom du groupe doit faire entre 1 et 60 caractères.',
+  group_not_found: 'Ce groupe n’existe pas ou tu n’en fais plus partie.',
+  group_name_taken: 'Tu as déjà un groupe qui porte ce nom.',
+  too_many_groups: 'Tu as atteint la limite de 20 groupes.',
+  too_many_invitations: 'Cette session ne peut pas dépasser 50 invitations en attente.',
+  group_owner_cannot_leave: 'Tu es le propriétaire de ce groupe : supprime-le pour t’en défaire.',
 }
 
 export const GENERIC_ERROR = 'Une erreur est survenue. Réessaie dans un instant.'
