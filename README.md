@@ -29,7 +29,7 @@ Les règles (jokers, session en cours, participant, restaurant valide) sont vér
 
 | Règle               | Comportement                                                                    |
 | ------------------- | ------------------------------------------------------------------------------- |
-| Lancement           | Réservé au host, à partir de 2 participants                                     |
+| Lancement           | Réservé au host, à partir de 2 participants et 2 restaurants                    |
 | Composition         | En attente, **chaque participant** ajoute ses restos et invite qui il veut      |
 | Retrait             | Chacun retire ce qu'il a apporté ; le host arbitre ; le dernier resto reste     |
 | Snapshot            | Les restaurants sont figés au lancement, pas à la création                      |

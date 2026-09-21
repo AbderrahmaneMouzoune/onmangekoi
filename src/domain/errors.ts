@@ -23,6 +23,8 @@ export const OMK_MESSAGES: Record<string, string> = {
   no_deadline: 'Cette session n’a pas d’échéance à prolonger.',
   invalid_extension: 'Cette prolongation n’est pas valide.',
   not_enough_participants: 'Il faut au moins 2 participants pour lancer le vote.',
+  not_enough_restaurants:
+    'Il faut au moins 2 restaurants pour lancer le vote : avec un seul, il n’y a rien à départager.',
   host_only: 'Seul le host peut faire ça.',
   not_participant: 'Tu ne fais pas partie de cette session.',
   not_your_restaurant: 'Tu ne peux retirer que les restos que tu as ajoutés.',

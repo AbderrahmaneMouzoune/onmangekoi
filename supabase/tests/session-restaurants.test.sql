@@ -176,6 +176,20 @@ select pg_temp.assert(
   'le dernier resto ne peut pas être retiré'
 );
 
+-- ─── UN SEUL RESTO NE SE DÉPARTAGE PAS ───────────────────────
+-- Il ne reste que `resto1` : le classement serait connu d'avance.
+select pg_temp.assert(
+  pg_temp.omk_of(format(
+    'select public.launch_session(%L)', :'session_id'
+  )) = 'not_enough_restaurants',
+  'le vote ne démarre pas à un seul resto'
+);
+
+-- Bob en rapporte un : le deck a de nouveau de quoi se départager.
+select pg_temp.act_as(:'bob');
+select public.add_session_restaurant(:'session_id'::uuid, :'resto2'::uuid);
+select pg_temp.act_as(:'alice');
+
 -- ─── UNE FOIS LE VOTE LANCÉ, LE DECK EST FIGÉ ────────────────
 select public.launch_session(:'session_id'::uuid);
 
