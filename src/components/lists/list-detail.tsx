@@ -80,6 +80,7 @@ export function ListDetailFallback() {
             </span>
             <Skeleton className="h-6 w-36 bg-line" />
           </div>
+          <Skeleton className="h-11 rounded-md" />
           <div className="flex flex-col gap-2 sm:flex-row">
             <Skeleton className="h-11 rounded-md sm:flex-1" />
             <Skeleton className="h-11 rounded-md sm:flex-1" />
