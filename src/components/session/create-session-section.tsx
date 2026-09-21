@@ -9,8 +9,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { getListsWithRestaurantIds } from '@/data-access/lists'
+import { getRecentWinners } from '@/data-access/recent-winners'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
+import { recentWinnerDates } from '@/domain/recent-winners'
 import { cn } from '@/lib/utils'
 
 const DAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
@@ -31,13 +33,19 @@ export async function CreateSessionSection() {
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
   if (!user) redirect(router.setup(router.sessionNew()))
 
-  const [lists, initialPage] = await Promise.all([
+  const [lists, initialPage, recentWinners] = await Promise.all([
     getListsWithRestaurantIds(supabase, user.id),
     getRestaurantCatalogPage(),
+    getRecentWinners(supabase),
   ])
 
   return (
-    <CreateSessionForm lists={lists} initialPage={initialPage} defaultName={defaultSessionName()} />
+    <CreateSessionForm
+      lists={lists}
+      initialPage={initialPage}
+      defaultName={defaultSessionName()}
+      recentWinners={recentWinnerDates(recentWinners)}
+    />
   )
 }
 

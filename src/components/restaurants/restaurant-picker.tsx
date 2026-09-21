@@ -27,6 +27,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useGeolocation } from '@/hooks/use-geolocation'
 
@@ -34,6 +35,7 @@ import type { ListWithRestaurantIds } from '@/data-access/lists'
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
 import type { PlaceResult, PlacesPage } from '@/domain/places'
+import type { RecentWinnerDates } from '@/domain/recent-winners'
 
 const NO_LISTS: ListWithRestaurantIds[] = []
 const NO_IDS: string[] = []
@@ -52,6 +54,10 @@ interface RestaurantPickerProps {
   onChange: (ids: string[]) => void
   /** Ids déjà présents ailleurs (ex. déjà dans la liste qu'on édite) : cochés, non modifiables */
   lockedIds?: string[]
+  /** Anti-fatigue : date du dernier sacre, par restaurant — badgée sur la ligne */
+  recentWinners?: RecentWinnerDates
+  /** Anti-fatigue actif : les gagnants récents sont écartés, donc ni cochés ni cochables */
+  excludeRecent?: boolean
   /** name des inputs hidden pour un envoi via formulaire */
   inputName?: string
   emptyLabel?: string
@@ -82,6 +88,8 @@ export function RestaurantPicker({
   value,
   onChange,
   lockedIds = NO_IDS,
+  recentWinners = NO_RECENT_WINNERS,
+  excludeRecent = false,
   inputName,
   emptyLabel = 'Aucun resto du carnet ne correspond.',
   lists = NO_LISTS,
@@ -225,8 +233,13 @@ export function RestaurantPicker({
     if (next === 'google' && geolocation.status === 'idle') geolocation.locate()
   }
 
+  /** Écarté par l'anti-fatigue : la ligne se voit, mais ne se coche plus. */
+  function isExcluded(id: string) {
+    return excludeRecent && recentWinners[id] !== undefined
+  }
+
   function toggle(restaurant: Restaurant) {
-    if (locked.has(restaurant.id)) return
+    if (locked.has(restaurant.id) || isExcluded(restaurant.id)) return
     remember([restaurant])
     onChange(
       selected.has(restaurant.id)
@@ -256,7 +269,11 @@ export function RestaurantPicker({
         : { ...prev, items: [restaurant, ...prev.items] }
     )
     const current = latest.current
-    if (!current.locked.has(restaurant.id) && !current.selected.has(restaurant.id)) {
+    if (
+      !current.locked.has(restaurant.id) &&
+      !current.selected.has(restaurant.id) &&
+      !isExcluded(restaurant.id)
+    ) {
       onChange([...current.value, restaurant.id])
     }
     setIsAdding(false)
@@ -284,7 +301,10 @@ export function RestaurantPicker({
     })
   }
 
+  // Un resto écarté par l'anti-fatigue reste dans `value` — décocher la case
+  // le fait revenir — mais il ne compte plus, ni au panier ni au total.
   const selectedRestaurants = value
+    .filter((id) => !isExcluded(id))
     .map((id) => known.get(id))
     .filter((r): r is Restaurant => Boolean(r))
   const selectedLists = lists
@@ -292,7 +312,8 @@ export function RestaurantPicker({
     .map((list) => ({ id: list.id, name: list.name, restaurantCount: list.restaurant_ids.length }))
   const pending = [...pendingPlaces.values()]
   const pendingIds = useMemo(() => new Set(pendingPlaces.keys()), [pendingPlaces])
-  const total = new Set([...fromLists, ...value]).size + pending.length
+  const total =
+    new Set([...fromLists, ...value].filter((id) => !isExcluded(id))).size + pending.length
 
   const showSearch = source !== 'lists' && !isAdding
   const hasTabs = tabs.length > 1
@@ -370,6 +391,8 @@ export function RestaurantPicker({
             onToggle={toggle}
             onImport={importPlace}
             importError={importError}
+            recentWinners={recentWinners}
+            excludeRecent={excludeRecent}
           />
         ) : (
           <>
@@ -389,6 +412,8 @@ export function RestaurantPicker({
               onToggle={toggle}
               emptyLabel={emptyLabel}
               onAddManually={() => setIsAdding(true)}
+              recentWinners={recentWinners}
+              excludeRecent={excludeRecent}
             />
           </>
         )}

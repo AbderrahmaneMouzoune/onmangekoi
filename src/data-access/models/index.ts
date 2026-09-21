@@ -38,6 +38,13 @@ export type SessionPreview = Omit<
 export type SharedListPreview = Functions['list_by_share_token']['Returns'][number]
 
 /**
+ * Restaurant sorti gagnant d'une session close récente, et la date de son
+ * dernier sacre. Aucune des deux colonnes n'est nulle en base — c'est le
+ * générateur qui ne peut pas le savoir d'un `returns table (...)`.
+ */
+export type RecentWinner = Functions['recent_winners']['Returns'][number]
+
+/**
  * Colonnes que `session_results` recopie de `restaurants`, toutes nullables en
  * base. La fiche restaurant s'appuie dessus pour masquer proprement une donnée
  * absente : une photo, une adresse ou des horaires qu'on n'a pas.

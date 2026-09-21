@@ -103,6 +103,18 @@ describe('VoteCard', () => {
     expect(screen.queryByText('Fermé')).not.toBeInTheDocument()
   })
 
+  it('should recall a recent win, discreetly', () => {
+    render(
+      <VoteCard restaurant={restaurant()} index={1} total={3} lastWonAt="2026-08-28T12:00:00Z" />
+    )
+    expect(screen.getByText('Déjà gagnant le 28 août')).toBeInTheDocument()
+  })
+
+  it('should say nothing about a restaurant that has won nothing lately', () => {
+    render(<VoteCard restaurant={restaurant()} index={1} total={3} />)
+    expect(screen.queryByText(/Déjà gagnant/)).not.toBeInTheDocument()
+  })
+
   it('should render the photo of an allowed host as a decorative background', () => {
     render(
       <VoteCard

@@ -17,12 +17,15 @@ import { geoPoint } from '@/lib/maps'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant, SessionRestaurantWithRestaurant } from '@/data-access/models'
+import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { VoteValue } from '@/domain/vote'
 
 interface VoteDeckProps {
   sessionId: string
   restaurants: SessionRestaurantWithRestaurant[]
   initialVotedIds: string[]
+  /** Anti-fatigue : date du dernier sacre par restaurant, chargée avec la session */
+  lastWins: RecentWinnerDates
   initialSuperlikeUsed: boolean
   initialSuperDislikeUsed: boolean
   onFinished: () => void
@@ -44,6 +47,7 @@ export function VoteDeck({
   sessionId,
   restaurants,
   initialVotedIds,
+  lastWins,
   initialSuperlikeUsed,
   initialSuperDislikeUsed,
   onFinished,
@@ -271,6 +275,7 @@ export function VoteDeck({
               restaurant={next.restaurants}
               index={done + 2}
               total={total}
+              lastWonAt={lastWins[next.restaurants.id]}
               priority={false}
               position={here}
             />
@@ -287,6 +292,7 @@ export function VoteDeck({
             restaurant={current.restaurants as Restaurant}
             index={done + 1}
             total={total}
+            lastWonAt={lastWins[current.restaurants.id]}
             style={cardStyle}
             overlay={overlay}
             priority

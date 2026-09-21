@@ -20,6 +20,7 @@ import type {
   SessionRestaurantWithRestaurant,
 } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { RecentWinnerDates } from '@/domain/recent-winners'
 
 interface SessionRoomProps {
   session: Session
@@ -28,6 +29,8 @@ interface SessionRoomProps {
   /** Première page du catalogue, pour ajouter un resto en salle d'attente */
   restaurantCatalog: RestaurantPage | null
   myVotedIds: string[]
+  /** Anti-fatigue : ce qui a déjà gagné récemment, chargé avec la session */
+  recentWinners: RecentWinnerDates
   meId: string
   inviteUrl: string
   /** QR code SVG du lien d'invitation, rendu côté serveur (salle d'attente) */
@@ -44,6 +47,7 @@ export function SessionRoom({
   restaurants: initialRestaurants,
   restaurantCatalog,
   myVotedIds,
+  recentWinners,
   meId,
   inviteUrl,
   qrSvg,
@@ -166,6 +170,7 @@ export function SessionRoom({
           sessionId={session.id}
           restaurants={restaurants}
           initialVotedIds={myVotedIds}
+          lastWins={recentWinners}
           initialSuperlikeUsed={me?.superlike_used ?? false}
           initialSuperDislikeUsed={me?.super_dislike_used ?? false}
           onFinished={handleFinished}
