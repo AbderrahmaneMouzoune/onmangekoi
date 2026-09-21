@@ -19,13 +19,15 @@ const searchRestaurantsAction = vi.hoisted(() => vi.fn())
 const createRestaurantAction = vi.hoisted(() => vi.fn())
 const findSimilarRestaurantsAction = vi.hoisted(() => vi.fn())
 const importPlaceAction = vi.hoisted(() => vi.fn())
+const seedNeighbourhoodAction = vi.hoisted(() => vi.fn())
 
 vi.mock('@/actions/restaurants', () => ({
   searchRestaurantsAction,
   createRestaurantAction,
   findSimilarRestaurantsAction,
 }))
-vi.mock('@/actions/places', () => ({ importPlaceAction }))
+vi.mock('@/actions/places', () => ({ importPlaceAction, seedNeighbourhoodAction }))
+vi.mock('@/lib/analytics/client', () => ({ captureEvent: vi.fn() }))
 
 function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
   return {
@@ -566,5 +568,88 @@ describe('RestaurantPicker', () => {
     await waitFor(() => expect(row).toHaveAttribute('aria-disabled', 'true'))
     expect(row).not.toBeChecked()
     expect(within(row).getByText('Écarté')).toBeInTheDocument()
+  })
+
+  // ─── Amorcer le quartier ───────────────────────────────────
+  it('should not offer to seed the neighbourhood before a position is given', async () => {
+    refusePosition()
+    googleAnswers([SUSHI_PLACE])
+    render(<Harness />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+
+    await screen.findByText(/position refusée/i)
+    expect(screen.queryByRole('button', { name: 'Amorcer' })).not.toBeInTheDocument()
+    expect(seedNeighbourhoodAction).not.toHaveBeenCalled()
+  })
+
+  it('should fill the address book in one gesture, without checking anything', async () => {
+    grantPosition()
+    googleAnswers([SUSHI_PLACE])
+    const seeded = [
+      restaurant({ name: 'Sushi Bar Sakura', source: 'google', place_id: SUSHI_PLACE.placeId }),
+      restaurant({ name: 'Ramen Ichiban', source: 'google', place_id: RAMEN_PLACE.placeId }),
+    ]
+    seedNeighbourhoodAction.mockResolvedValue({
+      ok: true,
+      data: { restaurants: seeded, failed: 0, remaining: 2 },
+    })
+    const onChange = vi.fn()
+    render(<Harness onChange={onChange} />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Amorcer' }))
+
+    expect(seedNeighbourhoodAction).toHaveBeenCalledWith(OPERA)
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '2 restos sont entrés dans le carnet. Il te reste 2 amorçages aujourd’hui.'
+    )
+    // Le carnet s'est rempli ; la sélection, elle, reste un choix.
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.queryByRole('region', { name: 'Ta sélection' })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Le carnet' }))
+    const results = screen.getByRole('list', { name: 'Résultats' })
+    expect(within(results).getByRole('checkbox', { name: /ramen ichiban/i })).not.toBeChecked()
+    expect(within(results).getByRole('checkbox', { name: /sushi bar sakura/i })).toBeVisible()
+  })
+
+  it('should keep the places that went through when part of the batch failed', async () => {
+    grantPosition()
+    googleAnswers([SUSHI_PLACE])
+    seedNeighbourhoodAction.mockResolvedValue({
+      ok: true,
+      data: {
+        restaurants: [restaurant({ name: 'Sushi Bar Sakura', place_id: SUSHI_PLACE.placeId })],
+        failed: 2,
+        remaining: 0,
+      },
+    })
+    render(<Harness />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Amorcer' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '1 resto est entré dans le carnet, 2 n’ont pas pu être enregistrés. C’était ton dernier amorçage du jour.'
+    )
+    // Plus de créneau : le bouton reste là, éteint.
+    expect(screen.getByRole('button', { name: 'Amorcer' })).toBeDisabled()
+  })
+
+  it('should say when the quota refuses the batch, without touching the address book', async () => {
+    grantPosition()
+    googleAnswers([SUSHI_PLACE])
+    seedNeighbourhoodAction.mockResolvedValue({
+      ok: false,
+      error: 'Tu as épuisé tes amorçages de quartier pour aujourd’hui. Réessaie demain.',
+    })
+    render(<Harness />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Amorcer' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/épuisé tes amorçages/i)
+    expect(screen.getByRole('button', { name: 'Amorcer' })).toBeEnabled()
   })
 })
