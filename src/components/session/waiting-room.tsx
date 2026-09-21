@@ -7,13 +7,19 @@ import { deleteSessionAction, launchSessionAction, leaveSessionAction } from '@/
 import { ConnectionIndicator } from '@/components/session/connection-indicator'
 import { InviteCard } from '@/components/session/invite-card'
 import { ParticipantList } from '@/components/session/participant-list'
+import { SessionRestaurantsPanel } from '@/components/session/session-restaurants-panel'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
 import { TwoStepButton } from '@/components/ui/two-step-button'
-import { countLabel, displayPseudo } from '@/lib/format'
+import { displayPseudo } from '@/lib/format'
 
-import type { ParticipantWithProfile, Session } from '@/data-access/models'
+import type {
+  ParticipantWithProfile,
+  Session,
+  SessionRestaurantWithRestaurant,
+} from '@/data-access/models'
+import type { RestaurantPage } from '@/data-access/restaurants'
 import type { ConnectionState } from '@/hooks/use-session-room'
 
 const MIN_PARTICIPANTS = 2
@@ -25,9 +31,13 @@ interface WaitingRoomProps {
   isHost: boolean
   inviteUrl: string
   qrSvg: string | null
-  restaurantCount: number
+  restaurants: SessionRestaurantWithRestaurant[]
+  /** Première page du catalogue, pour le sélecteur de restaurants */
+  restaurantCatalog: RestaurantPage | null
   connection: ConnectionState
   onLaunched: (session: Session) => void
+  /** Resynchronise la salle après un ajout ou un retrait de restaurant */
+  onRestaurantsChanged: () => void
 }
 
 export function WaitingRoom({
@@ -37,9 +47,11 @@ export function WaitingRoom({
   isHost,
   inviteUrl,
   qrSvg,
-  restaurantCount,
+  restaurants,
+  restaurantCatalog,
   connection,
   onLaunched,
+  onRestaurantsChanged,
 }: WaitingRoomProps) {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -77,22 +89,29 @@ export function WaitingRoom({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          {countLabel(restaurantCount, 'resto')} à départager
-        </p>
+      <div className="flex justify-end">
         <ConnectionIndicator state={connection} />
       </div>
 
-      {isHost && (
-        <InviteCard
-          sessionId={session.id}
-          inviteCode={session.invite_code}
-          inviteUrl={inviteUrl}
-          sessionName={session.name}
-          qrSvg={qrSvg}
-        />
-      )}
+      {/* Inviter n'est pas un privilège de host : tout le monde peut faire venir
+          du monde, comme tout le monde peut apporter un resto. */}
+      <InviteCard
+        sessionId={session.id}
+        inviteCode={session.invite_code}
+        inviteUrl={inviteUrl}
+        sessionName={session.name}
+        qrSvg={qrSvg}
+      />
+
+      <SessionRestaurantsPanel
+        sessionId={session.id}
+        restaurants={restaurants}
+        participants={participants}
+        meId={meId}
+        isHost={isHost}
+        initialPage={restaurantCatalog}
+        onChanged={onRestaurantsChanged}
+      />
 
       <ParticipantList participants={participants} hostId={session.host_id} meId={meId} />
 

@@ -4,6 +4,7 @@ import { SessionRoom } from '@/components/session/session-room'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
+import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import {
   getSessionByParam,
   getSessionParticipants,
@@ -44,14 +45,22 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
   }
 
   const url = inviteUrl(session)
-  const isHost = session.host_id === user.id
-  const qrSvg = isHost && session.status === 'waiting' ? await qrCodeSvg(url) : null
+  const waiting = session.status === 'waiting'
+
+  // Salle d'attente : chacun peut inviter et apporter un resto, donc le QR et
+  // le catalogue partent pour tout le monde — jamais pendant le vote, où ils
+  // ne serviraient qu'à alourdir la charge utile.
+  const [qrSvg, restaurantCatalog] = await Promise.all([
+    waiting ? qrCodeSvg(url) : null,
+    waiting ? getRestaurantCatalogPage() : null,
+  ])
 
   return (
     <SessionRoom
       session={session}
       participants={participants}
       restaurants={restaurants}
+      restaurantCatalog={restaurantCatalog}
       myVotedIds={votes.map((vote) => vote.session_restaurant_id)}
       meId={user.id}
       inviteUrl={url}

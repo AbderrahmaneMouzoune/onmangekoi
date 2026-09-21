@@ -83,6 +83,13 @@ test.describe('Accessibilité', () => {
     await expect(guest).toHaveURL(sessionUrl)
     await auditA11y(guest, testInfo, 'salle d’attente (invité)')
 
+    // Le sélecteur de restaurants s'ouvre aussi depuis la salle d'attente,
+    // dans une page qui n'est pas celle de la création : une surface de plus.
+    await guest.getByRole('button', { name: /ajouter le mien/i }).click()
+    await expect(guest.getByRole('list', { name: 'Résultats' })).toBeVisible()
+    await auditA11y(guest, testInfo, 'salle d’attente (ajout d’un resto)')
+    await guest.getByRole('button', { name: 'Annuler' }).click()
+
     // 4. Vote : la page centrale du produit, dans les deux thèmes
     await host.getByRole('button', { name: /lancer le vote/i }).click()
     await expect(host.getByRole('group', { name: 'Voter' })).toBeVisible()
