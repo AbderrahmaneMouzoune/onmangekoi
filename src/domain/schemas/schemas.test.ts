@@ -66,6 +66,20 @@ describe('CreateSessionSchema', () => {
     expect(CreateSessionSchema.safeParse({ ...base, closesInMinutes: 721 }).success).toBe(false)
     expect(CreateSessionSchema.safeParse({ ...base, closesAt: 'demain midi' }).success).toBe(false)
   })
+
+  it('should read the anti-fatigue box, checked as unchecked', () => {
+    const base = { name: 'Lunch', restaurantIds: [UUID] }
+    // Cochée, le navigateur envoie « on » ; décochée, il n'envoie rien.
+    expect(
+      CreateSessionSchema.safeParse({ ...base, excludeRecentWinners: 'on' }).data
+        ?.excludeRecentWinners
+    ).toBe(true)
+    expect(
+      CreateSessionSchema.safeParse({ ...base, excludeRecentWinners: null }).data
+        ?.excludeRecentWinners
+    ).toBe(false)
+    expect(CreateSessionSchema.safeParse(base).data?.excludeRecentWinners).toBeUndefined()
+  })
 })
 
 describe('JoinSessionSchema', () => {

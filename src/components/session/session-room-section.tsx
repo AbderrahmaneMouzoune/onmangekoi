@@ -4,6 +4,7 @@ import { SessionRoom } from '@/components/session/session-room'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
+import { getRecentWinners } from '@/data-access/recent-winners'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import {
   getSessionByParam,
@@ -12,6 +13,7 @@ import {
 } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { getMyVotes } from '@/data-access/votes'
+import { recentWinnerDates } from '@/domain/recent-winners'
 import { qrCodeSvg } from '@/lib/qr'
 import { inviteUrl } from '@/lib/site'
 
@@ -33,11 +35,14 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
   const canonical = router.session(session)
   if (`/sessions/${code}` !== canonical) redirect(canonical)
 
-  // Les trois lectures restantes sont indépendantes : un seul aller-retour.
-  const [participants, restaurants, votes] = await Promise.all([
+  // Les lectures restantes sont indépendantes : un seul aller-retour. Les
+  // gagnants récents arrivent avec la session, une fois pour tout le deck —
+  // aucune carte n'ira les redemander.
+  const [participants, restaurants, votes, recentWinners] = await Promise.all([
     getSessionParticipants(supabase, session.id),
     getSessionRestaurants(supabase, session.id),
     getMyVotes(supabase, session.id),
+    getRecentWinners(supabase),
   ])
 
   if (!participants.some((p) => p.profile_id === user.id)) {
@@ -62,6 +67,7 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
       restaurants={restaurants}
       restaurantCatalog={restaurantCatalog}
       myVotedIds={votes.map((vote) => vote.session_restaurant_id)}
+      recentWinners={recentWinnerDates(recentWinners)}
       meId={user.id}
       inviteUrl={url}
       qrSvg={qrSvg}

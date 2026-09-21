@@ -697,6 +697,14 @@ export type Database = {
         }[]
       }
       raise_omk: { Args: { p_code: string }; Returns: undefined }
+      recent_winners: {
+        Args: never
+        Returns: {
+          last_won_at: string
+          restaurant_id: string
+        }[]
+      }
+      recent_winners_window: { Args: never; Returns: string }
       remove_session_restaurant: {
         Args: { p_restaurant_id: string; p_session_id: string }
         Returns: undefined

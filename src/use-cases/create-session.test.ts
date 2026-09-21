@@ -12,14 +12,25 @@ const R2 = '22222222-2222-4222-8222-222222222222'
 const R3 = '33333333-3333-4333-8333-333333333333'
 const L1 = '44444444-4444-4444-8444-444444444444'
 
-function fakeClient(listRows: { restaurant_id: string; added_at: string }[]) {
-  const rpc = vi.fn().mockResolvedValue({ data: { id: 's1', name: 'Lunch' }, error: null })
+function fakeClient(
+  listRows: { restaurant_id: string; added_at: string }[],
+  recentWinners: { restaurant_id: string; last_won_at: string }[] = []
+) {
+  const rpc = vi
+    .fn()
+    .mockImplementation((name: string) =>
+      name === 'recent_winners'
+        ? Promise.resolve({ data: recentWinners, error: null })
+        : Promise.resolve({ data: { id: 's1', name: 'Lunch' }, error: null })
+    )
   const order = vi.fn().mockResolvedValue({ data: listRows, error: null })
   const inFn = vi.fn().mockReturnValue({ order })
   const select = vi.fn().mockReturnValue({ in: inFn })
   const from = vi.fn().mockReturnValue({ select })
   return { client: { rpc, from } as unknown as SupabaseClient<Database>, rpc, from }
 }
+
+const WON_LAST_WEEK = '2026-09-11T11:30:00Z'
 
 describe('createSessionUseCase', () => {
   it('should merge list restaurants and direct picks without duplicates, list first', async () => {
@@ -90,5 +101,56 @@ describe('createSessionUseCase', () => {
       createSessionUseCase(client, { name: 'Lunch', listIds: [L1], restaurantIds: [] })
     ).rejects.toBeInstanceOf(AppError)
     expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('should ignore the recent winners when the anti-fatigue is off', async () => {
+    const { client, rpc } = fakeClient([], [{ restaurant_id: R1, last_won_at: WON_LAST_WEEK }])
+
+    await createSessionUseCase(client, { name: 'Lunch', listIds: [], restaurantIds: [R1, R2] })
+
+    expect(rpc).not.toHaveBeenCalledWith('recent_winners')
+    expect(rpc).toHaveBeenCalledWith('create_session', {
+      p_name: 'Lunch',
+      p_restaurant_ids: [R1, R2],
+    })
+  })
+
+  it('should drop a recent winner brought in by a list, not only a direct pick', async () => {
+    const { client, rpc } = fakeClient(
+      [{ restaurant_id: R1, added_at: '2026-01-01' }],
+      [{ restaurant_id: R1, last_won_at: WON_LAST_WEEK }]
+    )
+
+    await createSessionUseCase(client, {
+      name: 'Lunch',
+      listIds: [L1],
+      restaurantIds: [R2],
+      excludeRecentWinners: true,
+    })
+
+    expect(rpc).toHaveBeenCalledWith('create_session', {
+      p_name: 'Lunch',
+      p_restaurant_ids: [R2],
+    })
+  })
+
+  it('should refuse rather than create an empty session when everything won lately', async () => {
+    const { client, rpc } = fakeClient(
+      [],
+      [
+        { restaurant_id: R1, last_won_at: WON_LAST_WEEK },
+        { restaurant_id: R2, last_won_at: WON_LAST_WEEK },
+      ]
+    )
+
+    await expect(
+      createSessionUseCase(client, {
+        name: 'Lunch',
+        listIds: [],
+        restaurantIds: [R1, R2],
+        excludeRecentWinners: true,
+      })
+    ).rejects.toBeInstanceOf(AppError)
+    expect(rpc).not.toHaveBeenCalledWith('create_session', expect.anything())
   })
 })

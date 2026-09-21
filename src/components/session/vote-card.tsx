@@ -1,9 +1,11 @@
 'use client'
 
-import { RiMapPin2Line, RiNavigationLine } from '@remixicon/react'
+import { RiHistoryLine, RiMapPin2Line, RiNavigationLine } from '@remixicon/react'
 import Image from 'next/image'
 
+import { lastWinLabel } from '@/domain/recent-winners'
 import { PRICE_LEVEL_LABELS } from '@/domain/schemas/restaurant'
+import { useIsClient } from '@/hooks/use-is-client'
 import { useOpenNow } from '@/hooks/use-open-now'
 import { remoteImageUrl } from '@/lib/images'
 import { distanceLabel } from '@/lib/maps'
@@ -16,6 +18,11 @@ interface VoteCardProps {
   restaurant: Restaurant
   index: number
   total: number
+  /**
+   * Anti-fatigue : date du dernier sacre de ce restaurant dans une session du
+   * groupe. Absente quand il n'a rien gagné dans la fenêtre.
+   */
+  lastWonAt?: string | null
   className?: string
   style?: React.CSSProperties
   /** Voile affiché pendant un swipe */
@@ -37,6 +44,7 @@ export function VoteCard({
   restaurant,
   index,
   total,
+  lastWonAt,
   className,
   style,
   overlay,
@@ -47,6 +55,10 @@ export function VoteCard({
   const distance = distanceLabel(position, restaurant.location)
   const photo = remoteImageUrl(restaurant.photo_url)
   const openNow = useOpenNow(restaurant.opening_hours)
+  // Une date s'écrit dans le fuseau de qui la lit : la calculer au rendu
+  // serveur produirait une hydratation divergente, comme pour les horaires.
+  const isClient = useIsClient()
+  const lastWin = isClient && lastWonAt ? lastWinLabel(lastWonAt) : null
 
   return (
     <article
@@ -130,6 +142,12 @@ export function VoteCard({
                 <span className="line-clamp-1">{place}</span>
               </span>
             )}
+          </p>
+        )}
+        {lastWin && (
+          <p className="flex items-center gap-1.5 text-sm text-chalk-muted">
+            <RiHistoryLine aria-hidden="true" className="size-4 shrink-0" />
+            <span className="line-clamp-1">{lastWin}</span>
           </p>
         )}
       </div>
