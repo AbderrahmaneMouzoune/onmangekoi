@@ -29,6 +29,8 @@ function session(overrides: Partial<Session> = {}): Session {
     closed_at: null,
     created_at: NOW.toISOString(),
     launched_at: NOW.toISOString(),
+    results_code: 'H4V2Q8ZX0M',
+    results_public: false,
     ...overrides,
   }
 }

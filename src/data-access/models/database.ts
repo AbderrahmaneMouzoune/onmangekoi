@@ -422,6 +422,8 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          results_code: string
+          results_public: boolean
           status: Database['public']['Enums']['session_status']
         }
         Insert: {
@@ -434,6 +436,8 @@ export type Database = {
           invite_token?: string
           launched_at?: string | null
           name: string
+          results_code?: string
+          results_public?: boolean
           status?: Database['public']['Enums']['session_status']
         }
         Update: {
@@ -446,6 +450,8 @@ export type Database = {
           invite_token?: string
           launched_at?: string | null
           name?: string
+          results_code?: string
+          results_public?: boolean
           status?: Database['public']['Enums']['session_status']
         }
         Relationships: [
@@ -550,6 +556,8 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          results_code: string
+          results_public: boolean
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -642,6 +650,8 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          results_code: string
+          results_public: boolean
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -666,6 +676,8 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          results_code: string
+          results_public: boolean
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -721,6 +733,7 @@ export type Database = {
         }
       }
       generate_invite_code: { Args: never; Returns: string }
+      generate_results_code: { Args: never; Returns: string }
       generate_share_code: { Args: never; Returns: string }
       invite_group_to_session: {
         Args: { p_group_id: string; p_session_id: string }
@@ -747,6 +760,8 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          results_code: string
+          results_public: boolean
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -768,6 +783,8 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          results_code: string
+          results_public: boolean
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -828,6 +845,21 @@ export type Database = {
         }[]
       }
       normalize_crockford: { Args: { p_input: string }; Returns: string }
+      public_results: {
+        Args: { p_code: string }
+        Returns: {
+          city: string
+          closed_at: string
+          cuisine_type: string
+          participant_count: number
+          photo_url: string
+          rank: number
+          restaurant_name: string
+          score: number
+          session_name: string
+          votes_count: number
+        }[]
+      }
       purge_inactive_anonymous: {
         Args: { p_older_than?: string }
         Returns: number
@@ -887,6 +919,29 @@ export type Database = {
           votes_count: number
           website: string
         }[]
+      }
+      set_results_public: {
+        Args: { p_public: boolean; p_session_id: string }
+        Returns: {
+          closed_at: string | null
+          closes_at: string | null
+          created_at: string
+          host_id: string | null
+          id: string
+          invite_code: string
+          invite_token: string
+          launched_at: string | null
+          name: string
+          results_code: string
+          results_public: boolean
+          status: Database['public']['Enums']['session_status']
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'sessions'
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       shares_group_with: { Args: { p_profile_id: string }; Returns: boolean }
       shares_session_with: { Args: { p_profile_id: string }; Returns: boolean }

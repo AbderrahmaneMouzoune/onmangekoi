@@ -19,6 +19,9 @@ export type JoinMethod = 'code' | 'link' | 'scan'
 /** Qui a mis fin à la session : le host, le vote complet, ou l'échéance. */
 export type CloseReason = SessionCloseReason
 
+/** Portée d'un lien de classement partagé. */
+export type ResultsScope = 'public' | 'participants'
+
 /**
  * Propriétés attendues pour chaque événement. Le typage empêche d'envoyer
  * une propriété non prévue — donc d'y glisser une donnée personnelle par
@@ -76,6 +79,20 @@ export interface AnalyticsEventMap {
   /** Ouverture du journal des versions ; la version lue, rien d'autre. */
   changelog_opened: {
     version: string
+  }
+  /**
+   * Le host a ouvert ou refermé le lien public du classement. Le code du lien
+   * est un secret d'accès : il ne sort jamais d'ici, seul l'état compte.
+   */
+  results_visibility_changed: {
+    session_id: string
+    is_public: boolean
+  }
+  results_shared: {
+    session_id: string
+    method: ShareMethod
+    /** Le lien diffusé : le podium public, ou la salle réservée aux votants */
+    scope: ResultsScope
   }
 }
 

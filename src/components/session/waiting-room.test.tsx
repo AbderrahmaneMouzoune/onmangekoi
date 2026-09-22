@@ -41,6 +41,8 @@ const session: Session = {
   invite_token: 'f'.repeat(32),
   launched_at: null,
   name: 'Lunch du vendredi',
+  results_code: 'H4V2Q8ZX0M',
+  results_public: false,
   status: 'waiting',
 }
 

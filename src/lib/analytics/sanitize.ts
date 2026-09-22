@@ -3,9 +3,10 @@
  *
  * Les ressources s'adressent par leur code court, celui-là même qui donne
  * l'accès : `/sessions/7K3M9P` et `/join/7K3M9P` portent le code d'invitation,
- * `/l/H4V2Q8ZX0M` le code de partage d'une liste, et `?next=` reconduit l'un
- * ou l'autre. Rien de tout cela ne doit sortir : on ne transmet que le
- * **motif de route** (`/sessions/[code]`), jamais la valeur du segment.
+ * `/l/H4V2Q8ZX0M` le code de partage d'une liste, `/r/H4V2Q8ZX0M` celui d'un
+ * classement public, et `?next=` reconduit l'un ou l'autre. Rien de tout cela
+ * ne doit sortir : on ne transmet que le **motif de route**
+ * (`/sessions/[code]`), jamais la valeur du segment.
  */
 
 /** Motifs de routes dynamiques, testés dans l'ordre (le plus spécifique d'abord). */
@@ -15,6 +16,7 @@ const ROUTE_PATTERNS: readonly [RegExp, string][] = [
   [/^\/join\/[^/]+$/, '/join/[code]'],
   [/^\/lists\/(?!new(?:\/|$))[^/]+$/, '/lists/[code]'],
   [/^\/l\/[^/]+$/, '/l/[code]'],
+  [/^\/r\/[^/]+$/, '/r/[code]'],
 ]
 
 /**

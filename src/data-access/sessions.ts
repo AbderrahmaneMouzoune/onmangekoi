@@ -90,6 +90,20 @@ export async function addSessionRestaurant(
   return data
 }
 
+/** Ouvre ou referme le lien public du classement — host uniquement (RPC). */
+export async function setResultsPublic(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  isPublic: boolean
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('set_results_public', {
+    p_session_id: sessionId,
+    p_public: isPublic,
+  })
+  if (error) throw error
+  return data
+}
+
 /**
  * Ajoute plusieurs restaurants, **en séquence** : chaque insertion prend la
  * position suivante dans le deck, donc l'ordre des appels est l'ordre de

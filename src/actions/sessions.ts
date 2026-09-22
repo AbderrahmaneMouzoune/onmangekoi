@@ -1,10 +1,11 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { ROUTE_PATTERNS, router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
+import { PUBLIC_RESULTS_CACHE_PROFILE, publicResultsCacheTag } from '@/data-access/public-results'
 import {
   addSessionRestaurants,
   closeSession,
@@ -13,6 +14,7 @@ import {
   launchSession,
   leaveSession,
   removeSessionRestaurant,
+  setResultsPublic,
 } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { toUserMessage } from '@/domain/errors'
@@ -180,6 +182,33 @@ export async function extendSessionAction(sessionId: string): Promise<ActionResu
   } catch (error) {
     return { ok: false, error: toUserMessage(error) }
   }
+}
+
+/**
+ * Ouvre ou referme le lien public du classement. Le host décide, la base
+ * vérifie — et on purge aussitôt l'entrée de cache du lien : quand quelqu'un
+ * referme un partage, il s'attend à ce que ce soit immédiat, pas dans l'heure.
+ */
+export async function setResultsPublicAction(
+  sessionId: string,
+  isPublic: boolean
+): Promise<ActionResult<Session>> {
+  const id = SessionIdSchema.safeParse(sessionId)
+  if (!id.success) return { ok: false, error: 'Session invalide' }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { ok: false, error: 'Non authentifié' }
+
+  let session: Session
+  try {
+    session = await setResultsPublic(supabase, id.data, isPublic)
+  } catch (error) {
+    return { ok: false, error: toUserMessage(error) }
+  }
+
+  revalidateTag(publicResultsCacheTag(session.results_code), PUBLIC_RESULTS_CACHE_PROFILE)
+  revalidatePath(router.sessionResults(session))
+  return { ok: true, data: session }
 }
 
 export async function leaveSessionAction(sessionId: string): Promise<ActionResult> {
