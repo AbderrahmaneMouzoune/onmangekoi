@@ -80,25 +80,26 @@ export async function SharedListDetail({ params }: { params: Promise<{ code: str
         title={preview.name}
         description={countLabel(restaurants.length, 'resto')}
         back={{ href: router.home(), label: 'Accueil' }}
-        action={
-          preview.is_public || preview.is_collaborative ? (
-            <div className="flex flex-wrap justify-end gap-1.5">
-              {preview.is_public && (
-                <Badge variant="default">
-                  <RiGlobalLine aria-hidden="true" />
-                  Publique
-                </Badge>
-              )}
-              {preview.is_collaborative && (
-                <Badge variant="brand">
-                  <RiGroupLine aria-hidden="true" />
-                  Collaborative
-                </Badge>
-              )}
-            </div>
-          ) : undefined
-        }
       />
+
+      {/* Sous le titre plutôt qu'à côté : deux pastilles sur un téléphone
+          couperaient le nom de la liste en deux lignes. */}
+      {(preview.is_collaborative || (isOwner && preview.is_public)) && (
+        <div className="flex flex-wrap gap-1.5">
+          {isOwner && preview.is_public && (
+            <Badge variant="default">
+              <RiGlobalLine aria-hidden="true" />
+              Publique
+            </Badge>
+          )}
+          {preview.is_collaborative && (
+            <Badge variant="brand">
+              <RiGroupLine aria-hidden="true" />
+              Collaborative
+            </Badge>
+          )}
+        </div>
+      )}
 
       {isOwner && (
         <Link href={router.list(preview)} className={cn(buttonVariants({ variant: 'outline' }))}>

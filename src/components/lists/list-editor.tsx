@@ -144,7 +144,9 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
             Partager
           </h2>
           <p className="text-sm text-muted-foreground">
-            Toute personne avec le lien peut voir la liste
+            {isPublic
+              ? 'N’importe qui peut voir la liste'
+              : 'Toute personne avec le lien peut voir la liste'}
             {isCollaborative ? ' et y ajouter des restos' : ''}.
           </p>
         </div>

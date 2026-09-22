@@ -1,4 +1,4 @@
-import { RiGlobalLine, RiTrophyLine } from '@remixicon/react'
+import { RiTrophyLine } from '@remixicon/react'
 
 import { PageHeader } from '@/components/layout/page-header'
 import { ListRestaurantRows } from '@/components/lists/list-restaurant-rows'
@@ -37,12 +37,6 @@ export async function PublicListDetail({ preview, setupHref }: PublicListDetailP
         title={preview.name}
         description={`${countLabel(preview.restaurant_count, 'resto')} à se partager.`}
         back={{ href: router.home(), label: 'Accueil' }}
-        action={
-          <Badge variant="default">
-            <RiGlobalLine aria-hidden="true" />
-            Publique
-          </Badge>
-        }
       />
 
       <PublicListHighlights preview={preview} />
