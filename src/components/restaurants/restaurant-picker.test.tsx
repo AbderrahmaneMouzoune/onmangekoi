@@ -13,6 +13,7 @@ import type { ListWithRestaurantIds } from '@/data-access/lists'
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
 import type { PlaceResult } from '@/domain/places'
+import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { RestaurantFilters } from '@/domain/restaurant-filters'
 
 const searchRestaurantsAction = vi.hoisted(() => vi.fn())
@@ -133,23 +134,31 @@ function Harness({
   google = true,
   onChange = () => {},
   onFiltersChange,
+  recentWinners,
+  excludeRecent,
+  initialPage = PAGE,
 }: {
   lists?: ListWithRestaurantIds[]
   google?: boolean
   onChange?: (ids: string[]) => void
   onFiltersChange?: (filters: RestaurantFilters) => void
+  recentWinners?: RecentWinnerDates
+  excludeRecent?: boolean
+  initialPage?: RestaurantPage
 }) {
   const [value, setValue] = useState<string[]>([])
   const [listIds, setListIds] = useState<string[]>([])
   return (
     <RestaurantSourcesProvider google={google}>
       <RestaurantPicker
-        initialPage={PAGE}
+        initialPage={initialPage}
         value={value}
         onChange={(ids) => {
           setValue(ids)
           onChange(ids)
         }}
+        recentWinners={recentWinners}
+        excludeRecent={excludeRecent}
         inputName="restaurantIds"
         lists={lists}
         selectedListIds={listIds}
@@ -585,5 +594,82 @@ describe('RestaurantPicker', () => {
 
     await userEvent.keyboard('{End}')
     expect(screen.getByRole('tab', { name: 'Google' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  // ─── Anti-fatigue ──────────────────────────────────────────
+  // La date est posée par rapport à l'horloge réelle : le libellé relatif
+  // (« il y a 6 jours ») est alors le même à chaque exécution, sans avoir à
+  // figer le temps sous `userEvent`.
+  const sixDaysAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString()
+  const WON: RecentWinnerDates = { [MARCEL.id]: sixDaysAgo }
+
+  it('should badge a restaurant that won lately', () => {
+    render(<Harness recentWinners={WON} />)
+
+    expect(screen.getByText('Gagnant il y a 6 jours')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /chez marcel/i })).not.toBeDisabled()
+  })
+
+  it('should say nothing when nothing has won lately', () => {
+    render(<Harness />)
+    expect(screen.queryByText(/Gagnant/)).not.toBeInTheDocument()
+  })
+
+  it('should let a recent winner be picked while the anti-fatigue is off', async () => {
+    const onChange = vi.fn()
+    render(<Harness recentWinners={WON} onChange={onChange} />)
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /chez marcel/i }))
+
+    expect(onChange).toHaveBeenCalledWith([MARCEL.id])
+  })
+
+  it('should set a recent winner aside once the anti-fatigue is on', async () => {
+    const onChange = vi.fn()
+    render(<Harness recentWinners={WON} excludeRecent onChange={onChange} />)
+
+    const row = screen.getByRole('checkbox', { name: /chez marcel/i })
+    expect(row).not.toBeChecked()
+    expect(row).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText('Écarté')).toBeInTheDocument()
+
+    await userEvent.click(row)
+
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.queryByRole('region', { name: 'Ta sélection' })).not.toBeInTheDocument()
+  })
+
+  it('should leave the other restaurants alone', async () => {
+    const onChange = vi.fn()
+    render(<Harness recentWinners={WON} excludeRecent onChange={onChange} />)
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /sakura/i }))
+
+    expect(onChange).toHaveBeenCalledWith([SAKURA.id])
+    const basket = screen.getByRole('region', { name: 'Ta sélection' })
+    expect(within(basket).getByText('1 resto')).toBeInTheDocument()
+  })
+
+  it('should say the same thing on the Google tab for a place the address book knows', async () => {
+    const sakuraFromGoogle = restaurant({
+      name: 'Sushi Bar Sakura',
+      place_id: SUSHI_PLACE.placeId,
+    })
+    grantPosition()
+    googleAnswers([SUSHI_PLACE])
+    render(
+      <Harness
+        initialPage={{ items: [sakuraFromGoogle], hasMore: false, nextOffset: 1 }}
+        recentWinners={{ [sakuraFromGoogle.id]: sixDaysAgo }}
+        excludeRecent
+      />
+    )
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+
+    const row = await screen.findByRole('checkbox', { name: /sushi bar sakura/i })
+    await waitFor(() => expect(row).toHaveAttribute('aria-disabled', 'true'))
+    expect(row).not.toBeChecked()
+    expect(within(row).getByText('Écarté')).toBeInTheDocument()
   })
 })

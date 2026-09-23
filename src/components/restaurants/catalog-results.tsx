@@ -2,15 +2,18 @@
 
 import { RiMapPin2Fill, RiMapPin2Line } from '@remixicon/react'
 
+import { RecentWinnerBadge } from '@/components/restaurants/recent-winner-badge'
 import { ResultRow } from '@/components/restaurants/result-row'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
 import { PRICE_LEVEL_LABELS } from '@/domain/schemas/restaurant'
 import { distanceLabel, geoPoint } from '@/lib/maps'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { Geolocation } from '@/hooks/use-geolocation'
 
 interface CatalogResultsProps {
@@ -28,6 +31,10 @@ interface CatalogResultsProps {
   onAddManually: () => void
   /** Lève les filtres du carnet. Absent quand il n'y en a aucun de posé. */
   onClearFilters?: () => void
+  /** Anti-fatigue : date du dernier sacre, par restaurant */
+  recentWinners?: RecentWinnerDates
+  /** Anti-fatigue actif : un gagnant récent est écarté, donc ni coché ni cochable */
+  excludeRecent?: boolean
 }
 
 /** Ligne d'adresse d'un resto du carnet : rue et ville, sinon sa description. */
@@ -54,6 +61,8 @@ export function CatalogResults({
   emptyLabel,
   onAddManually,
   onClearFilters,
+  recentWinners = NO_RECENT_WINNERS,
+  excludeRecent = false,
 }: CatalogResultsProps) {
   const here = geoPoint(geolocation.position)
   const isLocating = geolocation.status === 'locating'
@@ -112,7 +121,11 @@ export function CatalogResults({
           </li>
         )}
         {page.items.map((restaurant) => {
-          const locked = isLocked(restaurant.id)
+          const wonAt = recentWinners[restaurant.id]
+          const excluded = excludeRecent && wonAt !== undefined
+          // Écartée, la carte se grise comme une carte verrouillée — mais
+          // décochée : c'est bien ce qui n'ira pas dans la session.
+          const locked = excluded || isLocked(restaurant.id)
           const distance = distanceLabel(here, restaurant.location)
           return (
             <li key={restaurant.id}>
@@ -123,9 +136,14 @@ export function CatalogResults({
                 subtitle={placeLine(restaurant)}
                 openingHours={restaurant.opening_hours}
                 meta={
-                  distance ? <span className="font-medium text-ink-2">{distance}</span> : undefined
+                  wonAt || distance ? (
+                    <>
+                      {wonAt && <RecentWinnerBadge wonAt={wonAt} excluded={excluded} />}
+                      {distance && <span className="font-medium text-ink-2">{distance}</span>}
+                    </>
+                  ) : undefined
                 }
-                checked={locked || isSelected(restaurant.id)}
+                checked={!excluded && (locked || isSelected(restaurant.id))}
                 locked={locked}
                 onToggle={() => onToggle(restaurant)}
               />

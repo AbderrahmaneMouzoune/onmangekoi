@@ -1,3 +1,4 @@
+import { RiArrowDownSLine } from '@remixicon/react'
 import { Suspense } from 'react'
 
 import { ChangelogNavLink } from '@/components/changelog/changelog-nav-link'
@@ -38,7 +39,8 @@ export function AppHeader() {
 /**
  * Silhouette du bloc compte, accordée à la dernière visite : à qui n'a jamais
  * choisi de pseudo, on montre directement le bouton qu'il va voir ; à qui
- * revient, la pastille de son compte aux dimensions du vrai lien.
+ * revient, la pastille de son compte aux dimensions du vrai déclencheur. Le
+ * chevron, lui, ne dépend de personne : autant l'afficher pour de vrai.
  */
 function AccountNavFallback() {
   return (
@@ -46,10 +48,11 @@ function AccountNavFallback() {
       <ChoosePseudoLink className="seen-account:hidden" />
       <div
         aria-busy="true"
-        className="hidden h-9 items-center gap-2 rounded-full pr-3 pl-1 seen-account:flex"
+        className="hidden h-9 items-center gap-2 rounded-full pr-2 pl-1 seen-account:flex"
       >
         <Skeleton className="size-8 rounded-full" />
         <Skeleton className="h-4 w-20" />
+        <RiArrowDownSLine aria-hidden="true" className="size-4 text-faint" />
       </div>
     </>
   )

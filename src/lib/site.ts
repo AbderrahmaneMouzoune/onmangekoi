@@ -3,7 +3,7 @@ import 'server-only'
 import { router } from '@/config/router.config'
 import { env } from '@/env'
 
-import type { ListTarget, SessionTarget } from '@/config/router.config'
+import type { ListTarget, ResultsTarget, SessionTarget } from '@/config/router.config'
 
 export { SITE_NAME, SITE_TAGLINE } from '@/lib/brand'
 
@@ -25,4 +25,9 @@ export function inviteUrl(session: SessionTarget): string {
 /** Lien de partage d'une liste : `https://…/l/7K3M9P2QWX`. */
 export function listShareUrl(list: ListTarget): string {
   return absoluteUrl(router.sharedList(list))
+}
+
+/** Lien public du classement : `https://…/r/7K3M9P2QWX`. */
+export function publicResultsUrl(session: ResultsTarget): string {
+  return absoluteUrl(router.publicResults(session))
 }

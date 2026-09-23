@@ -28,6 +28,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      group_members: {
+        Row: {
+          added_at: string
+          group_id: string
+          profile_id: string
+        }
+        Insert: {
+          added_at?: string
+          group_id: string
+          profile_id: string
+        }
+        Update: {
+          added_at?: string
+          group_id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'group_members_group_id_fkey'
+            columns: ['group_id']
+            isOneToOne: false
+            referencedRelation: 'groups'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'group_members_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'groups_owner_id_fkey'
+            columns: ['owner_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       list_restaurants: {
         Row: {
           added_at: string
@@ -212,6 +277,49 @@ export type Database = {
           },
         ]
       }
+      session_invitations: {
+        Row: {
+          group_id: string | null
+          invited_at: string
+          profile_id: string
+          session_id: string
+        }
+        Insert: {
+          group_id?: string | null
+          invited_at?: string
+          profile_id: string
+          session_id: string
+        }
+        Update: {
+          group_id?: string | null
+          invited_at?: string
+          profile_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'session_invitations_group_id_fkey'
+            columns: ['group_id']
+            isOneToOne: false
+            referencedRelation: 'groups'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'session_invitations_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'session_invitations_session_id_fkey'
+            columns: ['session_id']
+            isOneToOne: false
+            referencedRelation: 'sessions'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       session_participants: {
         Row: {
           has_finished_voting: boolean
@@ -259,24 +367,37 @@ export type Database = {
       }
       session_restaurants: {
         Row: {
+          added_at: string
+          added_by: string | null
           id: string
           position: number
           restaurant_id: string
           session_id: string
         }
         Insert: {
+          added_at?: string
+          added_by?: string | null
           id?: string
           position: number
           restaurant_id: string
           session_id: string
         }
         Update: {
+          added_at?: string
+          added_by?: string | null
           id?: string
           position?: number
           restaurant_id?: string
           session_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: 'session_restaurants_added_by_fkey'
+            columns: ['added_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
           {
             foreignKeyName: 'session_restaurants_restaurant_id_fkey'
             columns: ['restaurant_id']
@@ -304,6 +425,8 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          results_code: string
+          results_public: boolean
           status: Database['public']['Enums']['session_status']
         }
         Insert: {
@@ -316,6 +439,8 @@ export type Database = {
           invite_token?: string
           launched_at?: string | null
           name: string
+          results_code?: string
+          results_public?: boolean
           status?: Database['public']['Enums']['session_status']
         }
         Update: {
@@ -328,6 +453,8 @@ export type Database = {
           invite_token?: string
           launched_at?: string | null
           name?: string
+          results_code?: string
+          results_public?: boolean
           status?: Database['public']['Enums']['session_status']
         }
         Relationships: [
@@ -398,6 +525,23 @@ export type Database = {
         Args: { p_restaurant_id: string; p_token: string }
         Returns: undefined
       }
+      add_session_restaurant: {
+        Args: { p_restaurant_id: string; p_session_id: string }
+        Returns: {
+          added_at: string
+          added_by: string | null
+          id: string
+          position: number
+          restaurant_id: string
+          session_id: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'session_restaurants'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       assert_valid_deadline: {
         Args: { p_closes_at: string }
         Returns: undefined
@@ -415,6 +559,8 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          results_code: string
+          results_public: boolean
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -439,6 +585,22 @@ export type Database = {
         SetofOptions: {
           from: '*'
           to: 'lists'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_group_from_session: {
+        Args: { p_name: string; p_session_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'groups'
           isOneToOne: true
           isSetofReturn: false
         }
@@ -493,6 +655,8 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          results_code: string
+          results_public: boolean
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -517,6 +681,8 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          results_code: string
+          results_public: boolean
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -573,12 +739,19 @@ export type Database = {
         }
       }
       generate_invite_code: { Args: never; Returns: string }
+      generate_results_code: { Args: never; Returns: string }
       generate_share_code: { Args: never; Returns: string }
       geo_distance_km: {
         Args: { p_lat: number; p_lng: number; p_point: Json }
         Returns: number
       }
+      invite_group_to_session: {
+        Args: { p_group_id: string; p_session_id: string }
+        Returns: number
+      }
       is_geo_point: { Args: { p_value: Json }; Returns: boolean }
+      is_group_member: { Args: { p_group_id: string }; Returns: boolean }
+      is_group_owner: { Args: { p_group_id: string }; Returns: boolean }
       is_opening_hours: { Args: { p_value: Json }; Returns: boolean }
       is_restaurant_tags: { Args: { p_value: string[] }; Returns: boolean }
       is_session_host: { Args: { p_session_id: string }; Returns: boolean }
@@ -598,6 +771,8 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          results_code: string
+          results_public: boolean
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -619,6 +794,8 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          results_code: string
+          results_public: boolean
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -628,6 +805,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      leave_group: { Args: { p_group_id: string }; Returns: undefined }
       list_by_share_token: {
         Args: { p_token: string }
         Returns: {
@@ -666,8 +844,35 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      my_session_invitations: {
+        Args: never
+        Returns: {
+          group_name: string
+          host_pseudo: string
+          invite_code: string
+          invited_at: string
+          name: string
+          participant_count: number
+          session_id: string
+        }[]
+      }
       normalize_crockford: { Args: { p_input: string }; Returns: string }
       normalize_restaurant_tags: { Args: { p_tags: string[] }; Returns: string[] }
+      public_results: {
+        Args: { p_code: string }
+        Returns: {
+          city: string
+          closed_at: string
+          cuisine_type: string
+          participant_count: number
+          photo_url: string
+          rank: number
+          restaurant_name: string
+          score: number
+          session_name: string
+          votes_count: number
+        }[]
+      }
       purge_inactive_anonymous: {
         Args: { p_older_than?: string }
         Returns: number
@@ -680,6 +885,18 @@ export type Database = {
         }[]
       }
       raise_omk: { Args: { p_code: string }; Returns: undefined }
+      recent_winners: {
+        Args: never
+        Returns: {
+          last_won_at: string
+          restaurant_id: string
+        }[]
+      }
+      recent_winners_window: { Args: never; Returns: string }
+      remove_session_restaurant: {
+        Args: { p_restaurant_id: string; p_session_id: string }
+        Returns: undefined
+      }
       restaurant_tag_values: { Args: never; Returns: string[] }
       run_maintenance: { Args: never; Returns: Json }
       search_restaurants: {
@@ -753,6 +970,30 @@ export type Database = {
           website: string
         }[]
       }
+      set_results_public: {
+        Args: { p_public: boolean; p_session_id: string }
+        Returns: {
+          closed_at: string | null
+          closes_at: string | null
+          created_at: string
+          host_id: string | null
+          id: string
+          invite_code: string
+          invite_token: string
+          launched_at: string | null
+          name: string
+          results_code: string
+          results_public: boolean
+          status: Database['public']['Enums']['session_status']
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'sessions'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      shares_group_with: { Args: { p_profile_id: string }; Returns: boolean }
       shares_session_with: { Args: { p_profile_id: string }; Returns: boolean }
       submit_vote: {
         Args: {

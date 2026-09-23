@@ -6,8 +6,9 @@
 
 1. Tu choisis des restaurants — dans une de tes **listes** de favoris, dans le **carnet** des restos déjà connus, chez **Google** (ceux autour de toi, d'abord), ou en ajoutant le tien à la volée — et tu mélanges
 2. Tu lances une **session**, tu envoies le code ou le lien au groupe — ou tu fais scanner le **QR code**
-3. Chacun vote dans son coin, carte par carte : **bof** · **ça me va** · **coup de cœur** · **veto**
-4. Quand tout le monde a voté (ou que l'heure limite tombe, ou que le host clôture), le **classement** s'affiche
+3. Chacun arrive, **ajoute son resto** à la sélection et peut inviter à son tour, tant que le vote n'a pas démarré
+4. Chacun vote dans son coin, carte par carte : **bof** · **ça me va** · **coup de cœur** · **veto**
+5. Quand tout le monde a voté (ou que l'heure limite tombe, ou que le host clôture), le **classement** s'affiche
 
 **Zéro friction** : tout est utilisable avec un simple pseudo. Lier un email et un mot de passe est optionnel et ne sert qu'à retrouver ses listes depuis un autre appareil.
 
@@ -28,14 +29,33 @@ Les règles (jokers, session en cours, participant, restaurant valide) sont vér
 
 | Règle               | Comportement                                                                    |
 | ------------------- | ------------------------------------------------------------------------------- |
-| Lancement           | Réservé au host, à partir de 2 participants                                     |
-| Snapshot            | Les restaurants sont figés à la création                                        |
+| Lancement           | Réservé au host, à partir de 2 participants et 2 restaurants                    |
+| Composition         | En attente, **chaque participant** ajoute ses restos et invite qui il veut      |
+| Retrait             | Chacun retire ce qu'il a apporté ; le host arbitre ; le dernier resto reste     |
+| Snapshot            | Les restaurants sont figés au lancement, pas à la création                      |
 | Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                  |
 | Clôture automatique | Déclenchée en base dès que 100 % des participants ont terminé                   |
 | Clôture à l'heure   | Échéance optionnelle choisie à la création — le vote se ferme tout seul         |
 | Clôture forcée      | Le host peut clôturer à tout moment — les votes manquants comptent 0            |
 | Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)              |
 | Rejoindre           | Impossible une fois le vote lancé ; un participant existant retrouve sa session |
+
+## Groupes récurrents
+
+Les mêmes collègues votent chaque midi et retapaient le code à chaque session. À la fin d'une session, **« Sauvegarder ce groupe »** garde l'équipe du jour ; à la création de la suivante, **« Inviter un groupe »** la rappelle d'un clic.
+
+| Geste                 | Où                                | Ce qui se passe                                                                      |
+| --------------------- | --------------------------------- | ------------------------------------------------------------------------------------ |
+| Sauvegarder ce groupe | classement d'une session          | `create_group_from_session` recopie les participants — jamais une liste de noms      |
+| Inviter un groupe     | création de session, ou l'attente | `invite_group_to_session` pose une **invitation en attente** par membre              |
+| Rejoindre             | accueil, « On t'attend »          | l'invitation devient une participation, et disparaît                                 |
+| Quitter un groupe     | `/account` ou `/groups`           | `leave_group` — on n'est plus pré-invité, les sessions déjà rejointes ne bougent pas |
+
+**Une invitation n'est pas une participation.** C'est toute la règle : un membre pré-ajouté ne compte ni dans le nombre de participants, ni dans le quorum de lancement, ni dans les « 100 % ont voté » tant qu'il n'a pas ouvert la session. Sans cette séparation, une équipe de six pré-invités gèlerait le déjeuner de ceux qui sont là. La conversion se fait à un seul endroit — un trigger sur `session_participants` consomme l'invitation —, donc par n'importe quel chemin d'entrée : lien, code ou QR.
+
+Un groupe ne se crée **que depuis une session vécue** : impossible d'y ajouter quelqu'un qu'on n'a pas croisé. Seuls ses membres le voient, seul son propriétaire le renomme ou le supprime, et c'est la RLS qui le dit. Le propriétaire ne peut pas le quitter — il le supprime, sinon le groupe survivrait sans personne pour le tenir.
+
+Faute de notifications push (issue #7, qui attend le service worker de #11), l'invité est prévenu **dans l'app** : la session apparaît sur son accueil sous « On t'attend », avec un bouton pour la rejoindre ou la décliner. Le host, lui, voit les invités encore attendus dans la salle d'attente et garde son lien à copier.
 
 ## Vote chronométré
 
@@ -54,6 +74,24 @@ Une durée (« dans 10 min ») est datée par l'horloge du serveur au moment de 
 
 Une session **en attente** dont l'échéance tombe n'est jamais clôturée : sans un seul vote, le classement n'aurait aucun sens. `launch_session` refuse de la lancer et invite le host à prolonger — c'est la seule impasse possible, et elle a sa sortie.
 
+## Anti-fatigue
+
+Le même restaurant gagne trois vendredis de suite et le vote devient une formalité. L'app ne l'interdit pas — elle le **dit**, et propose de l'écarter d'un clic.
+
+| Où                  | Ce qui s'affiche                                                                                                |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Choix des restos    | Badge doré « Gagnant il y a 6 jours » sur la ligne — dans le carnet comme chez Google                           |
+| Création de session | Case « Exclure les gagnants récents » — la ligne écartée se grise et se décoche, le panier et le bouton suivent |
+| Carte de vote       | Mention discrète « Déjà gagnant le 28 août », chargée avec la session                                           |
+
+La source est la RPC `recent_winners()` : les restaurants sortis **premiers** des sessions closes auxquelles la personne a participé dans les 30 derniers jours, avec la date du dernier sacre. Elle ne prend pas d'identifiant — elle répond pour `auth.uid()`, jamais pour quelqu'un d'autre — et ne renvoie que le gagnant : ni score, ni classement complet, ni qui a voté quoi.
+
+Un classement où personne n'a dit oui (score nul ou négatif en tête) ne sacre personne : cette session-là n'a fatigué personne, et écarter toute la liste à la suivante n'aurait aucun sens. Deux restaurants à égalité parfaite en tête sont deux gagnants, comme à l'écran de classement.
+
+L'exclusion est appliquée **côté serveur**, dans le use-case de création : une liste apporte des restaurants que l'écran n'a jamais montrés un par un. Si elle ne laisse rien, la session n'est pas créée — le formulaire le dit plutôt que de partir avec zéro resto.
+
+La fenêtre de 30 jours est une constante : `recent_winners_window()` en base, `RECENT_WINNER_WINDOW_DAYS` côté application, les deux figées par `supabase/tests/recent-winners.test.sql`.
+
 ## URLs, codes et liens de partage
 
 Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **son code court**, celui qu'on se dit à voix haute.
@@ -64,18 +102,30 @@ Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **s
 | Classement               | `/sessions/7K3M9P/results` | participants                  |
 | Invitation (lien + QR)   | `/join/7K3M9P`             | qui reçoit le lien ou le code |
 | Liste, côté propriétaire | `/lists/H4V2Q8ZX0M`        | propriétaire                  |
+| Mes groupes              | `/groups`                  | membres des groupes           |
 | Liste partagée           | `/l/H4V2Q8ZX0M`            | qui reçoit le lien            |
+| Classement public        | `/r/H4V2Q8ZX0M`            | tout le monde, sans pseudo    |
 
-| Objet   | Code          | Forme         |
-| ------- | ------------- | ------------- |
-| Session | 6 caractères  | `7K3 M9P`     |
-| Liste   | 10 caractères | `H4V2Q-8ZX0M` |
+| Objet             | Code          | Forme         |
+| ----------------- | ------------- | ------------- |
+| Session           | 6 caractères  | `7K3 M9P`     |
+| Liste             | 10 caractères | `H4V2Q-8ZX0M` |
+| Classement public | 10 caractères | `H4V2Q-8ZX0M` |
 
 Les codes utilisent l'alphabet **Crockford base32** (`0-9`, `A-Z` sans `I`, `L`, `O`, `U`) : pas de lettre ambiguë à l'oral ni à l'écrit. La saisie est tolérante — minuscules, espaces, tirets, `I`/`L` lus comme `1`, `O` comme `0` — et un lien collé entier est accepté.
 
 Chaque page redirige vers sa forme canonique : un code tapé en minuscules ou avec des tirets, comme un ancien lien (uuid de session ou de liste, jeton hexadécimal de partage, `/l/<slug>-<CODE>`), retombe sur l'URL du moment. Rien de ce qui a déjà été partagé ne casse.
 
-Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché par le host.
+Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvre la caméra (`BarcodeDetector` natif, repli `jsqr`) et lit le QR affiché dans la salle d'attente — par le host comme par n'importe quel participant. Le QR s'y ouvre en plein écran d'une touche : c'est à cette taille qu'il se fait scanner à bout de bras.
+
+### Partager le classement
+
+`/r/<code>` est la seule page de session ouverte sans pseudo. Elle porte **son propre code**, distinct de celui de l'invitation : un lien collé dans une conversation ne donne jamais accès à la salle de vote, et le refermer ne casse pas l'invitation.
+
+- **Opt-in du host** : `sessions.results_public` est faux par défaut, et seule la RPC `set_results_public` — host, session close — le change.
+- **Ce qui sort** : le nom de la session, le nombre de participants, et le podium (rangs 1 à 3). La RPC `public_results` ne renvoie rien d'autre : ni pseudo, ni détail des votes, ni le reste du classement.
+- **Aperçu** : l'`opengraph-image` de la route affiche le gagnant et son score sur l'ardoise, et se cache une heure — de quoi tenir un lien qui circule.
+- **Refermer** est immédiat : la bascule purge l'entrée de cache du lien, la page redevient introuvable.
 
 ## Fiche restaurant
 
@@ -104,7 +154,7 @@ La mini-carte du gagnant est un bloc de 2×2 tuiles [OpenStreetMap](https://www.
 | `manual` | ajoutée depuis l'app (nom, cuisine, adresse, budget, régimes) | son créateur      |
 | `google` | importée depuis Google Places                                 | son importateur   |
 
-Le formulaire « Ajouter un resto à la main » est disponible partout où l'on choisit des restaurants — session, liste, liste partagée — et le resto créé est sélectionné aussitôt, sans rechargement.
+Le formulaire « Ajouter un resto à la main » est disponible partout où l'on choisit des restaurants — création de session, salle d'attente, liste, liste partagée — et le resto créé est sélectionné aussitôt, sans rechargement.
 
 La déduplication est **souple** : un nom proche (recherche trigram) déclenche un avertissement et propose le resto existant en un clic, mais ne bloque jamais l'ajout — deux restos peuvent légitimement porter le même nom.
 
@@ -222,18 +272,19 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ```
 src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], account, nouveautes, legal, auth, api/places)
-src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · account/ · restaurants/ · onboarding/ · changelog/
+src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], groups, account, nouveautes, legal, auth, api/places)
+src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · groups/ · account/ · restaurants/ · onboarding/ · changelog/
 src/content/changelog/   notes de version produit (schéma Zod + entrées), lues par /nouveautes et son flux RSS
-src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + models/ (types générés)
+src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + recent-winners.ts (anti-fatigue) + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
-src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, horaires, places, schemas/ (Zod)
+src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, horaires, places, anti-fatigue, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
                          images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache, version (semver), changelog-seen
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
 src/hooks/               Realtime de session, compte à rebours, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
-supabase/migrations/     schéma, RLS, RPC (create/join/launch/submit_vote/close/extend/results), purge, RGPD
+supabase/migrations/     schéma, RLS, RPC (create/join/launch/add|remove_session_restaurant/submit_vote/close/extend/
+                         results/recent_winners, groupes et invitations), purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
 ```
@@ -252,7 +303,7 @@ Deux règles tiennent l'ensemble :
 - **Rien de personnel n'entre dans un cache partagé.** Le catalogue de restaurants est la seule donnée mise en cache : c'est la seule table lisible par le rôle `anon`, et elle est lue par un client sans cookie (`data-access/supabase/public.ts`). Toutes les autres lectures gardent le client lié à la session, donc restent dans le trou dynamique.
 - **Rien qui écrit n'est prérendu.** `/join/[code]` inscrit la personne dans la session avant de rediriger : la coquille n'affiche que « on te fait entrer… », le reste est fait à la requête.
 
-Le catalogue étant partagé, la recherche du sélecteur de restaurants sort du cache elle aussi : une même requête ne touche la base qu'une fois par heure, pour tout le monde. Après un import de restaurants, `revalidateTag(RESTAURANTS_CACHE_TAG)` suffit à le rafraîchir.
+Le catalogue étant partagé, la recherche du sélecteur de restaurants sort du cache elle aussi : une même requête ne touche la base qu'une fois par heure, pour tout le monde. C'est ce qui rend l'ajout d'un resto en salle d'attente gratuit côté base : le catalogue n'y est envoyé que tant que la session est en attente, jamais pendant le vote. Après un import de restaurants, `revalidateTag(RESTAURANTS_CACHE_TAG)` suffit à le rafraîchir.
 
 ## Accessibilité
 
@@ -285,7 +336,10 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - **Aucune table n'est lisible en `using (true)`.** Les tokens et codes d'invitation ne se résolvent que via des fonctions `security definer` qui prennent le secret en argument et renvoient uniquement la ligne visée. Les codes qui figurent dans les URL privées (`/sessions/…`, `/lists/…`) ne contournent rien : la RLS filtre la lecture comme pour un id.
 - **Aperçu d'invitation** (`session_preview`) : un visiteur non authentifié — typiquement le robot qui déplie le lien dans une conversation — n'obtient un aperçu par code court que sur une session **en attente**, et seulement le nom, le pseudo du host et deux compteurs. Rejoindre exige toujours un compte.
 - **Toutes les écritures métier passent par des RPC** transactionnelles (`create_session`, `join_session`, `launch_session`, `submit_vote`, `close_session`) qui revérifient les règles côté base.
+- Composer une session est ouvert à ses participants, pas à tout le monde : `add_session_restaurant` et `remove_session_restaurant` revérifient en base l'appartenance, le statut `waiting` et — au retrait — la paternité du resto (`added_by`) ou la qualité de host. Aucune policy RLS n'ouvre l'écriture directe sur `session_restaurants`.
 - Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat.
+- **Anti-fatigue** (`recent_winners`) : la fonction ne prend aucun identifiant et se borne à `auth.uid()` — impossible de demander ce qui fatigue quelqu'un d'autre. Elle ne rend que le restaurant gagnant et la date de clôture : le reste du classement et le détail des votes n'en sortent pas.
+- Un **groupe** n'est visible que de ses membres et modifiable que par son propriétaire (RLS) ; la création, l'invitation et le départ passent par des RPC (`create_group_from_session`, `invite_group_to_session`, `leave_group`) qui revérifient tout en base. Une invitation en attente n'ouvre aucun accès à la session : l'invité n'en lit que le nécessaire, via `my_session_invitations`.
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.
 - La clé Google Places ne quitte jamais le serveur, et aucune policy RLS n'ouvre l'écriture en `source = 'google'` : `upsert_restaurant_from_place` est le seul chemin. Les corps d'erreur renvoyés par Google restent dans les logs serveur.
 - Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision.
@@ -298,10 +352,10 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 
 L'app est utilisable avec un simple pseudo, et les deux droits qui comptent au quotidien sont en libre-service depuis « Mon compte » :
 
-| Droit                | Chemin            | Effet                                                                                                                       |
-| -------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Export (portabilité) | `/account/export` | JSON téléchargeable — profil, listes, sessions hébergées, participations et votes — assemblé en base par `export_my_data()` |
-| Suppression          | « Mon compte »    | `delete_my_account()` : profil, listes et compte auth supprimés en une transaction                                          |
+| Droit                | Chemin            | Effet                                                                                                                                                 |
+| -------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Export (portabilité) | `/account/export` | JSON téléchargeable — profil, listes, groupes, sessions hébergées, participations, restos apportés et votes — assemblé en base par `export_my_data()` |
+| Suppression          | « Mon compte »    | `delete_my_account()` : profil, listes, groupes et compte auth supprimés en une transaction                                                           |
 
 Supprimer un compte ne réécrit pas l'histoire des autres. Les votes déjà comptés dans une **session terminée** restent dans le classement mais perdent leur auteur (`Participant supprimé`) ; les sessions **en attente ou en cours** que le compte hébergeait sont supprimées, puisque sans host elles ne peuvent plus aboutir. La garantie est portée par le schéma (`on delete set null` sur `sessions.host_id` et `session_participants.profile_id`), pas seulement par la RPC : une suppression faite depuis le dashboard Supabase donne le même résultat.
 
@@ -343,7 +397,7 @@ Le build échoue volontairement si `NEXT_PUBLIC_SUPABASE_URL` ou la clé manque 
 
 - La mesure est **doublement conditionnée** : sans `NEXT_PUBLIC_POSTHOG_KEY`, le module est inerte ; sans consentement explicite, le script PostHog n'est même pas téléchargé — donc aucun cookie, aucun identifiant, aucune requête.
 - Le bandeau propose « Refuser » et « Accepter » au même niveau, et le choix se révise depuis **Mon compte**.
-- **Aucune donnée personnelle ne sort** : ni pseudo, ni email, ni nom de liste ou de restaurant. Les URL sont masquées avant envoi (`/sessions/[code]`, `/join/[code]`, `/l/[code]`), car le code qu'elles portent suffirait à rejoindre une session ou à lire une liste. Le seul identifiant transmis est l'UUID opaque du profil.
+- **Aucune donnée personnelle ne sort** : ni pseudo, ni email, ni nom de liste ou de restaurant. Les URL sont masquées avant envoi (`/sessions/[code]`, `/join/[code]`, `/l/[code]`, `/r/[code]`), car le code qu'elles portent suffirait à rejoindre une session, à lire une liste ou à ouvrir un classement. Le seul identifiant transmis est l'UUID opaque du profil.
 - Le détail — catalogue d'événements, masquage, entonnoirs à construire — est dans [`docs/analytics.md`](docs/analytics.md).
 
 ## Versions et nouveautés
