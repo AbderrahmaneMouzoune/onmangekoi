@@ -25,6 +25,8 @@ const PLACE = {
   cuisineType: 'Japonais',
   priceLevel: 2,
   location: { lat: 45.76, lng: 4.83 },
+  rating: 4.5,
+  ratingCount: 320,
   description: 'Sushis préparés à la commande.',
   website: 'https://sakura.example',
   openingHours: { periods: [{ day: 1, open: '11:30', close: '14:00' }] },

@@ -72,6 +72,7 @@ export const config = {
     '/sessions/:path*',
     '/lists/:path*',
     '/l/:path*',
+    '/groups/:path*',
     '/auth/:path*',
   ],
 }

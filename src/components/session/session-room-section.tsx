@@ -4,6 +4,9 @@ import { SessionRoom } from '@/components/session/session-room'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
+import { getMyGroups, getSessionInvitations } from '@/data-access/groups'
+import { getRecentWinners } from '@/data-access/recent-winners'
+import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import {
   getSessionByParam,
   getSessionParticipants,
@@ -11,6 +14,7 @@ import {
 } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { getMyVotes } from '@/data-access/votes'
+import { recentWinnerDates } from '@/domain/recent-winners'
 import { qrCodeSvg } from '@/lib/qr'
 import { inviteUrl } from '@/lib/site'
 
@@ -32,11 +36,14 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
   const canonical = router.session(session)
   if (`/sessions/${code}` !== canonical) redirect(canonical)
 
-  // Les trois lectures restantes sont indépendantes : un seul aller-retour.
-  const [participants, restaurants, votes] = await Promise.all([
+  // Les lectures restantes sont indépendantes : un seul aller-retour. Les
+  // gagnants récents arrivent avec la session, une fois pour tout le deck —
+  // aucune carte n'ira les redemander.
+  const [participants, restaurants, votes, recentWinners] = await Promise.all([
     getSessionParticipants(supabase, session.id),
     getSessionRestaurants(supabase, session.id),
     getMyVotes(supabase, session.id),
+    getRecentWinners(supabase),
   ])
 
   if (!participants.some((p) => p.profile_id === user.id)) {
@@ -44,18 +51,34 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
   }
 
   const url = inviteUrl(session)
-  const isHost = session.host_id === user.id
-  const qrSvg = isHost && session.status === 'waiting' ? await qrCodeSvg(url) : null
+  const waiting = session.status === 'waiting'
+  // Pré-inviter un groupe reste la main du host : c'est lui qui compose la
+  // salle. Inviter par lien, lui, n'appartient à personne.
+  const waitingHost = waiting && session.host_id === user.id
+
+  // Salle d'attente : chacun peut inviter et apporter un resto, donc le QR et
+  // le catalogue partent pour tout le monde — jamais pendant le vote, où ils
+  // ne serviraient qu'à alourdir la charge utile.
+  const [qrSvg, restaurantCatalog, invitations, groups] = await Promise.all([
+    waiting ? qrCodeSvg(url) : null,
+    waiting ? getRestaurantCatalogPage() : null,
+    waitingHost ? getSessionInvitations(supabase, session.id) : [],
+    waitingHost ? getMyGroups(supabase) : [],
+  ])
 
   return (
     <SessionRoom
       session={session}
       participants={participants}
       restaurants={restaurants}
+      restaurantCatalog={restaurantCatalog}
       myVotedIds={votes.map((vote) => vote.session_restaurant_id)}
+      recentWinners={recentWinnerDates(recentWinners)}
       meId={user.id}
       inviteUrl={url}
       qrSvg={qrSvg}
+      invitations={invitations}
+      groups={groups}
     />
   )
 }

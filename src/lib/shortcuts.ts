@@ -23,6 +23,7 @@ export const GO_SHORTCUTS: readonly SequenceShortcut[] = [
   { keys: ['g', 'h'], label: 'Accueil', href: router.home() },
   { keys: ['g', 'j'], label: 'Rejoindre une session', href: router.join() },
   { keys: ['g', 'l'], label: 'Mes listes', href: router.lists() },
+  { keys: ['g', 'g'], label: 'Mes groupes', href: router.groups() },
   { keys: ['g', 'a'], label: 'Mon compte', href: router.account() },
 ]
 

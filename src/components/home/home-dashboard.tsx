@@ -1,12 +1,14 @@
 import { RiArrowRightLine } from '@remixicon/react'
 import Link from 'next/link'
 
+import { PendingInvitations } from '@/components/home/pending-invitations'
 import { VisitMemo } from '@/components/layout/visit-memo'
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
 import { ArrowKeyList } from '@/components/ui/arrow-key-list'
 import { Skeleton, SkeletonRow } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
+import { getMyPendingInvitations } from '@/data-access/groups'
 import { getListsByOwner } from '@/data-access/lists'
 import { getMySessions } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
@@ -23,15 +25,18 @@ export async function HomeDashboard() {
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
   if (!user) return null
 
-  // Les deux lectures sont indépendantes : un seul aller-retour de latence.
-  const [sessions, lists] = await Promise.all([
+  // Les trois lectures sont indépendantes : un seul aller-retour de latence.
+  const [sessions, lists, invitations] = await Promise.all([
     getMySessions(supabase),
     getListsByOwner(supabase, user.id),
+    getMyPendingInvitations(supabase),
   ])
 
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
       <VisitMemo account sessions={sessions.length > 0} lists={lists.length > 0} />
+
+      <PendingInvitations invitations={invitations} />
 
       {sessions.length > 0 && (
         <section className="flex flex-col gap-3">

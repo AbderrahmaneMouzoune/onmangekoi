@@ -175,7 +175,7 @@ export function ResultsList({ results, participantCount, actions }: ResultsListP
           </section>
         )}
 
-        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+        {actions && <div className="flex flex-col gap-4">{actions}</div>}
       </div>
     </div>
   )

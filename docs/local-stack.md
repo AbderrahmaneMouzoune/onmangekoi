@@ -164,11 +164,12 @@ supabase start
 bun run db:test
 ```
 
-| Scénario                  | Ce qu'il prouve                                                                                                               |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `purge.test.sql`          | Purge : protections d'un compte joignable, cascades, compteurs, garde-fous de rétention                                       |
-| `delete-account.test.sql` | Suppression RGPD : classement d'une session close inchangé, votes anonymisés, sessions orphelines traitées, export cloisonné  |
-| `timed-session.test.sql`  | Vote chronométré : bornes de l'échéance, lancement refusé après l'heure, prolongation réservée au host, clôture et classement |
+| Scénario                  | Ce qu'il prouve                                                                                                                |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `purge.test.sql`          | Purge : protections d'un compte joignable, cascades, compteurs, garde-fous de rétention                                        |
+| `delete-account.test.sql` | Suppression RGPD : classement d'une session close inchangé, votes anonymisés, sessions orphelines traitées, export cloisonné   |
+| `timed-session.test.sql`  | Vote chronométré : bornes de l'échéance, lancement refusé après l'heure, prolongation réservée au host, clôture et classement  |
+| `recent-winners.test.sql` | Anti-fatigue : fenêtre de 30 jours, un seul sacre par restaurant, égalités, sessions des autres invisibles, droits d'exécution |
 
 `SUPABASE_DB_URL` permet de viser une autre base que la locale (`postgresql://postgres:postgres@127.0.0.1:54322/postgres`), y compris le PostgreSQL nu décrit plus haut. La CI les rejoue dans le job `End-to-end`, juste après `supabase start`.
 

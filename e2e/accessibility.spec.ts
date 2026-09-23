@@ -83,6 +83,13 @@ test.describe('Accessibilité', () => {
     await expect(guest).toHaveURL(sessionUrl)
     await auditA11y(guest, testInfo, 'salle d’attente (invité)')
 
+    // Le sélecteur de restaurants s'ouvre aussi depuis la salle d'attente,
+    // dans une page qui n'est pas celle de la création : une surface de plus.
+    await guest.getByRole('button', { name: /ajouter le mien/i }).click()
+    await expect(guest.getByRole('list', { name: 'Résultats' })).toBeVisible()
+    await auditA11y(guest, testInfo, 'salle d’attente (ajout d’un resto)')
+    await guest.getByRole('button', { name: 'Annuler' }).click()
+
     // 4. Vote : la page centrale du produit, dans les deux thèmes
     await host.getByRole('button', { name: /lancer le vote/i }).click()
     await expect(host.getByRole('group', { name: 'Voter' })).toBeVisible()
@@ -103,6 +110,20 @@ test.describe('Accessibilité', () => {
     await expect(host).toHaveURL(/\/results$/, { timeout: 15_000 })
     await expect(host.getByText(/on mange chez/i)).toBeVisible()
     await auditA11y(host, testInfo, 'classement')
+
+    // Le classement public : la seule page que des inconnus vont ouvrir, donc
+    // celle qu'on ne peut pas se permettre de laisser hors de l'audit.
+    await host.getByRole('switch', { name: /rendre le classement public/i }).click()
+    const shareActions = host.getByTestId('results-share-actions')
+    await expect(shareActions).toHaveAttribute('data-public-url', /\/r\//)
+    const publicUrl = await shareActions.getAttribute('data-public-url')
+    const stranger = await newPage(browser)
+    await stranger.goto(publicUrl as string)
+    await expect(stranger.getByRole('heading', { level: 1 })).toBeVisible()
+    await auditA11y(stranger, testInfo, 'classement public')
+
+    await useDarkTheme(stranger)
+    await auditA11y(stranger, testInfo, 'classement public (sombre)')
 
     await useDarkTheme(host)
     await auditA11y(host, testInfo, 'classement (sombre)')

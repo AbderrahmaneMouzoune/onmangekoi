@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { directionsUrl, distanceMeters, formatDistance, parseGeoPoint, staticMap } from './maps'
+import {
+  directionsUrl,
+  distanceLabel,
+  distanceMeters,
+  formatDistance,
+  geoPoint,
+  parseGeoPoint,
+  staticMap,
+} from './maps'
 
 /** Opéra Garnier, Paris */
 const OPERA = { lat: 48.8719, lng: 2.3316 }
@@ -50,6 +58,25 @@ describe('formatDistance', () => {
   it('should stay silent on a distance that makes no sense', () => {
     expect(formatDistance(-1)).toBe('')
     expect(formatDistance(Number.NaN)).toBe('')
+  })
+})
+
+describe('geoPoint', () => {
+  it('should translate a browser position into a stored point', () => {
+    expect(geoPoint({ latitude: 48.8719, longitude: 2.3316 })).toEqual(OPERA)
+    expect(geoPoint(null)).toBeNull()
+  })
+})
+
+describe('distanceLabel', () => {
+  it('should read the stored point and format the distance', () => {
+    expect(distanceLabel(OPERA, { lat: 48.853, lng: 2.3499 })).toMatch(/^2,\d km$/)
+  })
+
+  it('should return nothing when either side is unknown', () => {
+    expect(distanceLabel(null, OPERA)).toBeNull()
+    expect(distanceLabel(OPERA, null)).toBeNull()
+    expect(distanceLabel(OPERA, { lat: 'x' })).toBeNull()
   })
 })
 

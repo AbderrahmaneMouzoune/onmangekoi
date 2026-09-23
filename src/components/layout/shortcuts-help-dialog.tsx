@@ -77,7 +77,7 @@ interface ShortcutsHelpDialogProps {
 export function ShortcutsHelpDialog({ open, onOpenChange }: ShortcutsHelpDialogProps) {
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
-      <DialogPopup>
+      <DialogPopup className="max-w-lg">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
             <DialogTitle>Raccourcis clavier</DialogTitle>

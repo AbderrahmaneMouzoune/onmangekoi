@@ -40,6 +40,8 @@ function deckOf(...names: string[]): SessionRestaurantWithRestaurant[] {
     session_id: 'session-1',
     restaurant_id: `r-${position}`,
     position,
+    added_at: '2026-09-05T10:00:00Z',
+    added_by: 'profile-host',
     restaurants: restaurant(name),
   }))
 }
@@ -50,6 +52,7 @@ function renderDeck(props: Partial<React.ComponentProps<typeof VoteDeck>> = {}) 
       sessionId="session-1"
       restaurants={deckOf('Chez Marcel', 'Sushi Sakura')}
       initialVotedIds={[]}
+      lastWins={{}}
       initialSuperlikeUsed={false}
       initialSuperDislikeUsed={false}
       onFinished={vi.fn()}
@@ -175,5 +178,38 @@ describe('VoteDeck — annonce', () => {
     const live = await screen.findByText(/Restaurant 1 sur 2/)
     expect(live).toHaveAttribute('aria-live', 'polite')
     expect(live).toHaveAttribute('aria-atomic', 'true')
+  })
+})
+
+describe('VoteDeck — distance', () => {
+  /** Opéra Garnier, Paris */
+  const OPERA = { latitude: 48.8719, longitude: 2.3316 }
+
+  beforeEach(() => {
+    submitVoteAction.mockReset()
+    const getCurrentPosition = vi.fn((onSuccess: PositionCallback) =>
+      onSuccess({ coords: OPERA } as GeolocationPosition)
+    )
+    Object.defineProperty(navigator, 'geolocation', {
+      value: { getCurrentPosition },
+      configurable: true,
+    })
+  })
+
+  it('should show the distance on the card once the position is given, and forget it on a second click', async () => {
+    const user = userEvent.setup()
+    const deck = deckOf('Chez Marcel', 'Sushi Sakura')
+    // Notre-Dame : environ 2,4 km de l'Opéra.
+    deck[0]!.restaurants!.location = { lat: 48.853, lng: 2.3499 }
+    renderDeck({ restaurants: deck })
+
+    const card = screen.getByRole('article', { name: /chez marcel/i })
+    expect(card).not.toHaveTextContent(/km/)
+
+    await user.click(screen.getByRole('button', { name: 'Autour de moi' }))
+    expect(card).toHaveTextContent(/2,\d km/)
+
+    await user.click(screen.getByRole('button', { name: 'Autour de toi' }))
+    expect(card).not.toHaveTextContent(/km/)
   })
 })
