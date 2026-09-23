@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 
 import { AccountDataSection } from '@/components/account/account-data-section'
 import { AccountDetails, AccountDetailsFallback } from '@/components/account/account-details'
+import { AccountGroupsSection } from '@/components/account/account-groups-section'
 import { AccountStats, AccountStatsFallback } from '@/components/account/account-stats'
 import { PageHeader } from '@/components/layout/page-header'
 import { Shell } from '@/components/layout/shell'
@@ -30,6 +31,11 @@ export default function AccountPage({ searchParams }: Props) {
 
       <Suspense fallback={<AccountStatsFallback />}>
         <AccountStats />
+      </Suspense>
+
+      {/* Une personne sans groupe ne voit rien ici : rien à réserver non plus. */}
+      <Suspense fallback={null}>
+        <AccountGroupsSection />
       </Suspense>
 
       <AccountDataSection />

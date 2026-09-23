@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 
 import { CreateListForm } from '@/components/lists/create-list-form'
+import { LIST_FORM, ListIdentityCard } from '@/components/lists/list-identity-card'
 import { RestaurantPickerFallback } from '@/components/restaurants/restaurant-picker-fallback'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -24,26 +25,32 @@ export async function CreateListSection() {
 }
 
 /**
- * Silhouette du formulaire : les intitulés et le bouton d'envoi ne dépendent
- * d'aucune donnée — ils sont écrits en clair, dans l'état exact qu'ils auront
- * une fois le formulaire prêt. Seul le catalogue de restos est en attente.
+ * Silhouette du formulaire : la carte dorée, les intitulés et le bouton
+ * d'envoi ne dépendent d'aucune donnée — ils sont écrits en clair, dans
+ * l'état exact qu'ils auront une fois le formulaire prêt. Seul le catalogue
+ * de restos est en attente.
  */
 export function CreateListSectionFallback() {
   return (
-    <div aria-busy="true" className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <p className="text-sm leading-none font-medium text-ink">Nom de la liste</p>
-        <Skeleton className="h-12 w-full rounded-md" />
-      </div>
+    <div aria-busy="true" className="flex flex-col gap-8">
+      <ListIdentityCard>
+        <div className="flex flex-col gap-2">
+          <p className="text-sm leading-none font-medium text-ink">{LIST_FORM.name}</p>
+          <Skeleton className="h-12 w-full rounded-md bg-surface" />
+        </div>
+      </ListIdentityCard>
 
-      <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium">Restaurants</p>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <p className="text-base font-semibold">{LIST_FORM.restaurants}</p>
+          <p className="text-sm text-muted-foreground">{LIST_FORM.restaurantsHint}</p>
+        </div>
         <RestaurantPickerFallback />
       </div>
 
       <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md">
         <button type="button" disabled className={cn(buttonVariants({ size: 'lg' }), 'w-full')}>
-          Créer la liste vide
+          {LIST_FORM.submitEmpty}
         </button>
       </div>
     </div>

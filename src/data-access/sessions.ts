@@ -12,6 +12,7 @@ import type {
   Session,
   SessionHistoryEntry,
   SessionPreview,
+  SessionRestaurant,
   SessionRestaurantWithRestaurant,
   SessionResultRow,
   SessionSummary,
@@ -23,11 +24,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function createSession(
   supabase: SupabaseClient<Database>,
-  input: { name: string; restaurantIds: string[] }
+  input: { name: string; restaurantIds: string[]; closesAt?: string | null }
 ): Promise<Session> {
   const { data, error } = await supabase.rpc('create_session', {
     p_name: input.name,
     p_restaurant_ids: input.restaurantIds,
+    // Sans échéance, on n'envoie rien : la valeur par défaut de la RPC parle
+    // pour nous et l'appel reste celui d'avant.
+    ...(input.closesAt ? { p_closes_at: input.closesAt } : {}),
   })
   if (error) throw error
   return data
@@ -58,6 +62,81 @@ export async function closeSession(
   const { data, error } = await supabase.rpc('close_session', { p_session_id: sessionId })
   if (error) throw error
   return data
+}
+
+/** Repousse l'échéance de clôture. Réservée au host, vérifié en base. */
+export async function extendSession(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  minutes: number
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('extend_session', {
+    p_session_id: sessionId,
+    p_minutes: minutes,
+  })
+  if (error) throw error
+  return data
+}
+
+/**
+ * Ajoute un restaurant à une session en attente. La RPC vérifie en base que
+ * l'appelant en est participant, que le vote n'a pas démarré et pose
+ * `added_by` elle-même.
+ */
+export async function addSessionRestaurant(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  restaurantId: string
+): Promise<SessionRestaurant> {
+  const { data, error } = await supabase.rpc('add_session_restaurant', {
+    p_session_id: sessionId,
+    p_restaurant_id: restaurantId,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Ouvre ou referme le lien public du classement — host uniquement (RPC). */
+export async function setResultsPublic(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  isPublic: boolean
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('set_results_public', {
+    p_session_id: sessionId,
+    p_public: isPublic,
+  })
+  if (error) throw error
+  return data
+}
+
+/**
+ * Ajoute plusieurs restaurants, **en séquence** : chaque insertion prend la
+ * position suivante dans le deck, donc l'ordre des appels est l'ordre de
+ * sélection. En parallèle, la RPC sérialiserait quand même les écritures (elle
+ * verrouille la session) mais l'ordre du deck deviendrait celui du hasard.
+ */
+export async function addSessionRestaurants(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  restaurantIds: string[]
+): Promise<void> {
+  for (const restaurantId of restaurantIds) {
+    await addSessionRestaurant(supabase, sessionId, restaurantId)
+  }
+}
+
+/** Retire un restaurant : celui qu'on a apporté, ou n'importe lequel si on est host. */
+export async function removeSessionRestaurant(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  restaurantId: string
+): Promise<void> {
+  const { error } = await supabase.rpc('remove_session_restaurant', {
+    p_session_id: sessionId,
+    p_restaurant_id: restaurantId,
+  })
+  if (error) throw error
 }
 
 export async function leaveSession(

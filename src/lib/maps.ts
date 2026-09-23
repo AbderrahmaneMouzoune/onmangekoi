@@ -22,6 +22,60 @@ export function parseGeoPoint(value: Json | null | undefined): GeoPoint | null {
   return parsed.success ? { lat: parsed.data.lat, lng: parsed.data.lng } : null
 }
 
+const EARTH_RADIUS_M = 6_371_000
+
+/**
+ * Distance à vol d'oiseau entre deux points, en mètres (formule de haversine).
+ * Sert à dire « à 350 m » à côté d'un resto trouvé autour de soi ; pour un
+ * trajet réel, c'est le lien d'itinéraire qui fait foi.
+ */
+export function distanceMeters(from: GeoPoint, to: GeoPoint): number {
+  const toRad = (degrees: number) => (degrees * Math.PI) / 180
+  const dLat = toRad(to.lat - from.lat)
+  const dLng = toRad(to.lng - from.lng)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(from.lat)) * Math.cos(toRad(to.lat)) * Math.sin(dLng / 2) ** 2
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(a))
+}
+
+const kmFormatter = new Intl.NumberFormat('fr', { maximumFractionDigits: 1 })
+
+/**
+ * « 350 m » ou « 1,2 km » : la précision d'un pas de marche, pas d'un GPS.
+ * En dessous du kilomètre, on arrondit à la dizaine de mètres.
+ */
+export function formatDistance(meters: number): string {
+  if (!Number.isFinite(meters) || meters < 0) return ''
+  if (meters < 1000) return `${Math.max(10, Math.round(meters / 10) * 10)} m`
+  return `${kmFormatter.format(meters / 1000)} km`
+}
+
+/**
+ * Point de la géolocalisation du navigateur (`latitude` / `longitude`) ramené
+ * à la forme stockée en base (`lat` / `lng`), ou `null` s'il manque.
+ */
+export function geoPoint(
+  position: { latitude: number; longitude: number } | null | undefined
+): GeoPoint | null {
+  return position ? { lat: position.latitude, lng: position.longitude } : null
+}
+
+/**
+ * Distance entre la personne et un lieu, prête à afficher — ou `null` quand
+ * l'une des deux positions manque : la carte se passe alors de distance
+ * plutôt que d'afficher un « ? km ».
+ */
+export function distanceLabel(
+  from: GeoPoint | null | undefined,
+  to: GeoPoint | Json | null | undefined
+): string | null {
+  if (!from) return null
+  const point = parseGeoPoint(to as Json)
+  if (!point) return null
+  return formatDistance(distanceMeters(from, point))
+}
+
 export interface PlaceLike {
   name: string
   address?: string | null

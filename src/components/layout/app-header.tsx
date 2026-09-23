@@ -1,5 +1,7 @@
+import { RiArrowDownSLine } from '@remixicon/react'
 import { Suspense } from 'react'
 
+import { ChangelogNavLink } from '@/components/changelog/changelog-nav-link'
 import { Brand } from '@/components/layout/brand'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -9,8 +11,10 @@ import { AccountNavLink, ChoosePseudoLink } from './account-nav-link'
 /**
  * En-tête de l'application.
  *
- * La barre elle-même (marque, bascule de thème) ne dépend de personne : elle
- * fait partie de la coquille statique prérendue et s'affiche immédiatement.
+ * La barre elle-même (marque, nouveautés, bascule de thème) ne dépend de
+ * personne : elle fait partie de la coquille statique prérendue et s'affiche
+ * immédiatement — la pastille des nouveautés, elle, se décide dans le
+ * navigateur, après montage.
  * Seul le bloc compte lit les cookies, il est donc isolé dans son `<Suspense>`
  * et diffusé en streaming — sans quoi l'en-tête rendrait *toutes* les pages
  * dynamiques, y compris celles qui n'ont aucune donnée personnelle.
@@ -20,7 +24,8 @@ export function AppHeader() {
     <header className="sticky top-0 z-30 border-b border-line bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-lg items-center justify-between gap-3 px-4">
         <Brand />
-        <nav aria-label="Compte" className="flex items-center gap-1">
+        <nav aria-label="Raccourcis" className="flex items-center gap-1">
+          <ChangelogNavLink />
           <ThemeToggle />
           <Suspense fallback={<AccountNavFallback />}>
             <AccountNavLink />
@@ -34,7 +39,8 @@ export function AppHeader() {
 /**
  * Silhouette du bloc compte, accordée à la dernière visite : à qui n'a jamais
  * choisi de pseudo, on montre directement le bouton qu'il va voir ; à qui
- * revient, la pastille de son compte aux dimensions du vrai lien.
+ * revient, la pastille de son compte aux dimensions du vrai déclencheur. Le
+ * chevron, lui, ne dépend de personne : autant l'afficher pour de vrai.
  */
 function AccountNavFallback() {
   return (
@@ -42,10 +48,11 @@ function AccountNavFallback() {
       <ChoosePseudoLink className="seen-account:hidden" />
       <div
         aria-busy="true"
-        className="hidden h-9 items-center gap-2 rounded-full pr-3 pl-1 seen-account:flex"
+        className="hidden h-9 items-center gap-2 rounded-full pr-2 pl-1 seen-account:flex"
       >
         <Skeleton className="size-8 rounded-full" />
         <Skeleton className="h-4 w-20" />
+        <RiArrowDownSLine aria-hidden="true" className="size-4 text-faint" />
       </div>
     </>
   )

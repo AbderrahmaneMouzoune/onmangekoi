@@ -17,6 +17,9 @@ export function SiteFooter() {
       >
         <span>{SITE_NAME}</span>
         <span className="flex items-center gap-4">
+          <Link href={router.changelog()} className="font-medium hover:text-ink">
+            Nouveautés
+          </Link>
           <Link href={router.privacy()} className="font-medium hover:text-ink">
             Confidentialité
           </Link>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { LoginSchema, SetPasswordSchema } from './auth'
+import { CreateGroupSchema, RenameGroupSchema } from './group'
 import { CreateListSchema } from './list'
 import { ImportPlaceSchema, SearchPlacesSchema } from './place'
 import { PseudoSchema, SetupProfileSchema } from './profile'
@@ -28,6 +29,28 @@ describe('PseudoSchema', () => {
   })
 })
 
+describe('CreateGroupSchema', () => {
+  it('should require a name and the session it comes from', () => {
+    expect(CreateGroupSchema.safeParse({ name: 'Le midi', sessionId: UUID }).success).toBe(true)
+    expect(CreateGroupSchema.safeParse({ name: '  ', sessionId: UUID }).success).toBe(false)
+    expect(CreateGroupSchema.safeParse({ name: 'Le midi', sessionId: 'nope' }).success).toBe(false)
+    expect(CreateGroupSchema.safeParse({ name: 'x'.repeat(61), sessionId: UUID }).success).toBe(
+      false
+    )
+  })
+
+  it('should trim the name, as the database does', () => {
+    expect(CreateGroupSchema.safeParse({ name: '  Le midi ', sessionId: UUID }).data?.name).toBe(
+      'Le midi'
+    )
+  })
+
+  it('should require a name to rename', () => {
+    expect(RenameGroupSchema.safeParse({ groupId: UUID, name: 'Autre' }).success).toBe(true)
+    expect(RenameGroupSchema.safeParse({ groupId: UUID }).success).toBe(false)
+  })
+})
+
 describe('CreateSessionSchema', () => {
   it('should require at least one list or restaurant', () => {
     expect(CreateSessionSchema.safeParse({ name: 'Lunch' }).success).toBe(false)
@@ -42,6 +65,54 @@ describe('CreateSessionSchema', () => {
     expect(CreateSessionSchema.safeParse({ name: 'Lunch', restaurantIds: ['nope'] }).success).toBe(
       false
     )
+  })
+
+  it('should accept groups to pre-invite, and bound how many', () => {
+    const base = { name: 'Lunch', restaurantIds: [UUID] }
+    expect(CreateSessionSchema.safeParse(base).data?.groupIds).toEqual([])
+    expect(CreateSessionSchema.safeParse({ ...base, groupIds: [UUID] }).success).toBe(true)
+    expect(CreateSessionSchema.safeParse({ ...base, groupIds: Array(6).fill(UUID) }).success).toBe(
+      false
+    )
+    // Un groupe ne remplace pas un restaurant : il faut toujours de quoi voter.
+    expect(CreateSessionSchema.safeParse({ name: 'Lunch', groupIds: [UUID] }).success).toBe(false)
+  })
+
+  it('should read the deadline fields a form leaves empty or absent', () => {
+    const base = { name: 'Lunch', restaurantIds: [UUID] }
+    const parsed = CreateSessionSchema.safeParse({
+      ...base,
+      closesInMinutes: null,
+      closesAt: '',
+    })
+    expect(parsed.success).toBe(true)
+    expect(parsed.data?.closesInMinutes).toBeUndefined()
+    expect(parsed.data?.closesAt).toBeUndefined()
+
+    expect(
+      CreateSessionSchema.safeParse({ ...base, closesInMinutes: '10' }).data?.closesInMinutes
+    ).toBe(10)
+  })
+
+  it('should bound the deadline like the database does', () => {
+    const base = { name: 'Lunch', restaurantIds: [UUID] }
+    expect(CreateSessionSchema.safeParse({ ...base, closesInMinutes: 0 }).success).toBe(false)
+    expect(CreateSessionSchema.safeParse({ ...base, closesInMinutes: 721 }).success).toBe(false)
+    expect(CreateSessionSchema.safeParse({ ...base, closesAt: 'demain midi' }).success).toBe(false)
+  })
+
+  it('should read the anti-fatigue box, checked as unchecked', () => {
+    const base = { name: 'Lunch', restaurantIds: [UUID] }
+    // Cochée, le navigateur envoie « on » ; décochée, il n'envoie rien.
+    expect(
+      CreateSessionSchema.safeParse({ ...base, excludeRecentWinners: 'on' }).data
+        ?.excludeRecentWinners
+    ).toBe(true)
+    expect(
+      CreateSessionSchema.safeParse({ ...base, excludeRecentWinners: null }).data
+        ?.excludeRecentWinners
+    ).toBe(false)
+    expect(CreateSessionSchema.safeParse(base).data?.excludeRecentWinners).toBeUndefined()
   })
 })
 
@@ -161,6 +232,34 @@ describe('SearchPlacesSchema', () => {
     expect(SearchPlacesSchema.safeParse({ query: 'sushi', latitude: 91 }).success).toBe(false)
     expect(SearchPlacesSchema.safeParse({ query: 'sushi', longitude: -181 }).success).toBe(false)
     expect(SearchPlacesSchema.safeParse({ query: 'sushi', latitude: '45' }).success).toBe(false)
+  })
+
+  it('should accept no text at all when a position is given: that is « autour de moi »', () => {
+    const nearby = SearchPlacesSchema.safeParse({ latitude: 45.76, longitude: 4.83 })
+    expect(nearby.success).toBe(true)
+    expect(nearby.data?.query).toBe('')
+    expect(
+      SearchPlacesSchema.safeParse({ query: ' ', latitude: 45.76, longitude: 4.83 }).success
+    ).toBe(true)
+  })
+
+  it('should carry an opaque page token, and refuse a garbled one', () => {
+    expect(
+      SearchPlacesSchema.safeParse({ query: 'sushi', pageToken: 'AbC_-123' }).data?.pageToken
+    ).toBe('AbC_-123')
+    expect(SearchPlacesSchema.safeParse({ query: 'sushi', pageToken: null }).success).toBe(true)
+    expect(SearchPlacesSchema.safeParse({ query: 'sushi', pageToken: '' }).success).toBe(false)
+    expect(SearchPlacesSchema.safeParse({ query: 'sushi', pageToken: 'a b' }).success).toBe(false)
+    expect(
+      SearchPlacesSchema.safeParse({ query: 'sushi', pageToken: 'a'.repeat(4097) }).success
+    ).toBe(false)
+  })
+
+  it('should refuse a search with neither text nor position', () => {
+    const empty = SearchPlacesSchema.safeParse({ query: '' })
+    expect(empty.success).toBe(false)
+    expect(empty.error?.issues[0]?.message).toMatch(/autorise ta position/)
+    expect(SearchPlacesSchema.safeParse({ query: 'a', latitude: 45.76 }).success).toBe(false)
   })
 })
 

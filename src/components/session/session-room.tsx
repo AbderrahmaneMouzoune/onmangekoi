@@ -4,29 +4,43 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { FinishedPanel } from '@/components/session/finished-panel'
+import { SessionCountdown } from '@/components/session/session-countdown'
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
 import { VoteDeck } from '@/components/session/vote-deck'
 import { WaitingRoom } from '@/components/session/waiting-room'
 import { router } from '@/config/router.config'
+import { closeAttribution } from '@/domain/session-deadline'
 import { useSessionRoom } from '@/hooks/use-session-room'
 import { captureEvent } from '@/lib/analytics/client'
 import { markOnce, takeSessionEntry } from '@/lib/analytics/handoff'
 
 import type {
+  GroupWithMembers,
+  InvitationWithProfile,
   ParticipantWithProfile,
   Session,
   SessionRestaurantWithRestaurant,
 } from '@/data-access/models'
+import type { RestaurantPage } from '@/data-access/restaurants'
+import type { RecentWinnerDates } from '@/domain/recent-winners'
 
 interface SessionRoomProps {
   session: Session
   participants: ParticipantWithProfile[]
   restaurants: SessionRestaurantWithRestaurant[]
+  /** Première page du catalogue, pour ajouter un resto en salle d'attente */
+  restaurantCatalog: RestaurantPage | null
   myVotedIds: string[]
+  /** Anti-fatigue : ce qui a déjà gagné récemment, chargé avec la session */
+  recentWinners: RecentWinnerDates
   meId: string
   inviteUrl: string
-  /** QR code SVG du lien d'invitation, rendu côté serveur (host, salle d'attente) */
+  /** QR code SVG du lien d'invitation, rendu côté serveur (salle d'attente) */
   qrSvg: string | null
+  /** Invités pré-ajoutés en attente — vide pour qui n'est pas le host. */
+  invitations: InvitationWithProfile[]
+  /** Groupes du host, à inviter depuis la salle d'attente. */
+  groups: GroupWithMembers[]
 }
 
 /**
@@ -36,24 +50,29 @@ interface SessionRoomProps {
 export function SessionRoom({
   session: initialSession,
   participants: initialParticipants,
-  restaurants,
+  restaurants: initialRestaurants,
+  restaurantCatalog,
   myVotedIds,
+  recentWinners,
   meId,
   inviteUrl,
   qrSvg,
+  invitations,
+  groups,
 }: SessionRoomProps) {
   const navigation = useRouter()
-  const { session, participants, connection, refresh, setSession } = useSessionRoom({
+  const { session, participants, restaurants, connection, refresh, setSession } = useSessionRoom({
     sessionId: initialSession.id,
     initialSession,
     initialParticipants,
+    initialRestaurants,
   })
 
   const me = participants.find((p) => p.profile_id === meId)
   const isHost = session.host_id === meId
 
   const [finishedLocally, setFinishedLocally] = useState(
-    myVotedIds.length >= restaurants.length && restaurants.length > 0
+    myVotedIds.length >= initialRestaurants.length && initialRestaurants.length > 0
   )
   const meFinished = finishedLocally || Boolean(me?.has_finished_voting)
 
@@ -67,7 +86,7 @@ export function SessionRoom({
     if (entry?.kind === 'created') {
       captureEvent('session_created', {
         session_id: initialSession.id,
-        restaurant_count: restaurants.length,
+        restaurant_count: initialRestaurants.length,
         list_count: entry.listCount,
       })
       return
@@ -77,7 +96,7 @@ export function SessionRoom({
     if (entry || !isHost) {
       captureEvent('session_joined', { session_id: initialSession.id, via })
     }
-  }, [initialSession.id, isHost, restaurants.length])
+  }, [initialSession.id, isHost, initialRestaurants.length])
 
   const closeTracked = useRef(false)
 
@@ -86,16 +105,27 @@ export function SessionRoom({
     closeTracked.current = true
 
     // Personne n'annonce la clôture : elle vient de la base dès que tout le
-    // monde a fini, sinon c'est le host qui l'a forcée.
+    // monde a fini ou que l'échéance tombe, sinon c'est le host qui l'a forcée.
     const everyoneFinished =
       participants.length > 0 && participants.every((p) => p.has_finished_voting)
     captureEvent('session_closed', {
       session_id: session.id,
-      reason: everyoneFinished ? 'auto' : 'host',
+      reason: closeAttribution({
+        everyoneFinished,
+        closesAt: session.closes_at,
+        closedAt: session.closed_at,
+      }),
       participant_count: participants.length,
       restaurant_count: restaurants.length,
     })
-  }, [session.status, session.id, participants, restaurants.length])
+  }, [
+    session.status,
+    session.id,
+    session.closes_at,
+    session.closed_at,
+    participants,
+    restaurants.length,
+  ])
 
   useEffect(() => {
     if (session.status === 'closed') {
@@ -118,6 +148,15 @@ export function SessionRoom({
         <SessionStatusBadge status={session.status} />
       </div>
 
+      {session.status !== 'closed' && (
+        <SessionCountdown
+          session={session}
+          isHost={isHost}
+          onExtended={setSession}
+          onExpired={refresh}
+        />
+      )}
+
       {session.status === 'waiting' && (
         <WaitingRoom
           session={session}
@@ -126,9 +165,13 @@ export function SessionRoom({
           isHost={isHost}
           inviteUrl={inviteUrl}
           qrSvg={qrSvg}
-          restaurantCount={restaurants.length}
+          restaurants={restaurants}
+          restaurantCatalog={restaurantCatalog}
           connection={connection}
+          invitations={invitations}
+          groups={groups}
           onLaunched={setSession}
+          onRestaurantsChanged={refresh}
         />
       )}
 
@@ -137,6 +180,7 @@ export function SessionRoom({
           sessionId={session.id}
           restaurants={restaurants}
           initialVotedIds={myVotedIds}
+          lastWins={recentWinners}
           initialSuperlikeUsed={me?.superlike_used ?? false}
           initialSuperDislikeUsed={me?.super_dislike_used ?? false}
           onFinished={handleFinished}

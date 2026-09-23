@@ -41,7 +41,7 @@ export default function ErrorPage({
         }
       />
       {error.digest && (
-        <p className="text-center font-mono text-xs text-faint">Référence : {error.digest}</p>
+        <p className="text-center font-mono text-xs text-ink-muted">Référence : {error.digest}</p>
       )}
     </Shell>
   )

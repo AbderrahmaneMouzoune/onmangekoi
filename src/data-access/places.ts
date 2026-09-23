@@ -3,9 +3,11 @@ import 'server-only'
 import { AppError } from '@/domain/errors'
 import {
   mapPlaceDetails,
-  mapPlacesResponse,
+  mapPlacesPage,
+  nearbyCacheKey,
   placesCacheKey,
   type PlaceResult,
+  type PlacesPage,
 } from '@/domain/places'
 import { env } from '@/env'
 import { remoteImageUrl } from '@/lib/images'
@@ -31,10 +33,13 @@ const PHOTO_ENDPOINT = 'https://places.googleapis.com/v1'
  * Deux masques, deux factures.
  *
  * La recherche ne demande que de quoi afficher une liste : Google facture au
- * champ le plus cher demandé, et une recherche ramène dix résultats. Les
- * champs qui remplissent la fiche (photo, site, horaires, résumé) ne sont
- * demandés que sur le détail d'un lieu — c'est-à-dire une fois, au moment où
- * quelqu'un clique pour importer.
+ * champ le plus cher demandé, et une recherche ramène dix résultats. Le
+ * budget (`priceLevel`) place déjà la recherche dans le palier « Enterprise »
+ * de Text Search : la note, le nombre d'avis et les horaires, qui relèvent du
+ * même palier, ne coûtent donc rien de plus et illustrent la liste sans
+ * attendre l'import. Les champs qui restent chers ou lourds — photo (un appel
+ * de plus par lieu), site, résumé — ne sont demandés que sur le détail d'un
+ * lieu, c'est-à-dire une fois, au moment où quelqu'un clique pour importer.
  */
 const SEARCH_FIELDS = [
   'id',
@@ -44,31 +49,43 @@ const SEARCH_FIELDS = [
   'primaryType',
   'primaryTypeDisplayName',
   'priceLevel',
+  'rating',
+  'userRatingCount',
+  'regularOpeningHours',
   'location',
   'addressComponents',
 ]
 
-const DETAILS_FIELDS = [
-  ...SEARCH_FIELDS,
-  'editorialSummary',
-  'websiteUri',
-  'regularOpeningHours',
-  'photos',
-]
+const DETAILS_FIELDS = [...SEARCH_FIELDS, 'editorialSummary', 'websiteUri', 'photos']
 
-const SEARCH_FIELD_MASK = SEARCH_FIELDS.map((field) => `places.${field}`).join(',')
+/** `nextPageToken` doit être demandé explicitement, sinon Google ne le renvoie pas. */
+const SEARCH_FIELD_MASK = [
+  ...SEARCH_FIELDS.map((field) => `places.${field}`),
+  'nextPageToken',
+].join(',')
 const DETAILS_FIELD_MASK = DETAILS_FIELDS.join(',')
 
 /** Largeur demandée pour la photo importée : suffisante pour la carte de vote. */
 const PHOTO_MAX_WIDTH_PX = 1200
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
-const MAX_RESULTS = 10
+/**
+ * Vingt lieux par page, le maximum que Google accorde : une recherche est
+ * facturée à la requête, pas au résultat, et « voir plus » en redemande une.
+ */
+const PAGE_SIZE = 20
 /** Rayon du biais géographique quand une position est fournie (5 km). */
 const BIAS_RADIUS_M = 5000
+/**
+ * Rayon du biais « autour de moi » (2 km). Un biais, pas une restriction :
+ * en ville les vingt premiers sont vraiment ceux d'à côté — ils sont classés
+ * par distance —, et un village trouve quand même quelque chose au-delà.
+ */
+const NEARBY_RADIUS_M = 2000
 const REQUEST_TIMEOUT_MS = 8000
 
-const searchCache = new TtlCache<PlaceResult[]>({ ttlMs: CACHE_TTL_MS, maxEntries: 200 })
+/** Pages de recherche, par requête + biais + jeton de page. */
+const searchCache = new TtlCache<PlacesPage>({ ttlMs: CACHE_TTL_MS, maxEntries: 400 })
 /**
  * Fiches détaillées uniquement. Une recherche ne les alimente plus : ses
  * résultats n'ont pas les champs enrichis, et les servir ici ferait importer
@@ -154,15 +171,48 @@ async function callGoogle(
   return response.json()
 }
 
+/** Clé d'une page : celle de la recherche, suffixée du jeton quand il y en a un. */
+function pageKey(base: string, pageToken: string | null | undefined): string {
+  return pageToken ? `${base}|${pageToken}` : base
+}
+
+/**
+ * Une page de Text Search (New), servie par le cache quand elle y est. La
+ * recherche par nom et « autour de moi » passent toutes deux par ici : même
+ * endpoint, même masque, même pagination — seule la demande change.
+ */
+async function searchTextPage(
+  label: string,
+  key: string,
+  request: Record<string, unknown>,
+  apiKey: string
+): Promise<PlacesPage> {
+  const cached = searchCache.get(key)
+  if (cached) return cached
+
+  const payload = await callGoogle(
+    label,
+    SEARCH_ENDPOINT,
+    {
+      method: 'POST',
+      headers: { 'X-Goog-FieldMask': SEARCH_FIELD_MASK },
+      body: JSON.stringify(request),
+    },
+    apiKey
+  )
+
+  const page = mapPlacesPage(payload)
+  searchCache.set(key, page)
+  return page
+}
+
 export async function searchPlaces(input: {
   query: string
   latitude?: number | null
   longitude?: number | null
-}): Promise<PlaceResult[]> {
+  pageToken?: string | null
+}): Promise<PlacesPage> {
   const apiKey = requireApiKey()
-  const key = placesCacheKey(input)
-  const cached = searchCache.get(key)
-  if (cached) return cached
 
   const hasBias =
     typeof input.latitude === 'number' &&
@@ -170,36 +220,67 @@ export async function searchPlaces(input: {
     typeof input.longitude === 'number' &&
     Number.isFinite(input.longitude)
 
-  const payload = await callGoogle(
+  return searchTextPage(
     'recherche',
-    SEARCH_ENDPOINT,
+    pageKey(placesCacheKey(input), input.pageToken),
     {
-      method: 'POST',
-      headers: { 'X-Goog-FieldMask': SEARCH_FIELD_MASK },
-      body: JSON.stringify({
-        textQuery: input.query,
-        includedType: 'restaurant',
-        languageCode: 'fr',
-        regionCode: 'FR',
-        maxResultCount: MAX_RESULTS,
-        ...(hasBias
-          ? {
-              locationBias: {
-                circle: {
-                  center: { latitude: input.latitude, longitude: input.longitude },
-                  radius: BIAS_RADIUS_M,
-                },
+      textQuery: input.query,
+      includedType: 'restaurant',
+      languageCode: 'fr',
+      regionCode: 'FR',
+      pageSize: PAGE_SIZE,
+      ...(hasBias
+        ? {
+            locationBias: {
+              circle: {
+                center: { latitude: input.latitude, longitude: input.longitude },
+                radius: BIAS_RADIUS_M,
               },
-            }
-          : {}),
-      }),
+            },
+          }
+        : {}),
+      ...(input.pageToken ? { pageToken: input.pageToken } : {}),
     },
     apiKey
   )
+}
 
-  const results = mapPlacesResponse(payload)
-  searchCache.set(key, results)
-  return results
+/**
+ * Les restaurants les plus proches d'une position, sans texte à taper.
+ *
+ * C'est ce que l'onglet Google affiche d'emblée : la personne l'ouvre, voit
+ * ce qu'il y a autour, et ne cherche un nom que si le resto qu'elle a en tête
+ * n'y est pas. C'est une Text Search sur « restaurant », classée par
+ * distance, plutôt qu'une Nearby Search : la première se pagine — « voir
+ * plus » donne les vingt suivants —, la seconde s'arrête à vingt.
+ */
+export async function searchNearbyPlaces(input: {
+  latitude: number
+  longitude: number
+  pageToken?: string | null
+}): Promise<PlacesPage> {
+  const apiKey = requireApiKey()
+
+  return searchTextPage(
+    'autour de moi',
+    pageKey(nearbyCacheKey(input), input.pageToken),
+    {
+      textQuery: 'restaurant',
+      includedType: 'restaurant',
+      languageCode: 'fr',
+      regionCode: 'FR',
+      pageSize: PAGE_SIZE,
+      rankPreference: 'DISTANCE',
+      locationBias: {
+        circle: {
+          center: { latitude: input.latitude, longitude: input.longitude },
+          radius: NEARBY_RADIUS_M,
+        },
+      },
+      ...(input.pageToken ? { pageToken: input.pageToken } : {}),
+    },
+    apiKey
+  )
 }
 
 /**

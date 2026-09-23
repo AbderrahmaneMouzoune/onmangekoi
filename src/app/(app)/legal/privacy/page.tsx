@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 }
 
 /** Dernière révision du texte — à remonter à chaque modification de fond. */
-const LAST_UPDATED = '5 septembre 2026'
+const LAST_UPDATED = '18 septembre 2026'
 
 const RETENTION = [
   {
@@ -33,6 +33,11 @@ const RETENTION = [
     data: 'Listes de restaurants',
     why: 'Rejouer une sélection d’une session à l’autre',
     kept: 'Jusqu’à la suppression du compte ou de la liste',
+  },
+  {
+    data: 'Groupes récurrents',
+    why: 'Réinviter la même équipe sans retaper le code à chaque session',
+    kept: 'Jusqu’à la suppression du compte, du groupe, ou jusqu’à ce que tu le quittes',
   },
   {
     data: 'Sessions et participations',
@@ -92,7 +97,14 @@ export default function PrivacyPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="font-display text-lg font-bold">Ce qu’on conserve</h2>
-        <div className="overflow-x-auto rounded-lg ring-1 ring-line">
+        {/* Le tableau déborde sur petit écran : la zone qui défile doit être
+            atteignable au clavier, donc focalisable et nommée. */}
+        <div
+          tabIndex={0}
+          role="group"
+          aria-label="Ce qu’on conserve"
+          className="overflow-x-auto rounded-lg ring-1 ring-line outline-none focus-visible:ring-3 focus-visible:ring-ring"
+        >
           <table className="w-full min-w-lg border-collapse text-left text-sm">
             <thead className="bg-surface-2 text-xs text-muted-foreground uppercase">
               <tr>
@@ -125,6 +137,10 @@ export default function PrivacyPage() {
           <li>
             Le profil, le pseudo, l’email, le mot de passe et les listes sont supprimés
             définitivement.
+          </li>
+          <li>
+            Les groupes dont le compte est propriétaire disparaissent pour tous leurs membres, et le
+            compte sort de ceux qu’il avait rejoints.
           </li>
           <li>
             Les votes déjà comptés dans une session terminée sont conservés dans le classement, mais

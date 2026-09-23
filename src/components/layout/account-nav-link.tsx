@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
+import { AccountMenu } from '@/components/layout/account-menu'
 import { VisitMemo } from '@/components/layout/visit-memo'
-import { Avatar } from '@/components/ui/avatar'
 import { buttonVariants } from '@/components/ui/button'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
@@ -32,16 +32,10 @@ export async function AccountNavLink() {
   return (
     <>
       <VisitMemo account />
-      <Link
-        href={router.account()}
-        className={cn(
-          buttonVariants({ variant: 'ghost', size: 'sm' }),
-          'gap-2 rounded-full pr-3 pl-1'
-        )}
-      >
-        <Avatar name={profile?.pseudo} size="sm" />
-        <span className="max-w-28 truncate">{displayPseudo(profile?.pseudo)}</span>
-      </Link>
+      <AccountMenu
+        pseudo={displayPseudo(profile?.pseudo)}
+        isAnonymous={Boolean(user.is_anonymous)}
+      />
     </>
   )
 }

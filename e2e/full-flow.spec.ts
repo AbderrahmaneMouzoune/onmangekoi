@@ -5,8 +5,11 @@ import { expect, test, type Browser, type Page } from '@playwright/test'
  *  1. Le host choisit un pseudo et crée une session avec deux restaurants.
  *  2. L'invité ouvre le lien d'invitation, passe par l'onboarding et revient
  *     automatiquement dans la salle d'attente (le `?next=` est conservé).
- *  3. Le host lance ; chacun vote ; la session se clôture toute seule.
- *  4. Les deux voient le classement, avec le coup de cœur en tête.
+ *  3. L'invité apporte son resto : le host le voit arriver en temps réel.
+ *  4. Le host lance ; chacun vote ; la session se clôture toute seule.
+ *  5. Les deux voient le classement, avec le coup de cœur en tête.
+ *  6. Le host ouvre le lien public : un inconnu, sans pseudo ni cookie, lit
+ *     le podium — et n'y trouve le pseudo de personne.
  */
 test.describe('Session de vote complète', () => {
   test.skip(process.env.E2E !== '1', 'Nécessite une stack Supabase locale (E2E=1).')
@@ -34,7 +37,13 @@ test.describe('Session de vote complète', () => {
     const code = await host.getByTestId('invite-code').getAttribute('data-code')
     expect(code).toMatch(/^[0-9A-HJKMNP-TV-Z]{6}$/)
     const sessionUrl = host.url()
+    // Le QR s'agrandit d'un geste : c'est ainsi qu'on le fait scanner à table
+    const qrTrigger = host.getByRole('button', { name: /agrandir le qr code/i })
+    await expect(qrTrigger).toBeVisible()
+    await qrTrigger.click()
     await expect(host.getByRole('img', { name: /QR code du lien/i })).toBeVisible()
+    await host.getByRole('button', { name: /^fermer$/i }).click()
+    await expect(host.getByRole('img', { name: /QR code du lien/i })).toBeHidden()
 
     // 2. Invité : lien → onboarding → salle d'attente
     await guest.goto('/join')
@@ -51,7 +60,18 @@ test.describe('Session de vote complète', () => {
     await expect(host.getByText('Sam')).toBeVisible()
     await expect(host.getByText('2 participants')).toBeVisible()
 
-    // 3. Lancement et votes
+    // 3. Sam apporte son resto — inviter et compléter le deck ne sont pas des
+    // privilèges de host : il voit le code d'invitation et le bouton d'ajout.
+    await expect(guest.getByTestId('invite-code')).toBeVisible()
+    await guest.getByRole('button', { name: /ajouter le mien/i }).click()
+    const guestResults = guest.getByRole('list', { name: 'Résultats' })
+    await guestResults.getByRole('checkbox').nth(2).click()
+    await guest.getByRole('button', { name: /^ajouter 1 resto$/i }).click()
+
+    // Le host voit le deck grossir sans recharger
+    await expect(host.getByText('3 restos à départager')).toBeVisible({ timeout: 15_000 })
+
+    // 4. Lancement et votes
     await host.getByRole('button', { name: /lancer le vote/i }).click()
     await expect(host.getByRole('group', { name: 'Voter' })).toBeVisible()
     await expect(guest.getByRole('group', { name: 'Voter' })).toBeVisible()
@@ -59,12 +79,14 @@ test.describe('Session de vote complète', () => {
     await host.getByRole('button', { name: /coup de cœur/i }).click()
     await expect(host.getByRole('button', { name: /coup de cœur/i })).toBeDisabled()
     await host.getByRole('button', { name: /bof/i }).click()
+    await host.getByRole('button', { name: /bof/i }).click()
     await expect(host.getByText(/tu as tout voté/i)).toBeVisible()
 
     await guest.getByRole('button', { name: /ça me va/i }).click()
     await guest.getByRole('button', { name: /veto/i }).click()
+    await guest.getByRole('button', { name: /ça me va/i }).click()
 
-    // 4. Clôture automatique → classement pour les deux
+    // 5. Clôture automatique → classement pour les deux
     await expect(host).toHaveURL(/\/results$/, { timeout: 15_000 })
     await expect(guest).toHaveURL(/\/results$/, { timeout: 15_000 })
     await expect(host.getByText(/on mange chez/i)).toBeVisible()
@@ -72,7 +94,41 @@ test.describe('Session de vote complète', () => {
     await expect(guest.getByText('−2')).toBeVisible()
     const resultsUrl = host.url()
 
-    // 5. La session close reste consultable depuis l'historique et le compte
+    // 6. Partage public : opt-in du host, puis lecture par un inconnu
+    const share = host.getByRole('switch', { name: /rendre le classement public/i })
+    await expect(share).toHaveAttribute('aria-checked', 'false')
+    // L'invité n'est pas host : la bascule n'existe que chez Alex.
+    await expect(guest.getByRole('switch')).toHaveCount(0)
+
+    await share.click()
+    await expect(host.getByRole('switch', { name: /lien public actif/i })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    )
+
+    // L'attribut n'arrive qu'une fois l'ouverture confirmée en base : l'attendre,
+    // c'est éviter d'ouvrir le lien avant que la bascule ait atteint Supabase.
+    const shareActions = host.getByTestId('results-share-actions')
+    await expect(shareActions).toHaveAttribute('data-public-url', /\/r\/[0-9A-HJKMNP-TV-Z]{10}$/)
+    const publicUrl = await shareActions.getAttribute('data-public-url')
+
+    // Le gagnant lu chez le host : c'est lui qu'on doit retrouver publié.
+    const winnerName = await host.locator('#winner-title').innerText()
+
+    const stranger = await newPage(browser)
+    await stranger.goto(publicUrl as string)
+    await expect(stranger.getByRole('heading', { name: 'E2E lunch' })).toBeVisible()
+    await expect(stranger.getByRole('heading', { name: winnerName })).toBeVisible()
+    // Texte exact : le titre de l'onglet reprend « On mange chez <resto> ».
+    await expect(stranger.getByText('On mange chez', { exact: true })).toBeVisible()
+    await expect(stranger.getByText('2 participants')).toBeVisible()
+    // Aucun pseudo sur la page publique — c'est tout l'enjeu.
+    await expect(stranger.getByText('Alex')).toHaveCount(0)
+    await expect(stranger.getByText('Sam')).toHaveCount(0)
+    // Et rien n'y donne accès à la salle de vote.
+    await expect(stranger).toHaveURL(publicUrl as string)
+
+    // 7. La session close reste consultable depuis l'historique et le compte
     await host.goto('/sessions')
     const historyRow = host.getByRole('link', { name: /E2E lunch/ })
     await expect(historyRow).toBeVisible()
