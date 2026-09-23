@@ -21,6 +21,8 @@ export type CloseReason = SessionCloseReason
 
 /** Comment le host a tranché une égalité parfaite. */
 export type TiebreakChoice = 'runoff' | 'draw'
+/** Portée d'un lien de classement partagé. */
+export type ResultsScope = 'public' | 'participants'
 
 /**
  * Propriétés attendues pour chaque événement. Le typage empêche d'envoyer
@@ -41,6 +43,14 @@ export interface AnalyticsEventMap {
   session_joined: {
     session_id: string
     via: JoinMethod
+  }
+  /** Des restos apportés à une session en attente, par n'importe quel participant. */
+  session_restaurants_added: {
+    session_id: string
+    /** Nombre de restaurants ajoutés en une fois */
+    added_count: number
+    /** Taille du deck après l'ajout */
+    restaurant_count: number
   }
   vote_submitted: {
     session_id: string
@@ -65,9 +75,32 @@ export interface AnalyticsEventMap {
   list_shared: {
     method: ShareMethod
   }
+  /** Un groupe récurrent est sauvegardé depuis un classement. */
+  group_saved: {
+    member_count: number
+  }
+  /** Un groupe est pré-invité : combien de personnes sont attendues. */
+  group_invited: {
+    session_id: string
+    invited_count: number
+  }
   /** Ouverture du journal des versions ; la version lue, rien d'autre. */
   changelog_opened: {
     version: string
+  }
+  /**
+   * Le host a ouvert ou refermé le lien public du classement. Le code du lien
+   * est un secret d'accès : il ne sort jamais d'ici, seul l'état compte.
+   */
+  results_visibility_changed: {
+    session_id: string
+    is_public: boolean
+  }
+  results_shared: {
+    session_id: string
+    method: ShareMethod
+    /** Le lien diffusé : le podium public, ou la salle réservée aux votants */
+    scope: ResultsScope
   }
 }
 

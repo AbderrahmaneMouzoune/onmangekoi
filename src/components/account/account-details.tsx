@@ -126,7 +126,7 @@ function StepMark({ done, index }: { done: boolean; index: number }) {
       aria-hidden="true"
       className={
         done
-          ? 'flex size-6 items-center justify-center rounded-full bg-yes text-white'
+          ? 'flex size-6 items-center justify-center rounded-full bg-yes text-surface'
           : 'flex size-6 items-center justify-center rounded-full bg-surface-2 font-mono text-xs text-muted-foreground'
       }
     >

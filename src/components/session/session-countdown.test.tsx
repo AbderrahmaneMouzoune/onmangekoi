@@ -32,6 +32,8 @@ function session(overrides: Partial<Session> = {}): Session {
     parent_session_id: null,
     tiebreak_method: null,
     tiebreak_winner_id: null,
+    results_code: 'H4V2Q8ZX0M',
+    results_public: false,
     ...overrides,
   }
 }

@@ -6,6 +6,7 @@ import type {
   ParticipantWithProfile,
   Session,
   SessionPreview,
+  SessionRestaurant,
   SessionRestaurantWithRestaurant,
   SessionResultRow,
   SessionSummary,
@@ -91,6 +92,67 @@ export async function drawTiebreakWinner(
   const { data, error } = await supabase.rpc('draw_winner', { p_session_id: sessionId })
   if (error) throw error
   return data
+}
+
+/**
+ * Ajoute un restaurant à une session en attente. La RPC vérifie en base que
+ * l'appelant en est participant, que le vote n'a pas démarré et pose
+ * `added_by` elle-même.
+ */
+export async function addSessionRestaurant(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  restaurantId: string
+): Promise<SessionRestaurant> {
+  const { data, error } = await supabase.rpc('add_session_restaurant', {
+    p_session_id: sessionId,
+    p_restaurant_id: restaurantId,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Ouvre ou referme le lien public du classement — host uniquement (RPC). */
+export async function setResultsPublic(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  isPublic: boolean
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('set_results_public', {
+    p_session_id: sessionId,
+    p_public: isPublic,
+  })
+  if (error) throw error
+  return data
+}
+
+/**
+ * Ajoute plusieurs restaurants, **en séquence** : chaque insertion prend la
+ * position suivante dans le deck, donc l'ordre des appels est l'ordre de
+ * sélection. En parallèle, la RPC sérialiserait quand même les écritures (elle
+ * verrouille la session) mais l'ordre du deck deviendrait celui du hasard.
+ */
+export async function addSessionRestaurants(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  restaurantIds: string[]
+): Promise<void> {
+  for (const restaurantId of restaurantIds) {
+    await addSessionRestaurant(supabase, sessionId, restaurantId)
+  }
+}
+
+/** Retire un restaurant : celui qu'on a apporté, ou n'importe lequel si on est host. */
+export async function removeSessionRestaurant(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  restaurantId: string
+): Promise<void> {
+  const { error } = await supabase.rpc('remove_session_restaurant', {
+    p_session_id: sessionId,
+    p_restaurant_id: restaurantId,
+  })
+  if (error) throw error
 }
 
 export async function leaveSession(

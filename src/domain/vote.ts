@@ -17,6 +17,12 @@ export interface VoteAction {
   /** Consomme un joker (1 par session) */
   joker: boolean
   hint: string
+  /**
+   * Raccourcis clavier du deck, écrits comme `KeyboardEvent.key` — c'est aussi
+   * la forme attendue par `aria-keyshortcuts`, qui les annonce aux lecteurs
+   * d'écran. Le chiffre suit la position du bouton, de gauche à droite.
+   */
+  shortcuts: readonly string[]
 }
 
 export const VOTE_ACTIONS: readonly VoteAction[] = [
@@ -27,6 +33,7 @@ export const VOTE_ACTIONS: readonly VoteAction[] = [
     short: 'Veto',
     joker: true,
     hint: 'Jamais. Compte −2, une seule fois par session.',
+    shortcuts: ['1'],
   },
   {
     kind: 'no',
@@ -35,6 +42,7 @@ export const VOTE_ACTIONS: readonly VoteAction[] = [
     short: 'Bof',
     joker: false,
     hint: 'Pas cette fois. Compte 0.',
+    shortcuts: ['2', 'ArrowLeft'],
   },
   {
     kind: 'yes',
@@ -43,6 +51,7 @@ export const VOTE_ACTIONS: readonly VoteAction[] = [
     short: 'Oui',
     joker: false,
     hint: 'Partant. Compte +1.',
+    shortcuts: ['3', 'ArrowRight', 'Enter'],
   },
   {
     kind: 'fav',
@@ -51,11 +60,17 @@ export const VOTE_ACTIONS: readonly VoteAction[] = [
     short: 'Cœur',
     joker: true,
     hint: 'Vraiment envie. Compte +2, une seule fois par session.',
+    shortcuts: ['4'],
   },
 ] as const
 
 export function voteActionByValue(value: number): VoteAction | undefined {
   return VOTE_ACTIONS.find((action) => action.value === value)
+}
+
+/** L'action déclenchée par une touche, `undefined` si elle ne vote pas. */
+export function voteActionByKey(key: string): VoteAction | undefined {
+  return VOTE_ACTIONS.find((action) => action.shortcuts.includes(key))
 }
 
 export function isVoteValue(value: unknown): value is VoteValue {

@@ -27,6 +27,12 @@ export interface PlaceResult {
   cuisineType: string | null
   priceLevel: number | null
   location: GeoPoint | null
+  /**
+   * Note Google sur 5 et nombre d'avis : affichés dans les résultats de
+   * recherche seulement, jamais enregistrés — la base n'a pas d'avis.
+   */
+  rating: number | null
+  ratingCount: number | null
   description: string | null
   website: string | null
   openingHours: OpeningHours | null
@@ -73,6 +79,8 @@ const GooglePlaceSchema = z
     primaryType: z.string().optional(),
     primaryTypeDisplayName: LocalizedTextSchema.optional(),
     priceLevel: z.string().optional(),
+    rating: z.number().optional(),
+    userRatingCount: z.number().optional(),
     location: z
       .object({ latitude: z.number().optional(), longitude: z.number().optional() })
       .loose()
@@ -99,8 +107,18 @@ const GooglePlaceSchema = z
   .loose()
 
 export const GooglePlacesResponseSchema = z
-  .object({ places: z.array(GooglePlaceSchema).optional() })
+  .object({
+    places: z.array(GooglePlaceSchema).optional(),
+    /** Présent quand Google a d'autres résultats : à renvoyer tel quel pour les obtenir. */
+    nextPageToken: z.string().optional(),
+  })
   .loose()
+
+/** Une page de résultats Google, et de quoi demander la suivante s'il y en a une. */
+export interface PlacesPage {
+  places: PlaceResult[]
+  nextPageToken: string | null
+}
 
 export type GooglePlace = z.infer<typeof GooglePlaceSchema>
 
@@ -181,6 +199,21 @@ export function priceLevelFromPlace(place: GooglePlace): number | null {
   return place.priceLevel ? (PRICE_LEVEL_BY_ENUM[place.priceLevel] ?? null) : null
 }
 
+/** Note sur 5, ou `null` si Google n'en donne pas ou en donne une aberrante. */
+export function ratingFromPlace(place: GooglePlace): number | null {
+  const rating = place.rating
+  if (typeof rating !== 'number' || !Number.isFinite(rating)) return null
+  return rating >= 0 && rating <= 5 ? rating : null
+}
+
+/** Nombre d'avis, entier positif — `null` sans note, un compte seul ne dit rien. */
+export function ratingCountFromPlace(place: GooglePlace): number | null {
+  if (ratingFromPlace(place) === null) return null
+  const count = place.userRatingCount
+  if (typeof count !== 'number' || !Number.isInteger(count) || count < 0) return null
+  return count
+}
+
 /** Ville = `locality`, avec l'arrondissement (`sublocality`) en repli. */
 export function cityFromPlace(place: GooglePlace): string | null {
   const components = place.addressComponents ?? []
@@ -250,6 +283,8 @@ export function mapPlace(place: GooglePlace): PlaceResult | null {
     cuisineType: cuisineFromPlace(place),
     priceLevel: priceLevelFromPlace(place),
     location: locationFromPlace(place),
+    rating: ratingFromPlace(place),
+    ratingCount: ratingCountFromPlace(place),
     description: clean(place.editorialSummary?.text),
     // La base n'accepte qu'un lien HTTP(S) : un `websiteUri` exotique est
     // écarté ici plutôt que d'être silencieusement effacé par la RPC.
@@ -276,6 +311,15 @@ export function mapPlacesResponse(payload: unknown): PlaceResult[] {
   return results
 }
 
+/** La page entière : les lieux exploitables et le jeton de la page suivante. */
+export function mapPlacesPage(payload: unknown): PlacesPage {
+  const parsed = GooglePlacesResponseSchema.safeParse(payload)
+  return {
+    places: mapPlacesResponse(payload),
+    nextPageToken: parsed.success ? clean(parsed.data.nextPageToken) : null,
+  }
+}
+
 /** Idem à partir du JSON brut d'un détail de lieu (`GET /v1/places/{id}`). */
 export function mapPlaceDetails(payload: unknown): PlaceResult | null {
   const parsed = GooglePlaceSchema.safeParse(payload)
@@ -292,4 +336,14 @@ export function placesCacheKey(input: {
   const round = (value: number | null | undefined) =>
     typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) : ''
   return `${query}|${round(input.latitude)}|${round(input.longitude)}`
+}
+
+/**
+ * Clé de cache d'une recherche « autour de moi » : la position arrondie à
+ * ~100 m. Plus fin que le biais d'une recherche textuelle, parce qu'ici la
+ * position n'oriente pas les résultats, elle les définit — à un kilomètre
+ * près, deux bureaux verraient les mêmes « plus proches » qui ne le sont pas.
+ */
+export function nearbyCacheKey(input: { latitude: number; longitude: number }): string {
+  return `near|${input.latitude.toFixed(3)}|${input.longitude.toFixed(3)}`
 }

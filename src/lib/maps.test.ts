@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { directionsUrl, parseGeoPoint, staticMap } from './maps'
+import {
+  directionsUrl,
+  distanceLabel,
+  distanceMeters,
+  formatDistance,
+  geoPoint,
+  parseGeoPoint,
+  staticMap,
+} from './maps'
 
 /** Opéra Garnier, Paris */
 const OPERA = { lat: 48.8719, lng: 2.3316 }
@@ -16,6 +24,59 @@ describe('parseGeoPoint', () => {
     expect(parseGeoPoint({ lat: 0, lng: 181 })).toBeNull()
     expect(parseGeoPoint({ lat: '48.87', lng: 2.33 })).toBeNull()
     expect(parseGeoPoint('48.87,2.33')).toBeNull()
+  })
+})
+
+describe('distanceMeters', () => {
+  it('should measure the walk from the Opéra to the Louvre pyramid', () => {
+    const louvre = { lat: 48.8611, lng: 2.3358 }
+    const distance = distanceMeters(OPERA, louvre)
+    expect(distance).toBeGreaterThan(1150)
+    expect(distance).toBeLessThan(1250)
+  })
+
+  it('should be symmetric and null on the same point', () => {
+    const louvre = { lat: 48.8611, lng: 2.3358 }
+    expect(distanceMeters(OPERA, louvre)).toBeCloseTo(distanceMeters(louvre, OPERA), 6)
+    expect(distanceMeters(OPERA, OPERA)).toBe(0)
+  })
+})
+
+describe('formatDistance', () => {
+  it('should round to ten metres below a kilometre', () => {
+    expect(formatDistance(347)).toBe('350 m')
+    expect(formatDistance(4)).toBe('10 m')
+    expect(formatDistance(999)).toBe('1000 m')
+  })
+
+  it('should switch to kilometres with one decimal, the French way', () => {
+    expect(formatDistance(1000)).toBe('1 km')
+    expect(formatDistance(1234)).toBe('1,2 km')
+    expect(formatDistance(12_345)).toBe('12,3 km')
+  })
+
+  it('should stay silent on a distance that makes no sense', () => {
+    expect(formatDistance(-1)).toBe('')
+    expect(formatDistance(Number.NaN)).toBe('')
+  })
+})
+
+describe('geoPoint', () => {
+  it('should translate a browser position into a stored point', () => {
+    expect(geoPoint({ latitude: 48.8719, longitude: 2.3316 })).toEqual(OPERA)
+    expect(geoPoint(null)).toBeNull()
+  })
+})
+
+describe('distanceLabel', () => {
+  it('should read the stored point and format the distance', () => {
+    expect(distanceLabel(OPERA, { lat: 48.853, lng: 2.3499 })).toMatch(/^2,\d km$/)
+  })
+
+  it('should return nothing when either side is unknown', () => {
+    expect(distanceLabel(null, OPERA)).toBeNull()
+    expect(distanceLabel(OPERA, null)).toBeNull()
+    expect(distanceLabel(OPERA, { lat: 'x' })).toBeNull()
   })
 })
 

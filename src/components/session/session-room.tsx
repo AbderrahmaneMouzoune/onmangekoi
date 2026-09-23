@@ -16,22 +16,34 @@ import { captureEvent } from '@/lib/analytics/client'
 import { markOnce, takeSessionEntry } from '@/lib/analytics/handoff'
 
 import type {
+  GroupWithMembers,
+  InvitationWithProfile,
   ParticipantWithProfile,
   Session,
   SessionRestaurantWithRestaurant,
 } from '@/data-access/models'
+import type { RestaurantPage } from '@/data-access/restaurants'
+import type { RecentWinnerDates } from '@/domain/recent-winners'
 
 interface SessionRoomProps {
   session: Session
   participants: ParticipantWithProfile[]
   restaurants: SessionRestaurantWithRestaurant[]
+  /** Première page du catalogue, pour ajouter un resto en salle d'attente */
+  restaurantCatalog: RestaurantPage | null
   myVotedIds: string[]
+  /** Anti-fatigue : ce qui a déjà gagné récemment, chargé avec la session */
+  recentWinners: RecentWinnerDates
   meId: string
   inviteUrl: string
-  /** QR code SVG du lien d'invitation, rendu côté serveur (host, salle d'attente) */
+  /** QR code SVG du lien d'invitation, rendu côté serveur (salle d'attente) */
   qrSvg: string | null
   /** Classement du premier tour, quand cette session en est le second */
   firstRoundUrl: string | null
+  /** Invités pré-ajoutés en attente — vide pour qui n'est pas le host. */
+  invitations: InvitationWithProfile[]
+  /** Groupes du host, à inviter depuis la salle d'attente. */
+  groups: GroupWithMembers[]
 }
 
 /**
@@ -41,25 +53,30 @@ interface SessionRoomProps {
 export function SessionRoom({
   session: initialSession,
   participants: initialParticipants,
-  restaurants,
+  restaurants: initialRestaurants,
+  restaurantCatalog,
   myVotedIds,
+  recentWinners,
   meId,
   inviteUrl,
   qrSvg,
   firstRoundUrl,
+  invitations,
+  groups,
 }: SessionRoomProps) {
   const navigation = useRouter()
-  const { session, participants, connection, refresh, setSession } = useSessionRoom({
+  const { session, participants, restaurants, connection, refresh, setSession } = useSessionRoom({
     sessionId: initialSession.id,
     initialSession,
     initialParticipants,
+    initialRestaurants,
   })
 
   const me = participants.find((p) => p.profile_id === meId)
   const isHost = session.host_id === meId
 
   const [finishedLocally, setFinishedLocally] = useState(
-    myVotedIds.length >= restaurants.length && restaurants.length > 0
+    myVotedIds.length >= initialRestaurants.length && initialRestaurants.length > 0
   )
   const meFinished = finishedLocally || Boolean(me?.has_finished_voting)
 
@@ -73,7 +90,7 @@ export function SessionRoom({
     if (entry?.kind === 'created') {
       captureEvent('session_created', {
         session_id: initialSession.id,
-        restaurant_count: restaurants.length,
+        restaurant_count: initialRestaurants.length,
         list_count: entry.listCount,
       })
       return
@@ -83,7 +100,7 @@ export function SessionRoom({
     if (entry || !isHost) {
       captureEvent('session_joined', { session_id: initialSession.id, via })
     }
-  }, [initialSession.id, isHost, restaurants.length])
+  }, [initialSession.id, isHost, initialRestaurants.length])
 
   const closeTracked = useRef(false)
 
@@ -164,9 +181,13 @@ export function SessionRoom({
           isHost={isHost}
           inviteUrl={inviteUrl}
           qrSvg={qrSvg}
-          restaurantCount={restaurants.length}
+          restaurants={restaurants}
+          restaurantCatalog={restaurantCatalog}
           connection={connection}
+          invitations={invitations}
+          groups={groups}
           onLaunched={setSession}
+          onRestaurantsChanged={refresh}
         />
       )}
 
@@ -175,6 +196,7 @@ export function SessionRoom({
           sessionId={session.id}
           restaurants={restaurants}
           initialVotedIds={myVotedIds}
+          lastWins={recentWinners}
           initialSuperlikeUsed={me?.superlike_used ?? false}
           initialSuperDislikeUsed={me?.super_dislike_used ?? false}
           onFinished={handleFinished}

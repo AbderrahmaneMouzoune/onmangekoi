@@ -49,9 +49,9 @@ jobs:
         run: bun run build
 
   e2e:
-    name: End-to-end (Supabase local)
+    name: End-to-end · Axe · Lighthouse (Supabase local)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     needs: quality
     steps:
       - name: Checkout
@@ -101,7 +101,7 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Run e2e
+      - name: Run e2e (parcours + audit axe)
         run: bun run test:e2e
         env:
           E2E: '1'
@@ -113,4 +113,22 @@ jobs:
         with:
           name: playwright-report
           path: playwright-report
+          retention-days: 7
+
+      # Lighthouse tourne sur le Chromium que Playwright vient d'installer :
+      # une seule version de navigateur pour les deux audits.
+      - name: Locate Chromium
+        run: |
+          CHROME=$(bun -e 'console.log(require("playwright-core").chromium.executablePath())')
+          echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+
+      - name: Lighthouse Accessibilité (pages publiques)
+        run: bun run test:lighthouse
+
+      - name: Upload Lighthouse reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: .lighthouseci
           retention-days: 7

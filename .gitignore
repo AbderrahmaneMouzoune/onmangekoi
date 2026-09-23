@@ -38,4 +38,5 @@ next-env.d.ts
 # tests
 /playwright-report
 /test-results
+/.lighthouseci
 /blob-report

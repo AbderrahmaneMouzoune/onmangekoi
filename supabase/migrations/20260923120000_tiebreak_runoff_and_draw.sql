@@ -12,6 +12,10 @@
 --     résultat, y compris qui ouvre la page une heure plus tard.
 --   * `session_results` expose l'état du départage dans une colonne
 --     `tiebreak`, pour que l'interface n'ait rien à recalculer.
+--   * `public_results` (podium public) et `recent_winners` (anti-fatigue)
+--     sont reprises telles que leurs migrations les ont laissées, au tirage
+--     près : le désigné passe seul en tête partout, pas seulement sur l'écran
+--     des participants.
 -- ============================================================
 
 -- ─── COLONNES ────────────────────────────────────────────────
@@ -199,9 +203,14 @@ begin
   )
   returning * into v_runoff;
 
-  -- Les ex æquo, dans l'ordre du premier tour.
-  insert into public.session_restaurants (session_id, restaurant_id, position)
-  select v_runoff.id, sr.restaurant_id, (row_number() over (order by sr.position) - 1)::int
+  -- Les ex æquo, dans l'ordre du premier tour. Chacun garde qui l'avait
+  -- apporté (`added_by`, voir `participant_restaurants`).
+  insert into public.session_restaurants (session_id, restaurant_id, position, added_by)
+  select
+    v_runoff.id,
+    sr.restaurant_id,
+    (row_number() over (order by sr.position) - 1)::int,
+    sr.added_by
   from public.session_restaurants sr
   where sr.id = any (v_tied);
 
@@ -344,6 +353,122 @@ as $$
   cross join visible
   left join tied on tied.session_restaurant_id = s.id
   order by rank, s.position;
+$$;
+
+-- ─── PODIUM PUBLIC ───────────────────────────────────────────
+-- Reprise de `public_results_sharing`, au tirage près : le lien public montre
+-- le même podium que les participants. Sans tirage, la comparaison est vraie
+-- partout et ne change rien. Le type de retour est inchangé : l'état du
+-- départage n'a pas à sortir vers `anon`.
+create or replace function public.public_results(p_code text)
+  returns table (
+    session_name     text,
+    closed_at        timestamptz,
+    participant_count int,
+    rank             int,
+    restaurant_name  text,
+    cuisine_type     text,
+    city             text,
+    photo_url        text,
+    score            int,
+    votes_count      int
+  )
+  language sql
+  stable
+  security definer
+  set search_path = ''
+as $$
+  with target as (
+    select s.id, s.name, s.closed_at, s.tiebreak_winner_id
+    from public.sessions s
+    where s.results_public
+      and s.status = 'closed'
+      and public.normalize_crockford(p_code) ~ '^[0-9A-HJKMNP-TV-Z]{10}$'
+      and s.results_code = public.normalize_crockford(p_code)
+  ),
+  ranked as (
+    select
+      r.name        as restaurant_name,
+      r.cuisine_type as cuisine_type,
+      r.city         as city,
+      r.photo_url    as photo_url,
+      sr.position    as restaurant_position,
+      coalesce(sum(v.value), 0)::int as score,
+      count(v.id)::int as votes_count,
+      (rank() over (
+        order by coalesce(sum(v.value), 0) desc,
+                 count(*) filter (where v.value = 2) desc,
+                 (sr.id is distinct from t.tiebreak_winner_id)
+      ))::int as rank
+    from target t
+    join public.session_restaurants sr on sr.session_id = t.id
+    join public.restaurants r on r.id = sr.restaurant_id
+    left join public.votes v on v.session_restaurant_id = sr.id
+    group by sr.id, r.id, sr.position, t.tiebreak_winner_id
+  )
+  select
+    t.name,
+    t.closed_at,
+    (select count(*)::int from public.session_participants sp where sp.session_id = t.id),
+    ranked.rank,
+    ranked.restaurant_name,
+    ranked.cuisine_type,
+    ranked.city,
+    ranked.photo_url,
+    ranked.score,
+    ranked.votes_count
+  from target t, ranked
+  where ranked.rank <= 3
+  order by ranked.rank, ranked.restaurant_position;
+$$;
+
+-- ─── ANTI-FATIGUE ────────────────────────────────────────────
+-- Reprise de `recent_winners`, au tirage près : après un tirage au sort, seul
+-- le désigné a gagné la session — les autres ex æquo ne sont pas « gagnants
+-- récents ». Une égalité non tranchée (ou tranchée par un second tour, qui
+-- sacre à son tour son propre gagnant) garde ses deux gagnants.
+create or replace function public.recent_winners()
+  returns table (
+    restaurant_id uuid,
+    last_won_at timestamptz
+  )
+  language sql
+  stable
+  security definer
+  set search_path = ''
+as $$
+  with mine as (
+    select s.id, s.closed_at, s.tiebreak_winner_id
+    from public.sessions s
+    join public.session_participants sp
+      on sp.session_id = s.id
+     and sp.profile_id = (select auth.uid())
+    where s.status = 'closed'
+      and s.closed_at is not null
+      and s.closed_at >= now() - public.recent_winners_window()
+  ),
+  ranked as (
+    select
+      m.closed_at,
+      sr.restaurant_id,
+      coalesce(sum(v.value), 0) as score,
+      rank() over (
+        partition by m.id
+        order by coalesce(sum(v.value), 0) desc,
+                 count(*) filter (where v.value = 2) desc,
+                 (sr.id is distinct from m.tiebreak_winner_id)
+      ) as rank_in_session
+    from mine m
+    join public.session_restaurants sr on sr.session_id = m.id
+    left join public.votes v on v.session_restaurant_id = sr.id
+    group by m.id, m.closed_at, m.tiebreak_winner_id, sr.id, sr.restaurant_id
+  )
+  select ranked.restaurant_id, max(ranked.closed_at) as last_won_at
+  from ranked
+  where ranked.rank_in_session = 1
+    and ranked.score > 0
+  group by ranked.restaurant_id
+  order by last_won_at desc;
 $$;
 
 -- ─── GRANTS ──────────────────────────────────────────────────
