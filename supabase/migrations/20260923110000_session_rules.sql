@@ -142,7 +142,9 @@ create trigger sessions_freeze_rules
 
 -- ─── CRÉATION AVEC RÈGLES ────────────────────────────────────
 -- Quatrième paramètre : on remplace la fonction plutôt que de créer une
--- surcharge, que PostgREST ne saurait pas départager.
+-- surcharge, que PostgREST ne saurait pas départager. Le corps est repris de
+-- `20260920120000_participant_restaurants.sql` — `added_by` compris : les
+-- restos posés à la création sont ceux du host.
 drop function if exists public.create_session(text, uuid[], timestamptz);
 
 create function public.create_session(
@@ -200,8 +202,8 @@ begin
   )
   returning * into v_session;
 
-  insert into public.session_restaurants (session_id, restaurant_id, position)
-  select v_session.id, t.id, (t.ord - 1)::int
+  insert into public.session_restaurants (session_id, restaurant_id, position, added_by)
+  select v_session.id, t.id, (t.ord - 1)::int, v_uid
   from unnest(v_ids) with ordinality as t(id, ord);
 
   insert into public.session_participants (session_id, profile_id)
@@ -421,6 +423,8 @@ $$;
 -- ─── EXPORT RGPD ─────────────────────────────────────────────
 -- Toute colonne rattachée à `auth.uid()` doit se retrouver dans l'export :
 -- les règles décrivent une session hébergée au même titre que son échéance.
+-- Le corps est repris tel quel de `20260921120000_recurring_groups.sql` —
+-- restos contribués, groupes et invitations compris — avec `rules` en plus.
 create or replace function public.export_my_data()
   returns jsonb
   language plpgsql
@@ -462,6 +466,27 @@ begin
       where p.id = v_uid
     ),
 
+    -- Restos ajoutés à la base par cette personne. La ligne reste en base
+    -- après suppression du compte — `created_by` est simplement détaché — mais
+    -- tant que le compte existe, le lien est une donnée la concernant.
+    'contributed_restaurants', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'id', r.id,
+          'name', r.name,
+          'cuisine_type', r.cuisine_type,
+          'address', r.address,
+          'city', r.city,
+          'price_level', r.price_level,
+          'source', r.source,
+          'created_at', r.created_at
+        )
+        order by r.created_at
+      )
+      from public.restaurants r
+      where r.created_by = v_uid
+    ), '[]'::jsonb),
+
     'lists', coalesce((
       select jsonb_agg(
         jsonb_build_object(
@@ -484,6 +509,37 @@ begin
       )
       from public.lists l
       where l.owner_id = v_uid
+    ), '[]'::jsonb),
+
+    'groups', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'id', g.id,
+          'name', g.name,
+          'is_owner', g.owner_id = v_uid,
+          'joined_at', gm.added_at,
+          'member_count',
+            (select count(*) from public.group_members m where m.group_id = g.id)
+        )
+        order by gm.added_at
+      )
+      from public.group_members gm
+      join public.groups g on g.id = gm.group_id
+      where gm.profile_id = v_uid
+    ), '[]'::jsonb),
+
+    'pending_invitations', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'session_id', s.id,
+          'session_name', s.name,
+          'invited_at', si.invited_at
+        )
+        order by si.invited_at
+      )
+      from public.session_invitations si
+      join public.sessions s on s.id = si.session_id
+      where si.profile_id = v_uid
     ), '[]'::jsonb),
 
     'hosted_sessions', coalesce((
@@ -516,6 +572,17 @@ begin
           'is_host', s.host_id = v_uid,
           'joined_at', sp.joined_at,
           'has_finished_voting', sp.has_finished_voting,
+          -- Les restos que cette personne a apportés à cette session-là.
+          'restaurants_added', coalesce((
+            select jsonb_agg(
+              jsonb_build_object('name', r.name, 'added_at', sr.added_at)
+              order by sr.added_at
+            )
+            from public.session_restaurants sr
+            join public.restaurants r on r.id = sr.restaurant_id
+            where sr.session_id = s.id
+              and sr.added_by = v_uid
+          ), '[]'::jsonb),
           'votes', coalesce((
             select jsonb_agg(
               jsonb_build_object(

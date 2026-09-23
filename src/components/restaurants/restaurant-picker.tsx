@@ -1,42 +1,130 @@
 'use client'
 
-import { RiAddLine, RiCheckLine, RiCloseLine, RiSearchLine } from '@remixicon/react'
-import { useEffect, useId, useMemo, useRef, useState, useTransition } from 'react'
+import {
+  RiAddLine,
+  RiBookmarkLine,
+  RiContactsBook2Line,
+  RiGoogleLine,
+  RiSearchLine,
+} from '@remixicon/react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from 'react'
 
+import { importPlaceAction } from '@/actions/places'
 import { searchRestaurantsAction } from '@/actions/restaurants'
 import { AddRestaurantForm } from '@/components/restaurants/add-restaurant-form'
+import { CatalogResults } from '@/components/restaurants/catalog-results'
 import { GooglePlacesResults } from '@/components/restaurants/google-places-results'
+import { ListSourcePanel } from '@/components/restaurants/list-source-panel'
 import { useRestaurantSources } from '@/components/restaurants/restaurant-sources'
+import { SelectionBasket } from '@/components/restaurants/selection-basket'
+import {
+  SourceTabs,
+  sourcePanelId,
+  sourceTabId,
+  type RestaurantSource,
+  type SourceTab,
+} from '@/components/restaurants/source-tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import { cn } from '@/lib/utils'
+import { useGeolocation } from '@/hooks/use-geolocation'
 
+import type { ListWithRestaurantIds } from '@/data-access/lists'
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { PlaceResult, PlacesPage } from '@/domain/places'
+import type { RecentWinnerDates } from '@/domain/recent-winners'
+
+const NO_LISTS: ListWithRestaurantIds[] = []
+const NO_IDS: string[] = []
+
+const SEARCH_PLACEHOLDER: Record<RestaurantSource, string> = {
+  lists: '',
+  base: 'Chercher un resto ou une cuisine',
+  google: 'Chercher un resto chez Google',
+}
 
 interface RestaurantPickerProps {
-  /** Première page, chargée côté serveur */
+  /** Première page du carnet, chargée côté serveur */
   initialPage: RestaurantPage
-  /** Ids sélectionnés (contrôlé) */
+  /** Ids sélectionnés à l'unité (contrôlé) */
   value: string[]
   onChange: (ids: string[]) => void
-  /** Ids déjà présents ailleurs (ex. via une liste) : affichés cochés, non modifiables */
+  /** Ids déjà présents ailleurs (ex. déjà dans la liste qu'on édite) : cochés, non modifiables */
   lockedIds?: string[]
+  /** Anti-fatigue : date du dernier sacre, par restaurant — badgée sur la ligne */
+  recentWinners?: RecentWinnerDates
+  /** Anti-fatigue actif : les gagnants récents sont écartés, donc ni cochés ni cochables */
+  excludeRecent?: boolean
   /** name des inputs hidden pour un envoi via formulaire */
   inputName?: string
   emptyLabel?: string
+  /**
+   * Listes de favoris proposées comme source, au même niveau que le carnet et
+   * Google. Une liste cochée verse tous ses restos dans la sélection ; ils
+   * apparaissent alors cochés et verrouillés dans les autres onglets.
+   */
+  lists?: ListWithRestaurantIds[]
+  selectedListIds?: string[]
+  onListsChange?: (ids: string[]) => void
+  /** name des inputs hidden portant les listes cochées */
+  listsInputName?: string
 }
 
+/**
+ * Sélecteur de restaurants.
+ *
+ * Trois sources au même niveau — mes listes, le carnet des restos déjà
+ * connus, Google — et un seul panier : on pioche dans l'une, on complète
+ * dans l'autre, et ce qu'on a pris reste visible au-dessus des onglets quel
+ * que soit celui qui est ouvert. L'onglet Google s'ouvre sur les restos
+ * autour de soi, sans rien taper, et garde ses résultats d'un passage à
+ * l'autre.
+ */
 export function RestaurantPicker({
   initialPage,
   value,
   onChange,
-  lockedIds = [],
+  lockedIds = NO_IDS,
+  recentWinners = NO_RECENT_WINNERS,
+  excludeRecent = false,
   inputName,
-  emptyLabel = 'Aucun restaurant ne correspond.',
+  emptyLabel = 'Aucun resto du carnet ne correspond.',
+  lists = NO_LISTS,
+  selectedListIds = NO_IDS,
+  onListsChange,
+  listsInputName,
 }: RestaurantPickerProps) {
+  const sources = useRestaurantSources()
+  const hasLists = Boolean(onListsChange) && lists.length > 0
+
+  const tabs = useMemo<SourceTab[]>(
+    () => [
+      ...(hasLists
+        ? [
+            {
+              key: 'lists' as const,
+              label: 'Mes listes',
+              icon: <RiBookmarkLine aria-hidden="true" />,
+              count: selectedListIds.length,
+            },
+          ]
+        : []),
+      {
+        key: 'base' as const,
+        label: 'Le carnet',
+        icon: <RiContactsBook2Line aria-hidden="true" />,
+      },
+      ...(sources.google
+        ? [{ key: 'google' as const, label: 'Google', icon: <RiGoogleLine aria-hidden="true" /> }]
+        : []),
+    ],
+    [hasLists, selectedListIds.length, sources.google]
+  )
+
+  const [source, setSource] = useState<RestaurantSource>(hasLists ? 'lists' : 'base')
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 300)
   const [page, setPage] = useState<RestaurantPage>(initialPage)
@@ -44,14 +132,23 @@ export function RestaurantPicker({
   const [isSearching, startSearch] = useTransition()
   const [isLoadingMore, startLoadMore] = useTransition()
   const [isAdding, setIsAdding] = useState(false)
-  const sources = useRestaurantSources()
-  const [source, setSource] = useState<'base' | 'google'>('base')
-  const tabId = useId()
+  const geolocation = useGeolocation()
+  const idPrefix = useId()
   /** Cache des restaurants vus, pour afficher les sélectionnés même hors résultats */
   const [known, setKnown] = useState<Map<string, Restaurant>>(
     () => new Map(initialPage.items.map((r) => [r.id, r]))
   )
   const lastQuery = useRef('')
+
+  /** Pages Google déjà reçues : l'onglet les retrouve telles quelles quand on y revient. */
+  const [placesCache, setPlacesCache] = useState<Map<string, PlacesPage>>(() => new Map())
+  const cachePlaces = useCallback((key: string, placesPage: PlacesPage) => {
+    setPlacesCache((prev) => new Map(prev).set(key, placesPage))
+  }, [])
+
+  /** Lieux Google cochés dont la fiche est encore en route : sélectionnés d'avance. */
+  const [pendingPlaces, setPendingPlaces] = useState<Map<string, PlaceResult>>(() => new Map())
+  const [importError, setImportError] = useState<string | null>(null)
 
   function remember(items: Restaurant[]) {
     setKnown((prev) => {
@@ -62,7 +159,36 @@ export function RestaurantPicker({
   }
 
   const selected = useMemo(() => new Set(value), [value])
-  const locked = useMemo(() => new Set(lockedIds), [lockedIds])
+
+  /** Restos versés par les listes cochées : verrouillés dans les autres onglets. */
+  const fromLists = useMemo(() => {
+    const ids = new Set<string>()
+    for (const list of lists) {
+      if (selectedListIds.includes(list.id)) list.restaurant_ids.forEach((id) => ids.add(id))
+    }
+    return ids
+  }, [lists, selectedListIds])
+
+  const locked = useMemo(() => new Set([...lockedIds, ...fromLists]), [lockedIds, fromLists])
+
+  /** Les mêmes restos, indexés par lieu Google : un résultat Google déjà en base se coche sans import. */
+  const knownByPlaceId = useMemo(() => {
+    const index = new Map<string, Restaurant>()
+    for (const restaurant of known.values()) {
+      if (restaurant.place_id) index.set(restaurant.place_id, restaurant)
+    }
+    return index
+  }, [known])
+
+  /**
+   * La sélection telle qu'elle est *maintenant*, pour les gestes qui
+   * aboutissent plus tard (un import) : entre-temps la personne a pu cocher
+   * d'autres restos, et la fermeture du clic ne les connaît pas.
+   */
+  const latest = useRef({ value, selected, locked })
+  useEffect(() => {
+    latest.current = { value, selected, locked }
+  })
 
   useEffect(() => {
     if (debouncedQuery === lastQuery.current) return
@@ -98,15 +224,42 @@ export function RestaurantPicker({
     })
   }
 
-  function toggle(id: string) {
-    if (locked.has(id)) return
-    onChange(selected.has(id) ? value.filter((v) => v !== id) : [...value, id])
+  function selectSource(next: RestaurantSource) {
+    setSource(next)
+    setIsAdding(false)
+    // La position se demande au clic sur l'onglet, une seule fois : c'est
+    // le geste qui dit « montre-moi ce qu'il y a autour », et le navigateur
+    // ne redemande pas une autorisation déjà donnée.
+    if (next === 'google' && geolocation.status === 'idle') geolocation.locate()
+  }
+
+  /** Écarté par l'anti-fatigue : la ligne se voit, mais ne se coche plus. */
+  function isExcluded(id: string) {
+    return excludeRecent && recentWinners[id] !== undefined
+  }
+
+  function toggle(restaurant: Restaurant) {
+    if (locked.has(restaurant.id) || isExcluded(restaurant.id)) return
+    remember([restaurant])
+    onChange(
+      selected.has(restaurant.id)
+        ? value.filter((id) => id !== restaurant.id)
+        : [...value, restaurant.id]
+    )
+  }
+
+  function toggleList(id: string) {
+    onListsChange?.(
+      selectedListIds.includes(id)
+        ? selectedListIds.filter((v) => v !== id)
+        : [...selectedListIds, id]
+    )
   }
 
   /**
-   * Resto tout juste ajouté (ou doublon existant retenu à sa place) : il
-   * rejoint les résultats en tête et devient sélectionné immédiatement, sans
-   * attendre une nouvelle recherche.
+   * Resto tout juste ajouté ou importé (ou doublon existant retenu à sa
+   * place) : il rejoint le carnet en tête et devient sélectionné
+   * immédiatement, sans attendre une nouvelle recherche.
    */
   function addAndSelect(restaurant: Restaurant) {
     remember([restaurant])
@@ -115,202 +268,164 @@ export function RestaurantPicker({
         ? prev
         : { ...prev, items: [restaurant, ...prev.items] }
     )
-    if (!locked.has(restaurant.id) && !selected.has(restaurant.id)) {
-      onChange([...value, restaurant.id])
+    const current = latest.current
+    if (
+      !current.locked.has(restaurant.id) &&
+      !current.selected.has(restaurant.id) &&
+      !isExcluded(restaurant.id)
+    ) {
+      onChange([...current.value, restaurant.id])
     }
     setIsAdding(false)
   }
 
+  /**
+   * Import d'un lieu Google, optimiste : la ligne et le panier le montrent
+   * coché à l'instant du clic, la fiche arrive derrière. Si l'import échoue,
+   * il disparaît de la sélection et l'onglet dit pourquoi.
+   */
+  function importPlace(place: PlaceResult) {
+    setImportError(null)
+    setPendingPlaces((prev) => new Map(prev).set(place.placeId, place))
+    importPlaceAction(place.placeId).then((result) => {
+      setPendingPlaces((prev) => {
+        const next = new Map(prev)
+        next.delete(place.placeId)
+        return next
+      })
+      if (!result.ok) {
+        setImportError(result.error)
+        return
+      }
+      addAndSelect(result.data)
+    })
+  }
+
+  // Un resto écarté par l'anti-fatigue reste dans `value` — décocher la case
+  // le fait revenir — mais il ne compte plus, ni au panier ni au total.
   const selectedRestaurants = value
+    .filter((id) => !isExcluded(id))
     .map((id) => known.get(id))
     .filter((r): r is Restaurant => Boolean(r))
+  const selectedLists = lists
+    .filter((list) => selectedListIds.includes(list.id))
+    .map((list) => ({ id: list.id, name: list.name, restaurantCount: list.restaurant_ids.length }))
+  const pending = [...pendingPlaces.values()]
+  const pendingIds = useMemo(() => new Set(pendingPlaces.keys()), [pendingPlaces])
+  const total =
+    new Set([...fromLists, ...value].filter((id) => !isExcluded(id))).size + pending.length
+
+  const showSearch = source !== 'lists' && !isAdding
+  const hasTabs = tabs.length > 1
 
   return (
     <div className="flex flex-col gap-3">
       {inputName && value.map((id) => <input key={id} type="hidden" name={inputName} value={id} />)}
+      {listsInputName &&
+        selectedListIds.map((id) => (
+          <input key={id} type="hidden" name={listsInputName} value={id} />
+        ))}
 
-      <div className="relative">
-        <RiSearchLine
-          aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 left-3.5 size-4.5 -translate-y-1/2 text-muted-foreground"
-        />
-        <Input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Chercher un resto ou une cuisine"
-          aria-label="Chercher un restaurant"
-          autoComplete="off"
-          className="pl-10"
-        />
-        {isSearching && <Spinner className="absolute top-1/2 right-3.5 -translate-y-1/2" />}
-      </div>
+      <SelectionBasket
+        lists={selectedLists}
+        restaurants={selectedRestaurants}
+        pending={pending}
+        total={total}
+        onRemoveList={toggleList}
+        onRemoveRestaurant={(id) => onChange(value.filter((v) => v !== id))}
+        onClear={() => {
+          onChange([])
+          if (selectedListIds.length > 0) onListsChange?.([])
+        }}
+      />
 
-      {sources.google && (
-        <div role="tablist" aria-label="Source des restaurants" className="flex gap-1.5">
-          {(
-            [
-              ['base', 'Base'],
-              ['google', 'Google'],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              id={`${tabId}-tab-${key}`}
-              aria-selected={source === key}
-              aria-controls={`${tabId}-panel`}
-              onClick={() => setSource(key)}
-              className={cn(
-                'h-9 rounded-md px-3 text-sm font-semibold transition-colors',
-                source === key
-                  ? 'bg-brand-soft text-brand-hover'
-                  : 'text-muted-foreground hover:bg-surface-2 hover:text-ink'
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {selectedRestaurants.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5" aria-label="Restaurants sélectionnés">
-          {selectedRestaurants.map((restaurant) => (
-            <li key={restaurant.id}>
-              <button
-                type="button"
-                onClick={() => toggle(restaurant.id)}
-                className="inline-flex items-center gap-1 rounded-full bg-brand-soft py-1 pr-2 pl-3 text-xs font-semibold text-brand-hover hover:bg-brand hover:text-on-brand"
-                aria-label={`Retirer ${restaurant.name}`}
-              >
-                {restaurant.name}
-                <RiCloseLine aria-hidden="true" className="size-3.5" />
-              </button>
-            </li>
-          ))}
-        </ul>
+      {hasTabs && (
+        <SourceTabs tabs={tabs} value={source} onChange={selectSource} idPrefix={idPrefix} />
       )}
 
       <div
         className="flex flex-col gap-3"
-        id={`${tabId}-panel`}
-        role={sources.google ? 'tabpanel' : undefined}
-        aria-labelledby={sources.google ? `${tabId}-tab-${source}` : undefined}
+        id={sourcePanelId(idPrefix)}
+        role={hasTabs ? 'tabpanel' : undefined}
+        aria-labelledby={hasTabs ? sourceTabId(idPrefix, source) : undefined}
       >
-        {source === 'google' ? (
-          <GooglePlacesResults query={debouncedQuery} onImported={addAndSelect} />
+        {showSearch && (
+          <div className="relative">
+            <RiSearchLine
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-3.5 size-4.5 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={SEARCH_PLACEHOLDER[source]}
+              aria-label="Chercher un restaurant"
+              autoComplete="off"
+              className="pl-10"
+            />
+            {isSearching && source === 'base' && (
+              <Spinner className="absolute top-1/2 right-3.5 -translate-y-1/2" />
+            )}
+          </div>
+        )}
+
+        {isAdding ? (
+          <AddRestaurantForm
+            defaultName={query.trim()}
+            onAdded={addAndSelect}
+            onCancel={() => setIsAdding(false)}
+          />
+        ) : source === 'lists' ? (
+          <ListSourcePanel lists={lists} selectedIds={selectedListIds} onToggle={toggleList} />
+        ) : source === 'google' ? (
+          <GooglePlacesResults
+            query={debouncedQuery}
+            geolocation={geolocation}
+            cache={placesCache}
+            onCached={cachePlaces}
+            restaurantForPlace={(placeId) => knownByPlaceId.get(placeId)}
+            isSelected={(id) => selected.has(id)}
+            isLocked={(id) => locked.has(id)}
+            pendingPlaceIds={pendingIds}
+            onToggle={toggle}
+            onImport={importPlace}
+            importError={importError}
+            recentWinners={recentWinners}
+            excludeRecent={excludeRecent}
+          />
         ) : (
           <>
-            {isAdding ? (
-              <AddRestaurantForm
-                defaultName={query.trim()}
-                onAdded={addAndSelect}
-                onCancel={() => setIsAdding(false)}
-              />
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="self-start"
-                onClick={() => setIsAdding(true)}
-              >
-                <RiAddLine aria-hidden="true" />
-                Ajouter un resto
-              </Button>
-            )}
-
             {error && (
               <p role="alert" className="text-sm text-veto">
                 {error}
               </p>
             )}
-
-            <ul
-              className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg bg-surface p-1.5 ring-1 ring-line"
-              aria-label="Résultats"
-            >
-              {page.items.length === 0 && !isSearching && (
-                <li className="px-3 py-6 text-center text-sm text-muted-foreground">
-                  {emptyLabel}
-                  {!isAdding && (
-                    <>
-                      {' '}
-                      <button
-                        type="button"
-                        onClick={() => setIsAdding(true)}
-                        className="font-semibold text-brand underline-offset-4 hover:underline"
-                      >
-                        Ajoute-le
-                      </button>
-                      .
-                    </>
-                  )}
-                </li>
-              )}
-              {page.items.map((restaurant) => {
-                const isLocked = locked.has(restaurant.id)
-                const isSelected = isLocked || selected.has(restaurant.id)
-                return (
-                  <li key={restaurant.id}>
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={isSelected}
-                      aria-disabled={isLocked || undefined}
-                      onClick={() => toggle(restaurant.id)}
-                      className={cn(
-                        'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors',
-                        isSelected ? 'bg-brand-soft' : 'hover:bg-surface-2',
-                        // `opacity` sur du texte casse le contraste : la ligne
-                        // verrouillée se grise avec une couleur, qui le tient.
-                        isLocked && 'cursor-default text-ink-muted'
-                      )}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          'flex size-5 shrink-0 items-center justify-center rounded-full border',
-                          isSelected ? 'border-brand bg-brand text-on-brand' : 'border-line-strong'
-                        )}
-                      >
-                        {isSelected && <RiCheckLine className="size-3.5" />}
-                      </span>
-                      <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-sm font-medium">{restaurant.name}</span>
-                        {restaurant.description && (
-                          <span className="truncate text-xs text-muted-foreground">
-                            {restaurant.description}
-                          </span>
-                        )}
-                      </span>
-                      {restaurant.cuisine_type && (
-                        <span className="shrink-0 font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
-                          {restaurant.cuisine_type}
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                )
-              })}
-              {page.hasMore && (
-                <li className="p-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="w-full"
-                    onClick={loadMore}
-                    disabled={isLoadingMore}
-                  >
-                    {isLoadingMore ? <Spinner /> : 'Afficher plus'}
-                  </Button>
-                </li>
-              )}
-            </ul>
+            <CatalogResults
+              page={page}
+              geolocation={geolocation}
+              isSearching={isSearching}
+              isLoadingMore={isLoadingMore}
+              onLoadMore={loadMore}
+              isSelected={(id) => selected.has(id)}
+              isLocked={(id) => locked.has(id)}
+              onToggle={toggle}
+              emptyLabel={emptyLabel}
+              onAddManually={() => setIsAdding(true)}
+              recentWinners={recentWinners}
+              excludeRecent={excludeRecent}
+            />
           </>
+        )}
+
+        {showSearch && (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">Il n’est nulle part ?</p>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setIsAdding(true)}>
+              <RiAddLine aria-hidden="true" />
+              Ajouter un resto à la main
+            </Button>
+          </div>
         )}
       </div>
     </div>

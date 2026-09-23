@@ -18,6 +18,11 @@ const GOOGLE_PLACE = {
   priceLevel: 'PRICE_LEVEL_MODERATE',
   location: { latitude: 45.76, longitude: 4.83 },
   addressComponents: [{ longText: 'Lyon', types: ['locality'] }],
+  rating: 4.5,
+  userRatingCount: 320,
+  regularOpeningHours: {
+    periods: [{ open: { day: 1, hour: 11, minute: 30 }, close: { day: 1, hour: 14, minute: 0 } }],
+  },
 }
 
 /** Les champs enrichis n'existent que sur le détail d'un lieu. */
@@ -25,15 +30,12 @@ const GOOGLE_DETAILS = {
   ...GOOGLE_PLACE,
   editorialSummary: { text: 'Sushis préparés à la commande.' },
   websiteUri: 'https://sakura.example',
-  regularOpeningHours: {
-    periods: [{ open: { day: 1, hour: 11, minute: 30 }, close: { day: 1, hour: 14, minute: 0 } }],
-  },
   photos: [{ name: 'places/ChIJsushi/photos/AbC' }],
 }
 
 const PHOTO_URI = 'https://lh3.googleusercontent.com/places/sakura'
 
-/** Ce qu'une recherche ramène : pas de photo, pas d'horaires, pas de site. */
+/** Ce qu'une recherche ramène : pas de photo, pas de site, pas de résumé. */
 const SUSHI_BAR = {
   placeId: 'ChIJsushi',
   name: 'Sushi Bar Sakura',
@@ -42,9 +44,11 @@ const SUSHI_BAR = {
   cuisineType: 'Japonais',
   priceLevel: 2,
   location: { lat: 45.76, lng: 4.83 },
+  rating: 4.5,
+  ratingCount: 320,
   description: null,
   website: null,
-  openingHours: null,
+  openingHours: { periods: [{ day: 1, open: '11:30', close: '14:00' }] },
   photoName: null,
   photoUrl: null,
 }
@@ -53,7 +57,6 @@ const SUSHI_BAR_DETAILS = {
   ...SUSHI_BAR,
   description: 'Sushis préparés à la commande.',
   website: 'https://sakura.example',
-  openingHours: { periods: [{ day: 1, open: '11:30', close: '14:00' }] },
   photoName: 'places/ChIJsushi/photos/AbC',
   photoUrl: PHOTO_URI,
 }
@@ -84,17 +87,58 @@ describe('data-access/places', () => {
     const { searchPlaces, isPlacesSearchEnabled } = await importPlaces()
 
     expect(isPlacesSearchEnabled()).toBe(true)
-    expect(await searchPlaces({ query: 'Sushi Sakura' })).toEqual([SUSHI_BAR])
+    expect(await searchPlaces({ query: 'Sushi Sakura' })).toEqual({
+      places: [SUSHI_BAR],
+      nextPageToken: null,
+    })
 
     const [url, init] = fetchMock.mock.calls[0]!
     expect(url).toBe('https://places.googleapis.com/v1/places:searchText')
     expect(init.headers['X-Goog-Api-Key']).toBe('test-google-key')
     expect(init.headers['X-Goog-FieldMask']).toContain('places.id')
+    expect(init.headers['X-Goog-FieldMask']).toContain('nextPageToken')
+    // Note, avis et horaires relèvent du même palier que le budget : la
+    // liste les affiche sans attendre l'import.
+    expect(init.headers['X-Goog-FieldMask']).toContain('places.rating')
+    expect(init.headers['X-Goog-FieldMask']).toContain('places.regularOpeningHours')
     expect(init.body).not.toContain('test-google-key')
     expect(JSON.parse(init.body)).toMatchObject({
       textQuery: 'Sushi Sakura',
       includedType: 'restaurant',
+      pageSize: 20,
     })
+    expect(JSON.parse(init.body).pageToken).toBeUndefined()
+  })
+
+  it('should hand back the next page token and fetch that page on demand, once', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ places: [GOOGLE_PLACE], nextPageToken: 'page-2' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ places: [{ ...GOOGLE_PLACE, id: 'ChIJramen' }] }),
+      })
+    const { searchPlaces } = await importPlaces()
+
+    const first = await searchPlaces({ query: 'sushi' })
+    expect(first.nextPageToken).toBe('page-2')
+
+    const second = await searchPlaces({ query: 'sushi', pageToken: 'page-2' })
+    expect(second).toEqual({
+      places: [{ ...SUSHI_BAR, placeId: 'ChIJramen' }],
+      nextPageToken: null,
+    })
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body)).toMatchObject({
+      textQuery: 'sushi',
+      pageToken: 'page-2',
+    })
+
+    // Chaque page a sa propre entrée de cache.
+    await searchPlaces({ query: 'sushi' })
+    await searchPlaces({ query: 'sushi', pageToken: 'page-2' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('should serve a repeated search from the cache, whatever the casing', async () => {
@@ -120,7 +164,51 @@ describe('data-access/places', () => {
     })
   })
 
-  it('should not serve an import from the search cache: a search has no photo or hours', async () => {
+  it('should ask Google for the closest restaurants when there is nothing to type', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ places: [GOOGLE_PLACE], nextPageToken: 'more' }),
+    })
+    const { searchNearbyPlaces } = await importPlaces()
+
+    expect(await searchNearbyPlaces({ latitude: 45.76, longitude: 4.83 })).toEqual({
+      places: [SUSHI_BAR],
+      nextPageToken: 'more',
+    })
+
+    const [url, init] = fetchMock.mock.calls[0]!
+    // Une Text Search classée par distance, et non une Nearby Search : elle se pagine.
+    expect(url).toBe('https://places.googleapis.com/v1/places:searchText')
+    expect(init.headers['X-Goog-Api-Key']).toBe('test-google-key')
+    // Même masque que la recherche : une liste, pas des fiches.
+    expect(init.headers['X-Goog-FieldMask']).toContain('places.id')
+    expect(init.headers['X-Goog-FieldMask']).not.toContain('photos')
+    expect(JSON.parse(init.body)).toMatchObject({
+      textQuery: 'restaurant',
+      includedType: 'restaurant',
+      rankPreference: 'DISTANCE',
+      pageSize: 20,
+      locationBias: { circle: { center: { latitude: 45.76, longitude: 4.83 } } },
+    })
+
+    await searchNearbyPlaces({ latitude: 45.76, longitude: 4.83, pageToken: 'more' })
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body)).toMatchObject({ pageToken: 'more' })
+  })
+
+  it('should serve the same neighbourhood from the cache, a few metres apart', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ places: [GOOGLE_PLACE] }) })
+    const { searchNearbyPlaces } = await importPlaces()
+
+    await searchNearbyPlaces({ latitude: 45.7601, longitude: 4.8302 })
+    await searchNearbyPlaces({ latitude: 45.7603, longitude: 4.8299 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    // À un kilomètre de là, ce ne sont plus les mêmes « plus proches ».
+    await searchNearbyPlaces({ latitude: 45.77, longitude: 4.83 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('should not serve an import from the search cache: a search has no photo or site', async () => {
     fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ places: [GOOGLE_PLACE] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => GOOGLE_DETAILS })

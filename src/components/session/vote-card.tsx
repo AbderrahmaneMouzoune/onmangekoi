@@ -1,18 +1,28 @@
 'use client'
 
-import { RiMapPin2Line } from '@remixicon/react'
+import { RiHistoryLine, RiMapPin2Line, RiNavigationLine } from '@remixicon/react'
 import Image from 'next/image'
 
+import { lastWinLabel } from '@/domain/recent-winners'
+import { PRICE_LEVEL_LABELS } from '@/domain/schemas/restaurant'
+import { useIsClient } from '@/hooks/use-is-client'
 import { useOpenNow } from '@/hooks/use-open-now'
 import { remoteImageUrl } from '@/lib/images'
+import { distanceLabel } from '@/lib/maps'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant } from '@/data-access/models'
+import type { GeoPoint } from '@/lib/maps'
 
 interface VoteCardProps {
   restaurant: Restaurant
   index: number
   total: number
+  /**
+   * Anti-fatigue : date du dernier sacre de ce restaurant dans une session du
+   * groupe. Absente quand il n'a rien gagné dans la fenêtre.
+   */
+  lastWonAt?: string | null
   className?: string
   style?: React.CSSProperties
   /** Voile affiché pendant un swipe */
@@ -22,6 +32,11 @@ interface VoteCardProps {
    * restent en `lazy` pour ne pas disputer la bande passante au swipe en cours.
    */
   priority?: boolean
+  /**
+   * Position de la personne, si elle l'a donnée : la carte affiche alors la
+   * distance du resto. Sans position ou sans coordonnées, elle n'en parle pas.
+   */
+  position?: GeoPoint | null
 }
 
 /** L'ardoise : la carte du restaurant en cours de vote. */
@@ -29,14 +44,21 @@ export function VoteCard({
   restaurant,
   index,
   total,
+  lastWonAt,
   className,
   style,
   overlay,
   priority = false,
+  position,
 }: VoteCardProps) {
   const place = [restaurant.address, restaurant.city].filter(Boolean).join(', ')
+  const distance = distanceLabel(position, restaurant.location)
   const photo = remoteImageUrl(restaurant.photo_url)
   const openNow = useOpenNow(restaurant.opening_hours)
+  // Une date s'écrit dans le fuseau de qui la lit : la calculer au rendu
+  // serveur produirait une hydratation divergente, comme pour les horaires.
+  const isClient = useIsClient()
+  const lastWin = isClient && lastWonAt ? lastWinLabel(lastWonAt) : null
 
   return (
     <article
@@ -87,6 +109,14 @@ export function VoteCard({
               {restaurant.cuisine_type}
             </span>
           )}
+          {restaurant.price_level && (
+            <span
+              aria-label={`Budget ${PRICE_LEVEL_LABELS[restaurant.price_level]}`}
+              className="rounded-full border border-chalk/25 px-2.5 py-1 font-mono text-[0.68rem] tracking-wide text-chalk"
+            >
+              {PRICE_LEVEL_LABELS[restaurant.price_level]}
+            </span>
+          )}
         </div>
       </div>
 
@@ -97,10 +127,27 @@ export function VoteCard({
         {restaurant.description && (
           <p className="line-clamp-3 text-base text-chalk/80">{restaurant.description}</p>
         )}
-        {place && (
+        {(place || distance) && (
+          <p className="flex items-center gap-3 text-sm text-chalk-muted">
+            {distance && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-chalk/15 px-2.5 py-1 font-mono text-xs text-chalk tabular">
+                <RiNavigationLine aria-hidden="true" className="size-3.5" />
+                {distance}
+                <span className="sr-only"> de toi</span>
+              </span>
+            )}
+            {place && (
+              <span className="flex min-w-0 items-center gap-1.5">
+                <RiMapPin2Line aria-hidden="true" className="size-4 shrink-0" />
+                <span className="line-clamp-1">{place}</span>
+              </span>
+            )}
+          </p>
+        )}
+        {lastWin && (
           <p className="flex items-center gap-1.5 text-sm text-chalk-muted">
-            <RiMapPin2Line aria-hidden="true" className="size-4 shrink-0" />
-            <span className="line-clamp-1">{place}</span>
+            <RiHistoryLine aria-hidden="true" className="size-4 shrink-0" />
+            <span className="line-clamp-1">{lastWin}</span>
           </p>
         )}
       </div>
