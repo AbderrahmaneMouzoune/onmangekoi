@@ -44,7 +44,7 @@ export default function HomePage() {
     <>
       <AppHeader />
       <Shell size="app" className="gap-10 lg:gap-14">
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-x-16 lg:gap-y-14">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-x-16 lg:gap-y-14">
           <section className="flex flex-col gap-6 self-center pt-4 lg:col-start-1 lg:row-start-1 lg:pt-0">
             <div className="flex flex-col gap-3 lg:gap-4">
               <p className="eyebrow">Vote de groupe · 2 minutes</p>

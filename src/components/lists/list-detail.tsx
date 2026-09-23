@@ -62,7 +62,7 @@ export function ListDetailFallback() {
 
       <div
         aria-busy="true"
-        className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-10"
+        className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-10"
       >
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-2">

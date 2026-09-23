@@ -51,7 +51,7 @@ export function FinishedPanel({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
       <div className="flex flex-col gap-6 lg:sticky lg:top-24">
         <div className="flex flex-col items-center gap-3 rounded-lg chalkboard p-6 text-center lg:py-10">
           <span className="flex size-12 items-center justify-center rounded-full bg-chalk/10 text-chalk">

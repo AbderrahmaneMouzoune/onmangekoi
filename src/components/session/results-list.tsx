@@ -41,7 +41,7 @@ export function ResultsList({ results, participantCount, actions }: ResultsListP
   const directions = directionsUrl(winner)
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:gap-10">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:gap-10">
       <div className="flex flex-col gap-6 lg:sticky lg:top-24">
         <section
           aria-labelledby="winner-title"

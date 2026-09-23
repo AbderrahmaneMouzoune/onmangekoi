@@ -230,7 +230,7 @@ export function VoteDeck({
       }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
       <div className="mx-auto flex w-full max-w-lg items-center gap-3 lg:order-2 lg:max-w-none">
         <Progress value={done} max={total} label="Progression du vote" className="flex-1" />
         <span className="font-mono text-xs text-muted-foreground tabular">

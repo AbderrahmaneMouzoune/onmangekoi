@@ -100,7 +100,7 @@ export function SessionRoomFallback() {
         </div>
         <Skeleton className="h-6 w-24 rounded-full" />
       </div>
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
         <Skeleton className="mx-auto aspect-[4/5] w-full max-w-lg rounded-xl sm:aspect-[5/6] lg:aspect-[4/5]" />
         <div className="mx-auto flex w-full max-w-lg flex-col gap-5 lg:max-w-none">
           <Skeleton className="h-1.5 w-full rounded-full" />

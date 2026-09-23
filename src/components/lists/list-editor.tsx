@@ -103,7 +103,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
   const existingIds = restaurants.map((r) => r.id)
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-x-10">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-x-10">
       <div className="flex flex-col gap-8 lg:sticky lg:top-24">
         <form action={renameAction} className="flex flex-col gap-2">
           <input type="hidden" name="listId" value={list.id} />

@@ -113,7 +113,7 @@ export function WaitingRoom({
 
       {/* Sur grand écran : ce qu'on partage et ce qu'on apporte à gauche,
           ce qui arrive — participants, lancement — à droite. */}
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
         <div className="flex flex-col gap-6">
           {/* Inviter n'est pas un privilège de host : tout le monde peut faire
               venir du monde, comme tout le monde peut apporter un resto. */}

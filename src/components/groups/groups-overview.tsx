@@ -26,7 +26,7 @@ export async function GroupsOverview() {
     <ArrowKeyList
       orientation="both"
       aria-label="Mes groupes"
-      className="grid gap-3 lg:grid-cols-2 lg:items-start"
+      className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start"
     >
       {groups.map((group) => (
         <GroupCard key={group.id} group={group} meId={user.id} />
@@ -61,7 +61,7 @@ function NoGroups() {
  */
 export function GroupsOverviewFallback() {
   return (
-    <div aria-busy="true" className="grid gap-3 lg:grid-cols-2 lg:items-start">
+    <div aria-busy="true" className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
       <SkeletonGroup memberWidths={['w-24', 'w-20', 'w-28']} />
       <SkeletonGroup memberWidths={['w-20', 'w-24']} />
     </div>

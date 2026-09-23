@@ -110,7 +110,7 @@ export function SessionResultsFallback() {
       />
       <div
         aria-busy="true"
-        className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:gap-10"
+        className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:gap-10"
       >
         <Skeleton className="h-64 w-full rounded-xl lg:h-80" />
         <section className="flex flex-col gap-2">

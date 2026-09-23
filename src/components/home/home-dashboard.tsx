@@ -33,7 +33,7 @@ export async function HomeDashboard() {
   ])
 
   return (
-    <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
+    <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-8">
       <VisitMemo account sessions={sessions.length > 0} lists={lists.length > 0} />
 
       <PendingInvitations invitations={invitations} />
@@ -126,7 +126,7 @@ function FirstListInvite({ className }: { className?: string }) {
  */
 export function HomeDashboardFallback() {
   return (
-    <div className="grid gap-10 lg:grid-cols-2 lg:gap-8">
+    <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-8">
       <section aria-busy="true" className="hidden flex-col gap-3 seen-sessions:flex">
         <h2 className="text-lg font-bold">Tes sessions</h2>
         <div className="flex flex-col gap-2">

@@ -28,7 +28,7 @@ export default function AccountPage({ searchParams }: Props) {
       {/* Sur grand écran : l'identité, le compte et les groupes à gauche, les
           réglages qui ne dépendent de personne — mesure d'usage, données — à
           droite. */}
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
         <div className="flex flex-col gap-6">
           <Suspense fallback={<AccountDetailsFallback />}>
             <AccountDetails searchParams={searchParams} />
