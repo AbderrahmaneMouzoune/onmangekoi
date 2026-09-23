@@ -196,7 +196,13 @@ $$;
 -- ============================================================
 -- 2. Ce que le propriétaire publie
 -- ============================================================
+-- Publiée par son propriétaire, sous le rôle `authenticated` : l'update de
+-- `lists` passe par des grants par colonne, et `is_public` doit en faire partie.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"' || :'owner' || '","role":"authenticated"}', true);
 update public.lists set is_public = true where id = (select id from t_list where label = 'public');
+reset role;
+select set_config('request.jwt.claims', '', true);
 
 do $$
 declare

@@ -15,9 +15,9 @@ import type { PublicListEntry, PublicListPreview, Restaurant } from './models'
  */
 
 /**
- * Profil de durée des lectures publiques. `revalidateTag` exige le couple
- * profil + tag : ils décrivent la même entrée de cache et bougent ensemble.
- * `hours` revalide à l'heure — c'est ce qui tient l'image Open Graph, la plus
+ * Profil de durée des lectures publiques. Les écritures du propriétaire
+ * purgent l'entrée sur-le-champ (`updateTag`) ; ce profil ne borne que le
+ * reste. `hours` revalide à l'heure — c'est ce qui tient l'image Open Graph, la plus
  * coûteuse à produire, sans figer la page quand le propriétaire referme le
  * partage.
  */

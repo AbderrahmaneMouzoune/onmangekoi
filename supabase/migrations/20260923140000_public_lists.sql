@@ -9,8 +9,9 @@
 -- Principes, repris de `public_results` (#19) :
 --   * `lists.is_public` : le partage public est **opt-in**, décidé par le
 --     propriétaire seul. Faux par défaut, et il le redevient d'un clic. La
---     policy `lists_owner_all` suffit à l'écrire — contrairement aux
---     sessions, une liste est déjà modifiable par son propriétaire.
+--     policy `lists_owner_all` et un grant sur la colonne suffisent à
+--     l'écrire — contrairement aux sessions, une liste est déjà modifiable
+--     par son propriétaire.
 --   * `public_list(code)` est ouverte au rôle `anon`. Elle ne rend que le nom
 --     de la liste, des compteurs, les cuisines représentées et, quand
 --     l'historique est là, le restaurant le plus souvent choisi. **Jamais le
@@ -32,6 +33,12 @@ alter table public.lists
 comment on column public.lists.is_public is
   'Le propriétaire a-t-il ouvert la liste à tout le monde (page présentable, '
   'sitemap, image Open Graph) ? Faux par défaut.';
+
+-- L'update de `lists` est accordé colonne par colonne
+-- (`20260904120000_harden_rls_rpcs_and_voting`) :
+-- sans ce grant, la policy `lists_owner_all` ne suffit pas et la bascule
+-- échoue en `permission denied`.
+grant update (is_public) on public.lists to authenticated;
 
 -- Le sitemap lit l''index seul : quelques milliers de codes publics triés par
 -- fraîcheur, sans toucher aux listes privées.

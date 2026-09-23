@@ -41,7 +41,9 @@ test.describe('Liste publique', () => {
     await expect(visitor).toHaveURL(new RegExp(`/setup\\?next=%2Fl%2F${code}`))
 
     await owner.getByRole('switch', { name: 'Privée' }).click()
-    await expect(owner.getByRole('switch', { name: 'Publique' })).toBeVisible()
+    // La bascule est optimiste : elle ne se réactive qu'une fois l'écriture
+    // confirmée en base — c'est ce qu'il faut attendre avant d'envoyer le visiteur.
+    await expect(owner.getByRole('switch', { name: 'Publique' })).toBeEnabled()
 
     // 3. Le visiteur sans pseudo voit la page — et rien d'Alex
     await visitor.goto(`/l/${code}`)
@@ -64,7 +66,7 @@ test.describe('Liste publique', () => {
 
     // 5. Refermée d'un clic : la vitrine disparaît pour qui n'a pas de pseudo
     await owner.getByRole('switch', { name: 'Publique' }).click()
-    await expect(owner.getByRole('switch', { name: 'Privée' })).toBeVisible()
+    await expect(owner.getByRole('switch', { name: 'Privée' })).toBeEnabled()
 
     const passerby = await newPage(browser)
     await passerby.goto(`/l/${code}`)

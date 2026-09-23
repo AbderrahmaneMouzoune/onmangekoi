@@ -15,7 +15,7 @@ export const alt = 'Une liste de restos partagée sur onmangekoi'
  * Une heure de cache : les données viennent de `getPublicList`, mémorisée sur
  * le profil `hours`, et la réponse porte le même délai pour les robots
  * d'aperçu qui, eux, ne repasseront jamais par notre cache. Refermer le
- * partage purge l'entrée (`revalidateTag`) : la page redevient une page
+ * partage purge l'entrée (`updateTag`) : la page redevient une page
  * privée tout de suite, seuls les aperçus déjà collés dans une conversation
  * gardent l'image — comme toute vignette déjà envoyée.
  */

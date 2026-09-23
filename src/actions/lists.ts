@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
@@ -15,11 +15,7 @@ import {
   removeRestaurantFromList,
   updateList,
 } from '@/data-access/lists'
-import {
-  PUBLIC_LISTS_CACHE_PROFILE,
-  PUBLIC_LISTS_CACHE_TAG,
-  publicListCacheTag,
-} from '@/data-access/public-lists'
+import { PUBLIC_LISTS_CACHE_TAG, publicListCacheTag } from '@/data-access/public-lists'
 import { createServerClient } from '@/data-access/supabase/server'
 import { AppError, toUserMessage } from '@/domain/errors'
 import { CreateListSchema, SharedListActionSchema, UpdateListSchema } from '@/domain/schemas/list'
@@ -46,10 +42,14 @@ async function requireUser() {
  */
 function revalidatePublicList(shareCode: string | null, options?: { sitemap?: boolean }): void {
   if (!shareCode) return
-  revalidateTag(publicListCacheTag(shareCode), PUBLIC_LISTS_CACHE_PROFILE)
+  // `updateTag` et non `revalidateTag(tag, profil)` : ce dernier sert encore
+  // l'entrée périmée à la visite suivante. Un visiteur passé quand la liste
+  // était privée continuerait de se voir refuser la page — ou, à l'inverse,
+  // une liste refermée resterait lisible une fois de plus.
+  updateTag(publicListCacheTag(shareCode))
   // Le sitemap ne bouge que lorsqu'une liste entre ou sort de la liste
   // publique — pas à chaque resto ajouté.
-  if (options?.sitemap) revalidateTag(PUBLIC_LISTS_CACHE_TAG, PUBLIC_LISTS_CACHE_PROFILE)
+  if (options?.sitemap) updateTag(PUBLIC_LISTS_CACHE_TAG)
 }
 
 export async function createListAction(_prev: FormState, formData: FormData): Promise<FormState> {
