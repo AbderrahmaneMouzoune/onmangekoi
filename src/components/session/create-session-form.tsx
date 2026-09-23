@@ -98,7 +98,7 @@ export function CreateSessionForm({
     <form
       action={formAction}
       onSubmit={rememberCreation}
-      className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-x-10"
+      className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-rows-[repeat(5,auto)_1fr] lg:items-start lg:gap-x-10"
     >
       <SessionStep
         number={1}
@@ -120,7 +120,7 @@ export function CreateSessionForm({
         />
       </SessionStep>
 
-      <div className="contents lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:block">
+      <div className="contents lg:col-start-2 lg:row-span-full lg:block">
         <SessionStep
           number={2}
           title={<h2 className="text-base font-semibold">{SESSION_STEPS.restaurants}</h2>}
