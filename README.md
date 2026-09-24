@@ -179,6 +179,14 @@ Quand `GOOGLE_PLACES_API_KEY` est configurée, un onglet **Google** apparaît da
 
 Les pages reçues restent en mémoire le temps du formulaire : quitter l'onglet et y revenir retrouve les résultats tels quels, sans rechargement ni nouvel appel.
 
+#### Amorcer son quartier
+
+Un groupe qui arrive devant un carnet vide n'a pas à le remplir resto par resto. Une fois la position accordée — et seulement à ce moment-là, le bouton n'existe pas avant —, « **Amorcer mon quartier** » fait entrer les **vingt restos les plus proches** d'un coup, depuis l'onglet Google de la création de session comme de `/lists/new`. Ils rejoignent le carnet ; ils ne rejoignent pas le panier : remplir la base et composer une session restent deux gestes.
+
+Le navigateur n'envoie qu'une position — ni nombre de lieux, ni rayon. Le plafond de vingt est appliqué par le serveur, et le quota — **trois amorçages par personne et par tranche de 24 h** — est tenu en base par `claim_neighbourhood_import()` : le créneau se prend **avant** l'appel à Google, avec un verrou sur le profil de l'appelant pour qu'une rafale de requêtes se compte une par une. Le journal `neighbourhood_imports` ne sert qu'à ça : il se purge de lui-même passé la fenêtre, ne se lit hors de la RPC par personne, et part avec le compte.
+
+Un lot ne s'annule pas pour un raté : chaque lieu est écrit séparément, ce qui est entré reste entré, et le message le dit — « 18 restos sont entrés dans le carnet, 2 n'ont pas pu être enregistrés ». Le catalogue partagé n'est invalidé **qu'une fois**, à la fin du lot.
+
 Cocher un résultat le **sélectionne à l'instant** — la ligne et le panier le montrent coché, avec une roue le temps que la fiche arrive — puis l'import suit ; s'il échoue, le resto ressort de la sélection et l'onglet dit pourquoi. Un lieu déjà en base — importé à l'instant ou connu du carnet — se coche et se décoche sans rien demander à Google.
 
 | Garantie           | Comment                                                                                                                                      |
@@ -188,12 +196,13 @@ Cocher un résultat le **sélectionne à l'instant** — la ligne et le panier l
 | Données de source  | Le navigateur n'envoie qu'un `place_id` à l'import ; les champs enregistrés sont relus côté serveur, jamais reçus du client                  |
 | Coût maîtrisé      | Réponses gardées 24 h en mémoire, par page ; deux masques de champs distincts (voir ci-dessous)                                              |
 | Autour de moi      | Text Search (New) sur « restaurant », `rankPreference: DISTANCE`, biais de 2 km, vingt lieux par page ; cache par position arrondie à ~100 m |
+| Amorçage borné     | Vingt lieux par lot, plafond appliqué côté serveur ; trois lots par personne et par 24 h, comptés en base                                    |
 
 L'import remplit la fiche décrite plus haut : `photo_url`, `website`, `location`, `opening_hours` et `description`. Un lieu réimporté rafraîchit ces champs sans jamais en effacer un déjà connu — ce qui fait aussi office d'entretien, l'adresse d'une photo Google n'étant pas éternelle.
 
 Le fuseau des horaires n'est pas demandé à Google : `opening_hours.timezone` reste absent et l'app raisonne dans celui du visiteur.
 
-**Deux masques de champs, deux factures.** Google facture au champ le plus cher demandé, et une recherche ramène vingt résultats : elle ne demande donc que de quoi afficher une liste. Le budget la place déjà dans le palier « Enterprise » de Text Search ; la **note, le nombre d'avis et les horaires** relèvent du même palier et sont donc demandés aussi, sans surcoût — la note s'affiche dans la liste et n'est jamais enregistrée, elle sert à choisir, pas à voter. Photo, site et résumé ne sont demandés que sur le détail d'un lieu — une fois, au clic sur « importer ». La photo coûte un appel de plus, pour convertir son nom de ressource en adresse servable : celle de l'endpoint media exigerait la clé pour être chargée, on stocke donc le `photoUri` qu'il renvoie, servi par Google sans clé et sur un hôte de `ALLOWED_IMAGE_HOSTS`.
+**Deux masques de champs, deux factures.** Google facture au champ le plus cher demandé, et une recherche ramène vingt résultats : elle ne demande donc que de quoi afficher une liste. Le budget la place déjà dans le palier « Enterprise » de Text Search ; la **note, le nombre d'avis et les horaires** relèvent du même palier et sont donc demandés aussi, sans surcoût — la note s'affiche dans la liste et n'est jamais enregistrée, elle sert à choisir, pas à voter. Photo, site et résumé ne sont demandés que sur le détail d'un lieu — une fois, au clic sur « importer ». Un amorçage de quartier ne paie donc qu'**une recherche** pour ses vingt fiches : photo, site et résumé leur arrivent plus tard, à la première **carte de vote** qui les affiche (`useCompletedRestaurant`) — un détail par resto réellement regardé, jamais vingt d'avance pour des fiches que personne n'ouvrira. La photo coûte un appel de plus, pour convertir son nom de ressource en adresse servable : celle de l'endpoint media exigerait la clé pour être chargée, on stocke donc le `photoUri` qu'il renvoie, servi par Google sans clé et sur un hôte de `ALLOWED_IMAGE_HOSTS`.
 
 **Quand la recherche échoue.** Le message affiché nomme la famille de panne plutôt que de renvoyer tout le monde vers un « réessaie » indifférencié, et le log serveur (`places: recherche → <statut> <raison>`) donne la raison exacte renvoyée par Google — `PERMISSION_DENIED`, `SERVICE_DISABLED`, `RESOURCE_EXHAUSTED`…
 
