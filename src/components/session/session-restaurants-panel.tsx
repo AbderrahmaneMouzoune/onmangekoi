@@ -8,6 +8,7 @@ import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
+import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
 import { captureEvent } from '@/lib/analytics/client'
 import { countLabel, participantLabel } from '@/lib/format'
 
@@ -51,6 +52,7 @@ export function SessionRestaurantsPanel({
   const [isAdding, setIsAdding] = useState(false)
   const [picked, setPicked] = useState<string[]>([])
   const [isPending, startTransition] = useTransition()
+  const onKeyDown = useArrowNavigation()
 
   const pseudoById = useMemo(
     () =>
@@ -112,7 +114,11 @@ export function SessionRestaurantsPanel({
         )}
       </div>
 
-      <ul className="flex flex-col gap-1.5" aria-label="Restaurants de la session">
+      <ul
+        onKeyDown={onKeyDown}
+        className="flex flex-col gap-1.5"
+        aria-label="Restaurants de la session"
+      >
         {restaurants.map((row) => {
           const name = row.restaurants?.name ?? 'Restaurant retiré'
           const mine = row.added_by !== null && row.added_by === meId

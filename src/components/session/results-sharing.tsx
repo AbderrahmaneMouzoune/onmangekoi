@@ -100,7 +100,7 @@ export function ResultsSharing({
         onClick={toggle}
         disabled={isPending}
         className={cn(
-          'inline-flex h-11 items-center justify-center gap-2 rounded-md border px-4 text-sm font-semibold transition-colors disabled:opacity-50',
+          'inline-flex h-11 items-center justify-center gap-2 rounded-md border px-4 text-sm font-semibold transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50',
           isPublic
             ? 'border-brand bg-brand-soft text-brand-hover'
             : 'border-line-strong bg-surface text-ink-2 hover:bg-surface-2'

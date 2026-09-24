@@ -31,7 +31,7 @@ export default function ChangelogPage() {
   const latest = notes[0]
 
   return (
-    <Shell wide>
+    <Shell size="reading">
       {latest && <ChangelogSeenMarker version={latest.version} />}
 
       <PageHeader

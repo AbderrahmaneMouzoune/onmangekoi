@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default function PublicResultsPage({ params }: Props) {
   return (
-    <Shell wide>
+    <Shell size="reading">
       <Suspense fallback={<PublicPodiumFallback />}>
         <PublicPodiumSection params={params} />
       </Suspense>

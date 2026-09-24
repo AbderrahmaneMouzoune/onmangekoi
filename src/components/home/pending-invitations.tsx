@@ -8,6 +8,7 @@ import { declineInvitationAction } from '@/actions/groups'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { router } from '@/config/router.config'
+import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
 import { countLabel, displayPseudo } from '@/lib/format'
 
 import type { PendingInvitation } from '@/data-access/models'
@@ -21,6 +22,7 @@ export function PendingInvitations({ invitations }: { invitations: PendingInvita
   const [declined, setDeclined] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const onKeyDown = useArrowNavigation()
 
   const visible = invitations.filter((invitation) => !declined.includes(invitation.session_id))
   if (visible.length === 0) return null
@@ -37,13 +39,14 @@ export function PendingInvitations({ invitations }: { invitations: PendingInvita
     })
   }
 
+  // Sur le tableau de bord en grille, l'invitation passe devant tout : pleine largeur.
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-3 lg:col-span-2">
       <h2 className="flex items-center gap-2 text-lg font-bold">
         <RiMailOpenLine aria-hidden="true" className="size-5 text-brand" />
         On t’attend
       </h2>
-      <ul className="flex flex-col gap-2">
+      <ul onKeyDown={onKeyDown} className="flex flex-col gap-2 lg:grid lg:grid-cols-2">
         {visible.map((invitation) => (
           <li
             key={invitation.session_id}

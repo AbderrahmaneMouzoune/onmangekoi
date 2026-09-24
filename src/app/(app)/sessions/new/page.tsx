@@ -23,7 +23,7 @@ interface NewSessionPageProps {
 
 export default function NewSessionPage({ searchParams }: NewSessionPageProps) {
   return (
-    <Shell>
+    <Shell size="app">
       <PageHeader
         eyebrow="Nouvelle session"
         title="Qui décide ce midi ?"

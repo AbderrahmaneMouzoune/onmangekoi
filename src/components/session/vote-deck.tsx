@@ -49,6 +49,9 @@ type Leaving = { id: string; direction: 'left' | 'right' } | null
  * leur quota vient des règles de la session — un veto dans un groupe, deux
  * dans un autre. Optimiste : la carte part immédiatement, la base est la
  * source de vérité et recompte les jokers à chaque vote.
+ *
+ * Sur grand écran, la carte garde la largeur d'un téléphone et les commandes
+ * viennent à sa droite : on lit d'un côté, on tranche de l'autre.
  */
 export function VoteDeck({
   sessionId,
@@ -227,8 +230,8 @@ export function VoteDeck({
       }
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-3">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
+      <div className="mx-auto flex w-full max-w-lg items-center gap-3 lg:order-2 lg:max-w-none">
         <Progress value={done} max={total} label="Progression du vote" className="flex-1" />
         <span className="font-mono text-xs text-muted-foreground tabular">
           {done}/{total}
@@ -268,7 +271,7 @@ export function VoteDeck({
         {announcement}
       </p>
 
-      <div className="relative">
+      <div className="relative mx-auto w-full max-w-lg lg:order-1 lg:row-span-3 lg:max-w-none">
         {next?.restaurants && (
           <div aria-hidden="true" className="absolute inset-0 scale-[0.96] opacity-60">
             <VoteCard
@@ -301,29 +304,33 @@ export function VoteDeck({
         </div>
       </div>
 
-      <FormMessage error={error} />
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-5 lg:order-3 lg:max-w-none">
+        <FormMessage error={error} />
 
-      <VoteControls
-        onVote={(value) => void vote(value)}
-        disabled={Boolean(leaving)}
-        jokers={jokers}
-      />
+        <VoteControls
+          onVote={(value) => void vote(value)}
+          disabled={Boolean(leaving)}
+          jokers={jokers}
+          showShortcuts
+        />
 
-      <div className="flex flex-col gap-1.5 text-center text-xs text-muted-foreground">
-        <p>
-          Glisse la carte à droite pour « ça me va », à gauche pour « bof ». {jokersSentence(rules)}
-        </p>
-        <p>
-          Au clavier :{' '}
-          {VOTE_ACTIONS.map((action, index) => (
-            <Fragment key={action.kind}>
-              {index > 0 && ' · '}
-              <Key>{action.shortcuts[0]}</Key> {action.label.toLowerCase()}
-            </Fragment>
-          ))}
-          . <Key>←</Key> et <Key>→</Key> reprennent « bof » et « ça me va », <Key>Entrée</Key>{' '}
-          valide « ça me va ».
-        </p>
+        <div className="flex flex-col gap-1.5 text-center text-xs text-muted-foreground lg:text-left lg:text-sm">
+          <p>
+            Glisse la carte à droite pour « ça me va », à gauche pour « bof ».{' '}
+            {jokersSentence(rules)}
+          </p>
+          <p>
+            Au clavier :{' '}
+            {VOTE_ACTIONS.map((action, index) => (
+              <Fragment key={action.kind}>
+                {index > 0 && ' · '}
+                <Key>{action.shortcuts[0]}</Key> {action.label.toLowerCase()}
+              </Fragment>
+            ))}
+            . <Key>←</Key> et <Key>→</Key> reprennent « bof » et « ça me va », <Key>Entrée</Key>{' '}
+            valide « ça me va ».
+          </p>
+        </div>
       </div>
     </div>
   )

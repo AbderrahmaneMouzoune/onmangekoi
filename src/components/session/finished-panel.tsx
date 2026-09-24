@@ -26,6 +26,10 @@ interface FinishedPanelProps {
   meFinished: boolean
 }
 
+/**
+ * Après ses votes : l'avancée du groupe. Sur grand écran, l'ardoise reste
+ * à gauche et les participants défilent à droite, comme en salle d'attente.
+ */
 export function FinishedPanel({
   session,
   participants,
@@ -54,81 +58,85 @@ export function FinishedPanel({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-center gap-3 rounded-lg chalkboard p-6 text-center">
-        <span className="flex size-12 items-center justify-center rounded-full bg-chalk/10 text-chalk">
-          {meFinished ? (
-            <RiCheckDoubleLine aria-hidden="true" className="size-6" />
-          ) : (
-            <Spinner className="size-6" />
-          )}
-        </span>
-        <h2 className="font-display text-2xl font-bold text-chalk">
-          {meFinished ? 'Tu as tout voté.' : 'Le vote est en cours.'}
-        </h2>
-        <p className="text-sm text-chalk-muted">
-          {missing === 0
-            ? finished === total
-              ? 'Tout le monde a terminé, le classement arrive.'
-              : 'Le seuil de clôture est atteint, le classement arrive.'
-            : `On attend ${countLabel(missing, 'personne')}. Le classement s’affichera automatiquement.`}
-        </p>
-        {rules.close_at_ratio < 1 && (
-          <p className="text-xs text-chalk-muted">
-            Clôture dès {formatRatio(rules.close_at_ratio)} des participants — soit {required} sur{' '}
-            {total}.
-          </p>
-        )}
-        <div className="flex w-full items-center gap-3 pt-1">
-          <Progress
-            value={finished}
-            max={total}
-            tone="chalk"
-            label="Participants ayant terminé"
-            className="flex-1 bg-chalk/15"
-          />
-          <span className="font-mono text-xs text-chalk-muted tabular">
-            {finished}/{total}
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
+      <div className="flex flex-col gap-6 lg:sticky lg:top-24">
+        <div className="flex flex-col items-center gap-3 rounded-lg chalkboard p-6 text-center lg:py-10">
+          <span className="flex size-12 items-center justify-center rounded-full bg-chalk/10 text-chalk">
+            {meFinished ? (
+              <RiCheckDoubleLine aria-hidden="true" className="size-6" />
+            ) : (
+              <Spinner className="size-6" />
+            )}
           </span>
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <ConnectionIndicator state={connection} />
-      </div>
-
-      <ParticipantList
-        participants={participants}
-        hostId={session.host_id}
-        meId={meId}
-        showProgress
-      />
-
-      <FormMessage error={error} />
-
-      {isHost && (
-        <div className="flex flex-col gap-2">
-          <TwoStepButton
-            variant="outline"
-            size="lg"
-            className="w-full"
-            label={
-              <>
-                <RiFlagLine aria-hidden="true" />
-                Clôturer maintenant
-              </>
-            }
-            confirmLabel="Confirmer la clôture — les votes manquants comptent 0"
-            onConfirm={close}
-            disabled={isPending}
-          />
-          <p className="text-center text-xs text-muted-foreground">
-            {rules.close_at_ratio < 1
-              ? 'Sinon, la session se clôture toute seule au seuil choisi.'
-              : 'Sinon, la session se clôture toute seule quand tout le monde a voté.'}
+          <h2 className="font-display text-2xl font-bold text-chalk">
+            {meFinished ? 'Tu as tout voté.' : 'Le vote est en cours.'}
+          </h2>
+          <p className="text-sm text-chalk-muted">
+            {missing === 0
+              ? finished === total
+                ? 'Tout le monde a terminé, le classement arrive.'
+                : 'Le seuil de clôture est atteint, le classement arrive.'
+              : `On attend ${countLabel(missing, 'personne')}. Le classement s’affichera automatiquement.`}
           </p>
+          {rules.close_at_ratio < 1 && (
+            <p className="text-xs text-chalk-muted">
+              Clôture dès {formatRatio(rules.close_at_ratio)} des participants — soit {required} sur{' '}
+              {total}.
+            </p>
+          )}
+          <div className="flex w-full items-center gap-3 pt-1">
+            <Progress
+              value={finished}
+              max={total}
+              tone="chalk"
+              label="Participants ayant terminé"
+              className="flex-1 bg-chalk/15"
+            />
+            <span className="font-mono text-xs text-chalk-muted tabular">
+              {finished}/{total}
+            </span>
+          </div>
         </div>
-      )}
+
+        {isHost && (
+          <div className="flex flex-col gap-2">
+            <TwoStepButton
+              variant="outline"
+              size="lg"
+              className="w-full"
+              label={
+                <>
+                  <RiFlagLine aria-hidden="true" />
+                  Clôturer maintenant
+                </>
+              }
+              confirmLabel="Confirmer la clôture — les votes manquants comptent 0"
+              onConfirm={close}
+              disabled={isPending}
+            />
+            <p className="text-center text-xs text-muted-foreground">
+              {rules.close_at_ratio < 1
+                ? 'Sinon, la session se clôture toute seule au seuil choisi.'
+                : 'Sinon, la session se clôture toute seule quand tout le monde a voté.'}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-end">
+          <ConnectionIndicator state={connection} />
+        </div>
+
+        <ParticipantList
+          participants={participants}
+          hostId={session.host_id}
+          meId={meId}
+          showProgress
+        />
+
+        <FormMessage error={error} />
+      </div>
     </div>
   )
 }

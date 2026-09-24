@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 /**
  * Boîte de dialogue ordinaire, pour montrer quelque chose en grand ou faire
  * saisir un détail. Échap et le clic à côté la ferment : elle n'engage rien.
+ * Le focus y est retenu puis rendu à l'élément qui l'a ouverte.
  *
  * Pour une action irréversible, préférer `AlertDialog`, qui exige un choix
  * explicite ; pour une action réversible, `TwoStepButton`, qui n'ouvre rien.

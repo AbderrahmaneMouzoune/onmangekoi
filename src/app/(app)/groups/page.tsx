@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: 'Mes groupes' }
 /** Groupes récurrents : `/groups`. */
 export default function GroupsPage() {
   return (
-    <Shell>
+    <Shell size="app">
       <PageHeader
         eyebrow="Groupes"
         title="Mes groupes"
