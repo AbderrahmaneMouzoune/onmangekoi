@@ -93,6 +93,24 @@ export type Database = {
           },
         ]
       }
+      join_attempts: {
+        Row: {
+          attempted_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          attempted_at?: string
+          id?: never
+          user_id: string
+        }
+        Update: {
+          attempted_at?: string
+          id?: never
+          user_id?: string
+        }
+        Relationships: []
+      }
       list_restaurants: {
         Row: {
           added_at: string
@@ -191,6 +209,32 @@ export type Database = {
         }
         Relationships: []
       }
+      neighbourhood_imports: {
+        Row: {
+          claimed_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          id?: never
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          id?: never
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'neighbourhood_imports_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -228,6 +272,7 @@ export type Database = {
           place_id: string | null
           price_level: number | null
           source: string
+          tags: string[]
           website: string | null
         }
         Insert: {
@@ -245,6 +290,7 @@ export type Database = {
           place_id?: string | null
           price_level?: number | null
           source?: string
+          tags?: string[]
           website?: string | null
         }
         Update: {
@@ -262,6 +308,7 @@ export type Database = {
           place_id?: string | null
           price_level?: number | null
           source?: string
+          tags?: string[]
           website?: string | null
         }
         Relationships: [
@@ -546,6 +593,7 @@ export type Database = {
         Args: { p_closes_at: string }
         Returns: undefined
       }
+      claim_neighbourhood_import: { Args: never; Returns: number }
       close_expired_sessions: { Args: never; Returns: number }
       close_session: {
         Args: { p_session_id: string }
@@ -613,6 +661,7 @@ export type Database = {
           p_cuisine_type?: string
           p_name: string
           p_price_level?: number
+          p_tags?: string[]
         }
         Returns: {
           address: string | null
@@ -629,6 +678,7 @@ export type Database = {
           place_id: string | null
           price_level: number | null
           source: string
+          tags: string[]
           website: string | null
         }
         SetofOptions: {
@@ -731,6 +781,7 @@ export type Database = {
           place_id: string | null
           price_level: number | null
           source: string
+          tags: string[]
           website: string | null
         }[]
         SetofOptions: {
@@ -743,6 +794,10 @@ export type Database = {
       generate_invite_code: { Args: never; Returns: string }
       generate_results_code: { Args: never; Returns: string }
       generate_share_code: { Args: never; Returns: string }
+      geo_distance_km: {
+        Args: { p_lat: number; p_lng: number; p_point: Json }
+        Returns: number
+      }
       invite_group_to_session: {
         Args: { p_group_id: string; p_session_id: string }
         Returns: number
@@ -751,6 +806,7 @@ export type Database = {
       is_group_member: { Args: { p_group_id: string }; Returns: boolean }
       is_group_owner: { Args: { p_group_id: string }; Returns: boolean }
       is_opening_hours: { Args: { p_value: Json }; Returns: boolean }
+      is_restaurant_tags: { Args: { p_value: string[] }; Returns: boolean }
       is_session_host: { Args: { p_session_id: string }; Returns: boolean }
       is_session_participant: {
         Args: { p_session_id: string }
@@ -833,6 +889,7 @@ export type Database = {
           place_id: string | null
           price_level: number | null
           source: string
+          tags: string[]
           website: string | null
         }[]
         SetofOptions: {
@@ -854,7 +911,13 @@ export type Database = {
           session_id: string
         }[]
       }
+      neighbourhood_import_quota: { Args: never; Returns: number }
+      neighbourhood_import_window: { Args: never; Returns: string }
       normalize_crockford: { Args: { p_input: string }; Returns: string }
+      normalize_restaurant_tags: {
+        Args: { p_tags: string[] }
+        Returns: string[]
+      }
       normalize_rules: { Args: { p_rules: Json }; Returns: Json }
       public_results: {
         Args: { p_code: string }
@@ -875,6 +938,7 @@ export type Database = {
         Args: { p_older_than?: string }
         Returns: number
       }
+      purge_join_attempts: { Args: { p_older_than?: string }; Returns: number }
       purge_stale_sessions: {
         Args: { p_closed_older_than?: string; p_waiting_older_than?: string }
         Returns: {
@@ -895,8 +959,45 @@ export type Database = {
         Args: { p_restaurant_id: string; p_session_id: string }
         Returns: undefined
       }
+      restaurant_tag_values: { Args: never; Returns: string[] }
       rules_are_valid: { Args: { p_rules: Json }; Returns: boolean }
       run_maintenance: { Args: never; Returns: Json }
+      search_restaurants: {
+        Args: {
+          p_lat?: number
+          p_limit?: number
+          p_lng?: number
+          p_offset?: number
+          p_price_max?: number
+          p_query?: string
+          p_tags?: string[]
+          p_within_km?: number
+        }
+        Returns: {
+          address: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          cuisine_type: string | null
+          description: string | null
+          id: string
+          location: Json | null
+          name: string
+          opening_hours: Json | null
+          photo_url: string | null
+          place_id: string | null
+          price_level: number | null
+          source: string
+          tags: string[]
+          website: string | null
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'restaurants'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       session_preview: {
         Args: { p_identifier: string }
         Returns: {
@@ -979,6 +1080,7 @@ export type Database = {
           p_photo_url?: string
           p_place_id: string
           p_price_level?: number
+          p_tags?: string[]
           p_website?: string
         }
         Returns: {
@@ -996,6 +1098,7 @@ export type Database = {
           place_id: string | null
           price_level: number | null
           source: string
+          tags: string[]
           website: string | null
         }
         SetofOptions: {

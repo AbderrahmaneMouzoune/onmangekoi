@@ -28,6 +28,17 @@ export type ResultsScope = 'public' | 'participants'
  * inadvertance.
  */
 export interface AnalyticsEventMap {
+  /**
+   * Amorçage du quartier : les restos proches entrés en base d'un coup. Le
+   * premier geste d'un groupe qui arrive devant un carnet vide — donc la
+   * marche à surveiller.
+   */
+  neighbourhood_seeded: {
+    /** Nombre de restaurants entrés en base */
+    restaurant_count: number
+    /** Lieux rendus par Google que la base a refusés */
+    failed_count: number
+  }
   session_created: {
     session_id: string
     restaurant_count: number

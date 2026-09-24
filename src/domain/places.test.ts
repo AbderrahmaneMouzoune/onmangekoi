@@ -167,6 +167,7 @@ describe('mapPlace', () => {
       location: { lat: 45.76, lng: 4.83 },
       rating: null,
       ratingCount: null,
+      tags: [],
       description: null,
       website: null,
       openingHours: null,

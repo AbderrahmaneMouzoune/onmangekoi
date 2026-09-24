@@ -34,6 +34,15 @@ describe('joinSessionUseCase', () => {
     expect(rpc).not.toHaveBeenCalled()
   })
 
+  it('should turn the NULL of an unknown code into a business error', async () => {
+    // La base renvoie NULL au lieu de lever : une exception annulerait
+    // l'essai raté qu'elle vient de compter.
+    const { client } = fakeClient({ data: null })
+    await expect(joinSessionUseCase(client, 'A3F9B2')).rejects.toMatchObject({
+      message: 'omk:session_not_found',
+    })
+  })
+
   it('should propagate database business errors', async () => {
     const { client } = fakeClient({ error: { message: 'omk:session_started' } })
     await expect(joinSessionUseCase(client, 'A3F9B2')).rejects.toMatchObject({
