@@ -14,18 +14,21 @@ import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
 import type { PlaceResult } from '@/domain/places'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
+import type { RestaurantFilters } from '@/domain/restaurant-filters'
 
 const searchRestaurantsAction = vi.hoisted(() => vi.fn())
 const createRestaurantAction = vi.hoisted(() => vi.fn())
 const findSimilarRestaurantsAction = vi.hoisted(() => vi.fn())
 const importPlaceAction = vi.hoisted(() => vi.fn())
+const seedNeighbourhoodAction = vi.hoisted(() => vi.fn())
 
 vi.mock('@/actions/restaurants', () => ({
   searchRestaurantsAction,
   createRestaurantAction,
   findSimilarRestaurantsAction,
 }))
-vi.mock('@/actions/places', () => ({ importPlaceAction }))
+vi.mock('@/actions/places', () => ({ importPlaceAction, seedNeighbourhoodAction }))
+vi.mock('@/lib/analytics/client', () => ({ captureEvent: vi.fn() }))
 
 function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
   return {
@@ -44,6 +47,7 @@ function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
     source: 'seed',
     price_level: null,
     place_id: null,
+    tags: [],
     ...overrides,
   }
 }
@@ -72,7 +76,7 @@ const MARCEL = restaurant({
   /** Notre-Dame : environ 2,4 km de l'Opéra. */
   location: { lat: 48.853, lng: 2.3499 },
 })
-const SAKURA = restaurant({ name: 'Sakura', cuisine_type: 'Japonais' })
+const SAKURA = restaurant({ name: 'Sakura', cuisine_type: 'Japonais', tags: ['vegan'] })
 const WOK = restaurant({ name: 'Wok Garden', cuisine_type: 'Chinois' })
 const PAGE: RestaurantPage = { items: [MARCEL, SAKURA, WOK], hasMore: false, nextOffset: 3 }
 
@@ -90,6 +94,7 @@ const SUSHI_PLACE: PlaceResult = {
   location: { lat: 48.869, lng: 2.3316 },
   rating: 4.5,
   ratingCount: 320,
+  tags: [],
   description: null,
   website: null,
   openingHours: null,
@@ -130,6 +135,7 @@ function Harness({
   lists = [],
   google = true,
   onChange = () => {},
+  onFiltersChange,
   recentWinners,
   excludeRecent,
   initialPage = PAGE,
@@ -137,6 +143,7 @@ function Harness({
   lists?: ListWithRestaurantIds[]
   google?: boolean
   onChange?: (ids: string[]) => void
+  onFiltersChange?: (filters: RestaurantFilters) => void
   recentWinners?: RecentWinnerDates
   excludeRecent?: boolean
   initialPage?: RestaurantPage
@@ -159,6 +166,7 @@ function Harness({
         selectedListIds={listIds}
         onListsChange={setListIds}
         listsInputName="listIds"
+        onFiltersChange={onFiltersChange}
       />
     </RestaurantSourcesProvider>
   )
@@ -478,6 +486,105 @@ describe('RestaurantPicker', () => {
     vi.useRealTimers()
   })
 
+  it('should send a filter to the base and restart from the first page', async () => {
+    const onFiltersChange = vi.fn()
+    searchRestaurantsAction.mockResolvedValue({
+      ok: true,
+      data: { items: [SAKURA], hasMore: false, nextOffset: 1 },
+    })
+    render(<Harness onFiltersChange={onFiltersChange} />)
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Vegan' }))
+
+    await waitFor(() =>
+      expect(searchRestaurantsAction).toHaveBeenCalledWith(
+        expect.objectContaining({ tags: ['vegan'], offset: 0 })
+      )
+    )
+    // Le formulaire reflète le filtre dans l'URL : un lien se partage trié.
+    expect(onFiltersChange).toHaveBeenCalledWith({
+      priceMax: null,
+      tags: ['vegan'],
+      withinKm: null,
+    })
+    await waitFor(() =>
+      expect(screen.queryByRole('checkbox', { name: /chez marcel/i })).not.toBeInTheDocument()
+    )
+    expect(screen.getByRole('checkbox', { name: /sakura/i })).toBeInTheDocument()
+  })
+
+  it('should keep the filters on the next page of results', async () => {
+    searchRestaurantsAction.mockResolvedValue({
+      ok: true,
+      data: { items: [SAKURA], hasMore: true, nextOffset: 1 },
+    })
+    render(<Harness />)
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Budget maximum €€' }))
+    await screen.findByRole('button', { name: 'Afficher plus' })
+
+    searchRestaurantsAction.mockResolvedValue({
+      ok: true,
+      data: { items: [WOK], hasMore: false, nextOffset: 2 },
+    })
+    await userEvent.click(screen.getByRole('button', { name: 'Afficher plus' }))
+
+    // Même filtre, page suivante : c'est la base qui pagine le résultat filtré.
+    await waitFor(() =>
+      expect(searchRestaurantsAction).toHaveBeenLastCalledWith(
+        expect.objectContaining({ priceMax: 2, offset: 1 })
+      )
+    )
+    expect(await screen.findByRole('checkbox', { name: /wok garden/i })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /sakura/i })).toBeInTheDocument()
+  })
+
+  it('should offer to lift the filters rather than add a restaurant that exists', async () => {
+    searchRestaurantsAction.mockResolvedValue({
+      ok: true,
+      data: { items: [], hasMore: false, nextOffset: 0 },
+    })
+    render(<Harness />)
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Casher' }))
+
+    const clear = await screen.findByRole('button', { name: 'Efface les filtres' })
+    expect(screen.queryByRole('button', { name: 'Ajoute-le' })).not.toBeInTheDocument()
+
+    searchRestaurantsAction.mockResolvedValue({ ok: true, data: PAGE })
+    await userEvent.click(clear)
+    expect(await screen.findByRole('checkbox', { name: /chez marcel/i })).toBeInTheDocument()
+  })
+
+  it('should hide the distance filter until the position is known', async () => {
+    render(<Harness />)
+
+    expect(screen.queryByRole('radio', { name: /d’ici/ })).not.toBeInTheDocument()
+
+    grantPosition()
+    await userEvent.click(screen.getByRole('button', { name: 'Autour de moi' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Moins de 1 km d’ici' }))
+
+    await waitFor(() =>
+      expect(searchRestaurantsAction).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          withinKm: 1,
+          origin: { lat: OPERA.latitude, lng: OPERA.longitude },
+        })
+      )
+    )
+
+    // La position oubliée, le rayon n'a plus rien pour mesurer : il disparaît
+    // et la recherche repart sans lui.
+    await userEvent.click(screen.getByRole('button', { name: 'Autour de toi' }))
+    expect(screen.queryByRole('radio', { name: /d’ici/ })).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(searchRestaurantsAction).toHaveBeenLastCalledWith(
+        expect.objectContaining({ withinKm: null, origin: null })
+      )
+    )
+  })
+
   it('should move between sources with the arrow keys', async () => {
     render(<Harness lists={[list({ restaurant_ids: [MARCEL.id] })]} />)
 
@@ -566,5 +673,88 @@ describe('RestaurantPicker', () => {
     await waitFor(() => expect(row).toHaveAttribute('aria-disabled', 'true'))
     expect(row).not.toBeChecked()
     expect(within(row).getByText('Écarté')).toBeInTheDocument()
+  })
+
+  // ─── Amorcer le quartier ───────────────────────────────────
+  it('should not offer to seed the neighbourhood before a position is given', async () => {
+    refusePosition()
+    googleAnswers([SUSHI_PLACE])
+    render(<Harness />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+
+    await screen.findByText(/position refusée/i)
+    expect(screen.queryByRole('button', { name: 'Amorcer' })).not.toBeInTheDocument()
+    expect(seedNeighbourhoodAction).not.toHaveBeenCalled()
+  })
+
+  it('should fill the address book in one gesture, without checking anything', async () => {
+    grantPosition()
+    googleAnswers([SUSHI_PLACE])
+    const seeded = [
+      restaurant({ name: 'Sushi Bar Sakura', source: 'google', place_id: SUSHI_PLACE.placeId }),
+      restaurant({ name: 'Ramen Ichiban', source: 'google', place_id: RAMEN_PLACE.placeId }),
+    ]
+    seedNeighbourhoodAction.mockResolvedValue({
+      ok: true,
+      data: { restaurants: seeded, failed: 0, remaining: 2 },
+    })
+    const onChange = vi.fn()
+    render(<Harness onChange={onChange} />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Amorcer' }))
+
+    expect(seedNeighbourhoodAction).toHaveBeenCalledWith(OPERA)
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '2 restos sont entrés dans le carnet. Il te reste 2 amorçages aujourd’hui.'
+    )
+    // Le carnet s'est rempli ; la sélection, elle, reste un choix.
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.queryByRole('region', { name: 'Ta sélection' })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Le carnet' }))
+    const results = screen.getByRole('list', { name: 'Résultats' })
+    expect(within(results).getByRole('checkbox', { name: /ramen ichiban/i })).not.toBeChecked()
+    expect(within(results).getByRole('checkbox', { name: /sushi bar sakura/i })).toBeVisible()
+  })
+
+  it('should keep the places that went through when part of the batch failed', async () => {
+    grantPosition()
+    googleAnswers([SUSHI_PLACE])
+    seedNeighbourhoodAction.mockResolvedValue({
+      ok: true,
+      data: {
+        restaurants: [restaurant({ name: 'Sushi Bar Sakura', place_id: SUSHI_PLACE.placeId })],
+        failed: 2,
+        remaining: 0,
+      },
+    })
+    render(<Harness />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Amorcer' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '1 resto est entré dans le carnet, 2 n’ont pas pu être enregistrés. C’était ton dernier amorçage du jour.'
+    )
+    // Plus de créneau : le bouton reste là, éteint.
+    expect(screen.getByRole('button', { name: 'Amorcer' })).toBeDisabled()
+  })
+
+  it('should say when the quota refuses the batch, without touching the address book', async () => {
+    grantPosition()
+    googleAnswers([SUSHI_PLACE])
+    seedNeighbourhoodAction.mockResolvedValue({
+      ok: false,
+      error: 'Tu as épuisé tes amorçages de quartier pour aujourd’hui. Réessaie demain.',
+    })
+    render(<Harness />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Amorcer' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/épuisé tes amorçages/i)
+    expect(screen.getByRole('button', { name: 'Amorcer' })).toBeEnabled()
   })
 })

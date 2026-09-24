@@ -34,6 +34,7 @@ function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
     source: 'manual',
     price_level: null,
     place_id: null,
+    tags: [],
     ...overrides,
   }
 }
@@ -73,6 +74,7 @@ describe('AddRestaurantForm', () => {
     await userEvent.type(screen.getByLabelText(/cuisine/i), 'Libanais')
     await userEvent.type(screen.getByLabelText(/adresse/i), '3 rue du Four')
     await userEvent.click(screen.getByRole('radio', { name: '€€' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Halal' }))
     await userEvent.click(screen.getByRole('button', { name: /ajouter ce resto/i }))
 
     await waitFor(() => expect(onAdded).toHaveBeenCalledWith(created))
@@ -81,6 +83,7 @@ describe('AddRestaurantForm', () => {
       cuisineType: 'Libanais',
       address: '3 rue du Four',
       priceLevel: 2,
+      tags: ['halal'],
     })
   })
 

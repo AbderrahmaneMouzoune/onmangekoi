@@ -5,7 +5,7 @@ import { CreateGroupSchema, RenameGroupSchema } from './group'
 import { CreateListSchema } from './list'
 import { ImportPlaceSchema, SearchPlacesSchema } from './place'
 import { PseudoSchema, SetupProfileSchema } from './profile'
-import { CreateRestaurantSchema, PriceLevelSchema } from './restaurant'
+import { CreateRestaurantSchema, PriceLevelSchema, RestaurantTagsSchema } from './restaurant'
 import { CreateSessionSchema, JoinSessionSchema } from './session'
 import { SubmitVoteSchema } from './vote'
 
@@ -101,6 +101,32 @@ describe('CreateSessionSchema', () => {
     expect(CreateSessionSchema.safeParse({ ...base, closesAt: 'demain midi' }).success).toBe(false)
   })
 
+  it('should read the vote rules from the form', () => {
+    const base = { name: 'Lunch', restaurantIds: [UUID] }
+    const parsed = CreateSessionSchema.safeParse({
+      ...base,
+      superlikes: '2',
+      vetos: '0',
+      closeAtRatio: '0.8',
+    })
+    expect(parsed.data?.superlikes).toBe(2)
+    expect(parsed.data?.vetos).toBe(0)
+    expect(parsed.data?.closeAtRatio).toBe(0.8)
+
+    const absent = CreateSessionSchema.safeParse({ ...base, superlikes: null, closeAtRatio: '' })
+    expect(absent.data?.superlikes).toBeUndefined()
+    expect(absent.data?.closeAtRatio).toBeUndefined()
+  })
+
+  it('should bound the rules like the database does', () => {
+    const base = { name: 'Lunch', restaurantIds: [UUID] }
+    expect(CreateSessionSchema.safeParse({ ...base, vetos: 6 }).success).toBe(false)
+    expect(CreateSessionSchema.safeParse({ ...base, vetos: -1 }).success).toBe(false)
+    expect(CreateSessionSchema.safeParse({ ...base, superlikes: 1.5 }).success).toBe(false)
+    expect(CreateSessionSchema.safeParse({ ...base, closeAtRatio: 0.3 }).success).toBe(false)
+    expect(CreateSessionSchema.safeParse({ ...base, closeAtRatio: 1.2 }).success).toBe(false)
+  })
+
   it('should read the anti-fatigue box, checked as unchecked', () => {
     const base = { name: 'Lunch', restaurantIds: [UUID] }
     // Cochée, le navigateur envoie « on » ; décochée, il n'envoie rien.
@@ -181,6 +207,7 @@ describe('CreateRestaurantSchema', () => {
       address: null,
       city: null,
       priceLevel: null,
+      tags: [],
     })
   })
 
@@ -191,6 +218,24 @@ describe('CreateRestaurantSchema', () => {
     expect(
       CreateRestaurantSchema.safeParse({ name: 'Wok Garden', address: 'a'.repeat(201) }).success
     ).toBe(false)
+  })
+})
+
+describe('RestaurantTagsSchema', () => {
+  it('should keep the known diets, once each', () => {
+    expect(RestaurantTagsSchema.safeParse(['vegan', 'vegan', 'halal']).data).toEqual([
+      'vegan',
+      'halal',
+    ])
+  })
+
+  it('should treat a missing choice as « aucun régime »', () => {
+    expect(RestaurantTagsSchema.safeParse(null).data).toEqual([])
+    expect(RestaurantTagsSchema.safeParse(undefined).data).toEqual([])
+  })
+
+  it('should reject a diet the base would refuse anyway', () => {
+    expect(RestaurantTagsSchema.safeParse(['pizza']).success).toBe(false)
   })
 })
 

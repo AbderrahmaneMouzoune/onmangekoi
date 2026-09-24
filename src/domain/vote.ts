@@ -14,7 +14,7 @@ export interface VoteAction {
   label: string
   /** Libellé court pour les boutons compacts */
   short: string
-  /** Consomme un joker (1 par session) */
+  /** Consomme un joker, en quota réglable par session (`sessions.rules`) */
   joker: boolean
   hint: string
   /**
@@ -32,7 +32,7 @@ export const VOTE_ACTIONS: readonly VoteAction[] = [
     label: 'Veto',
     short: 'Veto',
     joker: true,
-    hint: 'Jamais. Compte −2, une seule fois par session.',
+    hint: 'Jamais. Compte −2, en quota limité.',
     shortcuts: ['1'],
   },
   {
@@ -59,7 +59,7 @@ export const VOTE_ACTIONS: readonly VoteAction[] = [
     label: 'Coup de cœur',
     short: 'Cœur',
     joker: true,
-    hint: 'Vraiment envie. Compte +2, une seule fois par session.',
+    hint: 'Vraiment envie. Compte +2, en quota limité.',
     shortcuts: ['4'],
   },
 ] as const

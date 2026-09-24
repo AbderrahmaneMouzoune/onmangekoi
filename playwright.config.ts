@@ -7,6 +7,11 @@ const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH
  * Tests de bout en bout : nécessitent une stack Supabase locale démarrée
  * (`supabase start`) et les variables NEXT_PUBLIC_* correspondantes.
  * `E2E=1` active les specs ; sans ce flag elles sont ignorées.
+ *
+ * Le captcha de l'onboarding reste désactivé ici : il ne s'allume qu'avec
+ * `NEXT_PUBLIC_TURNSTILE_SITE_KEY` **et** `TURNSTILE_SECRET_KEY`, qu'on ne
+ * définit pas pour les tests — sinon aucun scénario ne passerait l'écran du
+ * pseudo sans résoudre un défi Cloudflare.
  */
 export default defineConfig({
   testDir: './e2e',

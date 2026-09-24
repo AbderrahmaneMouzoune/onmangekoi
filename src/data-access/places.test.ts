@@ -28,6 +28,7 @@ const GOOGLE_PLACE = {
 /** Les champs enrichis n'existent que sur le détail d'un lieu. */
 const GOOGLE_DETAILS = {
   ...GOOGLE_PLACE,
+  servesVegetarianFood: true,
   editorialSummary: { text: 'Sushis préparés à la commande.' },
   websiteUri: 'https://sakura.example',
   photos: [{ name: 'places/ChIJsushi/photos/AbC' }],
@@ -46,6 +47,7 @@ const SUSHI_BAR = {
   location: { lat: 45.76, lng: 4.83 },
   rating: 4.5,
   ratingCount: 320,
+  tags: [],
   description: null,
   website: null,
   openingHours: { periods: [{ day: 1, open: '11:30', close: '14:00' }] },
@@ -55,6 +57,9 @@ const SUSHI_BAR = {
 
 const SUSHI_BAR_DETAILS = {
   ...SUSHI_BAR,
+  // `servesVegetarianFood` n'est demandé que sur le détail : une recherche
+  // ramène toujours un lieu sans régime.
+  tags: ['vegetarian'],
   description: 'Sushis préparés à la commande.',
   website: 'https://sakura.example',
   photoName: 'places/ChIJsushi/photos/AbC',

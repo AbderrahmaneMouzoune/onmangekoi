@@ -19,6 +19,8 @@ export type JoinMethod = 'code' | 'link' | 'scan'
 /** Qui a mis fin à la session : le host, le vote complet, ou l'échéance. */
 export type CloseReason = SessionCloseReason
 
+/** Comment le host a tranché une égalité parfaite. */
+export type TiebreakChoice = 'runoff' | 'draw'
 /** Portée d'un lien de classement partagé. */
 export type ResultsScope = 'public' | 'participants'
 
@@ -28,11 +30,26 @@ export type ResultsScope = 'public' | 'participants'
  * inadvertance.
  */
 export interface AnalyticsEventMap {
+  /**
+   * Amorçage du quartier : les restos proches entrés en base d'un coup. Le
+   * premier geste d'un groupe qui arrive devant un carnet vide — donc la
+   * marche à surveiller.
+   */
+  neighbourhood_seeded: {
+    /** Nombre de restaurants entrés en base */
+    restaurant_count: number
+    /** Lieux rendus par Google que la base a refusés */
+    failed_count: number
+  }
   session_created: {
     session_id: string
     restaurant_count: number
     /** Nombre de listes de favoris utilisées comme source */
     list_count: number
+    /** Règles choisies : quotas de jokers et seuil de clôture (issue #16) */
+    superlikes: number
+    vetos: number
+    close_at_ratio: number
   }
   invite_shared: {
     session_id: string
@@ -63,6 +80,12 @@ export interface AnalyticsEventMap {
     reason: CloseReason
     participant_count: number
     restaurant_count: number
+  }
+  session_tiebreak: {
+    session_id: string
+    method: TiebreakChoice
+    /** Nombre de restaurants à égalité en tête */
+    tied_count: number
   }
   list_shared: {
     method: ShareMethod
