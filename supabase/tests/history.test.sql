@@ -345,6 +345,45 @@ end;
 $$;
 
 reset role;
+
+-- ─── ÉGALITÉ TRANCHÉE AU SORT ────────────────────────────────
+-- Trois restaurants à zéro, aucun coup de cœur : sans départage, le premier
+-- présenté gagnerait. Un tirage (#10) a désigné le dernier : c'est lui que
+-- l'historique doit afficher, comme le classement.
+with created as (
+  insert into public.sessions (name, host_id, status, launched_at, closed_at)
+  values ('Vendredi au sort', :'alice'::uuid, 'closed', now(), now())
+  returning id
+)
+insert into t_session (label, id) select 'vendredi', id from created;
+
+insert into public.session_restaurants (session_id, restaurant_id, position)
+select s.id, r.id, r.position from t_session s, t_resto r where s.label = 'vendredi';
+
+insert into public.session_participants (session_id, profile_id, has_finished_voting)
+select id, :'alice'::uuid, true from t_session where label = 'vendredi';
+
+update public.sessions s
+  set tiebreak_method = 'draw',
+      tiebreak_winner_id = (
+        select sr.id
+        from public.session_restaurants sr
+        where sr.session_id = s.id
+        order by sr.position desc
+        limit 1
+      )
+  where s.id = (select id from t_session where label = 'vendredi');
+
+select pg_temp.act_as(:'alice');
+
+select pg_temp.assert(
+  (select m.winner_name = r.name
+   from public.my_sessions(50) m, public.restaurants r
+   where m.name = 'Vendredi au sort'
+     and r.id = (select id from t_resto order by position desc limit 1)),
+  'après un tirage au sort, le gagnant affiché est le désigné, pas le premier présenté'
+);
+
 select set_config('request.jwt.claims', '', true);
 
 rollback;

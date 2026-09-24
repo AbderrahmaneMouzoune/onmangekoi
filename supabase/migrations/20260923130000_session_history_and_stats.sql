@@ -35,18 +35,21 @@ create or replace function public.session_winner(p_session_id uuid)
   security definer
   set search_path = ''
 as $$
+  -- Même ordre que `session_results` : score, coups de cœur, puis le
+  -- restaurant désigné par un tirage au sort (`tiebreak_winner_id`, voir
+  -- `20260923120000_tiebreak_runoff_and_draw.sql`), puis l'ordre de
+  -- présentation.
   select r.id, r.name, coalesce(sum(v.value), 0)::int
-  from public.session_restaurants sr
+  from public.sessions s
+  join public.session_restaurants sr on sr.session_id = s.id
   join public.restaurants r on r.id = sr.restaurant_id
   left join public.votes v on v.session_restaurant_id = sr.id
-  where sr.session_id = p_session_id
-    and exists (
-      select 1 from public.sessions s
-      where s.id = p_session_id and s.status = 'closed'
-    )
-  group by r.id, r.name, sr.position
+  where s.id = p_session_id
+    and s.status = 'closed'
+  group by r.id, r.name, sr.id, sr.position, s.tiebreak_winner_id
   order by coalesce(sum(v.value), 0) desc,
            count(*) filter (where v.value = 2) desc,
+           (sr.id is distinct from s.tiebreak_winner_id),
            sr.position
   limit 1;
 $$;
