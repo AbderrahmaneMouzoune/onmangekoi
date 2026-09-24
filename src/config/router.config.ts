@@ -41,6 +41,7 @@ export const ROUTE_PATTERNS = {
   list: '/lists/[code]',
   session: '/sessions/[code]',
   sharedList: '/l/[code]',
+  sessionResults: '/sessions/[code]/results',
 } as const
 
 /** Une session, ou le segment d'URL déjà reçu. */
@@ -82,6 +83,9 @@ export const router = {
   /** Invitation : `/join/7K3M9P` (code court, ou ancien token long). */
   joinInvite: (target: SessionTarget) => `/join/${encodeURIComponent(sessionSegment(target))}`,
 
+  /** Historique : `/sessions`, page suivante par curseur (`?cursor=…`). */
+  sessions: (params?: { cursor?: string | null }) =>
+    params?.cursor ? `/sessions?cursor=${encodeURIComponent(params.cursor)}` : '/sessions',
   sessionNew: () => '/sessions/new',
   /** Salle de session : `/sessions/7K3M9P`. */
   session: (target: SessionTarget) => `/sessions/${sessionSegment(target)}`,

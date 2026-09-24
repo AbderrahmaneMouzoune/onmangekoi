@@ -1,11 +1,17 @@
 import { cache } from 'react'
 
 import { omkError } from '@/domain/errors'
+import {
+  encodeSessionCursor,
+  parseSessionCursor,
+  SESSION_HISTORY_PAGE_SIZE,
+} from '@/domain/history'
 import { parseSessionParam } from '@/domain/share'
 
 import type {
   ParticipantWithProfile,
   Session,
+  SessionHistoryEntry,
   SessionPreview,
   SessionRestaurant,
   SessionRestaurantWithRestaurant,
@@ -13,20 +19,27 @@ import type {
   SessionSummary,
 } from './models'
 import type { Database } from './models/database'
+import type { SessionRules } from '@/domain/session-rules'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ─── Écritures (RPC transactionnelles, règles vérifiées en base) ───
 
 export async function createSession(
   supabase: SupabaseClient<Database>,
-  input: { name: string; restaurantIds: string[]; closesAt?: string | null }
+  input: {
+    name: string
+    restaurantIds: string[]
+    closesAt?: string | null
+    rules?: SessionRules | null
+  }
 ): Promise<Session> {
   const { data, error } = await supabase.rpc('create_session', {
     p_name: input.name,
     p_restaurant_ids: input.restaurantIds,
-    // Sans échéance, on n'envoie rien : la valeur par défaut de la RPC parle
-    // pour nous et l'appel reste celui d'avant.
+    // Sans échéance ni règles particulières, on n'envoie rien : les valeurs
+    // par défaut de la RPC parlent pour nous et l'appel reste celui d'avant.
     ...(input.closesAt ? { p_closes_at: input.closesAt } : {}),
+    ...(input.rules ? { p_rules: input.rules } : {}),
   })
   if (error) throw error
   return data
@@ -76,6 +89,28 @@ export async function extendSession(
     p_session_id: sessionId,
     p_minutes: minutes,
   })
+  if (error) throw error
+  return data
+}
+
+/** Second tour entre les ex æquo : nouvelle session, mêmes participants. */
+export async function createRunoffSession(
+  supabase: SupabaseClient<Database>,
+  sessionId: string
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('create_runoff_session', {
+    p_session_id: sessionId,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Tirage au sort entre les ex æquo, fait et conservé en base. */
+export async function drawTiebreakWinner(
+  supabase: SupabaseClient<Database>,
+  sessionId: string
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('draw_winner', { p_session_id: sessionId })
   if (error) throw error
   return data
 }
@@ -200,6 +235,23 @@ export const getSessionByParam = cache(
   }
 )
 
+/**
+ * Le second tour d'une session, s'il existe. Aucune RPC : les participants du
+ * premier tour le sont aussi du second, la RLS suffit à le laisser lire.
+ */
+export async function getRunoffSession(
+  supabase: SupabaseClient<Database>,
+  parentSessionId: string
+): Promise<Session | null> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select()
+    .eq('parent_session_id', parentSessionId)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
 export async function getSessionParticipants(
   supabase: SupabaseClient<Database>,
   sessionId: string
@@ -258,6 +310,42 @@ export async function getMySessions(
   }))
 }
 
+/** Une page d'historique et le curseur qui ouvre la suivante (`null` = fin). */
+export interface SessionHistoryPage {
+  entries: SessionHistoryEntry[]
+  nextCursor: string | null
+}
+
+/**
+ * Historique paginé : mes sessions, hébergées ou rejointes, de la plus
+ * récente à la plus ancienne. On demande une ligne de plus que la page pour
+ * savoir s'il en reste — sans elle, un « plus anciennes » s'afficherait au
+ * bas de la dernière page pour ne rien montrer.
+ */
+export async function getMySessionHistory(
+  supabase: SupabaseClient<Database>,
+  options: { limit?: number; cursor?: string | null } = {}
+): Promise<SessionHistoryPage> {
+  const limit = options.limit ?? SESSION_HISTORY_PAGE_SIZE
+  const cursor = parseSessionCursor(options.cursor)
+
+  const { data, error } = await supabase.rpc('my_sessions', {
+    p_limit: limit + 1,
+    // Omettre la clé plutôt que passer `null` : le paramètre est `default null`
+    // en base, et le type généré ne l'accepte que comme optionnel.
+    p_cursor_created_at: cursor?.createdAt,
+    p_cursor_id: cursor?.id,
+  })
+  if (error) throw error
+
+  const entries = data.slice(0, limit)
+  const last = entries[entries.length - 1]
+  return {
+    entries,
+    nextCursor: data.length > limit && last ? encodeSessionCursor(last) : null,
+  }
+}
+
 /** Aperçu par token ou code — mémoïsé par requête (page, métadonnées, image OG). */
 export const getSessionPreview = cache(
   async (
@@ -276,5 +364,7 @@ export async function getSessionResults(
 ): Promise<SessionResultRow[]> {
   const { data, error } = await supabase.rpc('session_results', { p_session_id: sessionId })
   if (error) throw error
-  return data
+  // `tiebreak` est un ensemble fermé de valeurs, écrit par la base seule ; le
+  // générateur, lui, ne voit qu'un texte. Voir `SessionResultRow`.
+  return data as SessionResultRow[]
 }

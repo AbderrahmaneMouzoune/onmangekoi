@@ -92,6 +92,7 @@ test.describe('Session de vote complète', () => {
     await expect(host.getByText(/on mange chez/i)).toBeVisible()
     await expect(host.getByText('+3')).toBeVisible()
     await expect(guest.getByText('−2')).toBeVisible()
+    const resultsUrl = host.url()
 
     // 6. Partage public : opt-in du host, puis lecture par un inconnu
     const share = host.getByRole('switch', { name: /rendre le classement public/i })
@@ -126,6 +127,18 @@ test.describe('Session de vote complète', () => {
     await expect(stranger.getByText('Sam')).toHaveCount(0)
     // Et rien n'y donne accès à la salle de vote.
     await expect(stranger).toHaveURL(publicUrl as string)
+
+    // 7. La session close reste consultable depuis l'historique et le compte
+    await host.goto('/sessions')
+    const historyRow = host.getByRole('link', { name: /E2E lunch/ })
+    await expect(historyRow).toBeVisible()
+    await expect(host.getByText('+3')).toBeVisible()
+    await historyRow.click()
+    await expect(host).toHaveURL(resultsUrl)
+
+    await host.goto('/account')
+    await expect(host.getByRole('heading', { name: 'Mes statistiques' })).toBeVisible()
+    await expect(host.getByText('1 victoire')).toBeVisible()
   })
 })
 

@@ -9,6 +9,7 @@ import {
   withoutRecentWinners,
 } from '@/domain/recent-winners'
 import { resolveClosesAt } from '@/domain/session-deadline'
+import { resolveRules } from '@/domain/session-rules'
 
 import type { Session } from '@/data-access/models'
 import type { Database } from '@/data-access/models/database'
@@ -18,8 +19,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 /**
  * Résout les restaurants depuis les listes choisies + la sélection directe,
  * dédoublonne en conservant l'ordre, écarte les gagnants récents si on l'a
- * demandé, résout l'échéance de clôture, puis délègue à la RPC
- * transactionnelle.
+ * demandé, résout l'échéance de clôture et les règles du vote, puis délègue à
+ * la RPC transactionnelle.
  *
  * L'anti-fatigue est appliqué ici et pas dans le navigateur : une liste
  * apporte ses restaurants sans les montrer un par un, et c'est le serveur qui
@@ -55,6 +56,7 @@ export async function createSessionUseCase(
     name: input.name,
     restaurantIds,
     closesAt: resolveClosesAt(input, now),
+    rules: resolveRules(input),
   })
 
   // Les invitations viennent après coup : la session existe déjà, on ne la

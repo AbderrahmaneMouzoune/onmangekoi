@@ -22,6 +22,8 @@ export type GroupMember = Tables['group_members']['Row']
 export type SessionInvitation = Tables['session_invitations']['Row']
 
 export type SessionStatus = Database['public']['Enums']['session_status']
+/** Comment une égalité de tête a été tranchée : second tour ou tirage au sort. */
+export type TiebreakMethod = Database['public']['Enums']['tiebreak_method']
 
 // Les types suivants réparent ce que le générateur ne peut pas déduire :
 // une colonne de `returns table (...)` ne porte aucune information `NOT NULL`,
@@ -86,11 +88,20 @@ type ResultRestaurantColumns =
   | 'photo_url'
   | 'website'
 
+/**
+ * Place d'une ligne dans le départage de l'égalité de tête :
+ *  - `tied` : ex æquo, rien n'est encore tranché ;
+ *  - `runoff` : un second tour est en cours entre les ex æquo ;
+ *  - `winner` / `loser` : le tirage au sort a désigné, ou écarté, cette ligne.
+ * `null` sur tout ce qui n'est pas concerné — l'immense majorité des cas.
+ */
+export type TiebreakState = 'tied' | 'runoff' | 'winner' | 'loser'
+
 export type SessionResultRow = Omit<
   Functions['session_results']['Returns'][number],
-  ResultRestaurantColumns
+  ResultRestaurantColumns | 'tiebreak'
 > &
-  Pick<Restaurant, ResultRestaurantColumns>
+  Pick<Restaurant, ResultRestaurantColumns> & { tiebreak: TiebreakState | null }
 
 /**
  * Une ligne du podium public. Comme `session_results`, la RPC recopie des
@@ -137,6 +148,35 @@ export type ListWithRestaurants = List & {
 
 /** Session avec le nombre de participants (page d'accueil) */
 export type SessionSummary = Session & { participant_count: number }
+
+/**
+ * Ligne d'historique (`my_sessions`). Trois colonnes n'existent qu'une fois la
+ * session close : sa date de clôture et le gagnant que le classement a
+ * désigné. Comme pour `session_results`, le générateur ne peut pas le déduire
+ * d'un `returns table (...)`.
+ */
+type NullableHistoryColumns = 'closed_at' | 'winner_name' | 'winner_score'
+
+export type SessionHistoryEntry = Omit<
+  Functions['my_sessions']['Returns'][number],
+  NullableHistoryColumns
+> & {
+  closed_at: string | null
+  winner_name: string | null
+  winner_score: number | null
+}
+
+/**
+ * Statistiques personnelles (`my_stats`). Les deux libellés sont nuls tant
+ * qu'aucun vote ni aucune session close ne permet de les désigner.
+ */
+export type MyStats = Omit<
+  Functions['my_stats']['Returns'][number],
+  'favorite_cuisine' | 'top_restaurant_name'
+> & {
+  favorite_cuisine: string | null
+  top_restaurant_name: string | null
+}
 
 /** Membre d'un groupe avec le profil joint (pseudo) */
 export type GroupMemberWithProfile = GroupMember & {

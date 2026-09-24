@@ -17,8 +17,11 @@ export type SubmitVoteOutcome = {
 
 /**
  * Enregistre un vote et renvoie ce que le deck doit faire ensuite.
- * Deux refus de la base ne sont pas des erreurs côté produit : une carte déjà
- * votée (retour arrière, resync Realtime) et un participant déjà arrivé au bout.
+ * Trois refus de la base ne sont pas des erreurs côté produit : une carte déjà
+ * votée (retour arrière, resync Realtime), un participant déjà arrivé au bout,
+ * et une session qui vient de se clôturer sous ses doigts — ce que le seuil de
+ * clôture rend courant dès qu'il descend sous 100 %. Dans les deux derniers
+ * cas, le deck s'arrête et l'écran suivant prend le relais.
  */
 export async function submitVoteUseCase(
   supabase: SupabaseClient<Database>,
@@ -30,7 +33,9 @@ export async function submitVoteUseCase(
   } catch (error) {
     const code = omkCode(error)
     if (code === 'already_voted') return { recorded: false, finished: false, skipped: true }
-    if (code === 'already_finished') return { recorded: false, finished: true, skipped: false }
+    if (code === 'already_finished' || code === 'session_not_voting') {
+      return { recorded: false, finished: true, skipped: false }
+    }
     throw error
   }
 

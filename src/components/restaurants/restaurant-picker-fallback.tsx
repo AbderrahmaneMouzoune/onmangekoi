@@ -2,9 +2,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 /**
  * Silhouette du sélecteur de restaurants : le rail des sources, le champ de
- * recherche et la liste de résultats, aux dimensions exactes du vrai
- * sélecteur. Rendue sur le serveur, elle n'ajoute rien au bundle envoyé au
- * navigateur.
+ * recherche, les chips de filtre et la liste de résultats, aux dimensions
+ * exactes du vrai sélecteur. Rendue sur le serveur, elle n'ajoute rien au
+ * bundle envoyé au navigateur.
  */
 export function RestaurantPickerFallback() {
   return (
@@ -14,6 +14,12 @@ export function RestaurantPickerFallback() {
         <Skeleton className="h-9 rounded-md bg-line" />
       </div>
       <Skeleton className="h-11 w-full rounded-md" />
+      {/* Budget et régime : la rangée « distance » n'apparaît qu'une fois la
+          position donnée, la silhouette ne la promet donc pas. */}
+      <div className="flex flex-col gap-3 rounded-lg bg-surface p-3 ring-1 ring-line">
+        <SkeletonChips widths={['w-10', 'w-12', 'w-14', 'w-16']} />
+        <SkeletonChips widths={['w-24', 'w-16', 'w-16', 'w-20']} />
+      </div>
       <div className="flex items-center justify-between">
         <Skeleton className="h-3.5 w-20" />
         <Skeleton className="h-9 w-32 rounded-md" />
@@ -27,6 +33,20 @@ export function RestaurantPickerFallback() {
       <div className="flex items-center justify-between gap-3">
         <Skeleton className="h-3.5 w-28" />
         <Skeleton className="h-9 w-48 rounded-md" />
+      </div>
+    </div>
+  )
+}
+
+/** Rangée de chips : l'intitulé du filtre, puis ses choix. */
+function SkeletonChips({ widths }: { widths: string[] }) {
+  return (
+    <div className="flex items-center gap-3">
+      <Skeleton className="h-3 w-16 shrink-0" />
+      <div className="flex flex-wrap gap-1.5">
+        {widths.map((width) => (
+          <Skeleton key={width} className={`h-8 rounded-full ${width}`} />
+        ))}
       </div>
     </div>
   )

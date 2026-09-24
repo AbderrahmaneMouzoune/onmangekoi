@@ -29,6 +29,8 @@ interface CatalogResultsProps {
   emptyLabel: string
   /** Ouvre l'ajout manuel, prérempli avec la recherche en cours. */
   onAddManually: () => void
+  /** Lève les filtres du carnet. Absent quand il n'y en a aucun de posé. */
+  onClearFilters?: () => void
   /** Anti-fatigue : date du dernier sacre, par restaurant */
   recentWinners?: RecentWinnerDates
   /** Anti-fatigue actif : un gagnant récent est écarté, donc ni coché ni cochable */
@@ -58,6 +60,7 @@ export function CatalogResults({
   onToggle,
   emptyLabel,
   onAddManually,
+  onClearFilters,
   recentWinners = NO_RECENT_WINNERS,
   excludeRecent = false,
 }: CatalogResultsProps) {
@@ -103,13 +106,16 @@ export function CatalogResults({
       >
         {page.items.length === 0 && !isSearching && (
           <li className="px-3 py-6 text-center text-sm text-muted-foreground">
-            {emptyLabel}{' '}
+            {/* Des filtres sont posés : le carnet n'est pas vide, il est
+                restreint. On propose de les lever plutôt que d'ajouter un
+                resto qui s'y trouve peut-être déjà. */}
+            {onClearFilters ? 'Aucun resto du carnet ne passe les filtres.' : emptyLabel}{' '}
             <button
               type="button"
-              onClick={onAddManually}
+              onClick={onClearFilters ?? onAddManually}
               className="font-semibold text-brand underline-offset-4 hover:underline"
             >
-              Ajoute-le
+              {onClearFilters ? 'Efface les filtres' : 'Ajoute-le'}
             </button>
             .
           </li>

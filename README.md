@@ -14,31 +14,32 @@
 
 ## Système de vote
 
-| Action       | Valeur | Contrainte              |
-| ------------ | ------ | ----------------------- |
-| Bof          | 0      | Illimité                |
-| Ça me va     | +1     | Illimité                |
-| Coup de cœur | +2     | **1 joker par session** |
-| Veto         | −2     | **1 joker par session** |
+| Action       | Valeur | Contrainte                           |
+| ------------ | ------ | ------------------------------------ |
+| Bof          | 0      | Illimité                             |
+| Ça me va     | +1     | Illimité                             |
+| Coup de cœur | +2     | **Quota par session** — 1 par défaut |
+| Veto         | −2     | **Quota par session** — 1 par défaut |
 
-`Score(restaurant) = Σ des votes`. Les votes manquants comptent 0. En cas d'égalité, le nombre de coups de cœur départage ; à égalité parfaite, le classement l'annonce.
+`Score(restaurant) = Σ des votes`. Les votes manquants comptent 0. En cas d'égalité, le nombre de coups de cœur départage ; à égalité parfaite, le host tranche (voir [Départager une égalité](#départager-une-égalité)).
 
-Les règles (jokers, session en cours, participant, restaurant valide) sont vérifiées **en base** par la fonction `submit_vote`, pas seulement dans l'interface.
+Les quotas de jokers et le seuil de clôture se règlent **à la création** — voir « Règles personnalisables » plus bas. Les règles (jokers restants, session en cours, participant, restaurant valide) sont vérifiées **en base** par la fonction `submit_vote`, pas seulement dans l'interface.
 
 ## Règles de session
 
-| Règle               | Comportement                                                                    |
-| ------------------- | ------------------------------------------------------------------------------- |
-| Lancement           | Réservé au host, à partir de 2 participants et 2 restaurants                    |
-| Composition         | En attente, **chaque participant** ajoute ses restos et invite qui il veut      |
-| Retrait             | Chacun retire ce qu'il a apporté ; le host arbitre ; le dernier resto reste     |
-| Snapshot            | Les restaurants sont figés au lancement, pas à la création                      |
-| Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                  |
-| Clôture automatique | Déclenchée en base dès que 100 % des participants ont terminé                   |
-| Clôture à l'heure   | Échéance optionnelle choisie à la création — le vote se ferme tout seul         |
-| Clôture forcée      | Le host peut clôturer à tout moment — les votes manquants comptent 0            |
-| Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)              |
-| Rejoindre           | Impossible une fois le vote lancé ; un participant existant retrouve sa session |
+| Règle               | Comportement                                                                           |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| Lancement           | Réservé au host, à partir de 2 participants et 2 restaurants                           |
+| Composition         | En attente, **chaque participant** ajoute ses restos et invite qui il veut             |
+| Retrait             | Chacun retire ce qu'il a apporté ; le host arbitre ; le dernier resto reste            |
+| Snapshot            | Les restaurants sont figés au lancement, pas à la création                             |
+| Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                         |
+| Clôture automatique | Déclenchée en base dès que le seuil de votants est atteint — 100 % par défaut          |
+| Clôture à l'heure   | Échéance optionnelle choisie à la création — le vote se ferme tout seul                |
+| Clôture forcée      | Le host peut clôturer à tout moment — les votes manquants comptent 0                   |
+| Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)                     |
+| Rejoindre           | Impossible une fois le vote lancé ; un participant existant retrouve sa session        |
+| Départage           | À égalité parfaite, le host choisit : second tour entre les ex æquo, ou tirage au sort |
 
 ## Groupes récurrents
 
@@ -74,6 +75,39 @@ Une durée (« dans 10 min ») est datée par l'horloge du serveur au moment de 
 
 Une session **en attente** dont l'échéance tombe n'est jamais clôturée : sans un seul vote, le classement n'aurait aucun sens. `launch_session` refuse de la lancer et invite le host à prolonger — c'est la seule impasse possible, et elle a sa sortie.
 
+## Départager une égalité
+
+Deux restaurants au même score **et** au même nombre de coups de cœur : le classement l'annonçait, et le groupe repartait en débat. Le host a maintenant deux sorties, depuis la page de classement.
+
+| Sortie             | Ce qui se passe                                                                                                                                             |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Second tour**    | Une session neuve avec les seuls ex æquo, les mêmes participants — personne n'a à rejoindre — et les jokers remis à zéro. Le vote est ouvert d'emblée.      |
+| **Tirage au sort** | Un tirage fait en base avec `gen_random_bytes`, écrit dans la session : tout le monde lit le même gagnant, y compris qui ouvre la page une heure plus tard. |
+
+Le sort n'est **jamais** tiré côté client : un `Math.random()` par navigateur donnerait un gagnant par personne. Comme pour les codes d'invitation, la queue de l'espace tiré qui ne se divise pas en parts égales est rejetée plutôt que repliée — un modulo direct favoriserait les premiers candidats.
+
+`session_results` porte l'état du départage dans une colonne `tiebreak` (`tied`, `runoff`, `winner`, `loser`) : l'interface n'a rien à recompter. Une fois le sort tombé, le désigné passe seul en tête et les ex æquo gardent leur score au rang suivant.
+
+Le second tour retient d'où il vient (`sessions.parent_session_id`) : sa salle renvoie au classement du premier tour, et s'il finit lui-même à égalité, il se départage de la même façon. Une session n'a qu'un second tour, garanti par un index unique et pas seulement par la RPC.
+
+Tant que l'égalité n'est pas tranchée, la page de classement suit la session en direct : le choix du host s'affiche chez les autres sans qu'ils rechargent.
+
+## Règles personnalisables
+
+Un coup de cœur, un veto, classement quand tout le monde a voté : ces règles conviennent à une tablée de quatre. À douze, il manque toujours quelqu'un, et un seul veto ne suffit plus à écarter ce qui ne passe pas. Le host règle donc les trois à la création, dans une section repliée — dépliée ou non, le résumé dit ce qu'on s'apprête à lancer.
+
+| Règle            | Valeurs                  | Par défaut |
+| ---------------- | ------------------------ | ---------- |
+| Coups de cœur    | 0 à 5 par personne       | 1          |
+| Vetos            | 0 à 5 par personne       | 1          |
+| Seuil de clôture | 50 % à 100 % des votants | 100 %      |
+
+Tout tient dans `sessions.rules`, un objet jsonb à trois clés dont le défaut reproduit exactement les règles d'avant : une session qui ne dit rien vit comme avant. Une contrainte `check` en borne les valeurs, et `create_session` complète les clés absentes — le formulaire n'envoie que ce qu'il change.
+
+La base reste seule juge : `submit_vote` compte les jokers déjà posés au lieu de lire un booléen, et le trigger de clôture compare le nombre de votants arrivés au bout à `ceil(participants × seuil)`, jamais moins d'un. Sous 100 %, le classement tombe avant que tout le monde ait voté — les bulletins manquants comptent 0, comme lors d'une clôture forcée — et le deck de celui qui votait encore s'arrête proprement sur le classement.
+
+Les règles sont **figées au lancement** : un trigger refuse toute écriture de `rules` sur une session qui n'est plus en attente, quel que soit le rôle. Changer les quotas alors que des vetos sont déjà posés invaliderait des bulletins après coup. `session_preview` les expose enfin à l'écran d'invitation : savoir qu'on n'aura pas de veto fait partie de ce à quoi on dit oui.
+
 ## Anti-fatigue
 
 Le même restaurant gagne trois vendredis de suite et le vote devient une formalité. L'app ne l'interdit pas — elle le **dit**, et propose de l'écarter d'un clic.
@@ -86,7 +120,7 @@ Le même restaurant gagne trois vendredis de suite et le vote devient une formal
 
 La source est la RPC `recent_winners()` : les restaurants sortis **premiers** des sessions closes auxquelles la personne a participé dans les 30 derniers jours, avec la date du dernier sacre. Elle ne prend pas d'identifiant — elle répond pour `auth.uid()`, jamais pour quelqu'un d'autre — et ne renvoie que le gagnant : ni score, ni classement complet, ni qui a voté quoi.
 
-Un classement où personne n'a dit oui (score nul ou négatif en tête) ne sacre personne : cette session-là n'a fatigué personne, et écarter toute la liste à la suivante n'aurait aucun sens. Deux restaurants à égalité parfaite en tête sont deux gagnants, comme à l'écran de classement.
+Un classement où personne n'a dit oui (score nul ou négatif en tête) ne sacre personne : cette session-là n'a fatigué personne, et écarter toute la liste à la suivante n'aurait aucun sens. Deux restaurants à égalité parfaite en tête sont deux gagnants, comme à l'écran de classement — sauf si le host a tiré au sort : seul le désigné compte alors.
 
 L'exclusion est appliquée **côté serveur**, dans le use-case de création : une liste apporte des restaurants que l'écran n'a jamais montrés un par un. Si elle ne laisse rien, la session n'est pas créée — le formulaire le dit plutôt que de partir avec zéro resto.
 
@@ -98,6 +132,7 @@ Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **s
 
 | Route                    | Exemple                    | Qui la voit                                                 |
 | ------------------------ | -------------------------- | ----------------------------------------------------------- |
+| Historique               | `/sessions`                | soi-même                                                    |
 | Salle de session         | `/sessions/7K3M9P`         | participants                                                |
 | Classement               | `/sessions/7K3M9P/results` | participants                                                |
 | Invitation (lien + QR)   | `/join/7K3M9P`             | qui reçoit le lien ou le code                               |
@@ -135,6 +170,21 @@ Qui reçoit le lien peut en **lancer une session d'un clic**. Sans pseudo, le bo
 
 Le pseudo du propriétaire n'apparaît nulle part sur cette page : la RPC `public_list` ne le rend pas, il n'y a rien à masquer côté application. Les listes restées privées, elles, ne sortent pas de l'index — `noindex` sur la page, `Disallow: /lists/` pour la vue propriétaire — et renvoient à l'onboarding qui n'a pas de pseudo.
 
+## Historique et statistiques
+
+Une session clôturée ne sort plus de la navigation : `/sessions` la garde, hébergée ou rejointe, de la plus récente à la plus ancienne, et son classement s'ouvre en un clic. « Mon compte » y ajoute le résumé de ce que ces sessions racontent.
+
+| Lecture           | RPC                                                | Ce qu'elle rend                                                                         |
+| ----------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Historique paginé | `my_sessions(limit, cursor_created_at, cursor_id)` | statut, date, compteurs, hôte ou non, et le gagnant d'une session close                 |
+| Statistiques      | `my_stats()`                                       | sessions, votes, taux de coups de cœur, cuisine préférée, resto le plus souvent gagnant |
+
+La pagination se fait **par curseur, jamais par offset** : le curseur désigne la dernière ligne rendue — sa date et son id, encodés en base64url dans `?cursor=` —, et la page suivante reprend strictement en dessous. Une session créée entre deux pages n'en décale donc aucune, ne fait sauter aucune ligne et n'en sert jamais deux fois la même. Un curseur illisible retombe sur la première page au lieu de lever.
+
+Les statistiques ne comptent **que mes votes** : `my_stats` n'agrège que les lignes attachées à mes participations. Le seul chiffre issu du groupe est le gagnant d'une session close, qui est déjà l'agrégat que ses participants lisent dans le classement. La règle de départage est partagée avec `session_results` (score, puis coups de cœur, puis le restaurant tiré au sort s'il y a eu tirage, puis ordre de présentation) via un helper `session_winner` qu'aucun rôle ne peut appeler : seules les deux RPC y accèdent, après avoir vérifié la participation.
+
+Le scénario est rejouable avec `bun run db:test` (`supabase/tests/history.test.sql`).
+
 ## Fiche restaurant
 
 Chaque restaurant peut porter une photo, une adresse, un site, des coordonnées et des horaires. Tout est optionnel : sans la donnée, le bloc concerné disparaît au lieu de s'afficher vide.
@@ -146,6 +196,7 @@ Chaque restaurant peut porter une photo, une adresse, un site, des coordonnées 
 | `website`        | HTTP(S)                                                                               | bouton « Le site » sur le gagnant                |
 | `location`       | `{"lat": number, "lng": number}`                                                      | lien d'itinéraire et mini-carte du gagnant       |
 | `opening_hours`  | `{"timezone"?: string, "periods": [{"day": 0-6, "open": "HH:MM", "close": "HH:MM"}]}` | badge « ouvert / fermé » sur la carte de vote    |
+| `tags`           | `text[]` parmi `vegetarian`, `vegan`, `halal`, `kosher`, `gluten_free`                | filtre « régime », chips sur la carte de vote    |
 
 `day` suit `Date#getDay` (0 = dimanche) ; une période dont la fermeture précède l'ouverture passe minuit (`22:00 → 02:00`), y compris par-dessus la fin de semaine. Le fuseau est celui du restaurant quand il est connu, celui du visiteur sinon. Les formes `jsonb` sont validées en base (`is_geo_point`, `is_opening_hours`) **et** à la lecture : une donnée importée reste une donnée externe.
 
@@ -155,11 +206,11 @@ La mini-carte du gagnant est un bloc de 2×2 tuiles [OpenStreetMap](https://www.
 
 ## Base de restaurants
 
-| Source   | Origine                                              | Qui peut modifier |
-| -------- | ---------------------------------------------------- | ----------------- |
-| `seed`   | livrée avec le schéma                                | personne          |
-| `manual` | ajoutée depuis l'app (nom, cuisine, adresse, budget) | son créateur      |
-| `google` | importée depuis Google Places                        | son importateur   |
+| Source   | Origine                                                       | Qui peut modifier |
+| -------- | ------------------------------------------------------------- | ----------------- |
+| `seed`   | livrée avec le schéma                                         | personne          |
+| `manual` | ajoutée depuis l'app (nom, cuisine, adresse, budget, régimes) | son créateur      |
+| `google` | importée depuis Google Places                                 | son importateur   |
 
 Le formulaire « Ajouter un resto à la main » est disponible partout où l'on choisit des restaurants — création de session, salle d'attente, liste, liste partagée — et le resto créé est sélectionné aussitôt, sans rechargement.
 
@@ -180,6 +231,24 @@ Le panier reste visible au-dessus des onglets, quel que soit celui qui est ouver
 Chaque résultat, du carnet comme de Google, est une **carte** (`components/restaurants/result-row.tsx`) : une vignette — la photo importée, sinon une tuile colorée aux initiales du resto —, le nom, un badge « ouvert / fermé » quand les horaires sont connus, une ligne de faits (cuisine · budget · note Google) et l'adresse. Le carnet a son propre bouton « **Autour de moi** » : la position est la même que celle de l'onglet Google, et chaque resto géolocalisé affiche alors sa distance à vol d'oiseau (`distanceLabel`, `src/lib/maps.ts`) ; un second clic l'oublie. Sans coordonnées, la carte s'affiche simplement sans distance, et la position ne quitte jamais le navigateur autrement que pour biaiser la recherche Google.
 
 Deux écrans se ressemblaient trop : **créer une liste** et **créer une session** choisissent tous deux des restos. Ils ont désormais chacun leur signature. La session avance en **trois étapes numérotées en rouge** (nom, restos, clôture) et se termine par « Créer la session » ; la liste s'ouvre sur une **carte dorée au signet** qui dit ce qu'elle est — une réserve à ressortir, pas un vote — et se termine par « Enregistrer la liste ».
+
+### Filtres du carnet
+
+Trois filtres au-dessus des résultats du **carnet** — budget, régime, distance. Ils ne concernent que lui : Google a sa propre recherche, et une liste de favoris se prend entière. Ils se combinent, et leur état se lit dans l'URL de la création de session — un lien part donc déjà trié.
+
+| Filtre   | Paramètre               | Ce qu'il garde                                       |
+| -------- | ----------------------- | ---------------------------------------------------- |
+| Budget   | `budget=1`…`4`          | `price_level` inférieur ou égal au cran choisi       |
+| Régime   | `tags=vegan,halal`      | les restos qui servent **tous** les régimes demandés |
+| Distance | `km=0.5`, `1`, `2`, `5` | les restos à moins de n km de la position            |
+
+Tout est filtré **en base**, par la RPC `search_restaurants` : c'est ce qui garde la pagination juste. Une page réduite après coup côté navigateur sauterait des résultats à chaque « Afficher plus ». La distance y est une haversine sur `location` (`geo_distance_km`), sans PostGIS : un rayon de quartier n'en demande pas tant. Rayon actif, les résultats passent du plus proche au plus loin.
+
+**Une donnée absente n'est pas une donnée favorable.** Budget inconnu sous « ≤ €€ », aucun régime déclaré sous « vegan », coordonnées manquantes sous un rayon : le resto sort des résultats, et l'interface le dit sous les chips plutôt que de laisser croire à un carnet plus pauvre qu'il n'est. Rien ne passe les filtres ? La liste propose de les lever, pas d'ajouter un resto qui s'y trouve peut-être déjà.
+
+**Le rayon suit la position, il ne la demande pas.** C'est « Autour de moi », au ras des résultats, qui l'obtient — la même que l'onglet Google. Sans elle, les chips de distance n'existent pas ; un second clic sur « Autour de toi » les fait disparaître et la recherche repart sans rayon. Un lien portant `?km=1` arrive donc sans filtre distance tant que personne n'a autorisé sa position : le serveur ne la connaîtra jamais, et elle est arrondie à ~110 m avant de servir de clé de cache pour que deux personnes du même bureau partagent la même entrée au lieu d'en créer une par GPS.
+
+Les régimes (`vegetarian`, `vegan`, `halal`, `kosher`, `gluten_free`) sont une liste blanche tenue **en base** par `restaurant_tag_values()`, que la contrainte `restaurants_tags_allowed` fait respecter : en ajouter un demande une migration. Ils se déclarent à l'ajout manuel d'un resto, l'import Google ramène le seul que Google connaisse, et la carte de vote les affiche.
 
 ### Import Google Places
 
@@ -207,6 +276,8 @@ Cocher un résultat le **sélectionne à l'instant** — la ligne et le panier l
 | Amorçage borné     | Vingt lieux par lot, plafond appliqué côté serveur ; trois lots par personne et par 24 h, comptés en base                                    |
 
 L'import remplit la fiche décrite plus haut : `photo_url`, `website`, `location`, `opening_hours` et `description`. Un lieu réimporté rafraîchit ces champs sans jamais en effacer un déjà connu — ce qui fait aussi office d'entretien, l'adresse d'une photo Google n'étant pas éternelle.
+
+Google ne connaît qu'un régime alimentaire, `servesVegetarianFood`. Il est demandé sur le détail d'un lieu, au même palier de facturation que le résumé déjà demandé : un import arrive donc tagué « végétarien » quand Google l'affirme, et ce régime s'ajoute à ceux déjà posés à la main au lieu de les remplacer.
 
 Le fuseau des horaires n'est pas demandé à Google : `opening_hours.timezone` reste absent et l'app raisonne dans celui du visiteur.
 
@@ -268,19 +339,19 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ```
 src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], groups, account, nouveautes, legal, auth, api/places)
+src/app/                 routes App Router (setup, login, join/[code], sessions, sessions/[code], lists/[code], l/[code], groups, account, nouveautes, legal, auth, api/places)
 src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · groups/ · account/ · restaurants/ · onboarding/ · changelog/
 src/content/changelog/   notes de version produit (schéma Zod + entrées), lues par /nouveautes et son flux RSS
-src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + recent-winners.ts (anti-fatigue) + models/ (types générés)
+src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + recent-winners.ts (anti-fatigue) + stats.ts + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
-src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, horaires, places, anti-fatigue, schemas/ (Zod)
+src/domain/              règles et vocabulaire métier : votes, codes de partage, curseur d'historique, erreurs, horaires, places, anti-fatigue, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
                          images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache, version (semver), changelog-seen
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
 src/hooks/               Realtime de session, compte à rebours, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/add|remove_session_restaurant/submit_vote/close/extend/
-                         results/recent_winners, groupes et invitations), purge, RGPD
+                         results/recent_winners/my_sessions/my_stats, départage, groupes et invitations), purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
 ```
@@ -334,12 +405,14 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - **Aperçu d'invitation** (`session_preview`) : un visiteur non authentifié — typiquement le robot qui déplie le lien dans une conversation — n'obtient un aperçu par code court que sur une session **en attente**, et seulement le nom, le pseudo du host et deux compteurs. Rejoindre exige toujours un compte.
 - **Toutes les écritures métier passent par des RPC** transactionnelles (`create_session`, `join_session`, `launch_session`, `submit_vote`, `close_session`) qui revérifient les règles côté base.
 - Composer une session est ouvert à ses participants, pas à tout le monde : `add_session_restaurant` et `remove_session_restaurant` revérifient en base l'appartenance, le statut `waiting` et — au retrait — la paternité du resto (`added_by`) ou la qualité de host. Aucune policy RLS n'ouvre l'écriture directe sur `session_restaurants`.
-- Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat.
+- Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat, et `my_stats` ne compte que les votes de son appelant.
 - **Liste publique** (`public_list`, `public_list_restaurants`, `public_lists`) : les seules lectures de liste ouvertes à `anon`. Elles ne répondent que pour une liste dont le propriétaire a ouvert le partage (`lists.is_public`), et ne rendent que son nom, ses restaurants et des compteurs — jamais le propriétaire, jamais ses autres listes. Refermer le partage purge le cache (`revalidateTag`) : la page redevient privée sur-le-champ.
+- `my_sessions` et `my_stats` refont le contrôle d'accès en clair (`session_participants.profile_id = auth.uid()`) plutôt que de s'en remettre à la RLS, qui reste inchangée. Le helper `session_winner` n'est exécutable ni par `anon` ni par `authenticated` : sans ça, le gagnant de n'importe quelle session se lirait en devinant un uuid.
 - **Anti-fatigue** (`recent_winners`) : la fonction ne prend aucun identifiant et se borne à `auth.uid()` — impossible de demander ce qui fatigue quelqu'un d'autre. Elle ne rend que le restaurant gagnant et la date de clôture : le reste du classement et le détail des votes n'en sortent pas.
 - Un **groupe** n'est visible que de ses membres et modifiable que par son propriétaire (RLS) ; la création, l'invitation et le départ passent par des RPC (`create_group_from_session`, `invite_group_to_session`, `leave_group`) qui revérifient tout en base. Une invitation en attente n'ouvre aucun accès à la session : l'invité n'en lit que le nécessaire, via `my_session_invitations`.
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.
 - La clé Google Places ne quitte jamais le serveur, et aucune policy RLS n'ouvre l'écriture en `source = 'google'` : `upsert_restaurant_from_place` est le seul chemin. Les corps d'erreur renvoyés par Google restent dans les logs serveur.
+- **Le départage d'une égalité est décidé en base.** `draw_winner` tire le gagnant et le conserve dans `sessions.tiebreak_winner_id` : le client n'a rien à choisir, et un second appel ne rejoue pas le sort. `create_runoff_session` recopie elle-même participants et restaurants ; les deux sont réservées au host d'une session close.
 - Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision. Un code court ne tient que si on ne peut pas l'essayer en boucle : voir [Anti-abus](#anti-abus).
 - Les pages sont rendues avec des chargements parallèles (`Promise.all`) et les lectures par requête sont dédupliquées via `React.cache` (`getCurrentUser`, `getProfile`, `getSessionById`…).
 - **Aucune donnée personnelle n'est mise en cache.** Seul le catalogue public de restaurants est mémorisé, via un client Supabase sans cookie ; voir [Rendu et cache](#rendu-et-cache).
