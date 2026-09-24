@@ -13,6 +13,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { GENERIC_ERROR } from '@/domain/errors'
 import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
 import { PLACES_QUERY_MIN } from '@/domain/schemas/place'
+import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
 import { distanceLabel, geoPoint } from '@/lib/maps'
 
 import type { Restaurant } from '@/data-access/models'
@@ -138,6 +139,7 @@ export function GooglePlacesResults({
   excludeRecent = false,
 }: GooglePlacesResultsProps) {
   const { position, status, locate } = geolocation
+  const onKeyDown = useArrowNavigation()
   const trimmed = query.trim()
   const mode: Mode = trimmed.length >= PLACES_QUERY_MIN ? 'search' : position ? 'nearby' : 'none'
   const here = geoPoint(position)
@@ -237,7 +239,8 @@ export function GooglePlacesResults({
       <FormMessage error={fetchError ?? importError} />
 
       <ul
-        className="flex max-h-[26rem] flex-col gap-1 overflow-y-auto overscroll-contain rounded-lg bg-surface p-1.5 ring-1 ring-line"
+        onKeyDown={onKeyDown}
+        className="flex max-h-[26rem] flex-col gap-1 overflow-y-auto overscroll-contain rounded-lg bg-surface p-1.5 ring-1 ring-line lg:max-h-[30rem]"
         aria-label="Résultats Google"
         aria-busy={isSearching || status === 'locating' || undefined}
       >

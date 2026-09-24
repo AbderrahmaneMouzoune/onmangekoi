@@ -75,6 +75,8 @@ interface RestaurantPickerProps {
   onListsChange?: (ids: string[]) => void
   /** name des inputs hidden portant les listes cochées */
   listsInputName?: string
+  /** Pose le focus sur la recherche à l'ouverture (sélecteur affiché à la demande). */
+  autoFocus?: boolean
   /** Filtres du carnet au départ — ceux de l'URL, déjà appliqués à `initialPage` */
   defaultFilters?: RestaurantFilters
   /** Appelé à chaque changement de filtre, pour les refléter dans l'URL */
@@ -104,6 +106,7 @@ export function RestaurantPicker({
   selectedListIds = NO_IDS,
   onListsChange,
   listsInputName,
+  autoFocus = false,
   defaultFilters = NO_FILTERS,
   onFiltersChange,
 }: RestaurantPickerProps) {
@@ -149,6 +152,13 @@ export function RestaurantPicker({
   const [known, setKnown] = useState<Map<string, Restaurant>>(
     () => new Map(initialPage.items.map((r) => [r.id, r]))
   )
+  const addButtonRef = useRef<HTMLButtonElement>(null)
+
+  /** Le formulaire d'ajout disparaît : le focus revient sur le bouton qui l'a ouvert. */
+  function closeAddForm() {
+    setIsAdding(false)
+    requestAnimationFrame(() => addButtonRef.current?.focus())
+  }
 
   /** Pages Google déjà reçues : l'onglet les retrouve telles quelles quand on y revient. */
   const [placesCache, setPlacesCache] = useState<Map<string, PlacesPage>>(() => new Map())
@@ -336,7 +346,7 @@ export function RestaurantPicker({
     ) {
       onChange([...current.value, restaurant.id])
     }
-    setIsAdding(false)
+    closeAddForm()
   }
 
   /**
@@ -422,6 +432,7 @@ export function RestaurantPicker({
               placeholder={SEARCH_PLACEHOLDER[source]}
               aria-label="Chercher un restaurant"
               autoComplete="off"
+              autoFocus={autoFocus}
               className="pl-10"
             />
             {isSearching && source === 'base' && (
@@ -434,7 +445,7 @@ export function RestaurantPicker({
           <AddRestaurantForm
             defaultName={query.trim()}
             onAdded={addAndSelect}
-            onCancel={() => setIsAdding(false)}
+            onCancel={closeAddForm}
           />
         ) : source === 'lists' ? (
           <ListSourcePanel lists={lists} selectedIds={selectedListIds} onToggle={toggleList} />
@@ -490,7 +501,13 @@ export function RestaurantPicker({
         {showSearch && (
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">Il n’est nulle part ?</p>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setIsAdding(true)}>
+            <Button
+              ref={addButtonRef}
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsAdding(true)}
+            >
               <RiAddLine aria-hidden="true" />
               Ajouter un resto à la main
             </Button>

@@ -8,7 +8,7 @@ import {
   RiGroupLine,
   RiLockLine,
 } from '@remixicon/react'
-import { useActionState, useOptimistic, useState, useTransition } from 'react'
+import { useActionState, useOptimistic, useRef, useState, useTransition } from 'react'
 
 import {
   addRestaurantsToListAction,
@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { TwoStepButton } from '@/components/ui/two-step-button'
 import { LIST_NAME_MAX } from '@/domain/schemas/list'
+import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
 import { captureEvent } from '@/lib/analytics/client'
 import { groupCode } from '@/lib/crockford'
 import { countLabel } from '@/lib/format'
@@ -50,6 +51,14 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
   const [isPublic, setIsPublic] = useState(list.is_public)
   const [adding, setAdding] = useState(false)
   const [pickerIds, setPickerIds] = useState<string[]>([])
+  const addButtonRef = useRef<HTMLButtonElement>(null)
+  const onRowsKeyDown = useArrowNavigation()
+
+  /** Le sélecteur se referme : le focus revient sur « Ajouter ». */
+  function closePicker() {
+    setAdding(false)
+    requestAnimationFrame(() => addButtonRef.current?.focus())
+  }
 
   const [restaurants, mutateRestaurants] = useOptimistic(
     list.restaurants,
@@ -77,7 +86,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
         return
       }
       setPickerIds([])
-      setAdding(false)
+      closePicker()
     })
   }
 
@@ -115,185 +124,217 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
   const existingIds = restaurants.map((r) => r.id)
 
   return (
-    <div className="flex flex-col gap-8">
-      <form action={renameAction} className="flex flex-col gap-2">
-        <input type="hidden" name="listId" value={list.id} />
-        <Label htmlFor="name">Nom</Label>
-        <div className="flex gap-2">
-          <Input
-            id="name"
-            name="name"
-            defaultValue={list.name}
-            required
-            maxLength={LIST_NAME_MAX}
-            className="flex-1"
-          />
-          <Button type="submit" variant="secondary" disabled={isRenaming}>
-            {isRenaming ? <Spinner /> : 'Renommer'}
-          </Button>
-        </div>
-        <FormMessage error={renameState?.error} success={renameState?.success} />
-      </form>
-
-      <section
-        aria-labelledby="share-title"
-        className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line"
-      >
-        <div className="flex flex-col gap-0.5">
-          <h2 id="share-title" className="font-display text-base font-semibold">
-            Partager
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {isPublic
-              ? 'N’importe qui peut voir la liste'
-              : 'Toute personne avec le lien peut voir la liste'}
-            {isCollaborative ? ' et y ajouter des restos' : ''}.
-          </p>
-        </div>
-        <div className="flex items-center justify-between gap-3 rounded-md bg-surface-2 px-3 py-2">
-          <span className="font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
-            Code
-          </span>
-          <span className="font-mono text-base font-semibold tracking-[0.15em] tabular">
-            {groupCode(list.share_code, 5)}
-          </span>
-        </div>
-        <CopyButton
-          value={shareUrl}
-          label="Copier le lien"
-          variant="outline"
-          onCopied={() => captureEvent('list_shared', { method: 'link_copy' })}
-        />
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <ShareSwitch
-            checked={isCollaborative}
-            onToggle={toggleCollaborative}
-            disabled={isPending}
-            icon={<RiGroupLine aria-hidden="true" className="size-4.5" />}
-            label={isCollaborative ? 'Collaborative' : 'Lecture seule'}
-          />
-          <ShareSwitch
-            checked={isPublic}
-            onToggle={togglePublic}
-            disabled={isPending}
-            icon={
-              isPublic ? (
-                <RiGlobalLine aria-hidden="true" className="size-4.5" />
-              ) : (
-                <RiLockLine aria-hidden="true" className="size-4.5" />
-              )
-            }
-            label={isPublic ? 'Publique' : 'Privée'}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {isPublic
-            ? 'Cette liste a sa page publique : son nom, ses adresses et ses cuisines — jamais ton pseudo. Elle peut être trouvée sur le web.'
-            : 'En publique, la liste gagne une page présentable, un aperçu quand on la partage, et peut être trouvée sur le web. Ton pseudo n’y figure jamais.'}
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <div className="flex items-baseline justify-between">
-          <h2 className="font-display text-base font-semibold">
-            {countLabel(restaurants.length, 'restaurant')}
-          </h2>
-          {!adding && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => setAdding(true)}>
-              <RiAddLine aria-hidden="true" />
-              Ajouter
-            </Button>
-          )}
-        </div>
-
-        {adding && (
-          <div className="flex flex-col gap-3 rounded-lg border border-dashed border-line-strong p-3">
-            <RestaurantPicker
-              initialPage={initialPage}
-              value={pickerIds}
-              onChange={setPickerIds}
-              lockedIds={existingIds}
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-x-10">
+      <div className="flex flex-col gap-8 lg:sticky lg:top-24">
+        <form action={renameAction} className="flex flex-col gap-2">
+          <input type="hidden" name="listId" value={list.id} />
+          <Label htmlFor="name">Nom</Label>
+          <div className="flex gap-2">
+            <Input
+              id="name"
+              name="name"
+              defaultValue={list.name}
+              required
+              maxLength={LIST_NAME_MAX}
+              className="flex-1"
             />
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                onClick={addSelected}
-                disabled={isPending || pickerIds.length === 0}
-                className="flex-1"
-              >
-                {isPending ? (
-                  <Spinner />
+            <Button type="submit" variant="secondary" disabled={isRenaming}>
+              {isRenaming ? <Spinner /> : 'Renommer'}
+            </Button>
+          </div>
+          <FormMessage error={renameState?.error} success={renameState?.success} />
+        </form>
+
+        <section
+          aria-labelledby="share-title"
+          className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line"
+        >
+          <div className="flex flex-col gap-0.5">
+            <h2 id="share-title" className="font-display text-base font-semibold">
+              Partager
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {isPublic
+                ? 'N’importe qui peut voir la liste'
+                : 'Toute personne avec le lien peut voir la liste'}
+              {isCollaborative ? ' et y ajouter des restos' : ''}.
+            </p>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md bg-surface-2 px-3 py-2">
+            <span className="font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
+              Code
+            </span>
+            <span className="font-mono text-base font-semibold tracking-[0.15em] tabular">
+              {groupCode(list.share_code, 5)}
+            </span>
+          </div>
+          <CopyButton
+            value={shareUrl}
+            label="Copier le lien"
+            variant="outline"
+            onCopied={() => captureEvent('list_shared', { method: 'link_copy' })}
+          />
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <ShareSwitch
+              checked={isCollaborative}
+              onToggle={toggleCollaborative}
+              disabled={isPending}
+              icon={<RiGroupLine aria-hidden="true" className="size-4.5" />}
+              label={isCollaborative ? 'Collaborative' : 'Lecture seule'}
+            />
+            <ShareSwitch
+              checked={isPublic}
+              onToggle={togglePublic}
+              disabled={isPending}
+              icon={
+                isPublic ? (
+                  <RiGlobalLine aria-hidden="true" className="size-4.5" />
                 ) : (
-                  `Ajouter ${pickerIds.length > 0 ? pickerIds.length : ''}`
-                )}
-              </Button>
+                  <RiLockLine aria-hidden="true" className="size-4.5" />
+                )
+              }
+              label={isPublic ? 'Publique' : 'Privée'}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {isPublic
+              ? 'Cette liste a sa page publique : son nom, ses adresses et ses cuisines — jamais ton pseudo. Elle peut être trouvée sur le web.'
+              : 'En publique, la liste gagne une page présentable, un aperçu quand on la partage, et peut être trouvée sur le web. Ton pseudo n’y figure jamais.'}
+          </p>
+        </section>
+
+        <div className="hidden justify-center lg:flex">
+          <TwoStepButton
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-veto"
+            label={
+              <>
+                <RiDeleteBinLine aria-hidden="true" />
+                Supprimer la liste
+              </>
+            }
+            confirmLabel="Confirmer la suppression"
+            onConfirm={destroy}
+            disabled={isPending}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-8">
+        <section className="flex flex-col gap-3">
+          <div className="flex items-baseline justify-between">
+            <h2 className="font-display text-base font-semibold">
+              {countLabel(restaurants.length, 'restaurant')}
+            </h2>
+            {!adding && (
               <Button
+                ref={addButtonRef}
                 type="button"
                 variant="ghost"
-                onClick={() => {
-                  setAdding(false)
-                  setPickerIds([])
-                }}
+                size="sm"
+                onClick={() => setAdding(true)}
               >
-                Annuler
+                <RiAddLine aria-hidden="true" />
+                Ajouter
               </Button>
-            </div>
+            )}
           </div>
-        )}
 
-        <FormMessage error={error} />
-
-        {restaurants.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line-strong p-6 text-center text-sm text-muted-foreground">
-            Liste vide. Ajoute des restos pour pouvoir l’importer dans une session.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-1.5">
-            {restaurants.map((restaurant) => (
-              <li
-                key={restaurant.id}
-                className="flex items-center gap-3 rounded-md bg-surface py-2 pr-2 pl-2.5 ring-1 ring-line"
-              >
-                <RestaurantThumb name={restaurant.name} photoUrl={restaurant.photo_url} size="sm" />
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-sm font-medium">{restaurant.name}</span>
-                  {(restaurant.cuisine_type || restaurant.city) && (
-                    <span className="truncate font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
-                      {[restaurant.cuisine_type, restaurant.city].filter(Boolean).join(' · ')}
-                    </span>
+          {adding && (
+            <div className="flex flex-col gap-3 rounded-lg border border-dashed border-line-strong p-3">
+              <RestaurantPicker
+                initialPage={initialPage}
+                value={pickerIds}
+                onChange={setPickerIds}
+                lockedIds={existingIds}
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  onClick={addSelected}
+                  disabled={isPending || pickerIds.length === 0}
+                  className="flex-1"
+                >
+                  {isPending ? (
+                    <Spinner />
+                  ) : (
+                    `Ajouter ${pickerIds.length > 0 ? pickerIds.length : ''}`
                   )}
-                </div>
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Retirer ${restaurant.name}`}
-                  onClick={() => remove(restaurant)}
-                  disabled={isPending}
+                  onClick={() => {
+                    setPickerIds([])
+                    closePicker()
+                  }}
                 >
-                  <RiCloseLine aria-hidden="true" />
+                  Annuler
                 </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              </div>
+            </div>
+          )}
 
-      <div className="flex justify-center">
-        <TwoStepButton
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-veto"
-          label={
-            <>
-              <RiDeleteBinLine aria-hidden="true" />
-              Supprimer la liste
-            </>
-          }
-          confirmLabel="Confirmer la suppression"
-          onConfirm={destroy}
-          disabled={isPending}
-        />
+          <FormMessage error={error} />
+
+          {restaurants.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-line-strong p-6 text-center text-sm text-muted-foreground">
+              Liste vide. Ajoute des restos pour pouvoir l’importer dans une session.
+            </p>
+          ) : (
+            <ul onKeyDown={onRowsKeyDown} className="flex flex-col gap-1.5">
+              {restaurants.map((restaurant) => (
+                <li
+                  key={restaurant.id}
+                  className="flex items-center gap-3 rounded-md bg-surface py-2 pr-2 pl-2.5 ring-1 ring-line"
+                >
+                  <RestaurantThumb
+                    name={restaurant.name}
+                    photoUrl={restaurant.photo_url}
+                    size="sm"
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm font-medium">{restaurant.name}</span>
+                    {(restaurant.cuisine_type || restaurant.city) && (
+                      <span className="truncate font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
+                        {[restaurant.cuisine_type, restaurant.city].filter(Boolean).join(' · ')}
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Retirer ${restaurant.name}`}
+                    onClick={() => remove(restaurant)}
+                    disabled={isPending}
+                  >
+                    <RiCloseLine aria-hidden="true" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <div className="flex justify-center lg:hidden">
+          <TwoStepButton
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-veto"
+            label={
+              <>
+                <RiDeleteBinLine aria-hidden="true" />
+                Supprimer la liste
+              </>
+            }
+            confirmLabel="Confirmer la suppression"
+            onConfirm={destroy}
+            disabled={isPending}
+          />
+        </div>
       </div>
     </div>
   )
@@ -320,7 +361,7 @@ function ShareSwitch({ checked, onToggle, disabled, icon, label }: ShareSwitchPr
       onClick={onToggle}
       disabled={disabled}
       className={cn(
-        'inline-flex h-11 items-center justify-center gap-2 rounded-md border px-4 text-sm font-semibold transition-colors sm:flex-1',
+        'inline-flex h-11 items-center justify-center gap-2 rounded-md border px-4 text-sm font-semibold transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring sm:flex-1',
         checked
           ? 'border-brand bg-brand-soft text-brand-hover'
           : 'border-line-strong bg-surface text-ink-2 hover:bg-surface-2'

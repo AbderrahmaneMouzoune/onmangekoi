@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: 'Nouvelle liste' }
 
 export default function NewListPage() {
   return (
-    <Shell>
+    <Shell size="app">
       <PageHeader
         eyebrow="Favoris"
         title="Nouvelle liste"

@@ -16,7 +16,7 @@ interface Props {
 export default function SetupPage({ searchParams }: Props) {
   return (
     <>
-      <header className="mx-auto flex h-14 w-full max-w-lg items-center justify-between px-4">
+      <header className="container-app flex h-14 items-center justify-between lg:h-16">
         <Brand />
         <ThemeToggle />
       </header>

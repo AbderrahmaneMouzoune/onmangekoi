@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { GroupCard } from '@/components/groups/group-card'
+import { ArrowKeyList } from '@/components/ui/arrow-key-list'
 import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -22,11 +23,15 @@ export async function GroupsOverview() {
   if (groups.length === 0) return <NoGroups />
 
   return (
-    <ul className="flex flex-col gap-3">
+    <ArrowKeyList
+      orientation="both"
+      aria-label="Mes groupes"
+      className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start"
+    >
       {groups.map((group) => (
         <GroupCard key={group.id} group={group} meId={user.id} />
       ))}
-    </ul>
+    </ArrowKeyList>
   )
 }
 
@@ -56,7 +61,7 @@ function NoGroups() {
  */
 export function GroupsOverviewFallback() {
   return (
-    <div aria-busy="true" className="flex flex-col gap-3">
+    <div aria-busy="true" className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
       <SkeletonGroup memberWidths={['w-24', 'w-20', 'w-28']} />
       <SkeletonGroup memberWidths={['w-20', 'w-24']} />
     </div>

@@ -22,6 +22,7 @@ import type {
   ParticipantWithProfile,
   Session,
   SessionRestaurantWithRestaurant,
+  SessionStatus,
 } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
@@ -50,9 +51,20 @@ interface SessionRoomProps {
   groups: GroupWithMembers[]
 }
 
+/** Ce qu'un lecteur d'écran entend quand la session change d'état sous ses yeux. */
+const STATUS_ANNOUNCEMENTS: Record<SessionStatus, string> = {
+  waiting: 'Retour en salle d’attente.',
+  voting: 'Le vote est lancé : à toi de voter.',
+  closed: 'Le vote est terminé, ouverture du classement.',
+}
+
 /**
  * Orchestre l'écran de session selon son statut, en temps réel :
  *  waiting → salle d'attente · voting → deck (ou attente des autres) · closed → résultats.
+ *
+ * Le changement d'état arrive par Realtime, sans geste de la personne : il est
+ * annoncé aux lecteurs d'écran et le focus est posé sur la nouvelle étape,
+ * pour que la navigation clavier reprenne au bon endroit.
  */
 export function SessionRoom({
   session: initialSession,
@@ -148,17 +160,29 @@ export function SessionRoom({
     }
   }, [session, navigation])
 
+  // Annonce et focus à chaque changement d'état — pas au premier rendu, où la
+  // page elle-même dit déjà tout.
+  const stageRef = useRef<HTMLDivElement>(null)
+  const [announcement, setAnnouncement] = useState('')
+  const previousStatus = useRef(session.status)
+  useEffect(() => {
+    if (previousStatus.current === session.status) return
+    previousStatus.current = session.status
+    setAnnouncement(STATUS_ANNOUNCEMENTS[session.status])
+    stageRef.current?.focus({ preventScroll: true })
+  }, [session.status])
+
   const handleFinished = useCallback(() => {
     setFinishedLocally(true)
     void refresh()
   }, [refresh])
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 lg:gap-8">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <p className="eyebrow">{firstRoundUrl ? 'Second tour' : 'Session'}</p>
-          <h1 className="truncate text-2xl font-bold sm:text-3xl">{session.name}</h1>
+          <h1 className="truncate text-2xl font-bold sm:text-3xl lg:text-4xl">{session.name}</h1>
           {firstRoundUrl && (
             <p className="text-sm text-muted-foreground">
               On départage l’égalité du{' '}
@@ -175,6 +199,10 @@ export function SessionRoom({
         <SessionStatusBadge status={session.status} />
       </div>
 
+      <p role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
+
       {session.status !== 'closed' && (
         <SessionCountdown
           session={session}
@@ -184,51 +212,53 @@ export function SessionRoom({
         />
       )}
 
-      {session.status === 'waiting' && (
-        <WaitingRoom
-          session={session}
-          participants={participants}
-          meId={meId}
-          isHost={isHost}
-          inviteUrl={inviteUrl}
-          qrSvg={qrSvg}
-          restaurants={restaurants}
-          rules={rules}
-          restaurantCatalog={restaurantCatalog}
-          connection={connection}
-          invitations={invitations}
-          groups={groups}
-          onLaunched={setSession}
-          onRestaurantsChanged={refresh}
-        />
-      )}
+      <div ref={stageRef} tabIndex={-1} className="flex flex-col gap-6 lg:gap-8">
+        {session.status === 'waiting' && (
+          <WaitingRoom
+            session={session}
+            participants={participants}
+            meId={meId}
+            isHost={isHost}
+            inviteUrl={inviteUrl}
+            qrSvg={qrSvg}
+            restaurants={restaurants}
+            rules={rules}
+            restaurantCatalog={restaurantCatalog}
+            connection={connection}
+            invitations={invitations}
+            groups={groups}
+            onLaunched={setSession}
+            onRestaurantsChanged={refresh}
+          />
+        )}
 
-      {session.status === 'voting' && !meFinished && (
-        <VoteDeck
-          sessionId={session.id}
-          restaurants={restaurants}
-          initialVotedIds={myVotedIds}
-          rules={rules}
-          initialJokersUsed={myJokersUsed}
-          lastWins={recentWinners}
-          onFinished={handleFinished}
-        />
-      )}
+        {session.status === 'voting' && !meFinished && (
+          <VoteDeck
+            sessionId={session.id}
+            restaurants={restaurants}
+            initialVotedIds={myVotedIds}
+            rules={rules}
+            initialJokersUsed={myJokersUsed}
+            lastWins={recentWinners}
+            onFinished={handleFinished}
+          />
+        )}
 
-      {session.status === 'voting' && meFinished && (
-        <FinishedPanel
-          session={session}
-          participants={participants}
-          meId={meId}
-          isHost={isHost}
-          connection={connection}
-          meFinished
-        />
-      )}
+        {session.status === 'voting' && meFinished && (
+          <FinishedPanel
+            session={session}
+            participants={participants}
+            meId={meId}
+            isHost={isHost}
+            connection={connection}
+            meFinished
+          />
+        )}
 
-      {session.status === 'closed' && (
-        <p className="text-center text-sm text-muted-foreground">Ouverture du classement…</p>
-      )}
+        {session.status === 'closed' && (
+          <p className="text-center text-sm text-muted-foreground">Ouverture du classement…</p>
+        )}
+      </div>
     </div>
   )
 }

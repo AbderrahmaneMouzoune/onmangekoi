@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
 import { PRICE_LEVEL_LABELS } from '@/domain/schemas/restaurant'
+import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
 import { distanceLabel, geoPoint } from '@/lib/maps'
 import { cn } from '@/lib/utils'
 
@@ -66,6 +67,7 @@ export function CatalogResults({
 }: CatalogResultsProps) {
   const here = geoPoint(geolocation.position)
   const isLocating = geolocation.status === 'locating'
+  const onKeyDown = useArrowNavigation()
 
   return (
     <div className="flex flex-col gap-2">
@@ -100,7 +102,8 @@ export function CatalogResults({
       )}
 
       <ul
-        className="flex max-h-[26rem] flex-col gap-1 overflow-y-auto overscroll-contain rounded-lg bg-surface p-1.5 ring-1 ring-line"
+        onKeyDown={onKeyDown}
+        className="flex max-h-[26rem] flex-col gap-1 overflow-y-auto overscroll-contain rounded-lg bg-surface p-1.5 ring-1 ring-line lg:max-h-[30rem]"
         aria-label="Résultats"
         aria-busy={isSearching || undefined}
       >

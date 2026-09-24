@@ -24,4 +24,19 @@ describe('TwoStepButton', () => {
     await user.click(await screen.findByRole('button', { name: 'Confirmer ?' }))
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
+
+  it('should disarm on Escape without confirming', async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+    render(<TwoStepButton label="Clôturer" confirmLabel="Confirmer ?" onConfirm={onConfirm} />)
+
+    const button = screen.getByRole('button', { name: 'Clôturer' })
+    button.focus()
+    await user.keyboard('{Enter}')
+    expect(button).toHaveTextContent('Confirmer ?')
+
+    await user.keyboard('{Escape}')
+    expect(button).toHaveTextContent('Clôturer')
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
 })

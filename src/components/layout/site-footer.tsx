@@ -13,7 +13,7 @@ export function SiteFooter() {
     <footer className="border-t border-line">
       <nav
         aria-label="Liens de bas de page"
-        className="mx-auto flex w-full max-w-lg flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-5 text-xs text-muted-foreground"
+        className="container-app flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-5 text-xs text-muted-foreground"
       >
         <span>{SITE_NAME}</span>
         <span className="flex items-center gap-4">

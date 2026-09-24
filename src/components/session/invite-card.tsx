@@ -67,7 +67,7 @@ export function InviteCard({
   return (
     <section
       aria-labelledby="invite-title"
-      className="flex flex-col gap-5 rounded-lg chalkboard p-5"
+      className="flex flex-col gap-5 rounded-lg chalkboard p-5 lg:sticky lg:top-24 lg:p-6"
     >
       <div className="flex flex-col gap-3">
         <p
@@ -90,7 +90,7 @@ export function InviteCard({
                 en plein écran est le seul geste utile qu'il porte. */}
             <DialogTrigger
               aria-label="Agrandir le QR code d’invitation"
-              className="size-28 shrink-0 cursor-zoom-in rounded-sm transition-transform outline-none hover:scale-[1.03] focus-visible:ring-3 focus-visible:ring-chalk/40"
+              className="size-28 shrink-0 cursor-zoom-in rounded-sm transition-transform outline-none hover:scale-[1.03] focus-visible:ring-3 focus-visible:ring-chalk/40 lg:size-36"
             >
               <span
                 aria-hidden="true"

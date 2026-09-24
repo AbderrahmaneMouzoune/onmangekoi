@@ -2,7 +2,7 @@
 
 import { RiQrScanLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
-import { useActionState, useCallback, useState } from 'react'
+import { useActionState, useCallback, useRef, useState } from 'react'
 
 import { joinSessionAction } from '@/actions/sessions'
 import { QrScanner } from '@/components/session/qr-scanner'
@@ -20,6 +20,12 @@ export function JoinForm({ initialError }: { initialError?: string }) {
   const [state, formAction, isPending] = useActionState(joinSessionAction, null)
   const [scanning, setScanning] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
+  const scanButtonRef = useRef<HTMLButtonElement>(null)
+
+  const closeScanner = useCallback(() => {
+    setScanning(false)
+    requestAnimationFrame(() => scanButtonRef.current?.focus())
+  }, [])
 
   const handleDetected = useCallback(
     (value: string) => {
@@ -38,9 +44,10 @@ export function JoinForm({ initialError }: { initialError?: string }) {
   return (
     <div className="flex flex-col gap-4">
       {scanning ? (
-        <QrScanner onDetected={handleDetected} onClose={() => setScanning(false)} />
+        <QrScanner onDetected={handleDetected} onClose={closeScanner} />
       ) : (
         <Button
+          ref={scanButtonRef}
           type="button"
           variant="outline"
           size="lg"

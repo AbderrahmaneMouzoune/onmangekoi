@@ -1,7 +1,7 @@
 'use client'
 
 import { RiAddLine, RiBookmarkLine } from '@remixicon/react'
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 
 import { addToSharedListAction, copySharedListAction } from '@/actions/lists'
 import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
@@ -31,6 +31,13 @@ export function SharedListActions({
   const [isPending, startTransition] = useTransition()
   const [adding, setAdding] = useState(false)
   const [pickerIds, setPickerIds] = useState<string[]>([])
+  const addButtonRef = useRef<HTMLButtonElement>(null)
+
+  /** Le sélecteur se referme : le focus revient sur le bouton qui l'a ouvert. */
+  function closePicker() {
+    setAdding(false)
+    requestAnimationFrame(() => addButtonRef.current?.focus())
+  }
 
   function copy() {
     setError(null)
@@ -50,16 +57,19 @@ export function SharedListActions({
         return
       }
       setPickerIds([])
-      setAdding(false)
+      closePicker()
     })
   }
 
+  // Sans rien à proposer, pas de colonne vide sur grand écran.
+  if (!isCollaborative && isOwner && !error) return null
+
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 lg:sticky lg:top-24">
       <FormMessage error={error} />
 
       {isCollaborative && !adding && (
-        <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+        <Button ref={addButtonRef} type="button" variant="outline" onClick={() => setAdding(true)}>
           <RiAddLine aria-hidden="true" />
           Ajouter un resto à cette liste
         </Button>

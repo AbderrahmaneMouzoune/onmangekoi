@@ -11,6 +11,8 @@ interface VoteControlsProps {
   disabled?: boolean
   /** Ce que les règles de la session accordent, et ce qu'il en reste */
   jokers: JokerQuotas
+  /** Affiche la touche principale de chaque action (clavier physique, grand écran). */
+  showShortcuts?: boolean
 }
 
 /** Les deux actions à quota — les deux autres sont illimitées. */
@@ -32,9 +34,14 @@ const STYLES: Record<VoteKind, string> = {
   fav: 'bg-fav-soft text-fav hover:bg-fav hover:text-surface focus-visible:ring-fav',
 }
 
-export function VoteControls({ onVote, disabled = false, jokers }: VoteControlsProps) {
+export function VoteControls({
+  onVote,
+  disabled = false,
+  jokers,
+  showShortcuts = false,
+}: VoteControlsProps) {
   return (
-    <div role="group" aria-label="Voter" className="grid grid-cols-4 gap-2">
+    <div role="group" aria-label="Voter" className="grid grid-cols-4 gap-2 lg:grid-cols-2 lg:gap-3">
       {VOTE_ACTIONS.map((action) => {
         const Icon = ICONS[action.kind]
         const kind = jokerKind(action.kind)
@@ -55,7 +62,7 @@ export function VoteControls({ onVote, disabled = false, jokers }: VoteControlsP
             }
             aria-keyshortcuts={action.shortcuts.join(' ')}
             className={cn(
-              'flex flex-col items-center justify-center gap-1.5 rounded-lg py-3 text-xs font-semibold transition-[background-color,color,transform] outline-none focus-visible:ring-3 active:not-disabled:scale-95 disabled:cursor-not-allowed disabled:opacity-35',
+              'relative flex flex-col items-center justify-center gap-1.5 rounded-lg py-3 text-xs font-semibold transition-[background-color,color,transform] outline-none focus-visible:ring-3 active:not-disabled:scale-95 disabled:cursor-not-allowed disabled:opacity-35 lg:min-h-28 lg:text-sm',
               action.joker ? 'min-h-20' : 'min-h-24',
               STYLES[action.kind]
             )}
@@ -65,6 +72,14 @@ export function VoteControls({ onVote, disabled = false, jokers }: VoteControlsP
             {badge && (
               // Pas d'opacité ici : à 70 % le libellé retombe à 2,7:1 sur son fond.
               <span className="font-mono text-[0.6rem] tracking-wide">{badge}</span>
+            )}
+            {showShortcuts && (
+              <kbd
+                aria-hidden="true"
+                className="absolute top-2 right-2 hidden border-current/30 bg-transparent text-current lg:inline-flex"
+              >
+                {action.shortcuts[0]}
+              </kbd>
             )}
           </button>
         )

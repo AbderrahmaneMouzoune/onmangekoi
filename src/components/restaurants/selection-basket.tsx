@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
 import { countLabel } from '@/lib/format'
 
 import type { Restaurant } from '@/data-access/models'
@@ -52,6 +53,7 @@ export function SelectionBasket({
   onRemoveRestaurant,
   onClear,
 }: SelectionBasketProps) {
+  const onKeyDown = useArrowNavigation('both')
   const strip = useRef<HTMLUListElement>(null)
   const count = lists.length + restaurants.length + pending.length
 
@@ -85,6 +87,7 @@ export function SelectionBasket({
       </p>
       <ul
         ref={strip}
+        onKeyDown={onKeyDown}
         className="flex [scrollbar-width:thin] gap-1.5 overflow-x-auto py-0.5"
         aria-label="Sélection"
       >

@@ -64,43 +64,48 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
       />
 
       {winner ? (
-        <>
-          <ResultsList results={results} participantCount={participants.length} />
-          {tiebreak && tiebreak.method !== 'draw' && (
-            <TiebreakPanel
-              sessionId={session.id}
-              tiedNames={tiebreak.tied.map((row) => row.name)}
-              method={tiebreak.method}
-              isHost={session.host_id === user.id}
-              runoff={
-                runoff
-                  ? {
-                      url:
-                        runoff.status === 'closed'
-                          ? router.sessionResults(runoff)
-                          : router.session(runoff),
-                      status: runoff.status,
-                    }
-                  : null
-              }
-            />
-          )}
-          <ResultsSharing
-            sessionId={session.id}
-            sessionName={session.name}
-            winnerName={winner.name}
-            privateUrl={absoluteUrl(router.sessionResults(session))}
-            publicUrl={publicResultsUrl(session)}
-            isHost={session.host_id === user.id}
-            initialPublic={session.results_public}
-          />
-          <div className="flex flex-wrap gap-2">
-            <Link href={router.sessionNew()} className={cn(buttonVariants())}>
-              Nouvelle session
-            </Link>
-            <SaveGroupForm sessionId={session.id} memberCount={participants.length} />
-          </div>
-        </>
+        <ResultsList
+          results={results}
+          participantCount={participants.length}
+          actions={
+            <>
+              {tiebreak && tiebreak.method !== 'draw' && (
+                <TiebreakPanel
+                  sessionId={session.id}
+                  tiedNames={tiebreak.tied.map((row) => row.name)}
+                  method={tiebreak.method}
+                  isHost={session.host_id === user.id}
+                  runoff={
+                    runoff
+                      ? {
+                          url:
+                            runoff.status === 'closed'
+                              ? router.sessionResults(runoff)
+                              : router.session(runoff),
+                          status: runoff.status,
+                        }
+                      : null
+                  }
+                />
+              )}
+              <ResultsSharing
+                sessionId={session.id}
+                sessionName={session.name}
+                winnerName={winner.name}
+                privateUrl={absoluteUrl(router.sessionResults(session))}
+                publicUrl={publicResultsUrl(session)}
+                isHost={session.host_id === user.id}
+                initialPublic={session.results_public}
+              />
+              <div className="flex flex-wrap gap-2">
+                <Link href={router.sessionNew()} className={cn(buttonVariants())}>
+                  Nouvelle session
+                </Link>
+                <SaveGroupForm sessionId={session.id} memberCount={participants.length} />
+              </div>
+            </>
+          }
+        />
       ) : (
         <EmptyState
           icon={<RiTrophyLine />}
@@ -130,8 +135,11 @@ export function SessionResultsFallback() {
         back={{ href: router.home(), label: 'Accueil' }}
         description
       />
-      <div aria-busy="true" className="flex flex-col gap-6">
-        <Skeleton className="h-64 w-full rounded-xl" />
+      <div
+        aria-busy="true"
+        className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:gap-10"
+      >
+        <Skeleton className="h-64 w-full rounded-xl lg:h-80" />
         <section className="flex flex-col gap-2">
           <h2 className="font-display text-base font-semibold">Le reste du classement</h2>
           <SkeletonResult nameWidth="max-w-40" />

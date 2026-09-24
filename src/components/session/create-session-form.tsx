@@ -62,6 +62,10 @@ function syncFiltersToUrl(filters: RestaurantFilters) {
  * réinviter d'un clic. Elle vient après les trois autres, pour que la
  * silhouette prérendue — qui ne sait pas si on a des groupes — n'ait jamais à
  * renuméroter quoi que ce soit.
+ *
+ * Sur grand écran, le nom, l'échéance, les groupes et le bouton d'envoi
+ * tiennent dans la colonne de gauche ; le sélecteur de restos, le plus haut
+ * des blocs, occupe la droite. L'ordre du document reste celui des étapes.
  */
 export function CreateSessionForm({
   lists,
@@ -111,7 +115,11 @@ export function CreateSessionForm({
   }
 
   return (
-    <form action={formAction} onSubmit={rememberCreation} className="flex flex-col gap-8">
+    <form
+      action={formAction}
+      onSubmit={rememberCreation}
+      className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-rows-[repeat(6,auto)_1fr] lg:items-start lg:gap-x-10"
+    >
       <SessionStep
         number={1}
         title={
@@ -132,35 +140,37 @@ export function CreateSessionForm({
         />
       </SessionStep>
 
-      <SessionStep
-        number={2}
-        title={<h2 className="text-base font-semibold">{SESSION_STEPS.restaurants}</h2>}
-        hint={SESSION_STEPS.restaurantsHint}
-      >
-        <RestaurantPicker
-          initialPage={initialPage}
-          value={selectedRestaurantIds}
-          onChange={setSelectedRestaurantIds}
-          recentWinners={recentWinners}
-          excludeRecent={excludeRecent}
-          inputName="restaurantIds"
-          lists={lists}
-          selectedListIds={selectedListIds}
-          onListsChange={setSelectedListIds}
-          listsInputName="listIds"
-          defaultFilters={initialFilters}
-          onFiltersChange={syncFiltersToUrl}
-        />
-
-        {recentCount > 0 && (
-          <AntiFatigueToggle
-            checked={excludeRecent}
-            onChange={setExcludeRecent}
-            recentCount={recentCount}
-            excludedCount={chosen - total}
+      <div className="contents lg:col-start-2 lg:row-span-full lg:block">
+        <SessionStep
+          number={2}
+          title={<h2 className="text-base font-semibold">{SESSION_STEPS.restaurants}</h2>}
+          hint={SESSION_STEPS.restaurantsHint}
+        >
+          <RestaurantPicker
+            initialPage={initialPage}
+            value={selectedRestaurantIds}
+            onChange={setSelectedRestaurantIds}
+            recentWinners={recentWinners}
+            excludeRecent={excludeRecent}
+            inputName="restaurantIds"
+            lists={lists}
+            selectedListIds={selectedListIds}
+            onListsChange={setSelectedListIds}
+            listsInputName="listIds"
+            defaultFilters={initialFilters}
+            onFiltersChange={syncFiltersToUrl}
           />
-        )}
-      </SessionStep>
+
+          {recentCount > 0 && (
+            <AntiFatigueToggle
+              checked={excludeRecent}
+              onChange={setExcludeRecent}
+              recentCount={recentCount}
+              excludedCount={chosen - total}
+            />
+          )}
+        </SessionStep>
+      </div>
 
       <DeadlinePicker
         legend={
@@ -200,9 +210,11 @@ export function CreateSessionForm({
 
       <RulesPicker />
 
-      <FormMessage error={state?.error} />
+      <FormMessage error={state?.error} className="lg:col-start-1" />
 
-      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md">
+      {/* Sur grand écran, le bouton reste sous les étapes, dans la colonne de
+          gauche : plus besoin de la barre du bas. */}
+      <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md sm:-mx-6 sm:px-6 lg:static lg:col-start-1 lg:m-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
         <Button type="submit" size="lg" disabled={isPending || total === 0} className="w-full">
           {isPending ? (
             <Spinner />

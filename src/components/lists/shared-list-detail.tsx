@@ -101,25 +101,32 @@ export async function SharedListDetail({ params }: { params: Promise<{ code: str
         </div>
       )}
 
-      {isOwner && (
-        <Link href={router.list(preview)} className={cn(buttonVariants({ variant: 'outline' }))}>
-          C’est ta liste — la modifier
-        </Link>
-      )}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:gap-10">
+        <div className="flex flex-col gap-6">
+          {isOwner && (
+            <Link
+              href={router.list(preview)}
+              className={cn(buttonVariants({ variant: 'outline' }), 'lg:self-start')}
+            >
+              C’est ta liste — la modifier
+            </Link>
+          )}
 
-      {showcase && <PublicListHighlights preview={showcase} />}
+          {showcase && <PublicListHighlights preview={showcase} />}
 
-      <ListRestaurantRows restaurants={restaurants} />
+          <ListRestaurantRows restaurants={restaurants} />
 
-      {restaurants.length > 0 && <StartSessionButton identifier={preview.share_code} />}
+          {restaurants.length > 0 && <StartSessionButton identifier={preview.share_code} />}
+        </div>
 
-      <SharedListActions
-        identifier={preview.share_code}
-        isCollaborative={preview.is_collaborative}
-        isOwner={isOwner}
-        existingIds={restaurants.map((r) => r.id)}
-        initialPage={initialPage}
-      />
+        <SharedListActions
+          identifier={preview.share_code}
+          isCollaborative={preview.is_collaborative}
+          isOwner={isOwner}
+          existingIds={restaurants.map((r) => r.id)}
+          initialPage={initialPage}
+        />
+      </div>
     </>
   )
 }
