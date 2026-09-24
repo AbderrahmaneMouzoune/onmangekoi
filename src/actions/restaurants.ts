@@ -10,11 +10,16 @@ import {
   getRestaurantCatalogPage,
   RESTAURANTS_CACHE_PROFILE,
   RESTAURANTS_CACHE_TAG,
+  snapOrigin,
   type RestaurantPage,
 } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
 import { toUserMessage } from '@/domain/errors'
-import { CreateRestaurantSchema, SimilarRestaurantsSchema } from '@/domain/schemas/restaurant'
+import {
+  CreateRestaurantSchema,
+  RESTAURANT_TAGS,
+  SimilarRestaurantsSchema,
+} from '@/domain/schemas/restaurant'
 
 import type { ActionResult } from './types'
 import type { Restaurant } from '@/data-access/models'
@@ -22,21 +27,37 @@ import type { Restaurant } from '@/data-access/models'
 const SearchSchema = z.object({
   query: z.string().trim().max(80).default(''),
   offset: z.number().int().min(0).max(10_000).default(0),
+  priceMax: z.number().int().min(1).max(4).nullable().default(null),
+  tags: z.array(z.enum(RESTAURANT_TAGS)).max(RESTAURANT_TAGS.length).default([]),
+  withinKm: z.number().positive().max(50).nullable().default(null),
+  /**
+   * Position du navigateur. Elle sert à cette requête et à rien d'autre :
+   * jamais stockée, jamais mesurée, arrondie avant même de servir de clé de
+   * cache.
+   */
+  origin: z
+    .object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })
+    .nullable()
+    .default(null),
 })
+
+export type SearchRestaurantsInput = z.input<typeof SearchSchema>
 
 /**
  * Recherche du `RestaurantPicker`. Le catalogue est public : la lecture passe
  * par le cache partagé, donc une même recherche ne touche la base qu'une fois.
  */
-export async function searchRestaurantsAction(input: {
-  query?: string
-  offset?: number
-}): Promise<ActionResult<RestaurantPage>> {
+export async function searchRestaurantsAction(
+  input: SearchRestaurantsInput
+): Promise<ActionResult<RestaurantPage>> {
   const parsed = SearchSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Recherche invalide' }
 
   try {
-    const page = await getRestaurantCatalogPage(parsed.data)
+    const page = await getRestaurantCatalogPage({
+      ...parsed.data,
+      origin: snapOrigin(parsed.data.origin),
+    })
     return { ok: true, data: page }
   } catch {
     return { ok: false, error: 'La recherche a échoué. Réessaie.' }
@@ -53,6 +74,7 @@ export async function createRestaurantAction(input: {
   address?: string | null
   city?: string | null
   priceLevel?: number | string | null
+  tags?: string[] | null
 }): Promise<ActionResult<Restaurant>> {
   const parsed = CreateRestaurantSchema.safeParse(input)
   if (!parsed.success) {

@@ -10,6 +10,8 @@ import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
 import { TwoStepButton } from '@/components/ui/two-step-button'
+import { formatRatio, parseSessionRules, requiredFinishers } from '@/domain/session-rules'
+import { countLabel } from '@/lib/format'
 
 import type { ParticipantWithProfile, Session } from '@/data-access/models'
 import type { ConnectionState } from '@/hooks/use-session-room'
@@ -41,6 +43,11 @@ export function FinishedPanel({
 
   const finished = participants.filter((p) => p.has_finished_voting).length
   const total = participants.length
+  // Sous 100 %, le classement tombe avant que tout le monde ait voté : annoncer
+  // l'attente restante sur l'effectif complet mentirait sur ce qui reste.
+  const rules = parseSessionRules(session.rules)
+  const required = requiredFinishers(total, rules.close_at_ratio)
+  const missing = Math.max(0, required - finished)
 
   function close() {
     setError(null)
@@ -65,10 +72,18 @@ export function FinishedPanel({
             {meFinished ? 'Tu as tout voté.' : 'Le vote est en cours.'}
           </h2>
           <p className="text-sm text-chalk-muted">
-            {finished === total
-              ? 'Tout le monde a terminé, le classement arrive.'
-              : `On attend ${total - finished} ${total - finished > 1 ? 'personnes' : 'personne'}. Le classement s’affichera automatiquement.`}
+            {missing === 0
+              ? finished === total
+                ? 'Tout le monde a terminé, le classement arrive.'
+                : 'Le seuil de clôture est atteint, le classement arrive.'
+              : `On attend ${countLabel(missing, 'personne')}. Le classement s’affichera automatiquement.`}
           </p>
+          {rules.close_at_ratio < 1 && (
+            <p className="text-xs text-chalk-muted">
+              Clôture dès {formatRatio(rules.close_at_ratio)} des participants — soit {required} sur{' '}
+              {total}.
+            </p>
+          )}
           <div className="flex w-full items-center gap-3 pt-1">
             <Progress
               value={finished}
@@ -100,7 +115,9 @@ export function FinishedPanel({
               disabled={isPending}
             />
             <p className="text-center text-xs text-muted-foreground">
-              Sinon, la session se clôture toute seule quand tout le monde a voté.
+              {rules.close_at_ratio < 1
+                ? 'Sinon, la session se clôture toute seule au seuil choisi.'
+                : 'Sinon, la session se clôture toute seule quand tout le monde a voté.'}
             </p>
           </div>
         )}

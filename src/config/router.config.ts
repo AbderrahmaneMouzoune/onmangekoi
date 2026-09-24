@@ -45,6 +45,7 @@ export const ROUTE_PATTERNS = {
   list: '/lists/[code]',
   session: '/sessions/[code]',
   sharedList: '/l/[code]',
+  sessionResults: '/sessions/[code]/results',
 } as const
 
 /** Une session, ou le segment d'URL déjà reçu. */

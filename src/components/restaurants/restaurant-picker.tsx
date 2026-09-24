@@ -15,6 +15,7 @@ import { AddRestaurantForm } from '@/components/restaurants/add-restaurant-form'
 import { CatalogResults } from '@/components/restaurants/catalog-results'
 import { GooglePlacesResults } from '@/components/restaurants/google-places-results'
 import { ListSourcePanel } from '@/components/restaurants/list-source-panel'
+import { RestaurantFiltersBar } from '@/components/restaurants/restaurant-filters'
 import { useRestaurantSources } from '@/components/restaurants/restaurant-sources'
 import { SelectionBasket } from '@/components/restaurants/selection-basket'
 import {
@@ -28,14 +29,17 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
+import { countActiveFilters, NO_FILTERS } from '@/domain/restaurant-filters'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useGeolocation } from '@/hooks/use-geolocation'
+import { geoPoint } from '@/lib/maps'
 
 import type { ListWithRestaurantIds } from '@/data-access/lists'
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
 import type { PlaceResult, PlacesPage } from '@/domain/places'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
+import type { RestaurantFilters } from '@/domain/restaurant-filters'
 
 const NO_LISTS: ListWithRestaurantIds[] = []
 const NO_IDS: string[] = []
@@ -73,6 +77,10 @@ interface RestaurantPickerProps {
   listsInputName?: string
   /** Pose le focus sur la recherche à l'ouverture (sélecteur affiché à la demande). */
   autoFocus?: boolean
+  /** Filtres du carnet au départ — ceux de l'URL, déjà appliqués à `initialPage` */
+  defaultFilters?: RestaurantFilters
+  /** Appelé à chaque changement de filtre, pour les refléter dans l'URL */
+  onFiltersChange?: (filters: RestaurantFilters) => void
 }
 
 /**
@@ -99,6 +107,8 @@ export function RestaurantPicker({
   onListsChange,
   listsInputName,
   autoFocus = false,
+  defaultFilters = NO_FILTERS,
+  onFiltersChange,
 }: RestaurantPickerProps) {
   const sources = useRestaurantSources()
   const hasLists = Boolean(onListsChange) && lists.length > 0
@@ -135,13 +145,13 @@ export function RestaurantPicker({
   const [isSearching, startSearch] = useTransition()
   const [isLoadingMore, startLoadMore] = useTransition()
   const [isAdding, setIsAdding] = useState(false)
+  const [filters, setFilters] = useState<RestaurantFilters>(defaultFilters)
   const geolocation = useGeolocation()
   const idPrefix = useId()
   /** Cache des restaurants vus, pour afficher les sélectionnés même hors résultats */
   const [known, setKnown] = useState<Map<string, Restaurant>>(
     () => new Map(initialPage.items.map((r) => [r.id, r]))
   )
-  const lastQuery = useRef('')
   const addButtonRef = useRef<HTMLButtonElement>(null)
 
   /** Le formulaire d'ajout disparaît : le focus revient sur le bouton qui l'a ouvert. */
@@ -169,6 +179,9 @@ export function RestaurantPicker({
   }
 
   const selected = useMemo(() => new Set(value), [value])
+
+  /** Position de la personne, à la forme de la base : filtre et distances. */
+  const here = useMemo(() => geoPoint(geolocation.position), [geolocation.position])
 
   /** Restos versés par les listes cochées : verrouillés dans les autres onglets. */
   const fromLists = useMemo(() => {
@@ -200,11 +213,37 @@ export function RestaurantPicker({
     latest.current = { value, selected, locked }
   })
 
+  /**
+   * Ce qui définit une recherche du carnet. Tout part à la base, filtres
+   * compris : c'est la seule façon de garder la pagination juste quand ils se
+   * combinent. Le rayon n'a de sens qu'avec une position — sans elle, il ne
+   * part pas et les chips de distance disparaissent.
+   */
+  const criteria = useMemo(
+    () => ({
+      query: debouncedQuery,
+      priceMax: filters.priceMax,
+      tags: filters.tags,
+      withinKm: here ? filters.withinKm : null,
+      origin: here,
+    }),
+    [debouncedQuery, filters.priceMax, filters.tags, filters.withinKm, here]
+  )
+  const criteriaKey = JSON.stringify(criteria)
+  /**
+   * La première page vient du serveur, déjà filtrée par ce que portait l'URL :
+   * la relancer au montage serait un aller-retour pour rien.
+   */
+  const lastCriteria = useRef(criteriaKey)
+
   useEffect(() => {
-    if (debouncedQuery === lastQuery.current) return
-    lastQuery.current = debouncedQuery
+    if (criteriaKey === lastCriteria.current) return
+    lastCriteria.current = criteriaKey
     startSearch(async () => {
-      const result = await searchRestaurantsAction({ query: debouncedQuery, offset: 0 })
+      const result = await searchRestaurantsAction({ ...criteria, offset: 0 })
+      // Une recherche plus récente est partie pendant l'aller-retour : c'est
+      // elle qui fait foi, ce résultat-ci est déjà périmé.
+      if (lastCriteria.current !== criteriaKey) return
       if (!result.ok) {
         setError(result.error)
         return
@@ -213,14 +252,11 @@ export function RestaurantPicker({
       remember(result.data.items)
       setPage(result.data)
     })
-  }, [debouncedQuery])
+  }, [criteria, criteriaKey])
 
   function loadMore() {
     startLoadMore(async () => {
-      const result = await searchRestaurantsAction({
-        query: debouncedQuery,
-        offset: page.nextOffset,
-      })
+      const result = await searchRestaurantsAction({ ...criteria, offset: page.nextOffset })
       if (!result.ok) {
         setError(result.error)
         return
@@ -237,6 +273,11 @@ export function RestaurantPicker({
         }
       })
     })
+  }
+
+  function changeFilters(next: RestaurantFilters) {
+    setFilters(next)
+    onFiltersChange?.(next)
   }
 
   function selectSource(next: RestaurantSource) {
@@ -427,6 +468,8 @@ export function RestaurantPicker({
           />
         ) : (
           <>
+            <RestaurantFiltersBar value={filters} onChange={changeFilters} here={here} />
+
             {error && (
               <p role="alert" className="text-sm text-veto">
                 {error}
@@ -443,6 +486,12 @@ export function RestaurantPicker({
               onToggle={toggle}
               emptyLabel={emptyLabel}
               onAddManually={() => setIsAdding(true)}
+              // Rien ne sort alors que des filtres sont posés : le carnet
+              // n'est pas vide, il est restreint — on propose de les lever
+              // avant de proposer d'ajouter un resto qui existe peut-être.
+              onClearFilters={
+                countActiveFilters(filters) > 0 ? () => changeFilters(NO_FILTERS) : undefined
+              }
               recentWinners={recentWinners}
               excludeRecent={excludeRecent}
             />

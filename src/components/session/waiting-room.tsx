@@ -8,6 +8,7 @@ import { ConnectionIndicator } from '@/components/session/connection-indicator'
 import { InviteCard } from '@/components/session/invite-card'
 import { ParticipantList } from '@/components/session/participant-list'
 import { PendingInvitees } from '@/components/session/pending-invitees'
+import { RulesSummary } from '@/components/session/rules-summary'
 import { SessionRestaurantsPanel } from '@/components/session/session-restaurants-panel'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
@@ -23,6 +24,7 @@ import type {
   SessionRestaurantWithRestaurant,
 } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { SessionRules } from '@/domain/session-rules'
 import type { ConnectionState } from '@/hooks/use-session-room'
 
 const MIN_PARTICIPANTS = 2
@@ -37,6 +39,7 @@ interface WaitingRoomProps {
   inviteUrl: string
   qrSvg: string | null
   restaurants: SessionRestaurantWithRestaurant[]
+  rules: SessionRules
   /** Première page du catalogue, pour le sélecteur de restaurants */
   restaurantCatalog: RestaurantPage | null
   connection: ConnectionState
@@ -62,6 +65,7 @@ export function WaitingRoom({
   inviteUrl,
   qrSvg,
   restaurants,
+  rules,
   restaurantCatalog,
   connection,
   invitations,
@@ -110,6 +114,8 @@ export function WaitingRoom({
       <div className="flex justify-end">
         <ConnectionIndicator state={connection} />
       </div>
+
+      <RulesSummary rules={rules} />
 
       {/* Sur grand écran : ce qu'on partage et ce qu'on apporte à gauche,
           ce qui arrive — participants, lancement — à droite. */}

@@ -14,6 +14,7 @@ import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
 import type { PlaceResult } from '@/domain/places'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
+import type { RestaurantFilters } from '@/domain/restaurant-filters'
 
 const searchRestaurantsAction = vi.hoisted(() => vi.fn())
 const createRestaurantAction = vi.hoisted(() => vi.fn())
@@ -46,6 +47,7 @@ function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
     source: 'seed',
     price_level: null,
     place_id: null,
+    tags: [],
     ...overrides,
   }
 }
@@ -74,7 +76,7 @@ const MARCEL = restaurant({
   /** Notre-Dame : environ 2,4 km de l'Opéra. */
   location: { lat: 48.853, lng: 2.3499 },
 })
-const SAKURA = restaurant({ name: 'Sakura', cuisine_type: 'Japonais' })
+const SAKURA = restaurant({ name: 'Sakura', cuisine_type: 'Japonais', tags: ['vegan'] })
 const WOK = restaurant({ name: 'Wok Garden', cuisine_type: 'Chinois' })
 const PAGE: RestaurantPage = { items: [MARCEL, SAKURA, WOK], hasMore: false, nextOffset: 3 }
 
@@ -92,6 +94,7 @@ const SUSHI_PLACE: PlaceResult = {
   location: { lat: 48.869, lng: 2.3316 },
   rating: 4.5,
   ratingCount: 320,
+  tags: [],
   description: null,
   website: null,
   openingHours: null,
@@ -132,6 +135,7 @@ function Harness({
   lists = [],
   google = true,
   onChange = () => {},
+  onFiltersChange,
   recentWinners,
   excludeRecent,
   initialPage = PAGE,
@@ -139,6 +143,7 @@ function Harness({
   lists?: ListWithRestaurantIds[]
   google?: boolean
   onChange?: (ids: string[]) => void
+  onFiltersChange?: (filters: RestaurantFilters) => void
   recentWinners?: RecentWinnerDates
   excludeRecent?: boolean
   initialPage?: RestaurantPage
@@ -161,6 +166,7 @@ function Harness({
         selectedListIds={listIds}
         onListsChange={setListIds}
         listsInputName="listIds"
+        onFiltersChange={onFiltersChange}
       />
     </RestaurantSourcesProvider>
   )
@@ -478,6 +484,105 @@ describe('RestaurantPicker', () => {
     expect(within(row).getByText('Ouvert')).toBeInTheDocument()
     expect(within(row).getByText('320 m')).toBeInTheDocument()
     vi.useRealTimers()
+  })
+
+  it('should send a filter to the base and restart from the first page', async () => {
+    const onFiltersChange = vi.fn()
+    searchRestaurantsAction.mockResolvedValue({
+      ok: true,
+      data: { items: [SAKURA], hasMore: false, nextOffset: 1 },
+    })
+    render(<Harness onFiltersChange={onFiltersChange} />)
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Vegan' }))
+
+    await waitFor(() =>
+      expect(searchRestaurantsAction).toHaveBeenCalledWith(
+        expect.objectContaining({ tags: ['vegan'], offset: 0 })
+      )
+    )
+    // Le formulaire reflète le filtre dans l'URL : un lien se partage trié.
+    expect(onFiltersChange).toHaveBeenCalledWith({
+      priceMax: null,
+      tags: ['vegan'],
+      withinKm: null,
+    })
+    await waitFor(() =>
+      expect(screen.queryByRole('checkbox', { name: /chez marcel/i })).not.toBeInTheDocument()
+    )
+    expect(screen.getByRole('checkbox', { name: /sakura/i })).toBeInTheDocument()
+  })
+
+  it('should keep the filters on the next page of results', async () => {
+    searchRestaurantsAction.mockResolvedValue({
+      ok: true,
+      data: { items: [SAKURA], hasMore: true, nextOffset: 1 },
+    })
+    render(<Harness />)
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Budget maximum €€' }))
+    await screen.findByRole('button', { name: 'Afficher plus' })
+
+    searchRestaurantsAction.mockResolvedValue({
+      ok: true,
+      data: { items: [WOK], hasMore: false, nextOffset: 2 },
+    })
+    await userEvent.click(screen.getByRole('button', { name: 'Afficher plus' }))
+
+    // Même filtre, page suivante : c'est la base qui pagine le résultat filtré.
+    await waitFor(() =>
+      expect(searchRestaurantsAction).toHaveBeenLastCalledWith(
+        expect.objectContaining({ priceMax: 2, offset: 1 })
+      )
+    )
+    expect(await screen.findByRole('checkbox', { name: /wok garden/i })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /sakura/i })).toBeInTheDocument()
+  })
+
+  it('should offer to lift the filters rather than add a restaurant that exists', async () => {
+    searchRestaurantsAction.mockResolvedValue({
+      ok: true,
+      data: { items: [], hasMore: false, nextOffset: 0 },
+    })
+    render(<Harness />)
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Casher' }))
+
+    const clear = await screen.findByRole('button', { name: 'Efface les filtres' })
+    expect(screen.queryByRole('button', { name: 'Ajoute-le' })).not.toBeInTheDocument()
+
+    searchRestaurantsAction.mockResolvedValue({ ok: true, data: PAGE })
+    await userEvent.click(clear)
+    expect(await screen.findByRole('checkbox', { name: /chez marcel/i })).toBeInTheDocument()
+  })
+
+  it('should hide the distance filter until the position is known', async () => {
+    render(<Harness />)
+
+    expect(screen.queryByRole('radio', { name: /d’ici/ })).not.toBeInTheDocument()
+
+    grantPosition()
+    await userEvent.click(screen.getByRole('button', { name: 'Autour de moi' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Moins de 1 km d’ici' }))
+
+    await waitFor(() =>
+      expect(searchRestaurantsAction).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          withinKm: 1,
+          origin: { lat: OPERA.latitude, lng: OPERA.longitude },
+        })
+      )
+    )
+
+    // La position oubliée, le rayon n'a plus rien pour mesurer : il disparaît
+    // et la recherche repart sans lui.
+    await userEvent.click(screen.getByRole('button', { name: 'Autour de toi' }))
+    expect(screen.queryByRole('radio', { name: /d’ici/ })).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(searchRestaurantsAction).toHaveBeenLastCalledWith(
+        expect.objectContaining({ withinKm: null, origin: null })
+      )
+    )
   })
 
   it('should move between sources with the arrow keys', async () => {

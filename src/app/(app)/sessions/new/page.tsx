@@ -12,7 +12,16 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Nouvelle session' }
 
-export default function NewSessionPage() {
+interface NewSessionPageProps {
+  /**
+   * Filtres du catalogue (`?budget=2&tags=vegan`) : lus dans la section, pas
+   * ici, pour que la coquille de la page reste prérendue et que seul le
+   * formulaire attende le serveur.
+   */
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
+
+export default function NewSessionPage({ searchParams }: NewSessionPageProps) {
   return (
     <Shell size="app">
       <PageHeader
@@ -22,7 +31,7 @@ export default function NewSessionPage() {
         back={{ href: router.home(), label: 'Accueil' }}
       />
       <Suspense fallback={<CreateSessionSectionFallback />}>
-        <CreateSessionSection />
+        <CreateSessionSection searchParams={searchParams} />
       </Suspense>
     </Shell>
   )

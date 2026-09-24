@@ -11,12 +11,14 @@ import Image from 'next/image'
 
 import { StaticMap } from '@/components/restaurants/static-map'
 import { buttonVariants } from '@/components/ui/button'
+import { joinNames, readTiebreak } from '@/domain/tiebreak'
 import { formatScore } from '@/domain/vote'
 import { remoteImageUrl } from '@/lib/images'
 import { directionsUrl, parseGeoPoint } from '@/lib/maps'
 import { cn } from '@/lib/utils'
 
 import type { SessionResultRow } from '@/data-access/models'
+import type { Tiebreak } from '@/domain/tiebreak'
 
 interface ResultsListProps {
   results: SessionResultRow[]
@@ -34,6 +36,8 @@ export function ResultsList({ results, participantCount, actions }: ResultsListP
   const [winner, ...rest] = results
 
   if (!winner) return null
+
+  const tiebreak = readTiebreak(results)
 
   const place = [winner.address, winner.city].filter(Boolean).join(', ')
   const photo = remoteImageUrl(winner.photo_url)
@@ -119,16 +123,7 @@ export function ResultsList({ results, participantCount, actions }: ResultsListP
             </div>
           )}
 
-          {results.filter((r) => r.rank === 1).length > 1 && (
-            <p className="relative text-sm text-chalk-muted">
-              Égalité parfaite avec{' '}
-              {results
-                .filter((r) => r.rank === 1 && r !== winner)
-                .map((r) => r.name)
-                .join(', ')}
-              . À vous de trancher.
-            </p>
-          )}
+          {tiebreak && <TieNote tiebreak={tiebreak} winner={winner} />}
         </section>
 
         {point && (
@@ -178,6 +173,23 @@ export function ResultsList({ results, participantCount, actions }: ResultsListP
         {actions && <div className="flex flex-col gap-4">{actions}</div>}
       </div>
     </div>
+  )
+}
+
+/**
+ * Ce que l'égalité de tête est devenue, dit en une phrase sur la carte du
+ * gagnant. Le départage lui-même se pilote depuis le panneau dédié.
+ */
+function TieNote({ tiebreak, winner }: { tiebreak: Tiebreak; winner: SessionResultRow }) {
+  const others = joinNames(tiebreak.tied.filter((row) => row !== winner).map((row) => row.name))
+  return (
+    <p className="relative text-sm text-chalk-muted">
+      {tiebreak.method === 'draw'
+        ? `Désigné par tirage au sort, à égalité parfaite avec ${others}.`
+        : tiebreak.method === 'runoff'
+          ? `Égalité parfaite avec ${others} : le second tour est en cours.`
+          : `Égalité parfaite avec ${others}.`}
+    </p>
   )
 }
 

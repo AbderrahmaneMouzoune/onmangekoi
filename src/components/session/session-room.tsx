@@ -1,7 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { FinishedPanel } from '@/components/session/finished-panel'
 import { SessionCountdown } from '@/components/session/session-countdown'
@@ -10,6 +11,7 @@ import { VoteDeck } from '@/components/session/vote-deck'
 import { WaitingRoom } from '@/components/session/waiting-room'
 import { router } from '@/config/router.config'
 import { closeAttribution } from '@/domain/session-deadline'
+import { parseSessionRules } from '@/domain/session-rules'
 import { useSessionRoom } from '@/hooks/use-session-room'
 import { captureEvent } from '@/lib/analytics/client'
 import { markOnce, takeSessionEntry } from '@/lib/analytics/handoff'
@@ -24,6 +26,7 @@ import type {
 } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
+import type { JokerKind } from '@/domain/session-rules'
 
 interface SessionRoomProps {
   session: Session
@@ -32,12 +35,16 @@ interface SessionRoomProps {
   /** Première page du catalogue, pour ajouter un resto en salle d'attente */
   restaurantCatalog: RestaurantPage | null
   myVotedIds: string[]
+  /** Jokers déjà dépensés par la personne, comptés en base */
+  myJokersUsed: Record<JokerKind, number>
   /** Anti-fatigue : ce qui a déjà gagné récemment, chargé avec la session */
   recentWinners: RecentWinnerDates
   meId: string
   inviteUrl: string
   /** QR code SVG du lien d'invitation, rendu côté serveur (salle d'attente) */
   qrSvg: string | null
+  /** Classement du premier tour, quand cette session en est le second */
+  firstRoundUrl: string | null
   /** Invités pré-ajoutés en attente — vide pour qui n'est pas le host. */
   invitations: InvitationWithProfile[]
   /** Groupes du host, à inviter depuis la salle d'attente. */
@@ -65,10 +72,12 @@ export function SessionRoom({
   restaurants: initialRestaurants,
   restaurantCatalog,
   myVotedIds,
+  myJokersUsed,
   recentWinners,
   meId,
   inviteUrl,
   qrSvg,
+  firstRoundUrl,
   invitations,
   groups,
 }: SessionRoomProps) {
@@ -82,6 +91,9 @@ export function SessionRoom({
 
   const me = participants.find((p) => p.profile_id === meId)
   const isHost = session.host_id === meId
+  // Les règles sont figées au lancement : les relire une fois suffit, et le
+  // deck s'appuie sur leur identité pour ne pas se réabonner au clavier.
+  const rules = useMemo(() => parseSessionRules(session.rules), [session.rules])
 
   const [finishedLocally, setFinishedLocally] = useState(
     myVotedIds.length >= initialRestaurants.length && initialRestaurants.length > 0
@@ -100,6 +112,9 @@ export function SessionRoom({
         session_id: initialSession.id,
         restaurant_count: initialRestaurants.length,
         list_count: entry.listCount,
+        superlikes: rules.superlikes,
+        vetos: rules.vetos,
+        close_at_ratio: rules.close_at_ratio,
       })
       return
     }
@@ -108,7 +123,7 @@ export function SessionRoom({
     if (entry || !isHost) {
       captureEvent('session_joined', { session_id: initialSession.id, via })
     }
-  }, [initialSession.id, isHost, initialRestaurants.length])
+  }, [initialSession.id, isHost, initialRestaurants.length, rules])
 
   const closeTracked = useRef(false)
 
@@ -166,8 +181,20 @@ export function SessionRoom({
     <div className="flex flex-col gap-6 lg:gap-8">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="eyebrow">Session</p>
+          <p className="eyebrow">{firstRoundUrl ? 'Second tour' : 'Session'}</p>
           <h1 className="truncate text-2xl font-bold sm:text-3xl lg:text-4xl">{session.name}</h1>
+          {firstRoundUrl && (
+            <p className="text-sm text-muted-foreground">
+              On départage l’égalité du{' '}
+              <Link
+                href={firstRoundUrl}
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                premier tour
+              </Link>
+              .
+            </p>
+          )}
         </div>
         <SessionStatusBadge status={session.status} />
       </div>
@@ -195,6 +222,7 @@ export function SessionRoom({
             inviteUrl={inviteUrl}
             qrSvg={qrSvg}
             restaurants={restaurants}
+            rules={rules}
             restaurantCatalog={restaurantCatalog}
             connection={connection}
             invitations={invitations}
@@ -209,9 +237,9 @@ export function SessionRoom({
             sessionId={session.id}
             restaurants={restaurants}
             initialVotedIds={myVotedIds}
+            rules={rules}
+            initialJokersUsed={myJokersUsed}
             lastWins={recentWinners}
-            initialSuperlikeUsed={me?.superlike_used ?? false}
-            initialSuperDislikeUsed={me?.super_dislike_used ?? false}
             onFinished={handleFinished}
           />
         )}
