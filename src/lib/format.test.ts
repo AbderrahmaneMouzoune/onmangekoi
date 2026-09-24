@@ -6,6 +6,7 @@ import {
   displayPseudo,
   initials,
   participantLabel,
+  percentLabel,
   plural,
   relativeDate,
 } from './format'
@@ -56,6 +57,16 @@ describe('participantLabel', () => {
     expect(participantLabel('user-1', null)).toBe('Invité')
     expect(participantLabel('user-1', '  ')).toBe('Invité')
     expect(participantLabel('user-1', 'Sam')).toBe('Sam')
+  })
+})
+
+describe('percentLabel', () => {
+  it('should render a ratio as a rounded percentage', () => {
+    // L'espace avant le % dépend de la locale ICU : on ne teste que le chiffre.
+    expect(percentLabel(0.42)).toMatch(/^42\s*%$/)
+    expect(percentLabel(0)).toMatch(/^0\s*%$/)
+    expect(percentLabel(1)).toMatch(/^100\s*%$/)
+    expect(percentLabel(0.128)).toMatch(/^13\s*%$/)
   })
 })
 

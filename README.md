@@ -132,6 +132,7 @@ Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **s
 
 | Route                    | Exemple                    | Qui la voit                   |
 | ------------------------ | -------------------------- | ----------------------------- |
+| Historique               | `/sessions`                | soi-même                      |
 | Salle de session         | `/sessions/7K3M9P`         | participants                  |
 | Classement               | `/sessions/7K3M9P/results` | participants                  |
 | Invitation (lien + QR)   | `/join/7K3M9P`             | qui reçoit le lien ou le code |
@@ -160,6 +161,21 @@ Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvr
 - **Ce qui sort** : le nom de la session, le nombre de participants, et le podium (rangs 1 à 3). La RPC `public_results` ne renvoie rien d'autre : ni pseudo, ni détail des votes, ni le reste du classement.
 - **Aperçu** : l'`opengraph-image` de la route affiche le gagnant et son score sur l'ardoise, et se cache une heure — de quoi tenir un lien qui circule.
 - **Refermer** est immédiat : la bascule purge l'entrée de cache du lien, la page redevient introuvable.
+
+## Historique et statistiques
+
+Une session clôturée ne sort plus de la navigation : `/sessions` la garde, hébergée ou rejointe, de la plus récente à la plus ancienne, et son classement s'ouvre en un clic. « Mon compte » y ajoute le résumé de ce que ces sessions racontent.
+
+| Lecture           | RPC                                                | Ce qu'elle rend                                                                         |
+| ----------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Historique paginé | `my_sessions(limit, cursor_created_at, cursor_id)` | statut, date, compteurs, hôte ou non, et le gagnant d'une session close                 |
+| Statistiques      | `my_stats()`                                       | sessions, votes, taux de coups de cœur, cuisine préférée, resto le plus souvent gagnant |
+
+La pagination se fait **par curseur, jamais par offset** : le curseur désigne la dernière ligne rendue — sa date et son id, encodés en base64url dans `?cursor=` —, et la page suivante reprend strictement en dessous. Une session créée entre deux pages n'en décale donc aucune, ne fait sauter aucune ligne et n'en sert jamais deux fois la même. Un curseur illisible retombe sur la première page au lieu de lever.
+
+Les statistiques ne comptent **que mes votes** : `my_stats` n'agrège que les lignes attachées à mes participations. Le seul chiffre issu du groupe est le gagnant d'une session close, qui est déjà l'agrégat que ses participants lisent dans le classement. La règle de départage est partagée avec `session_results` (score, puis coups de cœur, puis ordre de présentation) via un helper `session_winner` qu'aucun rôle ne peut appeler : seules les deux RPC y accèdent, après avoir vérifié la participation.
+
+Le scénario est rejouable avec `bun run db:test` (`supabase/tests/history.test.sql`).
 
 ## Fiche restaurant
 
@@ -315,19 +331,19 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ```
 src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join/[code], sessions/[code], lists/[code], l/[code], groups, account, nouveautes, legal, auth, api/places)
+src/app/                 routes App Router (setup, login, join/[code], sessions, sessions/[code], lists/[code], l/[code], groups, account, nouveautes, legal, auth, api/places)
 src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · groups/ · account/ · restaurants/ · onboarding/ · changelog/
 src/content/changelog/   notes de version produit (schéma Zod + entrées), lues par /nouveautes et son flux RSS
-src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + recent-winners.ts (anti-fatigue) + models/ (types générés)
+src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + recent-winners.ts (anti-fatigue) + stats.ts + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
-src/domain/              règles et vocabulaire métier : votes, codes de partage, erreurs, horaires, places, anti-fatigue, schemas/ (Zod)
+src/domain/              règles et vocabulaire métier : votes, codes de partage, curseur d'historique, erreurs, horaires, places, anti-fatigue, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
                          images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache, version (semver), changelog-seen
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
 src/hooks/               Realtime de session, compte à rebours, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/add|remove_session_restaurant/submit_vote/close/extend/
-                         results/recent_winners, départage, groupes et invitations), purge, RGPD
+                         results/recent_winners/my_sessions/my_stats, départage, groupes et invitations), purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
 ```
@@ -380,7 +396,8 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - **Aperçu d'invitation** (`session_preview`) : un visiteur non authentifié — typiquement le robot qui déplie le lien dans une conversation — n'obtient un aperçu par code court que sur une session **en attente**, et seulement le nom, le pseudo du host et deux compteurs. Rejoindre exige toujours un compte.
 - **Toutes les écritures métier passent par des RPC** transactionnelles (`create_session`, `join_session`, `launch_session`, `submit_vote`, `close_session`) qui revérifient les règles côté base.
 - Composer une session est ouvert à ses participants, pas à tout le monde : `add_session_restaurant` et `remove_session_restaurant` revérifient en base l'appartenance, le statut `waiting` et — au retrait — la paternité du resto (`added_by`) ou la qualité de host. Aucune policy RLS n'ouvre l'écriture directe sur `session_restaurants`.
-- Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat.
+- Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat, et `my_stats` ne compte que les votes de son appelant.
+- `my_sessions` et `my_stats` refont le contrôle d'accès en clair (`session_participants.profile_id = auth.uid()`) plutôt que de s'en remettre à la RLS, qui reste inchangée. Le helper `session_winner` n'est exécutable ni par `anon` ni par `authenticated` : sans ça, le gagnant de n'importe quelle session se lirait en devinant un uuid.
 - **Anti-fatigue** (`recent_winners`) : la fonction ne prend aucun identifiant et se borne à `auth.uid()` — impossible de demander ce qui fatigue quelqu'un d'autre. Elle ne rend que le restaurant gagnant et la date de clôture : le reste du classement et le détail des votes n'en sortent pas.
 - Un **groupe** n'est visible que de ses membres et modifiable que par son propriétaire (RLS) ; la création, l'invitation et le départ passent par des RPC (`create_group_from_session`, `invite_group_to_session`, `leave_group`) qui revérifient tout en base. Une invitation en attente n'ouvre aucun accès à la session : l'invité n'en lit que le nécessaire, via `my_session_invitations`.
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.

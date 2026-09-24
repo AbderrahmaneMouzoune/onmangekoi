@@ -38,6 +38,16 @@ export function participantLabel(
   return profileId === null ? DELETED_PARTICIPANT : displayPseudo(pseudo)
 }
 
+const percentFormatter = new Intl.NumberFormat('fr', {
+  style: 'percent',
+  maximumFractionDigits: 0,
+})
+
+/** `0.42` → `42 %`. Le ratio est attendu entre 0 et 1. */
+export function percentLabel(ratio: number): string {
+  return percentFormatter.format(ratio)
+}
+
 const relativeFormatter = new Intl.RelativeTimeFormat('fr', { numeric: 'auto' })
 
 export function relativeDate(iso: string, now: Date = new Date()): string {
