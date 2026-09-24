@@ -10,8 +10,10 @@ import { VoteDeck } from './vote-deck'
 import type { Restaurant, SessionRestaurantWithRestaurant } from '@/data-access/models'
 
 const submitVoteAction = vi.hoisted(() => vi.fn())
+const completePlaceAction = vi.hoisted(() => vi.fn())
 
 vi.mock('@/actions/votes', () => ({ submitVoteAction }))
+vi.mock('@/actions/places', () => ({ completePlaceAction }))
 vi.mock('@/lib/analytics/client', () => ({ captureEvent: vi.fn() }))
 
 function restaurant(name: string): Restaurant {
@@ -211,5 +213,38 @@ describe('VoteDeck — distance', () => {
 
     await user.click(screen.getByRole('button', { name: 'Autour de toi' }))
     expect(card).not.toHaveTextContent(/km/)
+  })
+})
+
+describe('VoteDeck — fiche complétée à l’affichage', () => {
+  /** Un resto amorcé en masse : Google le connaît, sa fiche n'a pas de photo. */
+  function seeded(name: string, placeId: string): SessionRestaurantWithRestaurant[] {
+    const deck = deckOf(name, 'Sushi Sakura')
+    deck[0]!.restaurants!.place_id = placeId
+    deck[0]!.restaurants!.source = 'google'
+    return deck
+  }
+
+  beforeEach(() => {
+    submitVoteAction.mockReset()
+    completePlaceAction.mockReset()
+    completePlaceAction.mockImplementation(async (placeId: string) => ({
+      ok: true,
+      data: { ...restaurant('Chez Marcel'), place_id: placeId, photo_url: null },
+    }))
+  })
+
+  it('should pay the details of the card on screen, once, and not those of the deck below', async () => {
+    renderDeck({ restaurants: seeded('Chez Marcel', 'ChIJmarcel') })
+
+    await waitFor(() => expect(completePlaceAction).toHaveBeenCalledWith('ChIJmarcel'))
+    expect(completePlaceAction).toHaveBeenCalledTimes(1)
+  })
+
+  it('should leave alone a restaurant that never came from Google', async () => {
+    renderDeck({ restaurants: deckOf('Chez Marcel', 'Sushi Sakura') })
+
+    await screen.findByText(/Restaurant 1 sur 2/)
+    expect(completePlaceAction).not.toHaveBeenCalled()
   })
 })

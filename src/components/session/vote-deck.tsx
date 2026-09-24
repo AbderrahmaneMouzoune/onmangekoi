@@ -11,6 +11,7 @@ import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
 import { VOTE_ACTIONS, voteActionByKey, voteActionByValue } from '@/domain/vote'
+import { useCompletedRestaurant } from '@/hooks/use-completed-restaurant'
 import { useGeolocation } from '@/hooks/use-geolocation'
 import { captureEvent } from '@/lib/analytics/client'
 import { geoPoint } from '@/lib/maps'
@@ -77,6 +78,10 @@ export function VoteDeck({
   const next = remaining[1]
   const total = restaurants.length
   const done = total - remaining.length
+  // Un resto arrivé par un amorçage de quartier n'a pas de photo : sa fiche
+  // se complète ici, sur la carte qu'on regarde — jamais sur les vingt du
+  // deck d'un coup. Celle d'en dessous attendra son tour.
+  const fiche = useCompletedRestaurant(current?.restaurants ?? null)
 
   const finish = useCallback(() => {
     onFinished()
@@ -292,7 +297,7 @@ export function VoteDeck({
           className={cn('relative touch-pan-y', drag.active ? 'cursor-grabbing' : 'cursor-grab')}
         >
           <VoteCard
-            restaurant={current.restaurants as Restaurant}
+            restaurant={fiche ?? (current.restaurants as Restaurant)}
             index={done + 1}
             total={total}
             lastWonAt={lastWins[current.restaurants.id]}
