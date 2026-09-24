@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { GROUPS_PER_SESSION_MAX } from '@/domain/schemas/group'
 import { DEADLINE_MAX_MINUTES, DEADLINE_MIN_MINUTES } from '@/domain/session-deadline'
+import { CLOSE_AT_RATIO_MIN, JOKERS_MAX } from '@/domain/session-rules'
 
 export const SESSION_NAME_MAX = 100
 export const SESSION_RESTAURANTS_MAX = 100
@@ -33,6 +34,39 @@ export const CreateSessionSchema = z
     ),
     /** « à 12:00 » : l'instant est calculé par le navigateur, seul à connaître son fuseau. */
     closesAt: z.preprocess(absent, z.iso.datetime().optional()),
+    /**
+     * Règles du vote. Absentes, ce sont celles d'avant — la base porte les
+     * mêmes bornes (`public.rules_are_valid`) et tranche en dernier.
+     */
+    superlikes: z.preprocess(
+      absent,
+      z.coerce
+        .number()
+        .int()
+        .min(0, 'Un quota de jokers ne peut pas être négatif')
+        .max(JOKERS_MAX, `Au-delà de ${JOKERS_MAX}, le joker n’en est plus un`)
+        .optional()
+    ),
+    vetos: z.preprocess(
+      absent,
+      z.coerce
+        .number()
+        .int()
+        .min(0, 'Un quota de jokers ne peut pas être négatif')
+        .max(JOKERS_MAX, `Au-delà de ${JOKERS_MAX}, le joker n’en est plus un`)
+        .optional()
+    ),
+    closeAtRatio: z.preprocess(
+      absent,
+      z.coerce
+        .number()
+        .min(
+          CLOSE_AT_RATIO_MIN,
+          'La clôture ne peut pas se décider à moins de la moitié des votants'
+        )
+        .max(1, 'La clôture ne peut pas attendre plus que tout le monde')
+        .optional()
+    ),
     /**
      * Anti-fatigue. Une case décochée n'envoie rien du tout : le `null` que
      * rend `formData.get` se lit comme un non, et l'absence du champ aussi.

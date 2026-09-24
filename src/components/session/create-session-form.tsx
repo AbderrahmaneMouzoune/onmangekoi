@@ -6,6 +6,7 @@ import { useActionState, useId, useMemo, useState } from 'react'
 import { createSessionAction } from '@/actions/sessions'
 import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
 import { DeadlinePicker } from '@/components/session/deadline-picker'
+import { RulesPicker } from '@/components/session/rules-picker'
 import { SESSION_STEPS, SessionStep, StepTitle } from '@/components/session/session-step'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
@@ -196,6 +197,8 @@ export function CreateSessionForm({
           </p>
         </SessionStep>
       )}
+
+      <RulesPicker />
 
       <FormMessage error={state?.error} />
 

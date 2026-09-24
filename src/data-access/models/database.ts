@@ -471,6 +471,7 @@ export type Database = {
           name: string
           results_code: string
           results_public: boolean
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }
         Insert: {
@@ -485,6 +486,7 @@ export type Database = {
           name: string
           results_code?: string
           results_public?: boolean
+          rules?: Json
           status?: Database['public']['Enums']['session_status']
         }
         Update: {
@@ -499,6 +501,7 @@ export type Database = {
           name?: string
           results_code?: string
           results_public?: boolean
+          rules?: Json
           status?: Database['public']['Enums']['session_status']
         }
         Relationships: [
@@ -606,6 +609,7 @@ export type Database = {
           name: string
           results_code: string
           results_public: boolean
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -689,6 +693,7 @@ export type Database = {
           p_closes_at?: string
           p_name: string
           p_restaurant_ids: string[]
+          p_rules?: Json
         }
         Returns: {
           closed_at: string | null
@@ -702,6 +707,7 @@ export type Database = {
           name: string
           results_code: string
           results_public: boolean
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -712,6 +718,7 @@ export type Database = {
         }
       }
       crockford_code: { Args: { p_length: number }; Returns: string }
+      default_session_rules: { Args: never; Returns: Json }
       delete_my_account: { Args: never; Returns: undefined }
       export_my_data: { Args: never; Returns: Json }
       extend_session: {
@@ -728,6 +735,7 @@ export type Database = {
           name: string
           results_code: string
           results_public: boolean
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -818,6 +826,7 @@ export type Database = {
           name: string
           results_code: string
           results_public: boolean
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -841,6 +850,7 @@ export type Database = {
           name: string
           results_code: string
           results_public: boolean
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {
@@ -904,7 +914,11 @@ export type Database = {
       neighbourhood_import_quota: { Args: never; Returns: number }
       neighbourhood_import_window: { Args: never; Returns: string }
       normalize_crockford: { Args: { p_input: string }; Returns: string }
-      normalize_restaurant_tags: { Args: { p_tags: string[] }; Returns: string[] }
+      normalize_restaurant_tags: {
+        Args: { p_tags: string[] }
+        Returns: string[]
+      }
+      normalize_rules: { Args: { p_rules: Json }; Returns: Json }
       public_results: {
         Args: { p_code: string }
         Returns: {
@@ -924,10 +938,7 @@ export type Database = {
         Args: { p_older_than?: string }
         Returns: number
       }
-      purge_join_attempts: {
-        Args: { p_older_than?: string }
-        Returns: number
-      }
+      purge_join_attempts: { Args: { p_older_than?: string }; Returns: number }
       purge_stale_sessions: {
         Args: { p_closed_older_than?: string; p_waiting_older_than?: string }
         Returns: {
@@ -949,6 +960,7 @@ export type Database = {
         Returns: undefined
       }
       restaurant_tag_values: { Args: never; Returns: string[] }
+      rules_are_valid: { Args: { p_rules: Json }; Returns: boolean }
       run_maintenance: { Args: never; Returns: Json }
       search_restaurants: {
         Args: {
@@ -994,6 +1006,7 @@ export type Database = {
           name: string
           participant_count: number
           restaurant_count: number
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }[]
       }
@@ -1035,6 +1048,7 @@ export type Database = {
           name: string
           results_code: string
           results_public: boolean
+          rules: Json
           status: Database['public']['Enums']['session_status']
         }
         SetofOptions: {

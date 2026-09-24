@@ -44,6 +44,10 @@ export interface AnalyticsEventMap {
     restaurant_count: number
     /** Nombre de listes de favoris utilisées comme source */
     list_count: number
+    /** Règles choisies : quotas de jokers et seuil de clôture (issue #16) */
+    superlikes: number
+    vetos: number
+    close_at_ratio: number
   }
   invite_shared: {
     session_id: string

@@ -101,6 +101,32 @@ describe('CreateSessionSchema', () => {
     expect(CreateSessionSchema.safeParse({ ...base, closesAt: 'demain midi' }).success).toBe(false)
   })
 
+  it('should read the vote rules from the form', () => {
+    const base = { name: 'Lunch', restaurantIds: [UUID] }
+    const parsed = CreateSessionSchema.safeParse({
+      ...base,
+      superlikes: '2',
+      vetos: '0',
+      closeAtRatio: '0.8',
+    })
+    expect(parsed.data?.superlikes).toBe(2)
+    expect(parsed.data?.vetos).toBe(0)
+    expect(parsed.data?.closeAtRatio).toBe(0.8)
+
+    const absent = CreateSessionSchema.safeParse({ ...base, superlikes: null, closeAtRatio: '' })
+    expect(absent.data?.superlikes).toBeUndefined()
+    expect(absent.data?.closeAtRatio).toBeUndefined()
+  })
+
+  it('should bound the rules like the database does', () => {
+    const base = { name: 'Lunch', restaurantIds: [UUID] }
+    expect(CreateSessionSchema.safeParse({ ...base, vetos: 6 }).success).toBe(false)
+    expect(CreateSessionSchema.safeParse({ ...base, vetos: -1 }).success).toBe(false)
+    expect(CreateSessionSchema.safeParse({ ...base, superlikes: 1.5 }).success).toBe(false)
+    expect(CreateSessionSchema.safeParse({ ...base, closeAtRatio: 0.3 }).success).toBe(false)
+    expect(CreateSessionSchema.safeParse({ ...base, closeAtRatio: 1.2 }).success).toBe(false)
+  })
+
   it('should read the anti-fatigue box, checked as unchecked', () => {
     const base = { name: 'Lunch', restaurantIds: [UUID] }
     // Cochée, le navigateur envoie « on » ; décochée, il n'envoie rien.
