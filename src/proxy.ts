@@ -62,6 +62,10 @@ export async function proxy(request: NextRequest) {
  * Next exige un littéral ici (analyse statique) : la liste doit couvrir
  * `PROTECTED_PREFIXES` de `config/router.config.ts` — un test unitaire
  * (`router.config.test.ts`) vérifie qu'ils restent alignés.
+ *
+ * Elle va au-delà : `/l/:path*` n'est plus une route protégée, mais reste
+ * filtrée pour que la session Supabase s'y rafraîchisse — une liste publique
+ * ouverte par quelqu'un de connecté doit le rester.
  */
 export const config = {
   matcher: [

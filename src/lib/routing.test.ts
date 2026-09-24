@@ -8,7 +8,6 @@ describe('isProtectedPath', () => {
     expect(isProtectedPath('/sessions/abc')).toBe(true)
     expect(isProtectedPath('/join/abc')).toBe(true)
     expect(isProtectedPath('/lists/new')).toBe(true)
-    expect(isProtectedPath('/l/token')).toBe(true)
     expect(isProtectedPath('/account')).toBe(true)
   })
 
@@ -17,6 +16,12 @@ describe('isProtectedPath', () => {
     expect(isProtectedPath('/setup')).toBe(false)
     expect(isProtectedPath('/login')).toBe(false)
     expect(isProtectedPath('/listsomething')).toBe(false)
+  })
+
+  it('should let a shared list through — the page decides, list by list', () => {
+    // Une liste publique se montre sans pseudo ; une liste privée renvoie
+    // elle-même vers l'onboarding, depuis la page et non depuis le proxy.
+    expect(isProtectedPath('/l/H4V2Q8ZX0M')).toBe(false)
   })
 })
 

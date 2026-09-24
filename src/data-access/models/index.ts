@@ -43,6 +43,20 @@ export type SessionPreview = Omit<
 export type SharedListPreview = Functions['list_by_share_token']['Returns'][number]
 
 /**
+ * Carte de visite d'une liste publique — ce que voit qui arrive par le lien
+ * sans avoir de pseudo. `top_restaurant` et son compteur sont nuls tant
+ * qu'aucune session close n'a désigné de gagnant parmi les restaurants de la
+ * liste ; le générateur, lui, ne voit que des colonnes de `returns table`.
+ */
+export type PublicListPreview = Omit<
+  Functions['public_list']['Returns'][number],
+  'top_restaurant' | 'top_restaurant_wins'
+> & { top_restaurant: string | null; top_restaurant_wins: number | null }
+
+/** Une entrée de sitemap : le code d'une liste publique et sa fraîcheur. */
+export type PublicListEntry = Functions['public_lists']['Returns'][number]
+
+/**
  * Restaurant sorti gagnant d'une session close récente, et la date de son
  * dernier sacre. Aucune des deux colonnes n'est nulle en base — c'est le
  * générateur qui ne peut pas le savoir d'un `returns table (...)`.

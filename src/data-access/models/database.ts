@@ -149,6 +149,7 @@ export type Database = {
           created_at: string
           id: string
           is_collaborative: boolean
+          is_public: boolean
           name: string
           owner_id: string
           share_code: string
@@ -159,6 +160,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_collaborative?: boolean
+          is_public?: boolean
           name: string
           owner_id: string
           share_code?: string
@@ -169,6 +171,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_collaborative?: boolean
+          is_public?: boolean
           name?: string
           owner_id?: string
           share_code?: string
@@ -651,6 +654,7 @@ export type Database = {
           created_at: string
           id: string
           is_collaborative: boolean
+          is_public: boolean
           name: string
           owner_id: string
           share_code: string
@@ -837,6 +841,7 @@ export type Database = {
           created_at: string
           id: string
           is_collaborative: boolean
+          is_public: boolean
           name: string
           owner_id: string
           share_code: string
@@ -958,6 +963,7 @@ export type Database = {
         Returns: {
           id: string
           is_collaborative: boolean
+          is_public: boolean
           name: string
           owner_pseudo: string
           restaurant_count: number
@@ -1046,6 +1052,52 @@ export type Database = {
         Returns: string[]
       }
       normalize_rules: { Args: { p_rules: Json }; Returns: Json }
+      public_list: {
+        Args: { p_code: string }
+        Returns: {
+          cuisines: string[]
+          name: string
+          restaurant_count: number
+          share_code: string
+          top_restaurant: string
+          top_restaurant_wins: number
+          updated_at: string
+        }[]
+      }
+      public_list_restaurants: {
+        Args: { p_code: string }
+        Returns: {
+          address: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          cuisine_type: string | null
+          description: string | null
+          id: string
+          location: Json | null
+          name: string
+          opening_hours: Json | null
+          photo_url: string | null
+          place_id: string | null
+          price_level: number | null
+          source: string
+          tags: string[]
+          website: string | null
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'restaurants'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      public_lists: {
+        Args: never
+        Returns: {
+          share_code: string
+          updated_at: string
+        }[]
+      }
       public_results: {
         Args: { p_code: string }
         Returns: {

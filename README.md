@@ -130,16 +130,16 @@ La fenêtre de 30 jours est une constante : `recent_winners_window()` en base, `
 
 Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **son code court**, celui qu'on se dit à voix haute.
 
-| Route                    | Exemple                    | Qui la voit                   |
-| ------------------------ | -------------------------- | ----------------------------- |
-| Historique               | `/sessions`                | soi-même                      |
-| Salle de session         | `/sessions/7K3M9P`         | participants                  |
-| Classement               | `/sessions/7K3M9P/results` | participants                  |
-| Invitation (lien + QR)   | `/join/7K3M9P`             | qui reçoit le lien ou le code |
-| Liste, côté propriétaire | `/lists/H4V2Q8ZX0M`        | propriétaire                  |
-| Mes groupes              | `/groups`                  | membres des groupes           |
-| Liste partagée           | `/l/H4V2Q8ZX0M`            | qui reçoit le lien            |
-| Classement public        | `/r/H4V2Q8ZX0M`            | tout le monde, sans pseudo    |
+| Route                    | Exemple                    | Qui la voit                                                 |
+| ------------------------ | -------------------------- | ----------------------------------------------------------- |
+| Historique               | `/sessions`                | soi-même                                                    |
+| Salle de session         | `/sessions/7K3M9P`         | participants                                                |
+| Classement               | `/sessions/7K3M9P/results` | participants                                                |
+| Invitation (lien + QR)   | `/join/7K3M9P`             | qui reçoit le lien ou le code                               |
+| Liste, côté propriétaire | `/lists/H4V2Q8ZX0M`        | propriétaire                                                |
+| Mes groupes              | `/groups`                  | membres des groupes                                         |
+| Liste partagée           | `/l/H4V2Q8ZX0M`            | qui reçoit le lien — ou tout le monde, si elle est publique |
+| Classement public        | `/r/H4V2Q8ZX0M`            | tout le monde, sans pseudo                                  |
 
 | Objet             | Code          | Forme         |
 | ----------------- | ------------- | ------------- |
@@ -162,6 +162,14 @@ Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvr
 - **Aperçu** : l'`opengraph-image` de la route affiche le gagnant et son score sur l'ardoise, et se cache une heure — de quoi tenir un lien qui circule.
 - **Refermer** est immédiat : la bascule purge l'entrée de cache du lien, la page redevient introuvable.
 
+### Une liste publique
+
+Une liste reste **privée par défaut** : le lien suffit à la voir, et rien d'autre ne la désigne. Son propriétaire peut la rendre publique d'un interrupteur, et la refermer du même geste. Publique, elle gagne une page qui se présente — son nom, ses adresses, les cuisines représentées et, quand l'historique est là, le restaurant que le groupe choisit le plus souvent —, une image Open Graph, et une entrée dans le `sitemap.xml`.
+
+Qui reçoit le lien peut en **lancer une session d'un clic**. Sans pseudo, le bouton passe par l'onboarding et ramène sur la liste, exactement comme `/join/<code>`.
+
+Le pseudo du propriétaire n'apparaît nulle part sur cette page : la RPC `public_list` ne le rend pas, il n'y a rien à masquer côté application. Les listes restées privées, elles, ne sortent pas de l'index — `noindex` sur la page, `Disallow: /lists/` pour la vue propriétaire — et renvoient à l'onboarding qui n'a pas de pseudo.
+
 ## Historique et statistiques
 
 Une session clôturée ne sort plus de la navigation : `/sessions` la garde, hébergée ou rejointe, de la plus récente à la plus ancienne, et son classement s'ouvre en un clic. « Mon compte » y ajoute le résumé de ce que ces sessions racontent.
@@ -173,7 +181,7 @@ Une session clôturée ne sort plus de la navigation : `/sessions` la garde, hé
 
 La pagination se fait **par curseur, jamais par offset** : le curseur désigne la dernière ligne rendue — sa date et son id, encodés en base64url dans `?cursor=` —, et la page suivante reprend strictement en dessous. Une session créée entre deux pages n'en décale donc aucune, ne fait sauter aucune ligne et n'en sert jamais deux fois la même. Un curseur illisible retombe sur la première page au lieu de lever.
 
-Les statistiques ne comptent **que mes votes** : `my_stats` n'agrège que les lignes attachées à mes participations. Le seul chiffre issu du groupe est le gagnant d'une session close, qui est déjà l'agrégat que ses participants lisent dans le classement. La règle de départage est partagée avec `session_results` (score, puis coups de cœur, puis ordre de présentation) via un helper `session_winner` qu'aucun rôle ne peut appeler : seules les deux RPC y accèdent, après avoir vérifié la participation.
+Les statistiques ne comptent **que mes votes** : `my_stats` n'agrège que les lignes attachées à mes participations. Le seul chiffre issu du groupe est le gagnant d'une session close, qui est déjà l'agrégat que ses participants lisent dans le classement. La règle de départage est partagée avec `session_results` (score, puis coups de cœur, puis le restaurant tiré au sort s'il y a eu tirage, puis ordre de présentation) via un helper `session_winner` qu'aucun rôle ne peut appeler : seules les deux RPC y accèdent, après avoir vérifié la participation.
 
 Le scénario est rejouable avec `bun run db:test` (`supabase/tests/history.test.sql`).
 
@@ -352,10 +360,11 @@ e2e/                     Playwright
 
 Les **Cache Components** de Next 16 sont activés (`cacheComponents: true`) : chaque route est prérendue sous forme de **coquille statique** — chrome, titres, textes, squelettes — servie immédiatement depuis le cache, pendant que les parties réellement personnelles arrivent en streaming dans leur `<Suspense>`.
 
-| Ce qui est prérendu et mis en cache                                       | Ce qui reste diffusé à chaque requête                                        |
-| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| En-tête, titres, accroche, « comment ça marche », formulaires, squelettes | Pseudo et avatar, sessions, listes, votes, classements, aperçus d'invitation |
-| Catalogue de restaurants (`use cache`, 1 h, tag `restaurants`)            | Tout ce qui passe par le client Supabase lié aux cookies                     |
+| Ce qui est prérendu et mis en cache                                              | Ce qui reste diffusé à chaque requête                                        |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| En-tête, titres, accroche, « comment ça marche », formulaires, squelettes        | Pseudo et avatar, sessions, listes, votes, classements, aperçus d'invitation |
+| Catalogue de restaurants (`use cache`, 1 h, tag `restaurants`)                   | Tout ce qui passe par le client Supabase lié aux cookies                     |
+| Listes publiques (`use cache`, 1 h, tags `public-list:<code>` et `public-lists`) | Le contenu d'une liste privée, réservé à qui a le lien                       |
 
 Deux règles tiennent l'ensemble :
 
@@ -397,6 +406,7 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - **Toutes les écritures métier passent par des RPC** transactionnelles (`create_session`, `join_session`, `launch_session`, `submit_vote`, `close_session`) qui revérifient les règles côté base.
 - Composer une session est ouvert à ses participants, pas à tout le monde : `add_session_restaurant` et `remove_session_restaurant` revérifient en base l'appartenance, le statut `waiting` et — au retrait — la paternité du resto (`added_by`) ou la qualité de host. Aucune policy RLS n'ouvre l'écriture directe sur `session_restaurants`.
 - Les votes individuels ne sont jamais exposés : `session_results` renvoie un agrégat, et `my_stats` ne compte que les votes de son appelant.
+- **Liste publique** (`public_list`, `public_list_restaurants`, `public_lists`) : les seules lectures de liste ouvertes à `anon`. Elles ne répondent que pour une liste dont le propriétaire a ouvert le partage (`lists.is_public`), et ne rendent que son nom, ses restaurants et des compteurs — jamais le propriétaire, jamais ses autres listes. Refermer le partage purge le cache (`revalidateTag`) : la page redevient privée sur-le-champ.
 - `my_sessions` et `my_stats` refont le contrôle d'accès en clair (`session_participants.profile_id = auth.uid()`) plutôt que de s'en remettre à la RLS, qui reste inchangée. Le helper `session_winner` n'est exécutable ni par `anon` ni par `authenticated` : sans ça, le gagnant de n'importe quelle session se lirait en devinant un uuid.
 - **Anti-fatigue** (`recent_winners`) : la fonction ne prend aucun identifiant et se borne à `auth.uid()` — impossible de demander ce qui fatigue quelqu'un d'autre. Elle ne rend que le restaurant gagnant et la date de clôture : le reste du classement et le détail des votes n'en sortent pas.
 - Un **groupe** n'est visible que de ses membres et modifiable que par son propriétaire (RLS) ; la création, l'invitation et le départ passent par des RPC (`create_group_from_session`, `invite_group_to_session`, `leave_group`) qui revérifient tout en base. Une invitation en attente n'ouvre aucun accès à la session : l'invité n'en lit que le nécessaire, via `my_session_invitations`.

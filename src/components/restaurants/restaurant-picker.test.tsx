@@ -60,6 +60,7 @@ function list(overrides: Partial<ListWithRestaurantIds> = {}): ListWithRestauran
     share_code: 'ABCDEFGHJK',
     share_token: 'a'.repeat(32),
     is_collaborative: false,
+    is_public: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     restaurant_ids: [],
