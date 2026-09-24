@@ -252,11 +252,16 @@ export function RestaurantPicker({
         return
       }
       remember(result.data.items)
-      setPage((prev) => ({
-        items: [...prev.items, ...result.data.items],
-        hasMore: result.data.hasMore,
-        nextOffset: result.data.nextOffset,
-      }))
+      setPage((prev) => {
+        // Un resto entré en tête depuis (import, amorçage) peut revenir dans
+        // la page suivante : le décalage d'offset ne doit pas le dédoubler.
+        const seen = new Set(prev.items.map((item) => item.id))
+        return {
+          items: [...prev.items, ...result.data.items.filter((item) => !seen.has(item.id))],
+          hasMore: result.data.hasMore,
+          nextOffset: result.data.nextOffset,
+        }
+      })
     })
   }
 
@@ -295,6 +300,20 @@ export function RestaurantPicker({
         ? selectedListIds.filter((v) => v !== id)
         : [...selectedListIds, id]
     )
+  }
+
+  /**
+   * Restos entrés par un amorçage de quartier : ils rejoignent le carnet en
+   * tête, sans rien cocher. Remplir la base et composer une session sont deux
+   * gestes — personne n'a demandé vingt restos dans son panier.
+   */
+  function addToCatalog(restaurants: Restaurant[]) {
+    remember(restaurants)
+    setPage((prev) => {
+      const seen = new Set(prev.items.map((item) => item.id))
+      const added = restaurants.filter((restaurant) => !seen.has(restaurant.id))
+      return added.length > 0 ? { ...prev, items: [...added, ...prev.items] } : prev
+    })
   }
 
   /**
@@ -432,6 +451,7 @@ export function RestaurantPicker({
             onToggle={toggle}
             onImport={importPlace}
             importError={importError}
+            onSeeded={addToCatalog}
             recentWinners={recentWinners}
             excludeRecent={excludeRecent}
           />

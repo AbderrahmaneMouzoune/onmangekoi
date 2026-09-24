@@ -51,4 +51,24 @@ export const SearchPlacesSchema = z
 
 export const ImportPlaceSchema = z.object({ placeId: PlaceIdSchema })
 
+/**
+ * Plafond d'un amorçage de quartier : vingt lieux, soit exactement une page
+ * Google. Le navigateur ne le choisit pas — il n'envoie qu'une position, et
+ * le serveur coupe la liste lui-même. Demander la page suivante doublerait
+ * la facture pour des restos de plus en plus loin.
+ */
+export const NEIGHBOURHOOD_IMPORT_MAX = 20
+
+/**
+ * Corps d'un amorçage : une position, rien d'autre. Elle vient de
+ * `navigator.geolocation`, donc d'un geste explicite — sans elle, l'action
+ * n'est même pas proposée.
+ */
+export const SeedNeighbourhoodSchema = z.object({
+  latitude: LatitudeSchema,
+  longitude: LongitudeSchema,
+})
+
+export type SeedNeighbourhoodInput = z.infer<typeof SeedNeighbourhoodSchema>
+
 export type SearchPlacesInput = z.infer<typeof SearchPlacesSchema>
