@@ -6,6 +6,7 @@ import { useActionState, useId, useMemo, useState } from 'react'
 import { createSessionAction } from '@/actions/sessions'
 import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
 import { DeadlinePicker } from '@/components/session/deadline-picker'
+import { RulesPicker } from '@/components/session/rules-picker'
 import { SESSION_STEPS, SessionStep, StepTitle } from '@/components/session/session-step'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
@@ -13,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { RECENT_WINNER_WINDOW_DAYS, recentWinnerCount } from '@/domain/recent-winners'
+import { NO_FILTERS, restaurantFiltersToParams } from '@/domain/restaurant-filters'
 import { GROUPS_PER_SESSION_MAX } from '@/domain/schemas/group'
 import { SESSION_NAME_MAX } from '@/domain/schemas/session'
 import { rememberSessionEntry } from '@/lib/analytics/handoff'
@@ -23,6 +25,7 @@ import type { ListWithRestaurantIds } from '@/data-access/lists'
 import type { GroupWithMembers } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
+import type { RestaurantFilters } from '@/domain/restaurant-filters'
 
 interface CreateSessionFormProps {
   lists: ListWithRestaurantIds[]
@@ -32,6 +35,22 @@ interface CreateSessionFormProps {
   defaultName: string
   /** Anti-fatigue : ce qui a gagné récemment, et quand */
   recentWinners: RecentWinnerDates
+  /** Filtres lus dans l'URL, déjà appliqués à `initialPage` */
+  initialFilters?: RestaurantFilters
+}
+
+/**
+ * Reflète les filtres du carnet dans la barre d'adresse — `?budget=2&tags=vegan`
+ * — pour qu'une sélection se partage telle quelle.
+ *
+ * `history.replaceState` plutôt qu'un `router.replace` : l'URL change sans
+ * relancer le rendu serveur, donc sans faire clignoter le formulaire ni
+ * risquer le panier en cours. Elle n'a pas non plus à peupler l'historique :
+ * « Retour » doit ramener à l'accueil, pas dérouler chaque clic sur un chip.
+ */
+function syncFiltersToUrl(filters: RestaurantFilters) {
+  const query = restaurantFiltersToParams(filters).toString()
+  window.history.replaceState(null, '', query ? `?${query}` : window.location.pathname)
 }
 
 /**
@@ -50,6 +69,7 @@ export function CreateSessionForm({
   initialPage,
   defaultName,
   recentWinners,
+  initialFilters = NO_FILTERS,
 }: CreateSessionFormProps) {
   const [state, formAction, isPending] = useActionState(createSessionAction, null)
   const [selectedListIds, setSelectedListIds] = useState<string[]>([])
@@ -128,6 +148,8 @@ export function CreateSessionForm({
           selectedListIds={selectedListIds}
           onListsChange={setSelectedListIds}
           listsInputName="listIds"
+          defaultFilters={initialFilters}
+          onFiltersChange={syncFiltersToUrl}
         />
 
         {recentCount > 0 && (
@@ -175,6 +197,8 @@ export function CreateSessionForm({
           </p>
         </SessionStep>
       )}
+
+      <RulesPicker />
 
       <FormMessage error={state?.error} />
 

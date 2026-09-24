@@ -8,6 +8,7 @@ import { getMyGroups, getSessionInvitations } from '@/data-access/groups'
 import { getRecentWinners } from '@/data-access/recent-winners'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import {
+  getSessionById,
   getSessionByParam,
   getSessionParticipants,
   getSessionRestaurants,
@@ -38,16 +39,25 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
 
   // Les lectures restantes sont indépendantes : un seul aller-retour. Les
   // gagnants récents arrivent avec la session, une fois pour tout le deck —
-  // aucune carte n'ira les redemander.
-  const [participants, restaurants, votes, recentWinners] = await Promise.all([
+  // aucune carte n'ira les redemander. Le premier tour n'est lu que si cette
+  // session en est la suite.
+  const [participants, restaurants, votes, recentWinners, firstRound] = await Promise.all([
     getSessionParticipants(supabase, session.id),
     getSessionRestaurants(supabase, session.id),
     getMyVotes(supabase, session.id),
     getRecentWinners(supabase),
+    session.parent_session_id ? getSessionById(supabase, session.parent_session_id) : null,
   ])
 
   if (!participants.some((p) => p.profile_id === user.id)) {
     redirect(router.joinInvite(session))
+  }
+
+  // Les jokers se comptent sur les votes eux-mêmes : la base reste seule à
+  // décider ce qui reste, le deck n'en affiche que le reflet.
+  const jokersUsed = {
+    fav: votes.filter((vote) => vote.value === 2).length,
+    veto: votes.filter((vote) => vote.value === -2).length,
   }
 
   const url = inviteUrl(session)
@@ -73,10 +83,12 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
       restaurants={restaurants}
       restaurantCatalog={restaurantCatalog}
       myVotedIds={votes.map((vote) => vote.session_restaurant_id)}
+      myJokersUsed={jokersUsed}
       recentWinners={recentWinnerDates(recentWinners)}
       meId={user.id}
       inviteUrl={url}
       qrSvg={qrSvg}
+      firstRoundUrl={firstRound ? router.sessionResults(firstRound) : null}
       invitations={invitations}
       groups={groups}
     />

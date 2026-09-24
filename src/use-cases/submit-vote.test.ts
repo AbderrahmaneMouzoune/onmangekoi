@@ -65,11 +65,24 @@ describe('submitVoteUseCase', () => {
     expect(from).not.toHaveBeenCalled()
   })
 
+  it('should stop the deck when the session closed under its feet', async () => {
+    // Avec un seuil de clôture sous 100 %, la session peut se fermer pendant
+    // qu'on vote encore : c'est la fin du deck, pas une erreur à afficher.
+    const { client, from } = fakeClient({ rpcError: { message: 'omk:session_not_voting' } })
+
+    await expect(submitVoteUseCase(client, USER, INPUT)).resolves.toEqual({
+      recorded: false,
+      finished: true,
+      skipped: false,
+    })
+    expect(from).not.toHaveBeenCalled()
+  })
+
   it('should propagate any other business error', async () => {
-    const { client } = fakeClient({ rpcError: { message: 'omk:session_not_voting' } })
+    const { client } = fakeClient({ rpcError: { message: 'omk:not_participant' } })
 
     await expect(submitVoteUseCase(client, USER, INPUT)).rejects.toMatchObject({
-      message: 'omk:session_not_voting',
+      message: 'omk:not_participant',
     })
   })
 

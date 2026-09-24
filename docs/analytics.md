@@ -39,12 +39,13 @@ Le seul identifiant transmis est l'**UUID du profil Supabase**, opaque, passé �
 
 | Événement                    | Émis quand                                                       | Propriétés                                                                                     |
 | ---------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `session_created`            | le host arrive sur sa session — donc création réellement aboutie | `session_id`, `restaurant_count`, `list_count`                                                 |
+| `session_created`            | le host arrive sur sa session — donc création réellement aboutie | `session_id`, `restaurant_count`, `list_count`, `superlikes`, `vetos`, `close_at_ratio`        |
 | `invite_shared`              | copie du code, copie du lien, partage natif, ou affichage du QR  | `session_id`, `method`                                                                         |
 | `session_joined`             | un invité arrive dans une session qu'il vient de rejoindre       | `session_id`, `via` (`code` · `link` · `scan`)                                                 |
 | `session_restaurants_added`  | un participant apporte des restos en salle d'attente             | `session_id`, `added_count`, `restaurant_count`                                                |
 | `vote_submitted`             | un vote est enregistré en base (pas une carte déjà votée)        | `session_id`, `value`, `kind`, `position`, `restaurant_count`                                  |
 | `session_closed`             | la session passe à `closed` sous les yeux d'un participant       | `session_id`, `reason` (`auto` · `deadline` · `host`), `participant_count`, `restaurant_count` |
+| `session_tiebreak`           | le host tranche une égalité parfaite                             | `session_id`, `method` (`runoff` · `draw`), `tied_count`                                       |
 | `list_shared`                | copie du lien de partage d'une liste                             | `method`                                                                                       |
 | `group_saved`                | un groupe récurrent est sauvegardé depuis un classement          | `member_count`                                                                                 |
 | `group_invited`              | un groupe est pré-invité depuis la salle d'attente               | `session_id`, `invited_count`                                                                  |
@@ -80,6 +81,7 @@ Ces objets se configurent côté PostHog, pas dans le dépôt.
 3. **Rétention hebdomadaire** : cohorte d'entrée `session_created`, action de retour `session_created`.
 4. **Répartition de `session_closed` par `reason`** : `auto` (tout le monde a voté), `deadline` (l'échéance est tombée) ou `host` (clôture forcée). La somme des deux dernières mesure le vote qui n'aboutit pas de lui-même ; leur bascule dit si l'échéance sert à quelque chose.
 5. **Abandon en cours de vote** : `vote_submitted` moyen sur `position` rapporté à `restaurant_count`.
+6. **Usage des règles personnalisées** : répartition de `session_created` par `close_at_ratio`, `superlikes` et `vetos`. Les réglages par défaut (1, 1, 100 %) sont le témoin : ce qui s'en écarte dit quelles tablées les règles fixes ne servaient pas.
 
 ## Déploiement
 

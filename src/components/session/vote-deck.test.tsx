@@ -5,6 +5,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { DEFAULT_SESSION_RULES } from '@/domain/session-rules'
+
 import { VoteDeck } from './vote-deck'
 
 import type { Restaurant, SessionRestaurantWithRestaurant } from '@/data-access/models'
@@ -33,6 +35,7 @@ function restaurant(name: string): Restaurant {
     source: 'seed',
     price_level: null,
     place_id: null,
+    tags: [],
   }
 }
 
@@ -54,9 +57,9 @@ function renderDeck(props: Partial<React.ComponentProps<typeof VoteDeck>> = {}) 
       sessionId="session-1"
       restaurants={deckOf('Chez Marcel', 'Sushi Sakura')}
       initialVotedIds={[]}
+      rules={DEFAULT_SESSION_RULES}
+      initialJokersUsed={{ fav: 0, veto: 0 }}
       lastWins={{}}
-      initialSuperlikeUsed={false}
-      initialSuperDislikeUsed={false}
       onFinished={vi.fn()}
       {...props}
     />
@@ -128,7 +131,37 @@ describe('VoteDeck — clavier', () => {
 
   it('should refuse a joker already spent, like the disabled button does', async () => {
     const user = userEvent.setup()
-    renderDeck({ initialSuperlikeUsed: true })
+    renderDeck({ initialJokersUsed: { fav: 1, veto: 0 } })
+
+    await user.keyboard('4')
+
+    expect(screen.getByRole('button', { name: /coup de cœur/i })).toBeDisabled()
+    expect(submitVoteAction).not.toHaveBeenCalled()
+  })
+
+  it('should spend a larger veto quota one vote at a time', async () => {
+    const user = userEvent.setup()
+    renderDeck({
+      restaurants: deckOf('A', 'B', 'C'),
+      rules: { superlikes: 1, vetos: 2, close_at_ratio: 1 },
+    })
+
+    expect(screen.getByRole('button', { name: /veto/i })).toHaveTextContent(/2 restants/)
+    await voteWithKey(user, '1', 'Veto enregistré. Restaurant 2 sur 3 : B.')
+    expect(screen.getByRole('button', { name: /veto/i })).toHaveTextContent(/1 restant/)
+    await voteWithKey(user, '1', 'Veto enregistré. Restaurant 3 sur 3 : C.')
+
+    const veto = screen.getByRole('button', { name: /veto/i })
+    expect(veto).toBeDisabled()
+    expect(veto).toHaveTextContent(/épuisé/)
+
+    await user.keyboard('1')
+    expect(submitVoteAction).toHaveBeenCalledTimes(2)
+  })
+
+  it('should keep a joker the session put out of play unusable', async () => {
+    const user = userEvent.setup()
+    renderDeck({ rules: { superlikes: 0, vetos: 1, close_at_ratio: 1 } })
 
     await user.keyboard('4')
 
