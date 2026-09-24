@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { AppError, GENERIC_ERROR, OMK_MESSAGES, omkCode, toUserMessage } from './errors'
+import { AppError, GENERIC_ERROR, OMK_MESSAGES, omkCode, omkError, toUserMessage } from './errors'
 
 describe('omkCode', () => {
   it('should extract the code from a database business error', () => {
@@ -36,5 +36,13 @@ describe('toUserMessage', () => {
   it('should keep AppError messages when passed through the fallback', () => {
     const error = new AppError('Sélectionne au moins un restaurant.')
     expect(toUserMessage(error, error.message)).toBe('Sélectionne au moins un restaurant.')
+  })
+})
+
+describe('omkError', () => {
+  it('should build an error the rest of the app reads like a database one', () => {
+    const error = omkError('too_many_attempts')
+    expect(omkCode(error)).toBe('too_many_attempts')
+    expect(toUserMessage(error)).toBe(OMK_MESSAGES.too_many_attempts)
   })
 })

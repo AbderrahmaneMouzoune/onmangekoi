@@ -53,6 +53,13 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
     redirect(router.joinInvite(session))
   }
 
+  // Les jokers se comptent sur les votes eux-mêmes : la base reste seule à
+  // décider ce qui reste, le deck n'en affiche que le reflet.
+  const jokersUsed = {
+    fav: votes.filter((vote) => vote.value === 2).length,
+    veto: votes.filter((vote) => vote.value === -2).length,
+  }
+
   const url = inviteUrl(session)
   const waiting = session.status === 'waiting'
   // Pré-inviter un groupe reste la main du host : c'est lui qui compose la
@@ -76,6 +83,7 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
       restaurants={restaurants}
       restaurantCatalog={restaurantCatalog}
       myVotedIds={votes.map((vote) => vote.session_restaurant_id)}
+      myJokersUsed={jokersUsed}
       recentWinners={recentWinnerDates(recentWinners)}
       meId={user.id}
       inviteUrl={url}

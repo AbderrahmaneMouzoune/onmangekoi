@@ -4,6 +4,8 @@ import '@testing-library/jest-dom/vitest'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
+import { DEFAULT_SESSION_RULES } from '@/domain/session-rules'
+
 import { WaitingRoom } from './waiting-room'
 
 import type {
@@ -44,6 +46,7 @@ const session: Session = {
   parent_session_id: null,
   results_code: 'H4V2Q8ZX0M',
   results_public: false,
+  rules: DEFAULT_SESSION_RULES,
   status: 'waiting',
   tiebreak_method: null,
   tiebreak_winner_id: null,
@@ -92,6 +95,7 @@ function renderRoom({
       inviteUrl="https://onmangekoi.test/j/ABC123"
       qrSvg={null}
       restaurants={restaurants}
+      rules={DEFAULT_SESSION_RULES}
       restaurantCatalog={null}
       connection="live"
       invitations={[]}

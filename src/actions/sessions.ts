@@ -50,6 +50,9 @@ export async function createSessionAction(
     groupIds: formData.getAll('groupIds'),
     closesInMinutes: formData.get('closesInMinutes'),
     closesAt: formData.get('closesAt'),
+    superlikes: formData.get('superlikes'),
+    vetos: formData.get('vetos'),
+    closeAtRatio: formData.get('closeAtRatio'),
     excludeRecentWinners: formData.get('excludeRecentWinners'),
   })
   if (!parsed.success) {
