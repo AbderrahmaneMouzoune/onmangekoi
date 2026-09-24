@@ -138,6 +138,7 @@ Chaque restaurant peut porter une photo, une adresse, un site, des coordonnées 
 | `website`        | HTTP(S)                                                                               | bouton « Le site » sur le gagnant                |
 | `location`       | `{"lat": number, "lng": number}`                                                      | lien d'itinéraire et mini-carte du gagnant       |
 | `opening_hours`  | `{"timezone"?: string, "periods": [{"day": 0-6, "open": "HH:MM", "close": "HH:MM"}]}` | badge « ouvert / fermé » sur la carte de vote    |
+| `tags`           | `text[]` parmi `vegetarian`, `vegan`, `halal`, `kosher`, `gluten_free`                | filtre « régime », chips sur la carte de vote    |
 
 `day` suit `Date#getDay` (0 = dimanche) ; une période dont la fermeture précède l'ouverture passe minuit (`22:00 → 02:00`), y compris par-dessus la fin de semaine. Le fuseau est celui du restaurant quand il est connu, celui du visiteur sinon. Les formes `jsonb` sont validées en base (`is_geo_point`, `is_opening_hours`) **et** à la lecture : une donnée importée reste une donnée externe.
 
@@ -147,11 +148,11 @@ La mini-carte du gagnant est un bloc de 2×2 tuiles [OpenStreetMap](https://www.
 
 ## Base de restaurants
 
-| Source   | Origine                                              | Qui peut modifier |
-| -------- | ---------------------------------------------------- | ----------------- |
-| `seed`   | livrée avec le schéma                                | personne          |
-| `manual` | ajoutée depuis l'app (nom, cuisine, adresse, budget) | son créateur      |
-| `google` | importée depuis Google Places                        | son importateur   |
+| Source   | Origine                                                       | Qui peut modifier |
+| -------- | ------------------------------------------------------------- | ----------------- |
+| `seed`   | livrée avec le schéma                                         | personne          |
+| `manual` | ajoutée depuis l'app (nom, cuisine, adresse, budget, régimes) | son créateur      |
+| `google` | importée depuis Google Places                                 | son importateur   |
 
 Le formulaire « Ajouter un resto à la main » est disponible partout où l'on choisit des restaurants — création de session, salle d'attente, liste, liste partagée — et le resto créé est sélectionné aussitôt, sans rechargement.
 
@@ -172,6 +173,24 @@ Le panier reste visible au-dessus des onglets, quel que soit celui qui est ouver
 Chaque résultat, du carnet comme de Google, est une **carte** (`components/restaurants/result-row.tsx`) : une vignette — la photo importée, sinon une tuile colorée aux initiales du resto —, le nom, un badge « ouvert / fermé » quand les horaires sont connus, une ligne de faits (cuisine · budget · note Google) et l'adresse. Le carnet a son propre bouton « **Autour de moi** » : la position est la même que celle de l'onglet Google, et chaque resto géolocalisé affiche alors sa distance à vol d'oiseau (`distanceLabel`, `src/lib/maps.ts`) ; un second clic l'oublie. Sans coordonnées, la carte s'affiche simplement sans distance, et la position ne quitte jamais le navigateur autrement que pour biaiser la recherche Google.
 
 Deux écrans se ressemblaient trop : **créer une liste** et **créer une session** choisissent tous deux des restos. Ils ont désormais chacun leur signature. La session avance en **trois étapes numérotées en rouge** (nom, restos, clôture) et se termine par « Créer la session » ; la liste s'ouvre sur une **carte dorée au signet** qui dit ce qu'elle est — une réserve à ressortir, pas un vote — et se termine par « Enregistrer la liste ».
+
+### Filtres du carnet
+
+Trois filtres au-dessus des résultats du **carnet** — budget, régime, distance. Ils ne concernent que lui : Google a sa propre recherche, et une liste de favoris se prend entière. Ils se combinent, et leur état se lit dans l'URL de la création de session — un lien part donc déjà trié.
+
+| Filtre   | Paramètre               | Ce qu'il garde                                       |
+| -------- | ----------------------- | ---------------------------------------------------- |
+| Budget   | `budget=1`…`4`          | `price_level` inférieur ou égal au cran choisi       |
+| Régime   | `tags=vegan,halal`      | les restos qui servent **tous** les régimes demandés |
+| Distance | `km=0.5`, `1`, `2`, `5` | les restos à moins de n km de la position            |
+
+Tout est filtré **en base**, par la RPC `search_restaurants` : c'est ce qui garde la pagination juste. Une page réduite après coup côté navigateur sauterait des résultats à chaque « Afficher plus ». La distance y est une haversine sur `location` (`geo_distance_km`), sans PostGIS : un rayon de quartier n'en demande pas tant. Rayon actif, les résultats passent du plus proche au plus loin.
+
+**Une donnée absente n'est pas une donnée favorable.** Budget inconnu sous « ≤ €€ », aucun régime déclaré sous « vegan », coordonnées manquantes sous un rayon : le resto sort des résultats, et l'interface le dit sous les chips plutôt que de laisser croire à un carnet plus pauvre qu'il n'est. Rien ne passe les filtres ? La liste propose de les lever, pas d'ajouter un resto qui s'y trouve peut-être déjà.
+
+**Le rayon suit la position, il ne la demande pas.** C'est « Autour de moi », au ras des résultats, qui l'obtient — la même que l'onglet Google. Sans elle, les chips de distance n'existent pas ; un second clic sur « Autour de toi » les fait disparaître et la recherche repart sans rayon. Un lien portant `?km=1` arrive donc sans filtre distance tant que personne n'a autorisé sa position : le serveur ne la connaîtra jamais, et elle est arrondie à ~110 m avant de servir de clé de cache pour que deux personnes du même bureau partagent la même entrée au lieu d'en créer une par GPS.
+
+Les régimes (`vegetarian`, `vegan`, `halal`, `kosher`, `gluten_free`) sont une liste blanche tenue **en base** par `restaurant_tag_values()`, que la contrainte `restaurants_tags_allowed` fait respecter : en ajouter un demande une migration. Ils se déclarent à l'ajout manuel d'un resto, l'import Google ramène le seul que Google connaisse, et la carte de vote les affiche.
 
 ### Import Google Places
 
@@ -199,6 +218,8 @@ Cocher un résultat le **sélectionne à l'instant** — la ligne et le panier l
 | Amorçage borné     | Vingt lieux par lot, plafond appliqué côté serveur ; trois lots par personne et par 24 h, comptés en base                                    |
 
 L'import remplit la fiche décrite plus haut : `photo_url`, `website`, `location`, `opening_hours` et `description`. Un lieu réimporté rafraîchit ces champs sans jamais en effacer un déjà connu — ce qui fait aussi office d'entretien, l'adresse d'une photo Google n'étant pas éternelle.
+
+Google ne connaît qu'un régime alimentaire, `servesVegetarianFood`. Il est demandé sur le détail d'un lieu, au même palier de facturation que le résumé déjà demandé : un import arrive donc tagué « végétarien » quand Google l'affirme, et ce régime s'ajoute à ceux déjà posés à la main au lieu de les remplacer.
 
 Le fuseau des horaires n'est pas demandé à Google : `opening_hours.timezone` reste absent et l'app raisonne dans celui du visiteur.
 

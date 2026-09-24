@@ -56,7 +56,16 @@ const SEARCH_FIELDS = [
   'addressComponents',
 ]
 
-const DETAILS_FIELDS = [...SEARCH_FIELDS, 'editorialSummary', 'websiteUri', 'photos']
+const DETAILS_FIELDS = [
+  ...SEARCH_FIELDS,
+  'editorialSummary',
+  'websiteUri',
+  'photos',
+  // Seul régime que Google expose. Il appartient au même palier de
+  // facturation qu'`editorialSummary`, déjà demandé ici : le détail ne coûte
+  // donc pas un centime de plus, et un import arrive tagué « végétarien ».
+  'servesVegetarianFood',
+]
 
 /** `nextPageToken` doit être demandé explicitement, sinon Google ne le renvoie pas. */
 const SEARCH_FIELD_MASK = [

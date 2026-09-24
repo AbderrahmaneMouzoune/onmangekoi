@@ -40,6 +40,7 @@ function place(index: number): PlaceResult {
     openingHours: { periods: [{ day: 1, open: '11:30', close: '14:00' }] },
     photoName: null,
     photoUrl: null,
+    tags: [],
   }
 }
 

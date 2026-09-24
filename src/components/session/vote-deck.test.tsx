@@ -33,6 +33,7 @@ function restaurant(name: string): Restaurant {
     source: 'seed',
     price_level: null,
     place_id: null,
+    tags: [],
   }
 }
 
