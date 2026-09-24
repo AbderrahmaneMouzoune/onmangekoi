@@ -69,6 +69,7 @@ const eslintConfig = defineConfig([
     'test-results/**',
     'next-env.d.ts',
     '.agents/**',
+    'marketing/**',
   ]),
 ])
 
