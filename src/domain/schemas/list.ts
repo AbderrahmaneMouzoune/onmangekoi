@@ -17,6 +17,8 @@ export const UpdateListSchema = z.object({
   listId: z.uuid(),
   name: ListNameSchema.optional(),
   isCollaborative: z.boolean().optional(),
+  /** Partage public de la liste : page présentable, sitemap, image Open Graph. */
+  isPublic: z.boolean().optional(),
 })
 
 /** Code de partage Crockford (10) ou ancien token (32 hex), déjà normalisé. */
