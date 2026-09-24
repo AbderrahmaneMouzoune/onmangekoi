@@ -43,6 +43,20 @@ export type SessionPreview = Omit<
 export type SharedListPreview = Functions['list_by_share_token']['Returns'][number]
 
 /**
+ * Carte de visite d'une liste publique — ce que voit qui arrive par le lien
+ * sans avoir de pseudo. `top_restaurant` et son compteur sont nuls tant
+ * qu'aucune session close n'a désigné de gagnant parmi les restaurants de la
+ * liste ; le générateur, lui, ne voit que des colonnes de `returns table`.
+ */
+export type PublicListPreview = Omit<
+  Functions['public_list']['Returns'][number],
+  'top_restaurant' | 'top_restaurant_wins'
+> & { top_restaurant: string | null; top_restaurant_wins: number | null }
+
+/** Une entrée de sitemap : le code d'une liste publique et sa fraîcheur. */
+export type PublicListEntry = Functions['public_lists']['Returns'][number]
+
+/**
  * Restaurant sorti gagnant d'une session close récente, et la date de son
  * dernier sacre. Aucune des deux colonnes n'est nulle en base — c'est le
  * générateur qui ne peut pas le savoir d'un `returns table (...)`.
@@ -134,6 +148,35 @@ export type ListWithRestaurants = List & {
 
 /** Session avec le nombre de participants (page d'accueil) */
 export type SessionSummary = Session & { participant_count: number }
+
+/**
+ * Ligne d'historique (`my_sessions`). Trois colonnes n'existent qu'une fois la
+ * session close : sa date de clôture et le gagnant que le classement a
+ * désigné. Comme pour `session_results`, le générateur ne peut pas le déduire
+ * d'un `returns table (...)`.
+ */
+type NullableHistoryColumns = 'closed_at' | 'winner_name' | 'winner_score'
+
+export type SessionHistoryEntry = Omit<
+  Functions['my_sessions']['Returns'][number],
+  NullableHistoryColumns
+> & {
+  closed_at: string | null
+  winner_name: string | null
+  winner_score: number | null
+}
+
+/**
+ * Statistiques personnelles (`my_stats`). Les deux libellés sont nuls tant
+ * qu'aucun vote ni aucune session close ne permet de les désigner.
+ */
+export type MyStats = Omit<
+  Functions['my_stats']['Returns'][number],
+  'favorite_cuisine' | 'top_restaurant_name'
+> & {
+  favorite_cuisine: string | null
+  top_restaurant_name: string | null
+}
 
 /** Membre d'un groupe avec le profil joint (pseudo) */
 export type GroupMemberWithProfile = GroupMember & {

@@ -11,6 +11,9 @@
 @custom-variant seen-sessions (&:is(html[data-visit~='sessions'] *));
 @custom-variant seen-lists (&:is(html[data-visit~='lists'] *));
 @custom-variant seen-no-lists (&:is(html[data-visit~='account']:not([data-visit~='lists']) *));
+@custom-variant seen-no-sessions (
+  &:is(html[data-visit~='account']:not([data-visit~='sessions']) *)
+);
 
 /* ================================================================
    CHARTE — « L'ardoise »

@@ -1,6 +1,13 @@
 'use client'
 
-import { RiAddLine, RiCloseLine, RiDeleteBinLine, RiGroupLine } from '@remixicon/react'
+import {
+  RiAddLine,
+  RiCloseLine,
+  RiDeleteBinLine,
+  RiGlobalLine,
+  RiGroupLine,
+  RiLockLine,
+} from '@remixicon/react'
 import { useActionState, useOptimistic, useRef, useState, useTransition } from 'react'
 
 import {
@@ -9,6 +16,7 @@ import {
   removeRestaurantFromListAction,
   renameListAction,
   setListCollaborativeAction,
+  setListPublicAction,
 } from '@/actions/lists'
 import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
 import { RestaurantThumb } from '@/components/restaurants/restaurant-thumb'
@@ -40,6 +48,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [isCollaborative, setIsCollaborative] = useState(list.is_collaborative)
+  const [isPublic, setIsPublic] = useState(list.is_public)
   const [adding, setAdding] = useState(false)
   const [pickerIds, setPickerIds] = useState<string[]>([])
   const addButtonRef = useRef<HTMLButtonElement>(null)
@@ -93,6 +102,18 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
     })
   }
 
+  function togglePublic() {
+    const next = !isPublic
+    setIsPublic(next)
+    startTransition(async () => {
+      const result = await setListPublicAction(list.id, next)
+      if (!result.ok) {
+        setIsPublic(!next)
+        setError(result.error)
+      }
+    })
+  }
+
   function destroy() {
     startTransition(async () => {
       const result = await deleteListAction(list.id)
@@ -133,7 +154,9 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
               Partager
             </h2>
             <p className="text-sm text-muted-foreground">
-              Toute personne avec le lien peut voir la liste
+              {isPublic
+                ? 'N’importe qui peut voir la liste'
+                : 'Toute personne avec le lien peut voir la liste'}
               {isCollaborative ? ' et y ajouter des restos' : ''}.
             </p>
           </div>
@@ -145,31 +168,39 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
               {groupCode(list.share_code, 5)}
             </span>
           </div>
+          <CopyButton
+            value={shareUrl}
+            label="Copier le lien"
+            variant="outline"
+            onCopied={() => captureEvent('list_shared', { method: 'link_copy' })}
+          />
           <div className="flex flex-col gap-2 sm:flex-row">
-            <CopyButton
-              value={shareUrl}
-              label="Copier le lien"
-              variant="outline"
-              className="sm:flex-1"
-              onCopied={() => captureEvent('list_shared', { method: 'link_copy' })}
-            />
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isCollaborative}
-              onClick={toggleCollaborative}
+            <ShareSwitch
+              checked={isCollaborative}
+              onToggle={toggleCollaborative}
               disabled={isPending}
-              className={cn(
-                'inline-flex h-11 items-center justify-center gap-2 rounded-md border px-4 text-sm font-semibold transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring sm:flex-1',
-                isCollaborative
-                  ? 'border-brand bg-brand-soft text-brand-hover'
-                  : 'border-line-strong bg-surface text-ink-2 hover:bg-surface-2'
-              )}
-            >
-              <RiGroupLine aria-hidden="true" className="size-4.5" />
-              {isCollaborative ? 'Collaborative' : 'Lecture seule'}
-            </button>
+              icon={<RiGroupLine aria-hidden="true" className="size-4.5" />}
+              label={isCollaborative ? 'Collaborative' : 'Lecture seule'}
+            />
+            <ShareSwitch
+              checked={isPublic}
+              onToggle={togglePublic}
+              disabled={isPending}
+              icon={
+                isPublic ? (
+                  <RiGlobalLine aria-hidden="true" className="size-4.5" />
+                ) : (
+                  <RiLockLine aria-hidden="true" className="size-4.5" />
+                )
+              }
+              label={isPublic ? 'Publique' : 'Privée'}
+            />
           </div>
+          <p className="text-xs text-muted-foreground">
+            {isPublic
+              ? 'Cette liste a sa page publique : son nom, ses adresses et ses cuisines — jamais ton pseudo. Elle peut être trouvée sur le web.'
+              : 'En publique, la liste gagne une page présentable, un aperçu quand on la partage, et peut être trouvée sur le web. Ton pseudo n’y figure jamais.'}
+          </p>
         </section>
 
         <div className="hidden justify-center lg:flex">
@@ -306,5 +337,38 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
         </div>
       </div>
     </div>
+  )
+}
+
+interface ShareSwitchProps {
+  checked: boolean
+  onToggle: () => void
+  disabled: boolean
+  icon: React.ReactNode
+  label: string
+}
+
+/**
+ * Un interrupteur de partage : il porte son état dans son libellé autant que
+ * dans sa couleur — « Privée » se lit sans distinguer le rouge du gris.
+ */
+function ShareSwitch({ checked, onToggle, disabled, icon, label }: ShareSwitchProps) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onToggle}
+      disabled={disabled}
+      className={cn(
+        'inline-flex h-11 items-center justify-center gap-2 rounded-md border px-4 text-sm font-semibold transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring sm:flex-1',
+        checked
+          ? 'border-brand bg-brand-soft text-brand-hover'
+          : 'border-line-strong bg-surface text-ink-2 hover:bg-surface-2'
+      )}
+    >
+      {icon}
+      {label}
+    </button>
   )
 }

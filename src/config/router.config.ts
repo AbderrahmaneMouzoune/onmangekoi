@@ -14,17 +14,13 @@
 
 /**
  * Préfixes qui exigent un utilisateur (le proxy redirige vers l'onboarding).
- * `/r` n'y figure pas et ne doit jamais y figurer : c'est le classement
- * public, la seule page que quelqu'un sans pseudo est censé pouvoir ouvrir.
+ *
+ * Deux absences volontaires : `/r`, le classement public, et `/l`, la liste
+ * partagée. Ce sont les deux pages que quelqu'un sans pseudo est censé
+ * pouvoir ouvrir. La première l'est toujours ; la seconde tranche elle-même,
+ * liste par liste, et renvoie vers l'onboarding quand la liste est privée.
  */
-export const PROTECTED_PREFIXES = [
-  '/sessions',
-  '/join',
-  '/lists',
-  '/l',
-  '/groups',
-  '/account',
-] as const
+export const PROTECTED_PREFIXES = ['/sessions', '/join', '/lists', '/groups', '/account'] as const
 
 /** Longueur d'un code de partage de liste (Crockford base32). */
 export const SHARE_CODE_LENGTH = 10
@@ -87,6 +83,9 @@ export const router = {
   /** Invitation : `/join/7K3M9P` (code court, ou ancien token long). */
   joinInvite: (target: SessionTarget) => `/join/${encodeURIComponent(sessionSegment(target))}`,
 
+  /** Historique : `/sessions`, page suivante par curseur (`?cursor=…`). */
+  sessions: (params?: { cursor?: string | null }) =>
+    params?.cursor ? `/sessions?cursor=${encodeURIComponent(params.cursor)}` : '/sessions',
   sessionNew: () => '/sessions/new',
   /** Salle de session : `/sessions/7K3M9P`. */
   session: (target: SessionTarget) => `/sessions/${sessionSegment(target)}`,

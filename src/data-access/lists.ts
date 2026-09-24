@@ -145,7 +145,7 @@ export async function createList(
 export async function updateList(
   supabase: SupabaseClient<Database>,
   listId: string,
-  patch: { name?: string; is_collaborative?: boolean }
+  patch: { name?: string; is_collaborative?: boolean; is_public?: boolean }
 ): Promise<List> {
   const { data, error } = await supabase
     .from('lists')
@@ -155,6 +155,23 @@ export async function updateList(
     .single()
   if (error) throw error
   return data
+}
+
+/**
+ * Code de partage d'une liste, seul — juste ce qu'il faut pour purger sa page
+ * publique après une écriture qui ne rend pas la ligne.
+ */
+export async function getListShareCode(
+  supabase: SupabaseClient<Database>,
+  listId: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('lists')
+    .select('share_code')
+    .eq('id', listId)
+    .maybeSingle()
+  if (error) throw error
+  return data?.share_code ?? null
 }
 
 export async function deleteList(

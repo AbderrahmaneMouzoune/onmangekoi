@@ -149,6 +149,7 @@ export type Database = {
           created_at: string
           id: string
           is_collaborative: boolean
+          is_public: boolean
           name: string
           owner_id: string
           share_code: string
@@ -159,6 +160,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_collaborative?: boolean
+          is_public?: boolean
           name: string
           owner_id: string
           share_code?: string
@@ -169,6 +171,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_collaborative?: boolean
+          is_public?: boolean
           name?: string
           owner_id?: string
           share_code?: string
@@ -651,6 +654,7 @@ export type Database = {
           created_at: string
           id: string
           is_collaborative: boolean
+          is_public: boolean
           name: string
           owner_id: string
           share_code: string
@@ -837,6 +841,7 @@ export type Database = {
           created_at: string
           id: string
           is_collaborative: boolean
+          is_public: boolean
           name: string
           owner_id: string
           share_code: string
@@ -958,6 +963,7 @@ export type Database = {
         Returns: {
           id: string
           is_collaborative: boolean
+          is_public: boolean
           name: string
           owner_pseudo: string
           restaurant_count: number
@@ -1003,6 +1009,41 @@ export type Database = {
           session_id: string
         }[]
       }
+      my_sessions: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_id?: string
+          p_limit?: number
+        }
+        Returns: {
+          closed_at: string
+          created_at: string
+          id: string
+          invite_code: string
+          is_host: boolean
+          name: string
+          participant_count: number
+          restaurant_count: number
+          status: Database['public']['Enums']['session_status']
+          winner_name: string
+          winner_score: number
+        }[]
+      }
+      my_stats: {
+        Args: never
+        Returns: {
+          fav_votes: number
+          favorite_cuisine: string
+          favorite_cuisine_votes: number
+          sessions_closed: number
+          sessions_hosted: number
+          sessions_total: number
+          top_restaurant_name: string
+          top_restaurant_wins: number
+          veto_votes: number
+          votes_total: number
+        }[]
+      }
       neighbourhood_import_quota: { Args: never; Returns: number }
       neighbourhood_import_window: { Args: never; Returns: string }
       normalize_crockford: { Args: { p_input: string }; Returns: string }
@@ -1011,6 +1052,52 @@ export type Database = {
         Returns: string[]
       }
       normalize_rules: { Args: { p_rules: Json }; Returns: Json }
+      public_list: {
+        Args: { p_code: string }
+        Returns: {
+          cuisines: string[]
+          name: string
+          restaurant_count: number
+          share_code: string
+          top_restaurant: string
+          top_restaurant_wins: number
+          updated_at: string
+        }[]
+      }
+      public_list_restaurants: {
+        Args: { p_code: string }
+        Returns: {
+          address: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          cuisine_type: string | null
+          description: string | null
+          id: string
+          location: Json | null
+          name: string
+          opening_hours: Json | null
+          photo_url: string | null
+          place_id: string | null
+          price_level: number | null
+          source: string
+          tags: string[]
+          website: string | null
+        }[]
+        SetofOptions: {
+          from: '*'
+          to: 'restaurants'
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      public_lists: {
+        Args: never
+        Returns: {
+          share_code: string
+          updated_at: string
+        }[]
+      }
       public_results: {
         Args: { p_code: string }
         Returns: {
@@ -1132,6 +1219,14 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: {
           session_restaurant_id: string
+        }[]
+      }
+      session_winner: {
+        Args: { p_session_id: string }
+        Returns: {
+          name: string
+          restaurant_id: string
+          score: number
         }[]
       }
       set_results_public: {
