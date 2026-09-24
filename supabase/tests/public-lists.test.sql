@@ -146,12 +146,23 @@ declare
   r uuid[] := (select array_agg(id order by n) from t_resto);
   v_owner uuid := '11111111-1111-4111-8111-111111111111';
   v_outsider uuid := '22222222-2222-4222-8222-222222222222';
+  v_drawn uuid;
 begin
   -- Deux déjeuners du bureau : le 1 l'emporte à chaque fois.
   perform pg_temp.seed_session('Déj de lundi', v_owner, array[r[1], r[2]], array[2, 1]::smallint[]);
   perform pg_temp.seed_session('Déj de mardi', v_owner, array[r[1], r[3]], array[1, 0]::smallint[]);
   -- Le 2 gagne une fois : derrière le 1, il ne prend pas la tête.
   perform pg_temp.seed_session('Déj de jeudi', v_owner, array[r[2], r[3]], array[2, 0]::smallint[]);
+  -- Égalité tranchée au sort en faveur du 3 : le 1, ex æquo écarté, ne
+  -- compte pas ce déjeuner parmi ses sacres.
+  v_drawn := pg_temp.seed_session('Déj au sort', v_owner, array[r[1], r[3]], array[1, 1]::smallint[]);
+  update public.sessions s
+     set tiebreak_method = 'draw',
+         tiebreak_winner_id = (
+           select sr.id from public.session_restaurants sr
+           where sr.session_id = s.id and sr.restaurant_id = r[3]
+         )
+   where s.id = v_drawn;
   -- Personne n'a dit oui : pas de gagnant, même pas le moins mauvais.
   perform pg_temp.seed_session('Sans envie', v_owner, array[r[3]], array[0]::smallint[]);
   -- Chez les voisins : le 3 gagne dix fois, ça ne regarde pas cette liste.
@@ -252,7 +263,10 @@ begin
     v_row.top_restaurant = (select name from t_resto where n = 1),
     'le restaurant sorti premier le plus souvent est en tête'
   );
-  perform pg_temp.assert(v_row.top_restaurant_wins = 2, 'avec son nombre de sacres');
+  perform pg_temp.assert(
+    v_row.top_restaurant_wins = 2,
+    'avec son nombre de sacres — un tirage perdu n''en est pas un'
+  );
   perform pg_temp.assert(
     v_row.top_restaurant <> (select name from t_resto where n = 3),
     'les sessions d''un autre groupe ne comptent pas, même à dix victoires'

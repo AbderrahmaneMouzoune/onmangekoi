@@ -90,6 +90,8 @@ $$;
 -- restaurant et un compteur — jamais une session, jamais un participant,
 -- jamais un vote. Le classement est celui de `session_results` : score, puis
 -- coups de cœur en cas d'égalité, et un score nul ne fait pas un gagnant.
+-- Comme dans `recent_winners`, un tirage au sort
+-- (`20260923120000_tiebreak_runoff_and_draw.sql`) ne sacre que le désigné.
 create or replace function public.public_list(p_code text)
   returns table (
     share_code text,
@@ -118,7 +120,8 @@ as $$
       rank() over (
         partition by s.id
         order by coalesce(sum(v.value), 0) desc,
-                 count(*) filter (where v.value = 2) desc
+                 count(*) filter (where v.value = 2) desc,
+                 (sr.id is distinct from s.tiebreak_winner_id)
       ) as rank_in_session
     from target t
     join public.sessions s
@@ -126,7 +129,7 @@ as $$
      and s.status = 'closed'
     join public.session_restaurants sr on sr.session_id = s.id
     left join public.votes v on v.session_restaurant_id = sr.id
-    group by s.id, sr.id, sr.restaurant_id
+    group by s.id, s.tiebreak_winner_id, sr.id, sr.restaurant_id
   ),
   champion as (
     select r.name, count(*)::int as wins
