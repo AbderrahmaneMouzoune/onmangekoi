@@ -177,7 +177,9 @@ $$;
 -- Second tour : une nouvelle session avec les seuls ex æquo et les mêmes
 -- participants. Jokers remis à zéro (les colonnes reprennent leur défaut) et
 -- vote ouvert d'emblée — personne n'a à rejoindre, il n'y a pas de salle
--- d'attente à tenir.
+-- d'attente à tenir. Les règles du premier tour (quotas de jokers, seuil de
+-- clôture, voir `20260923110000_session_rules.sql`) sont reprises telles
+-- quelles : le host les a choisies pour ce groupe.
 create or replace function public.create_runoff_session(p_session_id uuid)
   returns public.sessions
   language plpgsql
@@ -192,14 +194,15 @@ declare
 begin
   select * into v_session from public.sessions where id = p_session_id;
 
-  insert into public.sessions (name, host_id, invite_code, parent_session_id, status, launched_at)
+  insert into public.sessions (name, host_id, invite_code, parent_session_id, status, launched_at, rules)
   values (
     v_session.name,
     v_session.host_id,
     public.generate_invite_code(),
     v_session.id,
     'voting',
-    now()
+    now(),
+    v_session.rules
   )
   returning * into v_runoff;
 

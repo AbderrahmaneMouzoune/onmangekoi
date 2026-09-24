@@ -245,6 +245,14 @@ create temporary table t_parent_tied as
 select * from public.session_results((select id from t_runoff_parent))
 where rank = 1;
 
+-- Des règles choisies par le host au premier tour : le trigger qui les fige
+-- après lancement est levé le temps de les poser sur la session déjà close.
+alter table public.sessions disable trigger sessions_freeze_rules;
+update public.sessions
+  set rules = '{"superlikes": 3, "vetos": 0, "close_at_ratio": 0.5}'::jsonb
+  where id = (select id from t_runoff_parent);
+alter table public.sessions enable trigger sessions_freeze_rules;
+
 create temporary table t_child as
 select * from public.create_runoff_session((select id from t_runoff_parent));
 
@@ -307,6 +315,11 @@ select pg_temp.assert(
     where session_id = (select id from t_runoff_parent) and superlike_used
   ),
   'les jokers repartent à zéro alors qu’ils étaient consommés au premier tour'
+);
+
+select pg_temp.assert(
+  (select rules from t_child) = '{"superlikes": 3, "vetos": 0, "close_at_ratio": 0.5}'::jsonb,
+  'le second tour reprend les règles (quotas, seuil) du premier'
 );
 
 select pg_temp.assert(
