@@ -179,6 +179,14 @@ Quand `GOOGLE_PLACES_API_KEY` est configurée, un onglet **Google** apparaît da
 
 Les pages reçues restent en mémoire le temps du formulaire : quitter l'onglet et y revenir retrouve les résultats tels quels, sans rechargement ni nouvel appel.
 
+#### Amorcer son quartier
+
+Un groupe qui arrive devant un carnet vide n'a pas à le remplir resto par resto. Une fois la position accordée — et seulement à ce moment-là, le bouton n'existe pas avant —, « **Amorcer mon quartier** » fait entrer les **vingt restos les plus proches** d'un coup, depuis l'onglet Google de la création de session comme de `/lists/new`. Ils rejoignent le carnet ; ils ne rejoignent pas le panier : remplir la base et composer une session restent deux gestes.
+
+Le navigateur n'envoie qu'une position — ni nombre de lieux, ni rayon. Le plafond de vingt est appliqué par le serveur, et le quota — **trois amorçages par personne et par tranche de 24 h** — est tenu en base par `claim_neighbourhood_import()` : le créneau se prend **avant** l'appel à Google, avec un verrou sur le profil de l'appelant pour qu'une rafale de requêtes se compte une par une. Le journal `neighbourhood_imports` ne sert qu'à ça : il se purge de lui-même passé la fenêtre, ne se lit hors de la RPC par personne, et part avec le compte.
+
+Un lot ne s'annule pas pour un raté : chaque lieu est écrit séparément, ce qui est entré reste entré, et le message le dit — « 18 restos sont entrés dans le carnet, 2 n'ont pas pu être enregistrés ». Le catalogue partagé n'est invalidé **qu'une fois**, à la fin du lot.
+
 Cocher un résultat le **sélectionne à l'instant** — la ligne et le panier le montrent coché, avec une roue le temps que la fiche arrive — puis l'import suit ; s'il échoue, le resto ressort de la sélection et l'onglet dit pourquoi. Un lieu déjà en base — importé à l'instant ou connu du carnet — se coche et se décoche sans rien demander à Google.
 
 | Garantie           | Comment                                                                                                                                      |
@@ -188,12 +196,13 @@ Cocher un résultat le **sélectionne à l'instant** — la ligne et le panier l
 | Données de source  | Le navigateur n'envoie qu'un `place_id` à l'import ; les champs enregistrés sont relus côté serveur, jamais reçus du client                  |
 | Coût maîtrisé      | Réponses gardées 24 h en mémoire, par page ; deux masques de champs distincts (voir ci-dessous)                                              |
 | Autour de moi      | Text Search (New) sur « restaurant », `rankPreference: DISTANCE`, biais de 2 km, vingt lieux par page ; cache par position arrondie à ~100 m |
+| Amorçage borné     | Vingt lieux par lot, plafond appliqué côté serveur ; trois lots par personne et par 24 h, comptés en base                                    |
 
 L'import remplit la fiche décrite plus haut : `photo_url`, `website`, `location`, `opening_hours` et `description`. Un lieu réimporté rafraîchit ces champs sans jamais en effacer un déjà connu — ce qui fait aussi office d'entretien, l'adresse d'une photo Google n'étant pas éternelle.
 
 Le fuseau des horaires n'est pas demandé à Google : `opening_hours.timezone` reste absent et l'app raisonne dans celui du visiteur.
 
-**Deux masques de champs, deux factures.** Google facture au champ le plus cher demandé, et une recherche ramène vingt résultats : elle ne demande donc que de quoi afficher une liste. Le budget la place déjà dans le palier « Enterprise » de Text Search ; la **note, le nombre d'avis et les horaires** relèvent du même palier et sont donc demandés aussi, sans surcoût — la note s'affiche dans la liste et n'est jamais enregistrée, elle sert à choisir, pas à voter. Photo, site et résumé ne sont demandés que sur le détail d'un lieu — une fois, au clic sur « importer ». La photo coûte un appel de plus, pour convertir son nom de ressource en adresse servable : celle de l'endpoint media exigerait la clé pour être chargée, on stocke donc le `photoUri` qu'il renvoie, servi par Google sans clé et sur un hôte de `ALLOWED_IMAGE_HOSTS`.
+**Deux masques de champs, deux factures.** Google facture au champ le plus cher demandé, et une recherche ramène vingt résultats : elle ne demande donc que de quoi afficher une liste. Le budget la place déjà dans le palier « Enterprise » de Text Search ; la **note, le nombre d'avis et les horaires** relèvent du même palier et sont donc demandés aussi, sans surcoût — la note s'affiche dans la liste et n'est jamais enregistrée, elle sert à choisir, pas à voter. Photo, site et résumé ne sont demandés que sur le détail d'un lieu — une fois, au clic sur « importer ». Un amorçage de quartier ne paie donc qu'**une recherche** pour ses vingt fiches : photo, site et résumé leur arrivent plus tard, à la première **carte de vote** qui les affiche (`useCompletedRestaurant`) — un détail par resto réellement regardé, jamais vingt d'avance pour des fiches que personne n'ouvrira. La photo coûte un appel de plus, pour convertir son nom de ressource en adresse servable : celle de l'endpoint media exigerait la clé pour être chargée, on stocke donc le `photoUri` qu'il renvoie, servi par Google sans clé et sur un hôte de `ALLOWED_IMAGE_HOSTS`.
 
 **Quand la recherche échoue.** Le message affiché nomme la famille de panne plutôt que de renvoyer tout le monde vers un « réessaie » indifférencié, et le log serveur (`places: recherche → <statut> <raison>`) donne la raison exacte renvoyée par Google — `PERMISSION_DENIED`, `SERVICE_DISABLED`, `RESOURCE_EXHAUSTED`…
 
@@ -321,11 +330,30 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - Un **groupe** n'est visible que de ses membres et modifiable que par son propriétaire (RLS) ; la création, l'invitation et le départ passent par des RPC (`create_group_from_session`, `invite_group_to_session`, `leave_group`) qui revérifient tout en base. Une invitation en attente n'ouvre aucun accès à la session : l'invité n'en lit que le nécessaire, via `my_session_invitations`.
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.
 - La clé Google Places ne quitte jamais le serveur, et aucune policy RLS n'ouvre l'écriture en `source = 'google'` : `upsert_restaurant_from_place` est le seul chemin. Les corps d'erreur renvoyés par Google restent dans les logs serveur.
-- Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision.
+- Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision. Un code court ne tient que si on ne peut pas l'essayer en boucle : voir [Anti-abus](#anti-abus).
 - Les pages sont rendues avec des chargements parallèles (`Promise.all`) et les lectures par requête sont dédupliquées via `React.cache` (`getCurrentUser`, `getProfile`, `getSessionById`…).
 - **Aucune donnée personnelle n'est mise en cache.** Seul le catalogue public de restaurants est mémorisé, via un client Supabase sans cookie ; voir [Rendu et cache](#rendu-et-cache).
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.
 - Les messages d'erreur Postgres ne remontent jamais tels quels : seuls les codes métier `omk:*` sont traduits.
+
+## Anti-abus
+
+Deux garde-fous, qui ne valent que posés ensemble : limiter les essais sert à peu de chose si créer une identité neuve est gratuit.
+
+| Garde-fou                         | Où                             | Règle                                                                            |
+| --------------------------------- | ------------------------------ | -------------------------------------------------------------------------------- |
+| Limite d'essais sur « Rejoindre » | `join_session` (base)          | 10 essais infructueux par 10 minutes et par compte, puis `omk:too_many_attempts` |
+| Captcha à la création de compte   | `setupProfileAction` (serveur) | Cloudflare Turnstile, vérifié avant `signInAnonymously`                          |
+
+Un essai qui ne tombe sur aucune session est journalisé dans `public.join_attempts` — table sans policy ni grant, invisible depuis l'app. Un code juste efface l'ardoise : deux fautes de frappe suivies d'une réussite ne pèsent jamais sur la tentative d'après. Les essais sont purgés dans les 24 h par le job nocturne (`run_maintenance()`), et la table ne retient qu'un identifiant de compte et un horodatage — jamais d'adresse IP.
+
+Détail d'implémentation qui mérite d'être connu avant de toucher à `join_session` : un code inconnu fait **renvoyer NULL** à la RPC au lieu de lever `omk:session_not_found`. PostgREST exécute chaque appel dans une transaction, et une exception l'annulerait — avec elle, l'essai raté qu'on vient de compter. C'est `joinSession` (`src/data-access/sessions.ts`) qui rétablit l'erreur métier attendue par le reste de l'app. Les refus qui prouvent que le code était bon (session lancée, session close) restent des exceptions et ne comptent pas comme des essais.
+
+Le captcha est **désactivé par défaut** : sans `NEXT_PUBLIC_TURNSTILE_SITE_KEY` **et** `TURNSTILE_SECRET_KEY`, aucun script n'est téléchargé et la vérification serveur laisse passer — c'est ce qui permet aux tests e2e, à la CI et au développement local de tourner sans compte Cloudflare. Le widget est en mode `interaction-only` : invisible, sauf pour les visiteurs que Cloudflare juge douteux. Si Cloudflare est injoignable, on laisse passer et on journalise : un captcha en panne ne doit pas fermer l'onboarding, et la limite d'essais côté base, elle, tient toujours. En l'activant sur un déploiement public, penser à mentionner Cloudflare sur `/legal/privacy`.
+
+**Ce qui reste ouvert.** `session_preview` répond encore sans limite : un visiteur non authentifié obtient le nom et le host de n'importe quelle session `waiting` dont il devine le code court. La limite ci-dessus ne couvre que `join_session`, donc un balayage patient peut toujours _découvrir_ une session par cet oracle avant de la rejoindre en un seul appel. Fermer ce chemin veut dire réserver l'aperçu par code court aux personnes connectées — et donc renoncer à l'aperçu des liens `/join/7K3M9P` dépliés par WhatsApp ou Slack (les liens à jeton long, eux, restent hors de portée d'un balayage). C'est un arbitrage produit, laissé de côté ici volontairement.
+
+Le scénario est rejouable avec `bun run db:test` (`supabase/tests/join-rate-limit.test.sql`).
 
 ## Vie privée
 
@@ -349,6 +377,7 @@ Un pseudo suffit à utiliser l'app, donc chaque pseudo crée un utilisateur anon
 | Anonyme sans activité ni email lié | 90 jours  | supprimé, avec ses listes ; ses sessions survivent |
 | Session `waiting` jamais lancée    | 7 jours   | supprimée                                          |
 | Session `closed`                   | 180 jours | supprimée                                          |
+| Essai de code raté                 | 24 heures | supprimé                                           |
 
 Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adresse email lui est liée — même non confirmée —, ou un téléphone, ou une identité externe. Une session en cours protège aussi tous ses participants. Purger un compte n’efface jamais un classement : ses sessions restent, sans host et sans auteur (voir [Vie privée](#vie-privée)). Chaque passage journalise ses compteurs dans `public.maintenance_runs`. Détail et réglages dans [`docs/local-stack.md`](docs/local-stack.md#entretien).
 
@@ -359,14 +388,16 @@ Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adress
 3. Dans Supabase → Database → Extensions : activer `pg_cron` si ce n'est pas déjà fait, puis rejouer les migrations de purge et de vote chronométré — sans l'extension elles s'appliquent quand même, mais leurs jobs ne sont pas planifiés (vérifier avec `select jobname, schedule from cron.job` : `omk-nightly-maintenance` et `omk-close-expired-sessions`).
 4. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
 
-| Variable                               | Valeur                                                   |
-| -------------------------------------- | -------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`             | URL du projet (Project Settings → API)                   |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | clé _publishable_ (l'ancienne _anon_ est acceptée aussi) |
-| `NEXT_PUBLIC_SITE_URL`                 | optionnel — surcharge explicite (domaine personnalisé)   |
-| `GOOGLE_PLACES_API_KEY`                | optionnel — active l'import Google (serveur uniquement)  |
-| `NEXT_PUBLIC_POSTHOG_KEY`              | optionnel — sans elle, aucune mesure n'est chargée       |
-| `NEXT_PUBLIC_POSTHOG_HOST`             | optionnel — `https://eu.i.posthog.com` par défaut        |
+| Variable                               | Valeur                                                    |
+| -------------------------------------- | --------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | URL du projet (Project Settings → API)                    |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | clé _publishable_ (l'ancienne _anon_ est acceptée aussi)  |
+| `NEXT_PUBLIC_SITE_URL`                 | optionnel — surcharge explicite (domaine personnalisé)    |
+| `GOOGLE_PLACES_API_KEY`                | optionnel — active l'import Google (serveur uniquement)   |
+| `NEXT_PUBLIC_POSTHOG_KEY`              | optionnel — sans elle, aucune mesure n'est chargée        |
+| `NEXT_PUBLIC_POSTHOG_HOST`             | optionnel — `https://eu.i.posthog.com` par défaut         |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`       | optionnel — active le captcha de l'onboarding             |
+| `TURNSTILE_SECRET_KEY`                 | optionnel — l'autre moitié du captcha (serveur seulement) |
 
 L'URL publique (`env.SITE_URL`, côté serveur) est résolue dans cet ordre : `NEXT_PUBLIC_SITE_URL` si définie et non locale, sinon les variables système Vercel — `VERCEL_PROJECT_PRODUCTION_URL` en production, `VERCEL_BRANCH_URL` / `VERCEL_URL` en preview — et enfin `http://localhost:3000` en développement. Un `localhost` copié par erreur dans les variables Vercel est ignoré.
 

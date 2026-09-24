@@ -93,6 +93,24 @@ export type Database = {
           },
         ]
       }
+      join_attempts: {
+        Row: {
+          attempted_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          attempted_at?: string
+          id?: never
+          user_id: string
+        }
+        Update: {
+          attempted_at?: string
+          id?: never
+          user_id?: string
+        }
+        Relationships: []
+      }
       list_restaurants: {
         Row: {
           added_at: string
@@ -190,6 +208,32 @@ export type Database = {
           task?: string
         }
         Relationships: []
+      }
+      neighbourhood_imports: {
+        Row: {
+          claimed_at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          id?: never
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          id?: never
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'neighbourhood_imports_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -543,6 +587,7 @@ export type Database = {
         Args: { p_closes_at: string }
         Returns: undefined
       }
+      claim_neighbourhood_import: { Args: never; Returns: number }
       close_expired_sessions: { Args: never; Returns: number }
       close_session: {
         Args: { p_session_id: string }
@@ -844,6 +889,8 @@ export type Database = {
           session_id: string
         }[]
       }
+      neighbourhood_import_quota: { Args: never; Returns: number }
+      neighbourhood_import_window: { Args: never; Returns: string }
       normalize_crockford: { Args: { p_input: string }; Returns: string }
       public_results: {
         Args: { p_code: string }
@@ -861,6 +908,10 @@ export type Database = {
         }[]
       }
       purge_inactive_anonymous: {
+        Args: { p_older_than?: string }
+        Returns: number
+      }
+      purge_join_attempts: {
         Args: { p_older_than?: string }
         Returns: number
       }

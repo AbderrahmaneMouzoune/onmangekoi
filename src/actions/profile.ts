@@ -6,14 +6,22 @@ import { redirect } from 'next/navigation'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { createServerClient } from '@/data-access/supabase/server'
+import { verifyTurnstile } from '@/data-access/turnstile'
 import { toUserMessage } from '@/domain/errors'
 import { SetupProfileSchema, UpdatePseudoSchema } from '@/domain/schemas/profile'
 import { sanitizeNextPath } from '@/lib/routing'
+import { TURNSTILE_FIELD, TURNSTILE_MESSAGES } from '@/lib/turnstile'
 import { setupProfileUseCase } from '@/use-cases/setup-profile'
 import { updatePseudoUseCase } from '@/use-cases/update-pseudo'
 
 import type { FormState } from './types'
 
+/**
+ * Seul endroit de l'app qui crée un utilisateur Supabase. C'est donc ici que
+ * le captcha se vérifie — avant `signInAnonymously`, sinon un script s'offre
+ * autant d'identités qu'il veut et la limitation de débit du « Rejoindre »
+ * ne coûte plus rien à contourner.
+ */
 export async function setupProfileAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = SetupProfileSchema.safeParse({
     pseudo: formData.get('pseudo'),
@@ -22,6 +30,9 @@ export async function setupProfileAction(_prev: FormState, formData: FormData): 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? 'Pseudo invalide' }
   }
+
+  const verdict = await verifyTurnstile(formData.get(TURNSTILE_FIELD))
+  if (verdict !== 'ok') return { error: TURNSTILE_MESSAGES[verdict] }
 
   const supabase = await createServerClient()
   try {

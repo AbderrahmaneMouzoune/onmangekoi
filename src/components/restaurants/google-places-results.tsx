@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { Facts } from '@/components/restaurants/catalog-results'
 import { RecentWinnerBadge } from '@/components/restaurants/recent-winner-badge'
 import { ResultRow } from '@/components/restaurants/result-row'
+import { SeedNeighbourhood } from '@/components/restaurants/seed-neighbourhood'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
@@ -42,6 +43,11 @@ interface GooglePlacesResultsProps {
   onImport: (place: PlaceResult) => void
   /** Échec du dernier import, affiché ici, là où le geste a eu lieu. */
   importError: string | null
+  /**
+   * Restos entrés en base par un amorçage de quartier : le carnet les adopte
+   * sans recharger, et les lignes d'ici cessent d'être des lieux inconnus.
+   */
+  onSeeded: (restaurants: Restaurant[]) => void
   /** Anti-fatigue : date du dernier sacre, pour un lieu déjà connu du carnet */
   recentWinners?: RecentWinnerDates
   /** Anti-fatigue actif : un gagnant récent est écarté, donc ni coché ni cochable */
@@ -127,6 +133,7 @@ export function GooglePlacesResults({
   onToggle,
   onImport,
   importError,
+  onSeeded,
   recentWinners = NO_RECENT_WINNERS,
   excludeRecent = false,
 }: GooglePlacesResultsProps) {
@@ -222,6 +229,10 @@ export function GooglePlacesResults({
           </Button>
         )}
       </div>
+
+      {/* Amorcer demande une position, jamais l'inverse : sans autorisation
+          déjà accordée, l'action n'existe pas. */}
+      {position && <SeedNeighbourhood position={position} onSeeded={onSeeded} />}
 
       <FormMessage error={fetchError ?? importError} />
 
