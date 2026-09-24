@@ -43,10 +43,13 @@ const session: Session = {
   invite_token: 'f'.repeat(32),
   launched_at: null,
   name: 'Lunch du vendredi',
+  parent_session_id: null,
   results_code: 'H4V2Q8ZX0M',
   results_public: false,
   rules: DEFAULT_SESSION_RULES,
   status: 'waiting',
+  tiebreak_method: null,
+  tiebreak_winner_id: null,
 }
 
 function participant(profileId: string, pseudo: string): ParticipantWithProfile {

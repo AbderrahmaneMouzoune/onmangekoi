@@ -469,10 +469,13 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          parent_session_id: string | null
           results_code: string
           results_public: boolean
           rules: Json
           status: Database['public']['Enums']['session_status']
+          tiebreak_method: Database['public']['Enums']['tiebreak_method'] | null
+          tiebreak_winner_id: string | null
         }
         Insert: {
           closed_at?: string | null
@@ -484,10 +487,13 @@ export type Database = {
           invite_token?: string
           launched_at?: string | null
           name: string
+          parent_session_id?: string | null
           results_code?: string
           results_public?: boolean
           rules?: Json
           status?: Database['public']['Enums']['session_status']
+          tiebreak_method?: Database['public']['Enums']['tiebreak_method'] | null
+          tiebreak_winner_id?: string | null
         }
         Update: {
           closed_at?: string | null
@@ -499,10 +505,13 @@ export type Database = {
           invite_token?: string
           launched_at?: string | null
           name?: string
+          parent_session_id?: string | null
           results_code?: string
           results_public?: boolean
           rules?: Json
           status?: Database['public']['Enums']['session_status']
+          tiebreak_method?: Database['public']['Enums']['tiebreak_method'] | null
+          tiebreak_winner_id?: string | null
         }
         Relationships: [
           {
@@ -510,6 +519,20 @@ export type Database = {
             columns: ['host_id']
             isOneToOne: false
             referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'sessions_parent_session_id_fkey'
+            columns: ['parent_session_id']
+            isOneToOne: false
+            referencedRelation: 'sessions'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'sessions_tiebreak_winner_id_fkey'
+            columns: ['tiebreak_winner_id']
+            isOneToOne: false
+            referencedRelation: 'session_restaurants'
             referencedColumns: ['id']
           },
         ]
@@ -607,10 +630,13 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          parent_session_id: string | null
           results_code: string
           results_public: boolean
           rules: Json
           status: Database['public']['Enums']['session_status']
+          tiebreak_method: Database['public']['Enums']['tiebreak_method'] | null
+          tiebreak_winner_id: string | null
         }
         SetofOptions: {
           from: '*'
@@ -688,6 +714,33 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_runoff_session: {
+        Args: { p_session_id: string }
+        Returns: {
+          closed_at: string | null
+          closes_at: string | null
+          created_at: string
+          host_id: string | null
+          id: string
+          invite_code: string
+          invite_token: string
+          launched_at: string | null
+          name: string
+          parent_session_id: string | null
+          results_code: string
+          results_public: boolean
+          rules: Json
+          status: Database['public']['Enums']['session_status']
+          tiebreak_method: Database['public']['Enums']['tiebreak_method'] | null
+          tiebreak_winner_id: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'sessions'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_session: {
         Args: {
           p_closes_at?: string
@@ -705,10 +758,13 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          parent_session_id: string | null
           results_code: string
           results_public: boolean
           rules: Json
           status: Database['public']['Enums']['session_status']
+          tiebreak_method: Database['public']['Enums']['tiebreak_method'] | null
+          tiebreak_winner_id: string | null
         }
         SetofOptions: {
           from: '*'
@@ -720,6 +776,33 @@ export type Database = {
       crockford_code: { Args: { p_length: number }; Returns: string }
       default_session_rules: { Args: never; Returns: Json }
       delete_my_account: { Args: never; Returns: undefined }
+      draw_winner: {
+        Args: { p_session_id: string }
+        Returns: {
+          closed_at: string | null
+          closes_at: string | null
+          created_at: string
+          host_id: string | null
+          id: string
+          invite_code: string
+          invite_token: string
+          launched_at: string | null
+          name: string
+          parent_session_id: string | null
+          results_code: string
+          results_public: boolean
+          rules: Json
+          status: Database['public']['Enums']['session_status']
+          tiebreak_method: Database['public']['Enums']['tiebreak_method'] | null
+          tiebreak_winner_id: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'sessions'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       export_my_data: { Args: never; Returns: Json }
       extend_session: {
         Args: { p_minutes?: number; p_session_id: string }
@@ -733,10 +816,13 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          parent_session_id: string | null
           results_code: string
           results_public: boolean
           rules: Json
           status: Database['public']['Enums']['session_status']
+          tiebreak_method: Database['public']['Enums']['tiebreak_method'] | null
+          tiebreak_winner_id: string | null
         }
         SetofOptions: {
           from: '*'
@@ -824,10 +910,13 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          parent_session_id: string | null
           results_code: string
           results_public: boolean
           rules: Json
           status: Database['public']['Enums']['session_status']
+          tiebreak_method: Database['public']['Enums']['tiebreak_method'] | null
+          tiebreak_winner_id: string | null
         }
         SetofOptions: {
           from: '*'
@@ -848,10 +937,13 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          parent_session_id: string | null
           results_code: string
           results_public: boolean
           rules: Json
           status: Database['public']['Enums']['session_status']
+          tiebreak_method: Database['public']['Enums']['tiebreak_method'] | null
+          tiebreak_winner_id: string | null
         }
         SetofOptions: {
           from: '*'
@@ -947,6 +1039,7 @@ export type Database = {
         }[]
       }
       raise_omk: { Args: { p_code: string }; Returns: undefined }
+      random_below: { Args: { p_bound: number }; Returns: number }
       recent_winners: {
         Args: never
         Returns: {
@@ -1030,8 +1123,15 @@ export type Database = {
           session_restaurant_id: string
           super_dislikes: number
           superlikes: number
+          tiebreak: string
           votes_count: number
           website: string
+        }[]
+      }
+      session_tied_restaurants: {
+        Args: { p_session_id: string }
+        Returns: {
+          session_restaurant_id: string
         }[]
       }
       set_results_public: {
@@ -1046,10 +1146,13 @@ export type Database = {
           invite_token: string
           launched_at: string | null
           name: string
+          parent_session_id: string | null
           results_code: string
           results_public: boolean
           rules: Json
           status: Database['public']['Enums']['session_status']
+          tiebreak_method: Database['public']['Enums']['tiebreak_method'] | null
+          tiebreak_winner_id: string | null
         }
         SetofOptions: {
           from: '*'
@@ -1068,6 +1171,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      tiebreak_candidates: { Args: { p_session_id: string }; Returns: string[] }
       upsert_restaurant_from_place: {
         Args: {
           p_address?: string
@@ -1111,6 +1215,7 @@ export type Database = {
     }
     Enums: {
       session_status: 'waiting' | 'voting' | 'closed'
+      tiebreak_method: 'runoff' | 'draw'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1236,6 +1341,7 @@ export const Constants = {
   public: {
     Enums: {
       session_status: ['waiting', 'voting', 'closed'],
+      tiebreak_method: ['runoff', 'draw'],
     },
   },
 } as const

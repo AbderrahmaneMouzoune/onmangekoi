@@ -20,6 +20,8 @@ export const OMK_MESSAGES: Record<string, string> = {
   session_not_closed: 'Le classement n’existe pas encore : clôture d’abord la session.',
   session_already_started: 'La session a déjà été lancée.',
   session_not_voting: 'Le vote n’est pas en cours.',
+  no_tie: 'Il n’y a pas d’égalité à départager.',
+  tiebreak_settled: 'Cette égalité a déjà été départagée.',
   deadline_too_soon: 'Choisis une échéance dans au moins une minute.',
   deadline_too_far: 'Une échéance ne peut pas dépasser 12 heures.',
   deadline_passed: 'L’échéance est dépassée : prolonge-la avant de lancer le vote.',

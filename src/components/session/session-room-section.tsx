@@ -8,6 +8,7 @@ import { getMyGroups, getSessionInvitations } from '@/data-access/groups'
 import { getRecentWinners } from '@/data-access/recent-winners'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import {
+  getSessionById,
   getSessionByParam,
   getSessionParticipants,
   getSessionRestaurants,
@@ -38,12 +39,14 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
 
   // Les lectures restantes sont indépendantes : un seul aller-retour. Les
   // gagnants récents arrivent avec la session, une fois pour tout le deck —
-  // aucune carte n'ira les redemander.
-  const [participants, restaurants, votes, recentWinners] = await Promise.all([
+  // aucune carte n'ira les redemander. Le premier tour n'est lu que si cette
+  // session en est la suite.
+  const [participants, restaurants, votes, recentWinners, firstRound] = await Promise.all([
     getSessionParticipants(supabase, session.id),
     getSessionRestaurants(supabase, session.id),
     getMyVotes(supabase, session.id),
     getRecentWinners(supabase),
+    session.parent_session_id ? getSessionById(supabase, session.parent_session_id) : null,
   ])
 
   if (!participants.some((p) => p.profile_id === user.id)) {
@@ -85,6 +88,7 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
       meId={user.id}
       inviteUrl={url}
       qrSvg={qrSvg}
+      firstRoundUrl={firstRound ? router.sessionResults(firstRound) : null}
       invitations={invitations}
       groups={groups}
     />

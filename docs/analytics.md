@@ -45,6 +45,7 @@ Le seul identifiant transmis est l'**UUID du profil Supabase**, opaque, passé �
 | `session_restaurants_added`  | un participant apporte des restos en salle d'attente             | `session_id`, `added_count`, `restaurant_count`                                                |
 | `vote_submitted`             | un vote est enregistré en base (pas une carte déjà votée)        | `session_id`, `value`, `kind`, `position`, `restaurant_count`                                  |
 | `session_closed`             | la session passe à `closed` sous les yeux d'un participant       | `session_id`, `reason` (`auto` · `deadline` · `host`), `participant_count`, `restaurant_count` |
+| `session_tiebreak`           | le host tranche une égalité parfaite                             | `session_id`, `method` (`runoff` · `draw`), `tied_count`                                       |
 | `list_shared`                | copie du lien de partage d'une liste                             | `method`                                                                                       |
 | `group_saved`                | un groupe récurrent est sauvegardé depuis un classement          | `member_count`                                                                                 |
 | `group_invited`              | un groupe est pré-invité depuis la salle d'attente               | `session_id`, `invited_count`                                                                  |

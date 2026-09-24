@@ -170,6 +170,7 @@ bun run db:test
 | `purge.test.sql`              | Purge : protections d'un compte joignable, cascades, compteurs, garde-fous de rétention                                                     |
 | `delete-account.test.sql`     | Suppression RGPD : classement d'une session close inchangé, votes anonymisés, sessions orphelines traitées, export cloisonné                |
 | `timed-session.test.sql`      | Vote chronométré : bornes de l'échéance, lancement refusé après l'heure, prolongation réservée au host, clôture et classement               |
+| `tiebreak.test.sql`           | Départage : tirage fait et conservé en base, second tour hérité des participants, `tiebreak` exposé, rouages internes fermés                |
 | `recent-winners.test.sql`     | Anti-fatigue : fenêtre de 30 jours, un seul sacre par restaurant, égalités, sessions des autres invisibles, droits d'exécution              |
 | `restaurant-filters.test.sql` | Filtres du catalogue : budget, régimes et rayon combinés, pagination sous filtres, liste blanche des régimes                                |
 | `join-rate-limit.test.sql`    | Limitation de débit : un essai raté compté sans exception, deux fautes de frappe sans conséquence, blocage au 11ᵉ, fenêtre glissante, purge |

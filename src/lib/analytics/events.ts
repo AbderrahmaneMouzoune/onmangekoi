@@ -19,6 +19,8 @@ export type JoinMethod = 'code' | 'link' | 'scan'
 /** Qui a mis fin à la session : le host, le vote complet, ou l'échéance. */
 export type CloseReason = SessionCloseReason
 
+/** Comment le host a tranché une égalité parfaite. */
+export type TiebreakChoice = 'runoff' | 'draw'
 /** Portée d'un lien de classement partagé. */
 export type ResultsScope = 'public' | 'participants'
 
@@ -78,6 +80,12 @@ export interface AnalyticsEventMap {
     reason: CloseReason
     participant_count: number
     restaurant_count: number
+  }
+  session_tiebreak: {
+    session_id: string
+    method: TiebreakChoice
+    /** Nombre de restaurants à égalité en tête */
+    tied_count: number
   }
   list_shared: {
     method: ShareMethod
