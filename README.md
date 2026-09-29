@@ -405,7 +405,30 @@ onmangekoi s'installe sur l'écran d'accueil comme une app (PWA) : fenêtre plei
 
 **La bannière d'installation** n'existe que là où le navigateur émet `beforeinstallprompt` (Chrome, Edge, Android). L'événement part souvent avant l'hydratation : un court script en tête de `<body>` le retient (`INSTALL_PROMPT_SCRIPT`), et c'est l'app qui choisit le moment — sur l'accueil, une fois qu'un classement final avec un gagnant s'est affiché dans ce navigateur, jamais par-dessus le deck ni le classement. Sur iOS et Firefox, l'installation passe par le menu du navigateur (« Sur l'écran d'accueil »). Les réponses sont mesurées (`pwa_install_prompted`, `pwa_installed`, voir [`docs/analytics.md`](docs/analytics.md)).
 
-**Pour les notifications push (#7).** Le script est découpé en sections numérotées ; les gestionnaires `push` et `notificationclick` s'ajoutent dans la dernière. Côté page, `getServiceWorkerRegistration()` rend la registration active (`registration.pushManager`), ou `null` sans service worker.
+**Notifications push.** Le script est découpé en sections numérotées ; la dernière reçoit les gestionnaires `push` et `notificationclick` (voir [Notifications push](#notifications-push)). Côté page, `getServiceWorkerRegistration()` rend la registration active (`registration.pushManager`), ou `null` sans service worker.
+
+## Notifications push
+
+Le Realtime ne sert que l'onglet ouvert : un invité qui l'a fermé n'apprend ni que le vote est lancé, ni que le classement est prêt. Il peut désormais demander à être prévenu.
+
+| Quand                            | Qui est prévenu                            | Notification               | Au clic                                      |
+| -------------------------------- | ------------------------------------------ | -------------------------- | -------------------------------------------- |
+| Le host lance le vote            | les participants, sauf le host             | « Le vote est lancé »      | la salle de vote, `router.session(code)`     |
+| La session se clôt (host, seuil) | les participants, sauf l'auteur de clôture | « Le classement est prêt » | le classement, `router.sessionResults(code)` |
+| La session se clôt à l'échéance  | tous les participants                      | « Le classement est prêt » | le classement                                |
+
+**Opt-in, jamais de demande surprise.** Le bouton « Me prévenir au lancement » apparaît en salle d'attente (invités), « Me prévenir du résultat » une fois ses votes faits. La permission du navigateur n'est demandée qu'au clic. L'abonnement est celui du **navigateur** : il vaut ensuite pour toutes les sessions auxquelles on participe, et « Ne plus me prévenir » le retire. Refusé, le bouton laisse place à une explication ; sur iPhone hors app installée, le Web Push n'existe pas, le bouton explique comment installer l'app (iOS 16.4+).
+
+**Le trajet.**
+
+1. `subscribePushAction` enregistre l'abonnement (`save_push_subscription`, un par navigateur, 10 appareils au plus par compte) dans `push_subscriptions`, en RLS propriétaire.
+2. Quand `sessions.status` passe à `voting` ou `closed`, le trigger `notify_session_status_change` appelle `POST /api/push/dispatch` par `pg_net`, après le commit, avec un secret partagé. Le corps ne porte que `{ session_id, status, actor_id }` ; `actor_id` (`auth.uid()`) est nul pour la clôture à l'échéance. Aucun appel si personne d'autre que l'auteur n'est abonné. Une erreur ne bloque jamais le changement de statut.
+3. La route vérifie le secret (comparaison à temps constant), relit la session avec la clé secrète Supabase — et se tait si son statut a bougé entre-temps —, chiffre et signe (`web-push`, VAPID), envoie, puis purge les abonnements auxquels le service push répond 404 ou 410.
+4. Le service worker affiche la notification (une par session : la clôture remplace le lancement) et, au clic, donne le focus à l'onglet déjà ouvert sur la bonne page, y emmène un onglet de la même session, ou en ouvre un. L'adresse est revérifiée : jamais une autre origine.
+
+La charge utile se limite au titre, au nom de la session et au chemin à ouvrir ; elle est chiffrée de bout en bout, le service push du navigateur ne la lit pas. Seules les **mises à jour** de statut préviennent : une session ouverte naît en `voting` sans personne d'autre que le host, rien à annoncer. Un second tour naît lui aussi en `voting` et n'est pas annoncé pour l'instant — ses participants le découvrent en rouvrant le classement.
+
+**Désactivé par défaut.** Sans les secrets du Vault, le trigger ne fait rien ; sans clés VAPID ou sans `SUPABASE_SECRET_KEY`, la route répond 204 sans rien envoyer ; sans `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, le bouton ne s'affiche pas. C'est le cas en local, en CI et sur les previews. Pour activer, voir [Déployer](#déployer-vercel--supabase-cloud). Pour essayer en local : un build de production (`bun run build && bun run start`, le service worker n'existe pas en `next dev`), les variables de `.env.local.example`, et deux secrets Vault posés dans la base locale — l'URL doit viser l'hôte vu depuis le conteneur Postgres, `http://host.docker.internal:3000/api/push/dispatch`. Scénario rejouable avec `bun run db:test` (`supabase/tests/push.test.sql`).
 
 ## Stack
 
@@ -533,6 +556,7 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - **Aucune donnée personnelle n'est mise en cache.** Seul le catalogue public de restaurants est mémorisé, via un client Supabase sans cookie ; voir [Rendu et cache](#rendu-et-cache).
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.
 - Les messages d'erreur Postgres ne remontent jamais tels quels : seuls les codes métier `omk:*` sont traduits.
+- **Notifications push** : `push_subscriptions` n'est lisible et supprimable que par son propriétaire, et ne s'écrit que par `save_push_subscription`. La clé secrète Supabase (`SUPABASE_SECRET_KEY`, client `src/data-access/supabase/admin.ts`, `server-only`) ne sert qu'à `/api/push/dispatch`, qui n'accepte que le secret partagé avec la base, comparé à temps constant. La route n'est pas sous le proxy, et le service worker ne la touche pas.
 
 ## Anti-abus
 
@@ -557,10 +581,10 @@ Le scénario est rejouable avec `bun run db:test` (`supabase/tests/join-rate-lim
 
 L'app est utilisable avec un simple pseudo, et les deux droits qui comptent au quotidien sont en libre-service depuis « Mon compte » :
 
-| Droit                | Chemin            | Effet                                                                                                                                                 |
-| -------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Export (portabilité) | `/account/export` | JSON téléchargeable — profil, listes, groupes, sessions hébergées, participations, restos apportés et votes — assemblé en base par `export_my_data()` |
-| Suppression          | « Mon compte »    | `delete_my_account()` : profil, listes, groupes et compte auth supprimés en une transaction                                                           |
+| Droit                | Chemin            | Effet                                                                                                                                                                                        |
+| -------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Export (portabilité) | `/account/export` | JSON téléchargeable — profil, listes, groupes, sessions hébergées, participations, restos apportés, votes et navigateurs abonnés aux notifications — assemblé en base par `export_my_data()` |
+| Suppression          | « Mon compte »    | `delete_my_account()` : profil, listes, groupes, abonnements aux notifications et compte auth supprimés en une transaction                                                                   |
 
 Supprimer un compte ne réécrit pas l'histoire des autres. Les votes déjà comptés dans une **session terminée** restent dans le classement mais perdent leur auteur (`Participant supprimé`) ; les sessions **en attente ou en cours** que le compte hébergeait sont supprimées, puisque sans host elles ne peuvent plus aboutir. La garantie est portée par le schéma (`on delete set null` sur `sessions.host_id` et `session_participants.profile_id`), pas seulement par la RPC : une suppression faite depuis le dashboard Supabase donne le même résultat.
 
@@ -584,7 +608,21 @@ Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adress
 1. Créer un projet Supabase, puis pousser le schéma : `supabase link --project-ref <ref>` et `supabase db push` (migrations, RLS, RPC, seed). Sans terminal sous la main, les mêmes opérations se pilotent depuis GitHub — voir [`docs/ci-database.md`](docs/ci-database.md).
 2. Dans Supabase → Authentication → URL Configuration : ajouter `https://<domaine>/auth/confirm` aux _Redirect URLs_ (compte optionnel).
 3. Dans Supabase → Database → Extensions : activer `pg_cron` si ce n'est pas déjà fait, puis rejouer les migrations de purge et de vote chronométré — sans l'extension elles s'appliquent quand même, mais leurs jobs ne sont pas planifiés (vérifier avec `select jobname, schedule from cron.job` : `omk-nightly-maintenance` et `omk-close-expired-sessions`).
-4. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
+4. Notifications push (optionnel) — voir [Notifications push](#notifications-push) :
+   - générer une paire VAPID : `bunx web-push generate-vapid-keys` (la clé publique va dans `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, la privée dans `VAPID_PRIVATE_KEY`) ; tirer un secret partagé, par exemple `openssl rand -hex 32` ;
+   - dans Supabase → Database → Extensions : activer `pg_net` (la migration le tente d'elle-même) ;
+   - dans le SQL Editor de Supabase, créer les deux secrets du Vault que lit le trigger :
+
+     ```sql
+     select vault.create_secret('https://<domaine>/api/push/dispatch', 'push_dispatch_url');
+     select vault.create_secret('<le secret partagé>', 'push_dispatch_secret');
+     ```
+
+     Pour changer une valeur : `select vault.update_secret(id, '<nouvelle valeur>') from vault.secrets where name = 'push_dispatch_url';`. Sans ces secrets, rien ne part — c'est l'état par défaut ;
+
+   - dans Vercel, les quatre variables serveur ci-dessous plus la clé publique. Les previews n'ont pas besoin de la route : le Vault ne pointe que vers la production.
+
+5. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
 
 | Variable                               | Valeur                                                    |
 | -------------------------------------- | --------------------------------------------------------- |
@@ -596,6 +634,11 @@ Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adress
 | `NEXT_PUBLIC_POSTHOG_HOST`             | optionnel — `https://eu.i.posthog.com` par défaut         |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`       | optionnel — active le captcha de l'onboarding             |
 | `TURNSTILE_SECRET_KEY`                 | optionnel — l'autre moitié du captcha (serveur seulement) |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`         | optionnel — clé VAPID publique ; affiche « Me prévenir »  |
+| `VAPID_PRIVATE_KEY`                    | optionnel — clé VAPID privée (serveur seulement)          |
+| `VAPID_SUBJECT`                        | optionnel — contact VAPID, `mailto:…` ou `https://…`      |
+| `PUSH_DISPATCH_SECRET`                 | optionnel — le même secret que `push_dispatch_secret`     |
+| `SUPABASE_SECRET_KEY`                  | optionnel — clé _secret_ Supabase, lue par la route push  |
 
 L'URL publique (`env.SITE_URL`, côté serveur) est résolue dans cet ordre : `NEXT_PUBLIC_SITE_URL` si définie et non locale, sinon les variables système Vercel — `VERCEL_PROJECT_PRODUCTION_URL` en production, `VERCEL_BRANCH_URL` / `VERCEL_URL` en preview — et enfin `http://localhost:3000` en développement. Un `localhost` copié par erreur dans les variables Vercel est ignoré.
 

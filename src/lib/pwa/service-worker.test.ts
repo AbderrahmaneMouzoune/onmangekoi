@@ -71,6 +71,26 @@ function fakeCaches(fetcher: typeof fetch) {
 
 type Handler = (event: Record<string, unknown>) => void
 
+/** Une fenêtre de l'app, vue du service worker (`WindowClient`). */
+interface FakeWindow {
+  url: string
+  focus: ReturnType<typeof vi.fn>
+  navigate: ReturnType<typeof vi.fn>
+}
+
+function fakeWindow(path: string, { controlled = true } = {}): FakeWindow {
+  const win: FakeWindow = {
+    url: `${ORIGIN}${path}`,
+    focus: vi.fn(async () => win),
+    navigate: vi.fn(async (url: string) => {
+      if (!controlled) throw new TypeError('not controlled')
+      win.url = new URL(url, ORIGIN).href
+      return win
+    }),
+  }
+  return win
+}
+
 function loadWorker(version = 'build-2') {
   const network = vi.fn(async (input: RequestInfo | URL) => {
     const url = absolute(input)
@@ -86,8 +106,15 @@ function loadWorker(version = 'build-2') {
       handlers[type] = handler
     },
     skipWaiting: vi.fn(async () => undefined),
-    clients: { claim: vi.fn(async () => undefined) },
-    registration: { navigationPreload: { enable: vi.fn(async () => undefined) } },
+    clients: {
+      claim: vi.fn(async () => undefined),
+      matchAll: vi.fn(async (): Promise<FakeWindow[]> => []),
+      openWindow: vi.fn(async (_url: string) => null),
+    },
+    registration: {
+      navigationPreload: { enable: vi.fn(async () => undefined) },
+      showNotification: vi.fn(async (_title: string, _options: NotificationOptions) => undefined),
+    },
   }
 
   const source = buildServiceWorker({
@@ -95,6 +122,7 @@ function loadWorker(version = 'build-2') {
     supabaseOrigin: SUPABASE,
     offlineUrl: '/offline',
     precacheUrls: ['/manifest.webmanifest', '/icon'],
+    notificationIcon: '/icons/icon-192.png',
   })
   new Function('self', 'caches', 'fetch', 'Request', source)(self, caches, network, WorkerRequest)
 
@@ -129,6 +157,7 @@ describe('buildServiceWorker', () => {
       supabaseOrigin: SUPABASE,
       offlineUrl: '/offline',
       precacheUrls: [],
+      notificationIcon: '/icon',
     })
     expect(source).toContain(JSON.stringify(cacheNames('abc123').precache))
     expect(source).toContain(JSON.stringify(cacheNames('abc123').runtime))
@@ -136,7 +165,12 @@ describe('buildServiceWorker', () => {
   })
 
   it('should change from one build to the next', () => {
-    const config = { supabaseOrigin: SUPABASE, offlineUrl: '/offline', precacheUrls: [] }
+    const config = {
+      supabaseOrigin: SUPABASE,
+      offlineUrl: '/offline',
+      precacheUrls: [],
+      notificationIcon: '/icon',
+    }
     expect(buildServiceWorker({ ...config, version: 'a' })).not.toBe(
       buildServiceWorker({ ...config, version: 'b' })
     )
@@ -226,5 +260,110 @@ describe('service worker', () => {
     worker.handlers.fetch(second.event)
     expect(await (await second.response())?.text()).toBe(`contenu de ${url}`)
     expect(worker.network).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('service worker — notifications push', () => {
+  let worker: ReturnType<typeof loadWorker>
+
+  beforeEach(() => {
+    worker = loadWorker()
+  })
+
+  function pushEvent(payload: unknown) {
+    const pending: Promise<unknown>[] = []
+    const event = {
+      data:
+        payload === undefined
+          ? null
+          : {
+              json: () => (typeof payload === 'string' ? JSON.parse(payload) : payload),
+            },
+      waitUntil: (promise: Promise<unknown>) => pending.push(promise),
+    }
+    worker.handlers.push(event)
+    return Promise.all(pending)
+  }
+
+  function clickEvent(data: unknown) {
+    const pending: Promise<unknown>[] = []
+    const close = vi.fn()
+    const event = {
+      notification: { data, close },
+      waitUntil: (promise: Promise<unknown>) => pending.push(promise),
+    }
+    worker.handlers.notificationclick(event)
+    return { done: Promise.all(pending), close }
+  }
+
+  it('should show one notification per session, pointing inside the app', async () => {
+    await pushEvent({
+      title: 'Le vote est lancé',
+      body: 'Midi de mardi — à toi de voter.',
+      url: '/sessions/7K3M9P',
+      tag: 'session-abc',
+    })
+
+    expect(worker.self.registration.showNotification).toHaveBeenCalledWith(
+      'Le vote est lancé',
+      expect.objectContaining({
+        body: 'Midi de mardi — à toi de voter.',
+        tag: 'session-abc',
+        renotify: true,
+        icon: '/icons/icon-192.png',
+        data: { url: '/sessions/7K3M9P' },
+      })
+    )
+  })
+
+  it('should show nothing for an empty, unreadable or foreign payload', async () => {
+    await pushEvent(undefined)
+    await pushEvent('pas du json{')
+    await pushEvent({ title: 'Piège', body: '', url: 'https://evil.test/x', tag: 't' })
+    await pushEvent({ title: 'Piège', body: '', url: '//evil.test/x', tag: 't' })
+
+    expect(worker.self.registration.showNotification).not.toHaveBeenCalled()
+  })
+
+  it('should focus a window already on the target page', async () => {
+    const room = fakeWindow('/sessions/7K3M9P/results')
+    worker.self.clients.matchAll.mockResolvedValue([fakeWindow('/'), room])
+
+    const { done, close } = clickEvent({ url: '/sessions/7K3M9P/results' })
+    await done
+
+    expect(close).toHaveBeenCalled()
+    expect(room.focus).toHaveBeenCalled()
+    expect(room.navigate).not.toHaveBeenCalled()
+    expect(worker.self.clients.openWindow).not.toHaveBeenCalled()
+  })
+
+  it('should bring the voting room to the results rather than open a new window', async () => {
+    const room = fakeWindow('/sessions/7K3M9P')
+    worker.self.clients.matchAll.mockResolvedValue([room])
+
+    await clickEvent({ url: '/sessions/7K3M9P/results' }).done
+
+    expect(room.navigate).toHaveBeenCalledWith('/sessions/7K3M9P/results')
+    expect(room.focus).toHaveBeenCalled()
+    expect(worker.self.clients.openWindow).not.toHaveBeenCalled()
+  })
+
+  it('should open a new window when no window fits, or when it cannot be moved', async () => {
+    worker.self.clients.matchAll.mockResolvedValue([fakeWindow('/lists')])
+    await clickEvent({ url: '/sessions/7K3M9P' }).done
+    expect(worker.self.clients.openWindow).toHaveBeenLastCalledWith('/sessions/7K3M9P')
+
+    worker.self.clients.matchAll.mockResolvedValue([
+      fakeWindow('/sessions/7K3M9P', { controlled: false }),
+    ])
+    await clickEvent({ url: '/sessions/7K3M9P/results' }).done
+    expect(worker.self.clients.openWindow).toHaveBeenLastCalledWith('/sessions/7K3M9P/results')
+  })
+
+  it('should never open a foreign address from a tampered notification', async () => {
+    await clickEvent({ url: 'https://evil.test/phishing' }).done
+
+    expect(worker.self.clients.openWindow).toHaveBeenCalledWith('/')
   })
 })

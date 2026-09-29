@@ -13,6 +13,7 @@ import type { SessionRules } from '@/domain/session-rules'
 // Les Server Actions ne s'exécutent pas dans jsdom : seul leur appel compte ici.
 vi.mock('@/actions/sessions', () => ({ closeSessionAction: vi.fn() }))
 vi.mock('@/actions/groups', () => ({ inviteGroupToSessionAction: vi.fn() }))
+vi.mock('@/actions/push', () => ({ subscribePushAction: vi.fn(), unsubscribePushAction: vi.fn() }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 
 const HOST_ID = '11111111-1111-4111-8111-111111111111'

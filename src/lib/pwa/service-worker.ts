@@ -21,10 +21,11 @@
  * reçoit la page hors ligne. Supabase, `/api/`, `/auth/`, les Server Actions
  * et les charges RSC passent sans être touchés (voir `sw-routing.ts`).
  *
- * Le script est découpé en sections numérotées ; les notifications push
- * (#7) viendront s'ajouter dans la dernière, sans toucher au reste.
+ * Le script est découpé en sections numérotées ; la dernière reçoit les
+ * notifications push (#7) — affichage et clic, voir `push-handlers.ts`.
  */
 
+import { notificationTarget, pickWindow, readPushMessage } from '@/lib/pwa/push-handlers'
 import { staticAssetsIn, swStrategy } from '@/lib/pwa/sw-routing'
 
 /** Préfixe de tous les caches de l'app : ce qui ne le porte pas n'est jamais effacé. */
@@ -39,6 +40,8 @@ export interface ServiceWorkerConfig {
   offlineUrl: string
   /** Ressources précachées à l'installation, en plus de la page hors ligne. */
   precacheUrls: readonly string[]
+  /** Icône des notifications push. */
+  notificationIcon: string
 }
 
 /** Noms des caches d'un build. */
@@ -65,10 +68,14 @@ const RUNTIME = ${json(runtime)}
 const OFFLINE_URL = ${json(config.offlineUrl)}
 const PRECACHE_URLS = ${json([config.offlineUrl, ...config.precacheUrls])}
 const SUPABASE_ORIGIN = ${json(config.supabaseOrigin)}
+const NOTIFICATION_ICON = ${json(config.notificationIcon)}
 
-// ── 2. Règles de routage (src/lib/pwa/sw-routing.ts) ─────────────
+// ── 2. Règles pures (src/lib/pwa/sw-routing.ts, push-handlers.ts) ──
 const swStrategy = (${swStrategy.toString()})
 const staticAssetsIn = (${staticAssetsIn.toString()})
+const readPushMessage = (${readPushMessage.toString()})
+const notificationTarget = (${notificationTarget.toString()})
+const pickWindow = (${pickWindow.toString()})
 
 // ── 3. Cycle de vie : précache de l'app shell, purge des anciens builds ──
 self.addEventListener('install', (event) => {
@@ -149,8 +156,54 @@ self.addEventListener('fetch', (event) => {
 })
 
 // ── 5. Notifications push (#7) ───────────────────────────────────
-// Les gestionnaires \`push\` et \`notificationclick\` viendront ici. La
-// souscription passe par la registration exposée côté page
+// Envoyées par /api/push/dispatch au lancement et à la clôture d'une session.
+// La souscription passe par la registration exposée côté page
 // (\`getServiceWorkerRegistration\`, src/lib/pwa/registration.ts).
+self.addEventListener('push', (event) => {
+  let data = null
+  try {
+    data = event.data ? event.data.json() : null
+  } catch (_error) {
+    data = null
+  }
+  const message = readPushMessage(data, self.location.origin)
+  if (!message) return
+  event.waitUntil(
+    self.registration.showNotification(message.title, {
+      body: message.body,
+      // Une notification par session : la clôture remplace le lancement,
+      // et le signale quand même (\`renotify\`).
+      tag: message.tag,
+      renotify: true,
+      icon: NOTIFICATION_ICON,
+      lang: 'fr',
+      data: { url: message.url },
+    })
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const origin = self.location.origin
+  const target = notificationTarget(event.notification.data && event.notification.data.url, origin)
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      const choice = pickWindow(target, windows.map((client) => client.url), origin)
+      if (choice) {
+        const client = windows[choice.index]
+        if (!choice.navigate) return client.focus()
+        try {
+          // \`navigate\` échoue sur une fenêtre que ce service worker ne contrôle pas.
+          const moved = await client.navigate(target)
+          if (moved) return moved.focus()
+        } catch (_error) {
+          // On retombe sur une nouvelle fenêtre.
+        }
+      }
+      return self.clients.openWindow(target)
+    })()
+  )
+})
 `
 }

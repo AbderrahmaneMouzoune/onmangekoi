@@ -52,6 +52,11 @@ describe('swStrategy', () => {
 
   it('should never cache the API, the auth callbacks or the worker itself', () => {
     expect(swStrategy(request({ url: `${ORIGIN}/api/places?q=pizza` }))).toBe('network-only')
+    // La route d'envoi des notifications push (#7) : jamais en cache, quel que soit le verbe.
+    expect(swStrategy(request({ url: `${ORIGIN}/api/push/dispatch` }))).toBe('network-only')
+    expect(swStrategy(request({ url: `${ORIGIN}/api/push/dispatch`, method: 'POST' }))).toBe(
+      'network-only'
+    )
     expect(swStrategy(request({ url: `${ORIGIN}/auth/confirm?token=x`, mode: 'navigate' }))).toBe(
       'network-only'
     )

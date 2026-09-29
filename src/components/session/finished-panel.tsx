@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react'
 import { closeSessionAction } from '@/actions/sessions'
 import { ConnectionIndicator } from '@/components/session/connection-indicator'
 import { ParticipantList } from '@/components/session/participant-list'
+import { PushOptIn } from '@/components/session/push-opt-in'
 import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
@@ -109,6 +110,10 @@ export function FinishedPanel({
             </span>
           </div>
         </div>
+
+        {/* Ses votes faits, rien n'oblige à rester sur la page : le classement
+            peut tomber bien plus tard — à l'échéance d'une session ouverte. */}
+        {meFinished && <PushOptIn sessionId={session.id} context="results" />}
 
         {isHost && (
           <div className="flex flex-col gap-2">

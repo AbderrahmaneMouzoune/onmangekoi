@@ -8,6 +8,7 @@ import { ConnectionIndicator } from '@/components/session/connection-indicator'
 import { InviteCard } from '@/components/session/invite-card'
 import { ParticipantList } from '@/components/session/participant-list'
 import { PendingInvitees } from '@/components/session/pending-invitees'
+import { PushOptIn } from '@/components/session/push-opt-in'
 import { RulesSummary } from '@/components/session/rules-summary'
 import { SessionRestaurantsPanel } from '@/components/session/session-restaurants-panel'
 import { Button } from '@/components/ui/button'
@@ -189,6 +190,9 @@ export function WaitingRoom({
                 <Spinner className="size-4" />
                 En attente du lancement par {displayPseudo(host?.profiles?.pseudo)}…
               </p>
+              {/* Le Realtime ne sert que l'onglet ouvert : de quoi fermer celui-ci
+                  sans rater le lancement. */}
+              <PushOptIn sessionId={session.id} context="launch" />
               <TwoStepButton
                 variant="ghost"
                 size="sm"

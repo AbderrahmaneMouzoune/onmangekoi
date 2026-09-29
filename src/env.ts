@@ -49,6 +49,30 @@ export const env = createEnv({
      * du développement local.
      */
     TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
+    /**
+     * Clé secrète Supabase (ex-`service_role`), qui passe outre la RLS.
+     * **Optionnelle** : seule la route d'envoi des notifications push s'en
+     * sert, pour lire les abonnements des autres participants. Sans elle, les
+     * notifications sont simplement coupées. Serveur uniquement.
+     */
+    SUPABASE_SECRET_KEY: z.string().min(1).optional(),
+    /**
+     * Notifications push (issue #7) : la moitié privée de la paire VAPID et le
+     * contact déclaré aux services push (`mailto:` ou URL `https:`). Toutes
+     * deux optionnelles : sans elles, `/api/push/dispatch` répond 204 sans
+     * rien envoyer.
+     */
+    VAPID_PRIVATE_KEY: z.string().min(1).optional(),
+    VAPID_SUBJECT: z
+      .string()
+      .regex(/^(mailto:|https:\/\/)/, 'VAPID_SUBJECT doit commencer par mailto: ou https://')
+      .optional(),
+    /**
+     * Secret partagé avec la base : le trigger l'envoie en `Authorization:
+     * Bearer …` (il le lit dans le Vault, `push_dispatch_secret`), la route
+     * d'envoi le compare. Sans lui, la route refuse tout appel.
+     */
+    PUSH_DISPATCH_SECRET: z.string().min(16).optional(),
   },
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.url(),
@@ -64,17 +88,28 @@ export const env = createEnv({
     NEXT_PUBLIC_POSTHOG_HOST: z.url().default('https://eu.i.posthog.com'),
     /** Clé publique Turnstile — l'autre moitié de l'interrupteur du captcha. */
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+    /**
+     * Moitié publique de la paire VAPID : le navigateur la présente au service
+     * push en s'abonnant. **Optionnelle** : sans elle, le bouton « Me prévenir »
+     * ne s'affiche pas.
+     */
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().min(1).optional(),
   },
   runtimeEnv: {
     SITE_URL: resolveSiteUrl(),
     GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
     TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
+    SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY,
+    VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+    VAPID_SUBJECT: process.env.VAPID_SUBJECT,
+    PUSH_DISPATCH_SECRET: process.env.PUSH_DISPATCH_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
   },
   emptyStringAsUndefined: true,
 })

@@ -57,6 +57,8 @@ export const OMK_MESSAGES: Record<string, string> = {
   too_many_groups: 'Tu as atteint la limite de 20 groupes.',
   too_many_invitations: 'Cette session ne peut pas dépasser 50 invitations en attente.',
   group_owner_cannot_leave: 'Tu es le propriétaire de ce groupe : supprime-le pour t’en défaire.',
+  invalid_push_subscription:
+    'Ton navigateur a renvoyé un abonnement aux notifications illisible. Réessaie.',
 }
 
 export const GENERIC_ERROR = 'Une erreur est survenue. Réessaie dans un instant.'

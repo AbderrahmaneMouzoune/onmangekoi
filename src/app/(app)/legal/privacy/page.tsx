@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 }
 
 /** Dernière révision du texte — à remonter à chaque modification de fond. */
-const LAST_UPDATED = '21 septembre 2026'
+const LAST_UPDATED = '29 septembre 2026'
 
 const RETENTION = [
   {
@@ -48,6 +48,11 @@ const RETENTION = [
     data: 'Votes',
     why: 'Calculer le classement — jamais affichés individuellement',
     kept: 'Conservés en agrégat, détachés de leur auteur à la suppression du compte',
+  },
+  {
+    data: 'Abonnement aux notifications',
+    why: 'Optionnel — te prévenir du lancement d’un vote ou d’un classement, onglet fermé',
+    kept: 'Jusqu’à « Ne plus me prévenir », la suppression du compte, ou l’abandon par le navigateur',
   },
   {
     data: 'Compte invité sans email',
@@ -140,8 +145,8 @@ export default function PrivacyPage() {
         </p>
         <ul className="flex list-disc flex-col gap-2 pl-5 text-sm text-ink-2 marker:text-line-strong">
           <li>
-            Le profil, le pseudo, l’email, le mot de passe et les listes sont supprimés
-            définitivement.
+            Le profil, le pseudo, l’email, le mot de passe, les listes et les abonnements aux
+            notifications sont supprimés définitivement.
           </li>
           <li>
             Les groupes dont le compte est propriétaire disparaissent pour tous leurs membres, et le
@@ -168,6 +173,12 @@ export default function PrivacyPage() {
           par <strong className="font-semibold text-ink">Vercel</strong>, dans la région choisie
           pour le projet. Ces deux prestataires n’utilisent les données que pour fournir leur
           service. Aucun autre destinataire n’y a accès.
+        </p>
+        <p className="text-sm text-ink-2">
+          Si tu actives les notifications, elles transitent par le service push de ton navigateur
+          (Google pour Chrome et Android, Mozilla pour Firefox, Apple pour Safari). Leur contenu —
+          le nom de la session et le lien à ouvrir — est chiffré de bout en bout : ce service le
+          transporte sans pouvoir le lire.
         </p>
       </section>
 

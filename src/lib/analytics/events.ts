@@ -7,6 +7,7 @@
  * — UUID de session — et des compteurs sont transmis.
  */
 
+import type { PushOptInContext } from '@/domain/push'
 import type { SessionCloseReason } from '@/domain/session-deadline'
 import type { VoteKind, VoteValue } from '@/domain/vote'
 
@@ -151,6 +152,15 @@ export interface AnalyticsEventMap {
   /** L'app vient d'être installée sur l'appareil. */
   pwa_installed: {
     via: InstallSource
+  }
+  /**
+   * Ce navigateur s'abonne aux notifications push (issue #7), depuis la salle
+   * d'attente (« au lancement ») ou après ses votes (« du résultat »). Jamais
+   * l'endpoint : c'est l'adresse de l'appareil.
+   */
+  push_subscribed: {
+    session_id: string
+    context: PushOptInContext
   }
 }
 
