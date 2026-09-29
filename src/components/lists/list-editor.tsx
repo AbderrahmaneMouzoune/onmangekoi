@@ -8,6 +8,7 @@ import {
   RiGroupLine,
   RiLockLine,
 } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useActionState, useOptimistic, useRef, useState, useTransition } from 'react'
 
 import {
@@ -31,7 +32,6 @@ import { LIST_NAME_MAX } from '@/domain/schemas/list'
 import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
 import { captureEvent } from '@/lib/analytics/client'
 import { groupCode } from '@/lib/crockford'
-import { countLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import type { ListWithRestaurants, Restaurant } from '@/data-access/models'
@@ -44,6 +44,8 @@ interface ListEditorProps {
 }
 
 export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
+  const t = useTranslations('lists.editor')
+  const tCommon = useTranslations('common')
   const [renameState, renameAction, isRenaming] = useActionState(renameListAction, null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -128,7 +130,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
       <div className="flex flex-col gap-8 lg:sticky lg:top-24">
         <form action={renameAction} className="flex flex-col gap-2">
           <input type="hidden" name="listId" value={list.id} />
-          <Label htmlFor="name">Nom</Label>
+          <Label htmlFor="name">{t('name')}</Label>
           <div className="flex gap-2">
             <Input
               id="name"
@@ -139,7 +141,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
               className="flex-1"
             />
             <Button type="submit" variant="secondary" disabled={isRenaming}>
-              {isRenaming ? <Spinner /> : 'Renommer'}
+              {isRenaming ? <Spinner /> : t('rename')}
             </Button>
           </div>
           <FormMessage error={renameState?.error} success={renameState?.success} />
@@ -151,18 +153,15 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
         >
           <div className="flex flex-col gap-0.5">
             <h2 id="share-title" className="font-display text-base font-semibold">
-              Partager
+              {t('share.title')}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {isPublic
-                ? 'N’importe qui peut voir la liste'
-                : 'Toute personne avec le lien peut voir la liste'}
-              {isCollaborative ? ' et y ajouter des restos' : ''}.
+              {t(`share.audience.${shareAudience(isPublic, isCollaborative)}`)}
             </p>
           </div>
           <div className="flex items-center justify-between gap-3 rounded-md bg-surface-2 px-3 py-2">
             <span className="font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
-              Code
+              {t('share.code')}
             </span>
             <span className="font-mono text-base font-semibold tracking-[0.15em] tabular">
               {groupCode(list.share_code, 5)}
@@ -170,7 +169,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
           </div>
           <CopyButton
             value={shareUrl}
-            label="Copier le lien"
+            label={t('share.copyLink')}
             variant="outline"
             onCopied={() => captureEvent('list_shared', { method: 'link_copy' })}
           />
@@ -180,7 +179,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
               onToggle={toggleCollaborative}
               disabled={isPending}
               icon={<RiGroupLine aria-hidden="true" className="size-4.5" />}
-              label={isCollaborative ? 'Collaborative' : 'Lecture seule'}
+              label={isCollaborative ? t('share.collaborative') : t('share.readOnly')}
             />
             <ShareSwitch
               checked={isPublic}
@@ -193,13 +192,11 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
                   <RiLockLine aria-hidden="true" className="size-4.5" />
                 )
               }
-              label={isPublic ? 'Publique' : 'Privée'}
+              label={isPublic ? t('share.public') : t('share.private')}
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            {isPublic
-              ? 'Cette liste a sa page publique : son nom, ses adresses et ses cuisines — jamais ton pseudo. Elle peut être trouvée sur le web.'
-              : 'En publique, la liste gagne une page présentable, un aperçu quand on la partage, et peut être trouvée sur le web. Ton pseudo n’y figure jamais.'}
+            {isPublic ? t('share.publicNote') : t('share.privateNote')}
           </p>
         </section>
 
@@ -211,10 +208,10 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
             label={
               <>
                 <RiDeleteBinLine aria-hidden="true" />
-                Supprimer la liste
+                {t('delete')}
               </>
             }
-            confirmLabel="Confirmer la suppression"
+            confirmLabel={t('confirmDelete')}
             onConfirm={destroy}
             disabled={isPending}
           />
@@ -225,7 +222,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
         <section className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-base font-semibold">
-              {countLabel(restaurants.length, 'restaurant')}
+              {t('count', { count: restaurants.length })}
             </h2>
             {!adding && (
               <Button
@@ -236,7 +233,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
                 onClick={() => setAdding(true)}
               >
                 <RiAddLine aria-hidden="true" />
-                Ajouter
+                {t('add')}
               </Button>
             )}
           </div>
@@ -257,11 +254,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
                   disabled={isPending || pickerIds.length === 0}
                   className="flex-1"
                 >
-                  {isPending ? (
-                    <Spinner />
-                  ) : (
-                    `Ajouter ${pickerIds.length > 0 ? pickerIds.length : ''}`
-                  )}
+                  {isPending ? <Spinner /> : t('addSelected', { count: pickerIds.length })}
                 </Button>
                 <Button
                   type="button"
@@ -271,7 +264,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
                     closePicker()
                   }}
                 >
-                  Annuler
+                  {tCommon('actions.cancel')}
                 </Button>
               </div>
             </div>
@@ -281,7 +274,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
 
           {restaurants.length === 0 ? (
             <p className="rounded-lg border border-dashed border-line-strong p-6 text-center text-sm text-muted-foreground">
-              Liste vide. Ajoute des restos pour pouvoir l’importer dans une session.
+              {t('empty')}
             </p>
           ) : (
             <ul onKeyDown={onRowsKeyDown} className="flex flex-col gap-1.5">
@@ -307,7 +300,7 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Retirer ${restaurant.name}`}
+                    aria-label={t('remove', { name: restaurant.name })}
                     onClick={() => remove(restaurant)}
                     disabled={isPending}
                   >
@@ -327,10 +320,10 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
             label={
               <>
                 <RiDeleteBinLine aria-hidden="true" />
-                Supprimer la liste
+                {t('delete')}
               </>
             }
-            confirmLabel="Confirmer la suppression"
+            confirmLabel={t('confirmDelete')}
             onConfirm={destroy}
             disabled={isPending}
           />
@@ -338,6 +331,12 @@ export function ListEditor({ list, initialPage, shareUrl }: ListEditorProps) {
       </div>
     </div>
   )
+}
+
+/** Qui voit la liste, et qui peut la compléter : une phrase par combinaison. */
+function shareAudience(isPublic: boolean, isCollaborative: boolean) {
+  if (isPublic) return isCollaborative ? 'publicCollaborative' : 'public'
+  return isCollaborative ? 'linkCollaborative' : 'link'
 }
 
 interface ShareSwitchProps {

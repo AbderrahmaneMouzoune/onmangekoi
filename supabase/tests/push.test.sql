@@ -13,8 +13,11 @@
 --   * pas d'appel quand seul l'auteur est abonné, ni à la création d'une
 --     session ouverte (elle naît en `voting`, sans personne à prévenir) ;
 --   * la clôture à l'échéance n'a pas d'auteur ;
---   * l'export RGPD liste les abonnements, la suppression du compte les
---     emporte.
+--   * chaque abonnement retient sa langue (issue #14) : `fr` par défaut et
+--     pour un appel à trois arguments, `en` sur demande, rien d'autre ; un
+--     rappel la met à jour ;
+--   * l'export RGPD liste les abonnements et leur langue, la suppression du
+--     compte les emporte.
 --
 -- Exécution (base Supabase locale, `supabase start` en cours) :
 --   bun run db:test        — rejoue tous les scénarios de supabase/tests
@@ -127,6 +130,30 @@ begin
     pg_temp.error_of($sql$ insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
       values (auth.uid(), 'https://push.example.test/direct', 'abc', 'def') $sql$) is not null,
     'pas d''insertion directe : l''écriture passe par la RPC'
+  );
+
+  -- Langue (#14) : un appel à trois arguments garde le français d'avant.
+  perform pg_temp.assert(
+    (select locale from public.push_subscriptions
+     where endpoint = 'https://push.example.test/guest') = 'fr',
+    'sans langue précisée, un abonnement parle français'
+  );
+  perform public.save_push_subscription('https://push.example.test/guest', 'BNcRdreALRFX', 'tBHItJI5svbpez7KI4CCXg', 'en');
+  perform pg_temp.assert(
+    (select locale from public.push_subscriptions
+     where endpoint = 'https://push.example.test/guest') = 'en'
+      and (select count(*) from public.push_subscriptions) = 1,
+    'un rappel dans une autre langue met la langue à jour, sans doublon'
+  );
+  perform pg_temp.assert(
+    pg_temp.error_of($sql$ select public.save_push_subscription('https://push.example.test/x', 'abc', 'def', 'de') $sql$)
+      = 'omk:invalid_push_subscription',
+    'une langue que l''app ne parle pas est refusée'
+  );
+  perform pg_temp.assert(
+    pg_temp.error_of($sql$ select public.save_push_subscription('https://push.example.test/x', 'abc', 'def', null) $sql$)
+      = 'omk:invalid_push_subscription',
+    'une langue nulle est refusée'
   );
 end;
 $$;
@@ -339,6 +366,10 @@ begin
     v_export -> 'push_subscriptions' -> 0 ->> 'endpoint' = 'https://push.example.test/guest'
       and not (v_export -> 'push_subscriptions' -> 0 ? 'auth'),
     'l''export liste les abonnements, sans leurs clés'
+  );
+  perform pg_temp.assert(
+    v_export -> 'push_subscriptions' -> 0 ->> 'locale' = 'fr',
+    'l''export dit la langue de chaque abonnement'
   );
   perform pg_temp.assert(
     v_export ? 'hosted_sessions' and v_export ? 'pending_invitations' and v_export ? 'groups',

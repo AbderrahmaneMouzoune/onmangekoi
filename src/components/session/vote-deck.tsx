@@ -1,6 +1,7 @@
 'use client'
 
 import { RiMapPin2Fill, RiMapPin2Line } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 
 import { submitVoteAction } from '@/actions/votes'
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
+import { NO_CONFLICTS } from '@/domain/food-constraints'
 import { jokerQuotas, jokersSentence } from '@/domain/session-rules'
 import { VOTE_ACTIONS, voteActionByKey, voteActionByValue } from '@/domain/vote'
 import { useCompletedRestaurant } from '@/hooks/use-completed-restaurant'
@@ -19,9 +21,10 @@ import { geoPoint } from '@/lib/maps'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant, SessionRestaurantWithRestaurant } from '@/data-access/models'
+import type { ConstraintConflictCounts } from '@/domain/food-constraints'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
-import type { JokerKind, SessionRules } from '@/domain/session-rules'
-import type { VoteValue } from '@/domain/vote'
+import type { JokerKind, JokersSentence, SessionRules } from '@/domain/session-rules'
+import type { VoteKind, VoteValue } from '@/domain/vote'
 
 interface VoteDeckProps {
   sessionId: string
@@ -33,7 +36,17 @@ interface VoteDeckProps {
   initialJokersUsed: Record<JokerKind, number>
   /** Anti-fatigue : date du dernier sacre par restaurant, chargée avec la session */
   lastWins: RecentWinnerDates
+  /**
+   * Contraintes alimentaires (#60) : par resto, combien de participants ne
+   * peuvent pas y manger. Absent : personne, ou personne qu'on sache.
+   */
+  conflicts?: ConstraintConflictCounts
   onFinished: () => void
+  /**
+   * Duo (#61) : ce vote vient de sceller l'accord — la session est close, la
+   * décision posée. Le deck s'arrête là, sans passer par « tu as tout voté ».
+   */
+  onAgreed?: () => void
 }
 
 const SWIPE_THRESHOLD = 90
@@ -60,7 +73,9 @@ export function VoteDeck({
   rules,
   initialJokersUsed,
   lastWins,
+  conflicts = NO_CONFLICTS,
   onFinished,
+  onAgreed,
 }: VoteDeckProps) {
   const [votedIds, setVotedIds] = useState<Set<string>>(() => new Set(initialVotedIds))
   const [jokersUsed, setJokersUsed] = useState(initialJokersUsed)
@@ -71,7 +86,10 @@ export function VoteDeck({
   const busy = useRef(false)
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
   const announcedId = useRef<string | null>(null)
-  const lastVoteLabel = useRef<string | null>(null)
+  const lastVoteKind = useRef<VoteKind | null>(null)
+  const t = useTranslations('session.deck')
+  const tVote = useTranslations('session.vote.actions')
+  const tRestaurants = useTranslations('restaurants.geo')
   // Même bouton que dans le sélecteur : la distance de chaque carte aide à
   // trancher entre deux restos qui se valent, et personne n'a envie de
   // marcher trois kilomètres à midi.
@@ -128,9 +146,10 @@ export function VoteDeck({
           busy.current = false
           return
         }
-        lastVoteLabel.current = voteActionByValue(value)?.label ?? null
+        lastVoteKind.current = voteActionByValue(value)?.kind ?? null
         setVotedIds((prev) => new Set(prev).add(current.id))
-        busy.current = false
+        // Un accord ferme le vote : le deck reste verrouillé jusqu'au résultat.
+        busy.current = result.data.agreed
 
         // `recorded` distingue un vote réellement enregistré d'une carte déjà
         // votée que la base fait simplement passer.
@@ -144,10 +163,22 @@ export function VoteDeck({
           })
         }
 
+        // Seul le bulletin qui scelle l'accord le sait : l'événement part
+        // donc une fois par duo, jamais des deux côtés.
+        if (result.data.agreed) {
+          captureEvent('duo_matched', {
+            session_id: sessionId,
+            position: done + 1,
+            restaurant_count: total,
+          })
+          onAgreed?.()
+          return
+        }
+
         if (result.data.finished) finish()
       }, EXIT_MS)
     },
-    [current, leaving, sessionId, finish, rules, jokersUsed, done, total]
+    [current, leaving, sessionId, finish, onAgreed, rules, jokersUsed, done, total]
   )
 
   /**
@@ -178,10 +209,13 @@ export function VoteDeck({
     const restaurant = current?.restaurants
     if (!current || !restaurant || announcedId.current === current.id) return
     announcedId.current = current.id
-    const confirmation = lastVoteLabel.current ? `${lastVoteLabel.current} enregistré. ` : ''
-    lastVoteLabel.current = null
-    setAnnouncement(`${confirmation}Restaurant ${done + 1} sur ${total} : ${restaurant.name}.`)
-  }, [current, done, total])
+    const values = { position: done + 1, total, name: restaurant.name }
+    const vote = lastVoteKind.current
+    lastVoteKind.current = null
+    setAnnouncement(
+      vote ? t('announceAfterVote', { vote: tVote(vote), ...values }) : t('announce', values)
+    )
+  }, [current, done, total, t, tVote])
 
   // Swipe (pointer events, souris et tactile)
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -232,7 +266,7 @@ export function VoteDeck({
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
       <div className="mx-auto flex w-full max-w-lg items-center gap-3 lg:order-2 lg:max-w-none">
-        <Progress value={done} max={total} label="Progression du vote" className="flex-1" />
+        <Progress value={done} max={total} label={t('progress')} className="flex-1" />
         <span className="font-mono text-xs text-muted-foreground tabular">
           {done}/{total}
         </span>
@@ -255,7 +289,7 @@ export function VoteDeck({
           ) : (
             <RiMapPin2Line aria-hidden="true" />
           )}
-          {geo.position ? 'Autour de toi' : 'Autour de moi'}
+          {geo.position ? tRestaurants('aroundYou') : tRestaurants('aroundMe')}
         </Button>
       </div>
 
@@ -279,6 +313,7 @@ export function VoteDeck({
               index={done + 2}
               total={total}
               lastWonAt={lastWins[next.restaurants.id]}
+              blockedCount={conflicts[next.restaurants.id]}
               priority={false}
               position={here}
             />
@@ -296,6 +331,7 @@ export function VoteDeck({
             index={done + 1}
             total={total}
             lastWonAt={lastWins[current.restaurants.id]}
+            blockedCount={conflicts[current.restaurants.id]}
             style={cardStyle}
             overlay={overlay}
             priority
@@ -316,24 +352,37 @@ export function VoteDeck({
 
         <div className="flex flex-col gap-1.5 text-center text-xs text-muted-foreground lg:text-left lg:text-sm">
           <p>
-            Glisse la carte à droite pour « ça me va », à gauche pour « bof ».{' '}
-            {jokersSentence(rules)}
+            {t('swipe')} <JokersLine sentence={jokersSentence(rules)} />
           </p>
           <p>
-            Au clavier :{' '}
+            {t('keyboard')}{' '}
             {VOTE_ACTIONS.map((action, index) => (
               <Fragment key={action.kind}>
                 {index > 0 && ' · '}
-                <Key>{action.shortcuts[0]}</Key> {action.label.toLowerCase()}
+                <Key>{action.shortcuts[0]}</Key> {tVote(action.kind).toLowerCase()}
               </Fragment>
             ))}
-            . <Key>←</Key> et <Key>→</Key> reprennent « bof » et « ça me va », <Key>Entrée</Key>{' '}
-            valide « ça me va ».
+            . {t.rich('keyboardArrows', { key: (chunks) => <Key>{chunks}</Key> })}
           </p>
         </div>
       </div>
     </div>
   )
+}
+
+/** Ce que les jokers valent dans cette session, dit sous les boutons. */
+function JokersLine({ sentence }: { sentence: JokersSentence }) {
+  const t = useTranslations('session.deck.jokers')
+  switch (sentence.kind) {
+    case 'none':
+      return t('none')
+    case 'superlikes':
+      return t('superlikes', { superlikes: sentence.superlikes })
+    case 'vetos':
+      return t('vetos', { vetos: sentence.vetos })
+    case 'both':
+      return t('both', { superlikes: sentence.superlikes, vetos: sentence.vetos })
+  }
 }
 
 function Key({ children }: { children: React.ReactNode }) {

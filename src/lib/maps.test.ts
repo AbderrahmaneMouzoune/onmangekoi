@@ -44,20 +44,25 @@ describe('distanceMeters', () => {
 
 describe('formatDistance', () => {
   it('should round to ten metres below a kilometre', () => {
-    expect(formatDistance(347)).toBe('350 m')
-    expect(formatDistance(4)).toBe('10 m')
-    expect(formatDistance(999)).toBe('1000 m')
+    expect(formatDistance(347, 'fr')).toBe('350 m')
+    expect(formatDistance(4, 'fr')).toBe('10 m')
+    expect(formatDistance(999, 'fr')).toBe('1000 m')
   })
 
   it('should switch to kilometres with one decimal, the French way', () => {
-    expect(formatDistance(1000)).toBe('1 km')
-    expect(formatDistance(1234)).toBe('1,2 km')
-    expect(formatDistance(12_345)).toBe('12,3 km')
+    expect(formatDistance(1000, 'fr')).toBe('1 km')
+    expect(formatDistance(1234, 'fr')).toBe('1,2 km')
+    expect(formatDistance(12_345, 'fr')).toBe('12,3 km')
+  })
+
+  it('should use the decimal point in English', () => {
+    expect(formatDistance(1234, 'en')).toBe('1.2 km')
+    expect(formatDistance(347, 'en')).toBe('350 m')
   })
 
   it('should stay silent on a distance that makes no sense', () => {
-    expect(formatDistance(-1)).toBe('')
-    expect(formatDistance(Number.NaN)).toBe('')
+    expect(formatDistance(-1, 'fr')).toBe('')
+    expect(formatDistance(Number.NaN, 'fr')).toBe('')
   })
 })
 
@@ -70,13 +75,13 @@ describe('geoPoint', () => {
 
 describe('distanceLabel', () => {
   it('should read the stored point and format the distance', () => {
-    expect(distanceLabel(OPERA, { lat: 48.853, lng: 2.3499 })).toMatch(/^2,\d km$/)
+    expect(distanceLabel(OPERA, { lat: 48.853, lng: 2.3499 }, 'fr')).toMatch(/^2,\d km$/)
   })
 
   it('should return nothing when either side is unknown', () => {
-    expect(distanceLabel(null, OPERA)).toBeNull()
-    expect(distanceLabel(OPERA, null)).toBeNull()
-    expect(distanceLabel(OPERA, { lat: 'x' })).toBeNull()
+    expect(distanceLabel(null, OPERA, 'fr')).toBeNull()
+    expect(distanceLabel(OPERA, null, 'fr')).toBeNull()
+    expect(distanceLabel(OPERA, { lat: 'x' }, 'fr')).toBeNull()
   })
 })
 

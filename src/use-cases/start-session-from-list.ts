@@ -27,9 +27,9 @@ export async function startSessionFromListUseCase(
     getSharedListRestaurants(supabase, identifier),
   ])
 
-  if (!preview) throw new AppError('Cette liste n’existe pas ou le lien est invalide.')
+  if (!preview) throw new AppError('list_not_found')
   if (restaurants.length === 0) {
-    throw new AppError('Cette liste est encore vide : il n’y a rien à départager.')
+    throw new AppError('list_empty')
   }
 
   return createSession(supabase, {

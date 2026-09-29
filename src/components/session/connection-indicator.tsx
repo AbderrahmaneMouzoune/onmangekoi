@@ -1,14 +1,11 @@
+import { useTranslations } from 'next-intl'
+
 import { cn } from '@/lib/utils'
 
 import type { ConnectionState } from '@/hooks/use-session-room'
 
-const LABELS: Record<ConnectionState, string> = {
-  connecting: 'Connexion…',
-  live: 'En direct',
-  offline: 'Hors ligne · actualisation auto',
-}
-
 export function ConnectionIndicator({ state }: { state: ConnectionState }) {
+  const t = useTranslations('session.connection')
   return (
     <span
       role="status"
@@ -23,7 +20,7 @@ export function ConnectionIndicator({ state }: { state: ConnectionState }) {
           state === 'offline' && 'bg-veto'
         )}
       />
-      {LABELS[state]}
+      {t(state)}
     </span>
   )
 }

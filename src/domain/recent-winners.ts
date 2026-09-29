@@ -7,10 +7,10 @@
  * case à cocher pour écarter d'un coup les gagnants du dernier mois.
  *
  * Tout ce qui sort d'ici vient de `recent_winners()` : le gagnant d'une
- * session close, jamais le détail des votes.
+ * session close, jamais le détail des votes. Les libellés — « Gagnant il y a
+ * 6 jours » au moment de choisir, « Déjà gagnant le 28 août » sur la carte de
+ * vote — s'écrivent dans les composants, dans la langue de la personne.
  */
-import { relativeDate } from '@/lib/format'
-
 import type { RecentWinner } from '@/data-access/models'
 
 /**
@@ -43,24 +43,6 @@ export function recentWinnerDates(rows: readonly RecentWinner[]): RecentWinnerDa
 /** Combien de restaurants ont gagné récemment. */
 export function recentWinnerCount(recent: RecentWinnerDates): number {
   return Object.keys(recent).length
-}
-
-/** « Gagnant il y a 6 jours » — au moment de choisir les restaurants. */
-export function recentWinLabel(iso: string, now: Date = new Date()): string {
-  return `Gagnant ${relativeDate(iso, now)}`
-}
-
-const dayAndMonth = new Intl.DateTimeFormat('fr', { day: 'numeric', month: 'long' })
-
-/**
- * « Déjà gagnant le 28 août » — sur la carte de vote, où une date arrête
- * mieux l'œil qu'un décompte de jours.
- *
- * La base ne sait pas que le groupe y est allé, seulement que ce restaurant a
- * gagné : le libellé s'en tient à ce qui est vrai.
- */
-export function lastWinLabel(iso: string): string {
-  return `Déjà gagnant le ${dayAndMonth.format(new Date(iso))}`
 }
 
 /** Retire les gagnants récents d'une sélection, sans en changer l'ordre. */

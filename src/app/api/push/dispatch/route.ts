@@ -23,25 +23,30 @@ import { dispatchSessionPushUseCase } from '@/use-cases/dispatch-session-push'
  *    secrète Supabase manquante) — l'appel est accepté, rien ne part ;
  *  - 200 : le compte rendu de l'envoi (`sent`, `purged`, `failed`).
  *
+ * Les erreurs sont des codes (`unauthorized`, `invalid_request`,
+ * `dispatch_failed`), pas des phrases : seule la base lit ces réponses, et
+ * elle ne parle aucune langue. Les notifications, elles, partent dans celle
+ * de chaque abonné (`dispatchSessionPushUseCase`).
+ *
  * La route n'est pas sous le proxy (son `matcher` ne couvre pas `/api/`) et
  * le service worker ne la touche pas (`sw-routing.ts` : `/api/` et tout ce
  * qui n'est pas `GET` passent au réseau).
  */
 export async function POST(request: Request): Promise<Response> {
   if (!isAuthorized(request.headers.get('authorization'))) {
-    return Response.json({ error: 'Non autorisé' }, { status: 401 })
+    return Response.json({ error: 'unauthorized' }, { status: 401 })
   }
 
   let body: unknown
   try {
     body = await request.json()
   } catch {
-    return Response.json({ error: 'Requête invalide' }, { status: 400 })
+    return Response.json({ error: 'invalid_request' }, { status: 400 })
   }
 
   const parsed = PushDispatchSchema.safeParse(body)
   if (!parsed.success) {
-    return Response.json({ error: 'Requête invalide' }, { status: 400 })
+    return Response.json({ error: 'invalid_request' }, { status: 400 })
   }
 
   const admin = createAdminClient()
@@ -52,7 +57,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json(report)
   } catch (error) {
     console.error('push: envoi impossible', error)
-    return Response.json({ error: 'Envoi impossible' }, { status: 500 })
+    return Response.json({ error: 'dispatch_failed' }, { status: 500 })
   }
 }
 

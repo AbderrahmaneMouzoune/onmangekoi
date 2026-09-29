@@ -15,7 +15,6 @@
  * participations et des gagnants : jamais un vote.
  */
 import { RECENT_WINNER_WINDOW_DAYS } from '@/domain/recent-winners'
-import { plural } from '@/lib/format'
 
 import type { Restaurant, SuggestedRestaurantRow } from '@/data-access/models'
 
@@ -58,26 +57,32 @@ export function toRestaurantSuggestion(
 }
 
 /**
- * La phrase qui dit d'où vient la sélection :
+ * Ce que dit la phrase d'origine de la sélection, traduite par le bandeau
+ * (`session.suggestion.summary`) :
  * « Vus récemment, sans les 3 gagnants des 30 derniers jours — plus un jamais
  * proposé, le dernier arrivé au carnet. »
+ *
+ * Un alias de type et non une interface : l'objet se passe tel quel comme
+ * valeurs du message.
  */
-export function suggestionSummary(suggestion: RestaurantSuggestion): string {
-  const seen = plural(suggestion.recentCount, 'Vu', 'Vus')
-  const winners = suggestion.excludedWinners
-  const withoutWinners =
-    winners === 0
-      ? ''
-      : winners === 1
-        ? `, sans le gagnant des ${RECENT_WINNER_WINDOW_DAYS} derniers jours`
-        : `, sans les ${winners} gagnants des ${RECENT_WINNER_WINDOW_DAYS} derniers jours`
-  const fresh =
-    suggestion.fresh === 'mine'
-      ? ' — plus un jamais proposé, le dernier que tu as ajouté'
-      : suggestion.fresh === 'catalog'
-        ? ' — plus un jamais proposé, le dernier arrivé au carnet'
-        : ''
-  return `${seen} récemment${withoutWinners}${fresh}.`
+export type SuggestionSummary = {
+  /** Restaurants vus récemment */
+  recent: number
+  /** Gagnants récents écartés — 0 : la phrase n'en parle pas */
+  winners: number
+  /** Fenêtre de l'anti-fatigue, en jours */
+  days: number
+  /** D'où vient le jamais proposé ; `none` quand il n'y en a pas */
+  fresh: FreshSource | 'none'
+}
+
+export function suggestionSummary(suggestion: RestaurantSuggestion): SuggestionSummary {
+  return {
+    recent: suggestion.recentCount,
+    winners: suggestion.excludedWinners,
+    days: RECENT_WINNER_WINDOW_DAYS,
+    fresh: suggestion.fresh ?? 'none',
+  }
 }
 
 /** Identifiants proposés, dans l'ordre. */

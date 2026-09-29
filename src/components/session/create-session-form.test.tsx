@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { CreateSessionForm } from './create-session-form'
 
@@ -62,7 +64,7 @@ const SUGGESTION: RestaurantSuggestion = {
 }
 
 function renderForm(suggestion: RestaurantSuggestion | null = null) {
-  return render(
+  return renderWithIntl(
     <CreateSessionForm
       lists={[]}
       groups={[]}

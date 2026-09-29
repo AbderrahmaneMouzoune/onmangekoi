@@ -1,6 +1,5 @@
-import { expect, test } from '@playwright/test'
-
 import { auditA11y } from './support/a11y'
+import { expect, test } from './support/i18n'
 
 /**
  * PWA (issue #11) : le service worker s'installe sur un build de production,
@@ -26,7 +25,11 @@ test.describe('PWA', () => {
     }
   })
 
-  test('hors ligne, une navigation affiche la page dédiée', async ({ page, context }, testInfo) => {
+  test('hors ligne, une navigation affiche la page dédiée', async ({
+    page,
+    context,
+    i18n: { t },
+  }, testInfo) => {
     await page.goto('/legal/privacy')
     const scope = await page.evaluate(async () => {
       const registration = await navigator.serviceWorker.ready
@@ -40,8 +43,9 @@ test.describe('PWA', () => {
 
     await context.setOffline(true)
     await page.goto('/sessions')
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Pas de réseau, pas de vote.')
-    await expect(page.getByRole('button', { name: 'Réessayer' })).toBeVisible()
+    // La page hors ligne a été mise en cache dans la langue du navigateur.
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(t('pwa.offline.title'))
+    await expect(page.getByRole('button', { name: t('common.actions.retry') })).toBeVisible()
     await auditA11y(page, testInfo, 'hors ligne')
     await context.setOffline(false)
   })

@@ -5,6 +5,8 @@
  * source de vérité ; ces fonctions servent l'interface.
  */
 
+import type { Locale } from '@/i18n/config'
+
 /** La base refuse une échéance à moins d'une minute. */
 export const DEADLINE_MIN_MINUTES = 1
 /** Au-delà, ce n'est plus un chronomètre : 12 heures, comme en base. */
@@ -17,8 +19,11 @@ export const DEADLINE_PRESETS = [10, 20, 30, 60] as const
 
 const MS_PER_MINUTE = 60_000
 
-/** Qui a mis fin à la session. */
-export type SessionCloseReason = 'host' | 'auto' | 'deadline'
+/**
+ * Qui a mis fin à la session. `agreement` : le premier « ça me va » commun
+ * d'un duo (#61).
+ */
+export type SessionCloseReason = 'host' | 'auto' | 'deadline' | 'agreement'
 
 /** Ce que le formulaire de création transmet : une durée ou un instant. */
 export interface DeadlineInput {
@@ -72,8 +77,8 @@ export function formatCountdown(ms: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
-/** Heure de clôture affichable, dans le fuseau du visiteur. */
-export function formatDeadlineTime(closesAt: string, locale = 'fr'): string {
+/** Heure de clôture affichable, dans la langue et le fuseau du visiteur. */
+export function formatDeadlineTime(closesAt: string, locale: Locale): string {
   return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(
     new Date(closesAt)
   )
@@ -84,18 +89,23 @@ interface CloseAttribution {
   everyoneFinished: boolean
   closesAt: string | null
   closedAt: string | null
+  /** Un duo s'est fermé sur un accord — la décision posée avec la clôture. */
+  agreed?: boolean
 }
 
 /**
  * Qui a clôturé, du point de vue du client : personne ne l'annonce, il faut le
- * déduire. Le vote complet prime — c'est la seule cause certaine —, puis
- * l'échéance atteinte, et à défaut c'est le host qui a forcé.
+ * déduire. L'accord d'un duo et le vote complet priment — ce sont les seules
+ * causes certaines —, puis l'échéance atteinte, et à défaut c'est le host qui
+ * a forcé.
  */
 export function closeAttribution({
   everyoneFinished,
   closesAt,
   closedAt,
+  agreed = false,
 }: CloseAttribution): SessionCloseReason {
+  if (agreed) return 'agreement'
   if (everyoneFinished) return 'auto'
   if (closesAt && closedAt && new Date(closedAt).getTime() >= new Date(closesAt).getTime()) {
     return 'deadline'

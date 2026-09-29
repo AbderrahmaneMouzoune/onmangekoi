@@ -1,12 +1,12 @@
 'use client'
 
 import { RiArrowDownSLine, RiUserAddLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 
 import { InviteCard } from '@/components/session/invite-card'
 import { PendingInvitees } from '@/components/session/pending-invitees'
 import { RulesSummary } from '@/components/session/rules-summary'
-import { countLabel } from '@/lib/format'
 
 import type {
   GroupWithMembers,
@@ -50,9 +50,10 @@ export function OpenSessionPanel({
   groups,
 }: OpenSessionPanelProps) {
   const [initiallyOpen] = useState(() => isHost && participants.length <= 1)
+  const t = useTranslations('session.openPanel')
 
   return (
-    <section aria-label="Session ouverte" className="flex flex-col gap-3">
+    <section aria-label={t('label')} className="flex flex-col gap-3">
       <RulesSummary rules={rules} />
 
       <details open={initiallyOpen} className="group rounded-lg border border-line bg-surface">
@@ -60,9 +61,9 @@ export function OpenSessionPanel({
           <span className="flex min-w-0 items-center gap-2.5">
             <RiUserAddLine aria-hidden="true" className="size-4.5 shrink-0 text-brand" />
             <span className="flex min-w-0 flex-col">
-              <span className="text-sm font-medium">Faire venir du monde</span>
+              <span className="text-sm font-medium">{t('bringPeople')}</span>
               <span className="text-xs text-muted-foreground">
-                On entre jusqu’à l’échéance · {countLabel(participants.length, 'participant')}
+                {t('summary', { count: participants.length })}
               </span>
             </span>
           </span>

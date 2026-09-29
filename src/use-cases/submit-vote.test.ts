@@ -13,18 +13,28 @@ const INPUT: SubmitVoteInput = {
   value: 1,
 }
 
+const VOTING = { status: 'voting', decided_restaurant_id: null, rules: {} }
+
 function fakeClient(options: {
   rpcError?: unknown
   participant?: { data?: unknown; error?: unknown }
+  /** La ligne de session relue après un « ça me va » */
+  session?: { data?: unknown; error?: unknown }
 }) {
   const rpc = vi.fn().mockResolvedValue({ error: options.rpcError ?? null })
-  const maybeSingle = vi
+
+  const participantSingle = vi
     .fn()
     .mockResolvedValue(options.participant ?? { data: { has_finished_voting: false }, error: null })
-  const eqProfile = vi.fn().mockReturnValue({ maybeSingle })
+  const eqProfile = vi.fn().mockReturnValue({ maybeSingle: participantSingle })
   const eqSession = vi.fn().mockReturnValue({ eq: eqProfile })
-  const select = vi.fn().mockReturnValue({ eq: eqSession })
-  const from = vi.fn().mockReturnValue({ select })
+  const participants = { select: vi.fn().mockReturnValue({ eq: eqSession }) }
+
+  const sessionSingle = vi.fn().mockResolvedValue(options.session ?? { data: VOTING, error: null })
+  const eqId = vi.fn().mockReturnValue({ maybeSingle: sessionSingle })
+  const sessions = { select: vi.fn().mockReturnValue({ eq: eqId }) }
+
+  const from = vi.fn((table: string) => (table === 'sessions' ? sessions : participants))
   return { client: { rpc, from } as unknown as SupabaseClient<Database>, rpc, from }
 }
 
@@ -36,6 +46,7 @@ describe('submitVoteUseCase', () => {
       recorded: true,
       finished: true,
       skipped: false,
+      agreed: false,
     })
     expect(rpc).toHaveBeenCalledWith('submit_vote', {
       p_session_id: INPUT.sessionId,
@@ -51,6 +62,7 @@ describe('submitVoteUseCase', () => {
       recorded: false,
       finished: false,
       skipped: true,
+      agreed: false,
     })
   })
 
@@ -61,6 +73,7 @@ describe('submitVoteUseCase', () => {
       recorded: false,
       finished: true,
       skipped: false,
+      agreed: false,
     })
     expect(from).not.toHaveBeenCalled()
   })
@@ -74,6 +87,7 @@ describe('submitVoteUseCase', () => {
       recorded: false,
       finished: true,
       skipped: false,
+      agreed: false,
     })
     expect(from).not.toHaveBeenCalled()
   })
@@ -86,13 +100,55 @@ describe('submitVoteUseCase', () => {
     })
   })
 
+  it('should report the agreement a duo vote just sealed', async () => {
+    const { client, from } = fakeClient({
+      session: {
+        data: {
+          status: 'closed',
+          decided_restaurant_id: '44444444-4444-4444-8444-444444444444',
+          rules: { superlikes: 1, vetos: 1, close_at_ratio: 1, duo: true },
+        },
+        error: null,
+      },
+    })
+
+    await expect(submitVoteUseCase(client, USER, INPUT)).resolves.toMatchObject({
+      recorded: true,
+      agreed: true,
+    })
+    expect(from).toHaveBeenCalledWith('sessions')
+  })
+
+  it('should not call a decided ordinary session an agreement', async () => {
+    const { client } = fakeClient({
+      session: {
+        data: { status: 'closed', decided_restaurant_id: 'x', rules: { close_at_ratio: 1 } },
+        error: null,
+      },
+    })
+
+    await expect(submitVoteUseCase(client, USER, INPUT)).resolves.toMatchObject({ agreed: false })
+  })
+
+  it('should not read the session back after a « bof » or a veto', async () => {
+    const { client, from } = fakeClient({})
+
+    await submitVoteUseCase(client, USER, { ...INPUT, value: 0 })
+    await submitVoteUseCase(client, USER, { ...INPUT, value: -2 })
+    expect(from).not.toHaveBeenCalledWith('sessions')
+  })
+
   it('should not invalidate a recorded vote when the status read fails', async () => {
-    const { client } = fakeClient({ participant: { error: { message: 'boom' } } })
+    const { client } = fakeClient({
+      participant: { error: { message: 'boom' } },
+      session: { error: { message: 'boom' } },
+    })
 
     await expect(submitVoteUseCase(client, USER, INPUT)).resolves.toEqual({
       recorded: true,
       finished: false,
       skipped: false,
+      agreed: false,
     })
   })
 })

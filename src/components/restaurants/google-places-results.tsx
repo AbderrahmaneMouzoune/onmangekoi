@@ -1,6 +1,7 @@
 'use client'
 
 import { RiMapPin2Line, RiStarFill } from '@remixicon/react'
+import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 
 import { Facts } from '@/components/restaurants/catalog-results'
@@ -10,7 +11,6 @@ import { SeedNeighbourhood } from '@/components/restaurants/seed-neighbourhood'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
-import { GENERIC_ERROR } from '@/domain/errors'
 import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
 import { PLACES_QUERY_MIN } from '@/domain/schemas/place'
 import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
@@ -64,20 +64,17 @@ interface SearchRequest {
   pageToken?: string
 }
 
-const NETWORK_FAILURE = 'La recherche Google a échoué. Réessaie.'
-
-const ratingFormatter = new Intl.NumberFormat('fr', { maximumFractionDigits: 1 })
-
 /** Note Google sur 5 et nombre d'avis : de quoi choisir, jamais enregistré. */
 function Rating({ value, count }: { value: number; count: number | null }) {
+  const t = useTranslations('restaurants.google')
+  const locale = useLocale()
+  const rating = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
   return (
     <span className="inline-flex items-center gap-0.5 text-fav">
       <RiStarFill aria-hidden="true" className="size-3" />
-      {ratingFormatter.format(value)}
-      {count !== null && (
-        <span className="text-muted-foreground">({ratingFormatter.format(count)})</span>
-      )}
-      <span className="sr-only"> sur 5</span>
+      {rating.format(value)}
+      {count !== null && <span className="text-muted-foreground">({rating.format(count)})</span>}
+      <span className="sr-only"> {t('outOfFive')}</span>
     </span>
   )
 }
@@ -93,10 +90,13 @@ async function fetchPlaces(request: SearchRequest, signal?: AbortSignal): Promis
     })
   } catch (error) {
     if (signal?.aborted) throw error
-    throw new Error(NETWORK_FAILURE)
+    // Réseau coupé : pas de message, le composant dit l'échec dans la langue
+    // de la personne (`restaurants.google.networkFailure`).
+    throw new Error('')
   }
   const payload = await response.json().catch(() => null)
-  if (!response.ok) throw new Error(payload?.error ?? GENERIC_ERROR)
+  // Sans message du serveur, le composant retombe sur le même échec générique.
+  if (!response.ok) throw new Error(payload?.error ?? '')
   return { places: payload?.results ?? [], nextPageToken: payload?.nextPageToken ?? null }
 }
 
@@ -140,6 +140,9 @@ export function GooglePlacesResults({
 }: GooglePlacesResultsProps) {
   const { position, status, locate } = geolocation
   const onKeyDown = useArrowNavigation()
+  const t = useTranslations('restaurants')
+  const tCommon = useTranslations('common')
+  const locale = useLocale()
   const trimmed = query.trim()
   const mode: Mode = trimmed.length >= PLACES_QUERY_MIN ? 'search' : position ? 'nearby' : 'none'
   const here = geoPoint(position)
@@ -152,7 +155,8 @@ export function GooglePlacesResults({
   const [failure, setFailure] = useState<{ key: string; message: string } | null>(null)
   const [isLoadingMore, setLoadingMore] = useState(false)
 
-  const fetchError = failure?.key === requestKey ? failure.message : null
+  const fetchError =
+    failure?.key === requestKey ? failure.message || t('google.networkFailure') : null
   const isSearching = mode !== 'none' && !page && !fetchError
 
   useEffect(() => {
@@ -173,7 +177,7 @@ export function GooglePlacesResults({
         if (!cancelled) onCached(requestKey, result)
       })
       .catch((error: Error) => {
-        if (!cancelled) setFailure({ key: requestKey, message: error.message || NETWORK_FAILURE })
+        if (!cancelled) setFailure({ key: requestKey, message: error.message })
       })
 
     return () => {
@@ -193,9 +197,7 @@ export function GooglePlacesResults({
       pageToken: token,
     })
       .then((next) => onCached(requestKey, appendPage(page, next)))
-      .catch((error: Error) =>
-        setFailure({ key: requestKey, message: error.message || NETWORK_FAILURE })
-      )
+      .catch((error: Error) => setFailure({ key: requestKey, message: error.message }))
       .finally(() => setLoadingMore(false))
   }
 
@@ -211,14 +213,14 @@ export function GooglePlacesResults({
 
   const caption =
     mode === 'nearby'
-      ? 'Les plus proches de toi'
+      ? t('google.nearest')
       : mode === 'search'
         ? position
-          ? 'Résultats Google, autour de toi'
-          : 'Résultats Google'
+          ? t('google.resultsNearby')
+          : t('google.results')
         : status === 'locating'
-          ? 'On regarde ce qu’il y a autour de toi…'
-          : 'Résultats Google'
+          ? t('google.locating')
+          : t('google.results')
 
   return (
     <div className="flex flex-col gap-2">
@@ -227,7 +229,7 @@ export function GooglePlacesResults({
         {canLocate && (
           <Button type="button" variant="ghost" size="sm" onClick={locate}>
             <RiMapPin2Line aria-hidden="true" />
-            Autour de moi
+            {t('geo.aroundMe')}
           </Button>
         )}
       </div>
@@ -241,19 +243,18 @@ export function GooglePlacesResults({
       <ul
         onKeyDown={onKeyDown}
         className="flex max-h-[26rem] flex-col gap-1 overflow-y-auto overscroll-contain rounded-lg bg-surface p-1.5 ring-1 ring-line lg:max-h-[30rem]"
-        aria-label="Résultats Google"
+        aria-label={t('google.results')}
         aria-busy={isSearching || status === 'locating' || undefined}
       >
         {mode === 'none' && status === 'locating' && (
           <li className="flex flex-col items-center gap-2 px-3 py-6 text-center text-sm text-muted-foreground">
             <Spinner />
-            On cherche les restos autour de toi…
+            {t('google.searchingNearby')}
           </li>
         )}
         {mode === 'none' && status !== 'locating' && (
           <li className="px-3 py-6 text-center text-sm text-muted-foreground">
-            {geolocation.error ??
-              'Autorise ta position pour voir les restos autour de toi, ou cherche un nom.'}
+            {geolocation.error ?? t('google.allowPosition')}
           </li>
         )}
         {isSearching && (
@@ -264,18 +265,18 @@ export function GooglePlacesResults({
         {fetchError && !page && (
           <li className="flex justify-center p-1">
             <Button type="button" variant="ghost" size="sm" onClick={() => setFailure(null)}>
-              Réessayer
+              {tCommon('actions.retry')}
             </Button>
           </li>
         )}
         {mode === 'search' && page && places.length === 0 && (
           <li className="px-3 py-6 text-center text-sm text-muted-foreground">
-            Google ne trouve rien pour « {trimmed} ».
+            {t('google.noResults', { query: trimmed })}
           </li>
         )}
         {mode === 'nearby' && page && places.length === 0 && (
           <li className="px-3 py-6 text-center text-sm text-muted-foreground">
-            Rien à moins de deux kilomètres. Cherche un resto par son nom.
+            {t('google.nothingNearby')}
           </li>
         )}
         {places.map((place) => {
@@ -288,7 +289,7 @@ export function GooglePlacesResults({
           const excluded = excludeRecent && wonAt !== undefined
           const locked = known ? excluded || isLocked(known.id) : false
           const checked = known ? !excluded && (locked || isSelected(known.id)) : pending
-          const distance = distanceLabel(here, place.location)
+          const distance = distanceLabel(here, place.location, locale)
           return (
             <li key={place.placeId}>
               <ResultRow
@@ -329,18 +330,13 @@ export function GooglePlacesResults({
               onClick={loadMore}
               disabled={isLoadingMore}
             >
-              {isLoadingMore ? <Spinner /> : 'Voir plus'}
+              {isLoadingMore ? <Spinner /> : t('google.more')}
             </Button>
           </li>
         )}
       </ul>
 
-      {places.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          Cocher un resto l’ajoute à la sélection et importe sa fiche — photo, adresse, horaires. Un
-          lieu déjà importé rejoint la sélection sans créer de doublon.
-        </p>
-      )}
+      {places.length > 0 && <p className="text-xs text-muted-foreground">{t('google.hint')}</p>}
     </div>
   )
 }

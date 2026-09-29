@@ -1,10 +1,11 @@
 import { RiForbid2Line, RiHeart3Fill, RiThumbDownLine, RiThumbUpLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 
 import { jokerBadge } from '@/domain/session-rules'
 import { VOTE_ACTIONS, type VoteKind, type VoteValue } from '@/domain/vote'
 import { cn } from '@/lib/utils'
 
-import type { JokerKind, JokerQuotas } from '@/domain/session-rules'
+import type { JokerBadge, JokerKind, JokerQuotas } from '@/domain/session-rules'
 
 interface VoteControlsProps {
   onVote: (value: VoteValue) => void
@@ -40,13 +41,27 @@ export function VoteControls({
   jokers,
   showShortcuts = false,
 }: VoteControlsProps) {
+  const t = useTranslations('session.vote')
+
+  function badgeText(badge: JokerBadge): string {
+    return badge.kind === 'remaining'
+      ? t('jokerBadge.remaining', { count: badge.count })
+      : t(`jokerBadge.${badge.kind}`)
+  }
+
   return (
-    <div role="group" aria-label="Voter" className="grid grid-cols-4 gap-2 lg:grid-cols-2 lg:gap-3">
+    <div
+      role="group"
+      aria-label={t('group')}
+      className="grid grid-cols-4 gap-2 lg:grid-cols-2 lg:gap-3"
+    >
       {VOTE_ACTIONS.map((action) => {
         const Icon = ICONS[action.kind]
         const kind = jokerKind(action.kind)
         const quota = kind ? jokers[kind] : null
-        const badge = quota ? jokerBadge(quota) : null
+        const badge = quota ? badgeText(jokerBadge(quota)) : null
+        const label = t(`actions.${action.kind}`)
+        const hint = t(`hints.${action.kind}`)
         const isDisabled = disabled || (quota !== null && quota.remaining === 0)
         return (
           <button
@@ -54,11 +69,11 @@ export function VoteControls({
             type="button"
             onClick={() => onVote(action.value)}
             disabled={isDisabled}
-            title={badge ? `${action.hint} ${badge}` : action.hint}
+            title={badge ? t('titleWithBadge', { hint, badge }) : hint}
             aria-label={
               badge
-                ? `${action.label} — ${action.hint} ${badge}`
-                : `${action.label} — ${action.hint}`
+                ? t('buttonWithBadge', { action: label, hint, badge })
+                : t('button', { action: label, hint })
             }
             aria-keyshortcuts={action.shortcuts.join(' ')}
             className={cn(
@@ -68,7 +83,7 @@ export function VoteControls({
             )}
           >
             <Icon aria-hidden="true" className={action.joker ? 'size-6' : 'size-7'} />
-            <span>{action.short}</span>
+            <span>{t(`short.${action.kind}`)}</span>
             {badge && (
               // Pas d'opacité ici : à 70 % le libellé retombe à 2,7:1 sur son fond.
               <span className="font-mono text-[0.6rem] tracking-wide">{badge}</span>

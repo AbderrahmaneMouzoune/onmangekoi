@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useCallback, useState } from 'react'
 
 export interface Position {
@@ -25,6 +26,9 @@ export interface Geolocation {
   clear: () => void
 }
 
+/** Pourquoi la position manque : traduit au rendu (`restaurants.geo.<raison>`). */
+type Failure = 'unsupported' | 'denied' | 'failed'
+
 /** `GeolocationPositionError.PERMISSION_DENIED` — la constante n'existe pas sur tous les bouchons. */
 const PERMISSION_DENIED = 1
 
@@ -39,16 +43,17 @@ const OPTIONS: PositionOptions = { timeout: 8000, maximumAge: 5 * 60 * 1000 }
 export function useGeolocation(): Geolocation {
   const [position, setPosition] = useState<Position | null>(null)
   const [status, setStatus] = useState<GeolocationStatus>('idle')
-  const [error, setError] = useState<string | null>(null)
+  const [failure, setFailure] = useState<Failure | null>(null)
+  const t = useTranslations('restaurants.geo')
 
   const locate = useCallback(() => {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
       setStatus('unavailable')
-      setError('Ton navigateur ne sait pas donner ta position.')
+      setFailure('unsupported')
       return
     }
     setStatus('locating')
-    setError(null)
+    setFailure(null)
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         setPosition({ latitude: coords.latitude, longitude: coords.longitude })
@@ -57,11 +62,7 @@ export function useGeolocation(): Geolocation {
       (failure) => {
         const denied = failure.code === PERMISSION_DENIED
         setStatus(denied ? 'denied' : 'unavailable')
-        setError(
-          denied
-            ? 'Position refusée : pas de restos autour de toi, mais la recherche par nom marche.'
-            : 'Impossible de te situer pour l’instant.'
-        )
+        setFailure(denied ? 'denied' : 'failed')
       },
       OPTIONS
     )
@@ -70,8 +71,8 @@ export function useGeolocation(): Geolocation {
   const clear = useCallback(() => {
     setPosition(null)
     setStatus('idle')
-    setError(null)
+    setFailure(null)
   }, [])
 
-  return { position, status, error, locate, clear }
+  return { position, status, error: failure ? t(failure) : null, locate, clear }
 }

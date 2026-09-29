@@ -2,6 +2,8 @@ import { RiMapPin2Line, RiTrophyLine } from '@remixicon/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
 import { buttonVariants } from '@/components/ui/button'
@@ -10,7 +12,6 @@ import { router } from '@/config/router.config'
 import { getPublicResults } from '@/data-access/public-results'
 import { parseResultsParam } from '@/domain/share'
 import { formatScore } from '@/domain/vote'
-import { countLabel } from '@/lib/format'
 import { remoteImageUrl } from '@/lib/images'
 import { cn } from '@/lib/utils'
 
@@ -37,7 +38,7 @@ async function requirePublicResults(code: string) {
  * pas fuiter.
  */
 export async function PublicPodiumSection({ params }: { params: Promise<{ code: string }> }) {
-  const { code } = await params
+  const [{ code }, t] = await Promise.all([params, getTranslations('session.podium')])
   const { canonicalCode, results } = await requirePublicResults(code)
 
   // Forme canonique : le code seul, en majuscules (saisie tolérante côté URL).
@@ -53,9 +54,9 @@ export async function PublicPodiumSection({ params }: { params: Promise<{ code: 
   return (
     <>
       <PageHeader
-        eyebrow="Classement partagé"
+        eyebrow={t('eyebrow')}
         title={results.sessionName}
-        description={`${countLabel(results.participantCount, 'participant')} ont tranché`}
+        description={t('description', { count: results.participantCount })}
       />
 
       <WinnerCard
@@ -65,11 +66,9 @@ export async function PublicPodiumSection({ params }: { params: Promise<{ code: 
       />
 
       {rest.length > 0 && (
-        <section aria-label="Suite du podium" className="flex flex-col gap-2">
+        <section aria-label={t('rest')} className="flex flex-col gap-2">
           <h2 className="font-display text-base font-semibold">
-            {results.decision && results.decision.rank > 3
-              ? 'Le podium du vote'
-              : 'Sur le podium aussi'}
+            {results.decision && results.decision.rank > 3 ? t('votePodium') : t('alsoOnPodium')}
           </h2>
           <ol className="flex flex-col gap-2">
             {rest.map((row) => (
@@ -93,11 +92,9 @@ export async function PublicPodiumSection({ params }: { params: Promise<{ code: 
 
       <section className="flex flex-col items-center gap-3 rounded-lg bg-surface-2 p-5 text-center">
         <RiTrophyLine aria-hidden="true" className="size-6 text-brand" />
-        <p className="text-sm text-muted-foreground">
-          Ce classement vient d’un vote de groupe. Le vôtre prend deux minutes, sans compte.
-        </p>
+        <p className="text-sm text-muted-foreground">{t('cta')}</p>
         <Link href={router.home()} className={cn(buttonVariants())}>
-          Lancer notre vote
+          {t('launch')}
         </Link>
       </section>
     </>
@@ -115,6 +112,7 @@ function WinnerCard({
   decided: boolean
 }) {
   const photo = remoteImageUrl(winner.photo_url)
+  const t = useTranslations('session.results')
 
   return (
     <section
@@ -137,7 +135,7 @@ function WinnerCard({
       )}
 
       <p className="relative font-mono text-[0.7rem] tracking-[0.12em] text-chalk-muted uppercase">
-        {decided ? 'C’est décidé · on mange chez' : 'On mange chez'}
+        {decided ? t('eyebrow.decided') : t('eyebrow.winner')}
       </p>
       <h2
         id="public-winner-title"
@@ -148,7 +146,11 @@ function WinnerCard({
       <div className="relative flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-chalk-muted">
         {winner.cuisine_type && <span className="uppercase">{winner.cuisine_type}</span>}
         <span className="font-mono tabular">
-          Score {formatScore(winner.score)} · {winner.votes_count}/{participantCount} votes
+          {t('score', {
+            score: formatScore(winner.score),
+            votes: winner.votes_count,
+            participants: participantCount,
+          })}
         </span>
       </div>
       {winner.city && (
@@ -183,13 +185,14 @@ function Thumbnail({ row }: { row: PublicResultRow }) {
  * podium attendent la base.
  */
 export function PublicPodiumFallback() {
+  const t = useTranslations('session.podium')
   return (
     <>
-      <PageHeaderFallback eyebrow="Classement partagé" description />
+      <PageHeaderFallback eyebrow={t('eyebrow')} description />
       <div aria-busy="true" className="flex flex-col gap-6">
         <Skeleton className="h-56 w-full rounded-xl" />
         <section className="flex flex-col gap-2">
-          <h2 className="font-display text-base font-semibold">Sur le podium aussi</h2>
+          <h2 className="font-display text-base font-semibold">{t('alsoOnPodium')}</h2>
           <Skeleton className="h-16 w-full rounded-lg" />
           <Skeleton className="h-16 w-full rounded-lg" />
         </section>

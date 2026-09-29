@@ -1,3 +1,5 @@
+import { useTranslations } from 'next-intl'
+
 import { cn } from '@/lib/utils'
 
 interface InviteCodeProps {
@@ -11,6 +13,7 @@ interface InviteCodeProps {
  * lecteurs d'écran et les tests (`data-code`).
  */
 export function InviteCode({ code, className }: InviteCodeProps) {
+  const t = useTranslations('session.invite')
   const chars = code.toUpperCase().split('')
   const spoken = chars.join(' ')
 
@@ -19,7 +22,7 @@ export function InviteCode({ code, className }: InviteCodeProps) {
       data-testid="invite-code"
       data-code={code.toUpperCase()}
       role="img"
-      aria-label={`Code d’invitation : ${spoken}`}
+      aria-label={t('code', { code: spoken })}
       className={cn('flex items-center gap-1.5', className)}
     >
       {chars.map((char, index) => (

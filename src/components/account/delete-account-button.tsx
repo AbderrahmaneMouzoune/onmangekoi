@@ -1,6 +1,7 @@
 'use client'
 
 import { RiDeleteBin6Line } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useId, useState, useTransition } from 'react'
 
 import { deleteAccountAction } from '@/actions/account'
@@ -19,12 +20,14 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
 
-/** Mot à recopier pour armer la suppression. */
-export const DELETE_CONFIRMATION = 'effacer'
-
-/** Tolère la casse, les espaces et la majuscule automatique du clavier mobile. */
-function matchesConfirmation(input: string): boolean {
-  return input.trim().toLowerCase() === DELETE_CONFIRMATION
+/**
+ * Le mot à recopier pour armer la suppression est dans la langue de la page
+ * (`account.delete.word` : « effacer », « delete ») : on recopie ce qu'on lit.
+ * La casse, les espaces et la majuscule automatique du clavier mobile sont
+ * tolérés.
+ */
+export function matchesConfirmation(input: string, word: string): boolean {
+  return input.trim().toLocaleLowerCase() === word.toLocaleLowerCase()
 }
 
 /**
@@ -33,13 +36,16 @@ function matchesConfirmation(input: string): boolean {
  * un mot oblige à lire ce qui va disparaître.
  */
 export function DeleteAccountButton() {
+  const t = useTranslations('account.delete')
+  const tCommon = useTranslations('common')
+  const word = t('word')
   const inputId = useId()
   const [open, setOpen] = useState(false)
   const [confirmation, setConfirmation] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const canDelete = matchesConfirmation(confirmation)
+  const canDelete = matchesConfirmation(confirmation, word)
 
   function reset() {
     setConfirmation('')
@@ -71,24 +77,22 @@ export function DeleteAccountButton() {
         render={
           <Button variant="destructive" className="w-full">
             <RiDeleteBin6Line aria-hidden="true" />
-            Supprimer mon compte
+            {t('button')}
           </Button>
         }
       />
 
       <AlertDialogPopup>
-        <AlertDialogTitle>Supprimer mon compte ?</AlertDialogTitle>
-        <AlertDialogDescription>
-          Ton profil, ton pseudo, ton email et tes listes seront effacés définitivement. Les votes
-          déjà comptés dans une session terminée restent dans le classement, mais plus rien ne les
-          reliera à toi.
-        </AlertDialogDescription>
+        <AlertDialogTitle>{t('title')}</AlertDialogTitle>
+        <AlertDialogDescription>{t('description')}</AlertDialogDescription>
 
         <form onSubmit={submit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor={inputId}>
-              Écris <span className="font-mono font-semibold">{DELETE_CONFIRMATION}</span> pour
-              confirmer
+              {t.rich('prompt', {
+                word,
+                mono: (chunks) => <span className="font-mono font-semibold">{chunks}</span>,
+              })}
             </Label>
             <Input
               id={inputId}
@@ -100,7 +104,7 @@ export function DeleteAccountButton() {
               autoCorrect="off"
               spellCheck={false}
               disabled={isPending}
-              placeholder={DELETE_CONFIRMATION}
+              placeholder={word}
             />
           </div>
 
@@ -111,12 +115,12 @@ export function DeleteAccountButton() {
               disabled={isPending}
               render={
                 <button type="button" className={cn(buttonVariants({ variant: 'outline' }))}>
-                  Annuler
+                  {tCommon('actions.cancel')}
                 </button>
               }
             />
             <Button type="submit" variant="destructive" disabled={!canDelete || isPending}>
-              {isPending ? <Spinner /> : 'Supprimer définitivement'}
+              {isPending ? <Spinner /> : t('submit')}
             </Button>
           </div>
         </form>

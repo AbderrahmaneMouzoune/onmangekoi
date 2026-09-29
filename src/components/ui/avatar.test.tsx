@@ -13,8 +13,8 @@ describe('Avatar', () => {
     expect(initials).toHaveAttribute('aria-hidden', 'true')
   })
 
-  it('should fall back on the guest label rather than render empty', () => {
+  it('should show a question mark rather than render empty, in any language', () => {
     render(<Avatar name={null} />)
-    expect(screen.getByText('I')).toBeInTheDocument()
+    expect(screen.getByText('?')).toBeInTheDocument()
   })
 })

@@ -8,7 +8,8 @@
 --     disparaît au lieu de rester gelée ;
 --   * une session en cours dont il ne reste que des votants ayant terminé
 --     se clôture d'elle-même ;
---   * l'export ne contient que les données de son appelant.
+--   * l'export ne contient que les données de son appelant ;
+--   * les contraintes alimentaires (#60) partent avec le compte.
 --
 -- Exécution (base Supabase locale, `supabase start` en cours) :
 --   bun run db:test        — rejoue tous les scénarios de supabase/tests
@@ -121,6 +122,13 @@ select id from l;
 insert into public.list_restaurants (list_id, restaurant_id)
 select l.id, r.id from t_list l, t_resto r;
 
+-- Contraintes alimentaires (#60) : alice est végétarienne à €€ au plus,
+-- bob mange halal. Celles d'alice doivent partir avec elle, pas celles de bob.
+insert into public.profile_constraints (profile_id, tag)
+values (:'alice', 'vegetarian'), (:'bob', 'halal');
+insert into public.profile_budgets (profile_id, max_price_level)
+values (:'alice', 2);
+
 -- Classement de référence, capturé avant toute suppression.
 create temporary table t_before as
 select sr.id as session_restaurant_id, coalesce(sum(v.value), 0)::int as score
@@ -169,6 +177,17 @@ select pg_temp.assert(
 select pg_temp.assert(
   exists (select 1 from auth.users where id = :'bob'),
   'les autres comptes sont intacts'
+);
+
+select pg_temp.assert(
+  not exists (select 1 from public.profile_constraints where profile_id = :'alice')
+    and not exists (select 1 from public.profile_budgets where profile_id = :'alice'),
+  'les contraintes alimentaires sont supprimées'
+);
+
+select pg_temp.assert(
+  exists (select 1 from public.profile_constraints where profile_id = :'bob'),
+  'celles des autres restent'
 );
 
 -- ─── LA SESSION CLOSE RESTE COHÉRENTE ────────────────────────
@@ -320,6 +339,12 @@ select pg_temp.assert(
 select pg_temp.assert(
   (select payload -> 'account' ->> 'email' from t_export) = 'carol@example.test',
   'l’export contient l’email du compte'
+);
+
+select pg_temp.assert(
+  (select payload -> 'food_constraints' from t_export)
+    = '{"tags": [], "max_price_level": null}'::jsonb,
+  'l’export ne contient pas les contraintes d’un autre compte'
 );
 
 select pg_temp.assert(

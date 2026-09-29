@@ -2,6 +2,7 @@
 
 import { RiCheckboxCircleLine, RiEditLine, RiRestaurantLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useState, useTransition } from 'react'
 
 import { confirmDecisionAction } from '@/actions/sessions'
@@ -35,6 +36,8 @@ export function DecisionPanel({ sessionId, candidates, decidedId }: DecisionPane
   const [picking, setPicking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const t = useTranslations('session.decision')
+  const tCommon = useTranslations('common')
 
   const leader = candidates[0]
   const decided = candidates.find((candidate) => candidate.restaurantId === decidedId) ?? null
@@ -84,19 +87,19 @@ export function DecisionPanel({ sessionId, candidates, decidedId }: DecisionPane
         )}
         <div className="flex min-w-0 flex-col gap-1">
           <h3 id="decision-title" className="font-display text-base font-semibold">
-            {decided ? 'C’est décidé' : 'On y va ?'}
+            {decided ? t('decidedTitle') : t('title')}
           </h3>
           <p className="text-sm text-muted-foreground">
             {decided
-              ? `Tout le monde voit « On mange chez ${decided.name} ». Un imprévu ? Tu peux encore changer.`
-              : `Confirme le lieu : tout le monde verra « On mange chez ${selected.name} » à la place du seul classement.`}
+              ? t('decidedText', { name: decided.name })
+              : t('confirmText', { name: selected.name })}
           </p>
         </div>
       </div>
 
       {picking && (
         <fieldset className="flex flex-col gap-1.5" disabled={isPending}>
-          <legend className="mb-1.5 text-sm font-semibold">Où va le groupe ?</legend>
+          <legend className="mb-1.5 text-sm font-semibold">{t('where')}</legend>
           {candidates.map((candidate) => (
             <label
               key={candidate.restaurantId}
@@ -127,13 +130,13 @@ export function DecisionPanel({ sessionId, candidates, decidedId }: DecisionPane
       {decided && !picking ? (
         <Button variant="outline" className="w-full sm:w-auto sm:self-start" onClick={openPicker}>
           <RiEditLine aria-hidden="true" />
-          Changer d’avis
+          {t('change')}
         </Button>
       ) : (
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button className="flex-1" disabled={isPending} onClick={confirm}>
             <RiCheckboxCircleLine aria-hidden="true" />
-            {decided ? 'Confirmer ce choix' : 'On y va'}
+            {decided ? t('confirmChoice') : t('go')}
           </Button>
           {picking ? (
             <Button
@@ -142,7 +145,7 @@ export function DecisionPanel({ sessionId, candidates, decidedId }: DecisionPane
               disabled={isPending}
               onClick={() => setPicking(false)}
             >
-              Annuler
+              {tCommon('actions.cancel')}
             </Button>
           ) : (
             candidates.length > 1 && (
@@ -152,7 +155,7 @@ export function DecisionPanel({ sessionId, candidates, decidedId }: DecisionPane
                 disabled={isPending}
                 onClick={openPicker}
               >
-                Choisir un autre resto
+                {t('other')}
               </Button>
             )
           )}

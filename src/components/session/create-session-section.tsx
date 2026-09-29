@@ -1,15 +1,18 @@
 import { redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { getFormatter, getTranslations } from 'next-intl/server'
 
 import { RestaurantPickerFallback } from '@/components/restaurants/restaurant-picker-fallback'
 import { CreateSessionForm } from '@/components/session/create-session-form'
 import { DeadlinePickerFallback } from '@/components/session/deadline-picker'
 import { OpenSessionToggleFallback } from '@/components/session/open-session-toggle'
 import { RulesPickerFallback } from '@/components/session/rules-picker'
-import { SESSION_STEPS, SessionStep, StepTitle } from '@/components/session/session-step'
+import { SessionStep, StepTitle } from '@/components/session/session-step'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
+import { getMyFoodConstraints } from '@/data-access/food-constraints'
 import { getMyGroups } from '@/data-access/groups'
 import { getListsWithRestaurantIds } from '@/data-access/lists'
 import { getRecentWinners } from '@/data-access/recent-winners'
@@ -18,16 +21,10 @@ import { getRestaurantSuggestions } from '@/data-access/suggestions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { recentWinnerDates } from '@/domain/recent-winners'
 import { parseRestaurantFilters } from '@/domain/restaurant-filters'
+import { mealAt } from '@/domain/session-name'
 import { SUGGESTION_SIZE, toRestaurantSuggestion } from '@/domain/suggestions'
+import { TIME_ZONE } from '@/i18n/config'
 import { cn } from '@/lib/utils'
-
-const DAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
-
-function defaultSessionName(now = new Date()): string {
-  const hour = now.getHours()
-  const meal = hour < 15 ? 'Déj' : 'Dîner'
-  return `${meal} du ${DAY_NAMES[now.getDay()]}`
-}
 
 interface CreateSessionSectionProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -54,26 +51,43 @@ export async function CreateSessionSection({ searchParams }: CreateSessionSectio
 
   const filters = parseRestaurantFilters(params)
 
-  const [lists, groups, initialPage, recentWinners, suggestions] = await Promise.all([
-    getListsWithRestaurantIds(supabase, user.id),
-    getMyGroups(supabase),
-    // Le rayon reste au vestiaire : le serveur ne connaît pas la position de
-    // la personne. Il s'applique dès que le navigateur la donne — d'ici là,
-    // un lien partagé avec `?km=1` arrive simplement sans filtre distance.
-    getRestaurantCatalogPage({ priceMax: filters.priceMax, tags: filters.tags }),
-    getRecentWinners(supabase),
-    getRestaurantSuggestions(supabase, SUGGESTION_SIZE),
-  ])
+  const [lists, groups, initialPage, recentWinners, suggestions, myConstraints, t, format] =
+    await Promise.all([
+      getListsWithRestaurantIds(supabase, user.id),
+      getMyGroups(supabase),
+      // Le rayon reste au vestiaire : le serveur ne connaît pas la position de
+      // la personne. Il s'applique dès que le navigateur la donne — d'ici là,
+      // un lien partagé avec `?km=1` arrive simplement sans filtre distance.
+      getRestaurantCatalogPage({ priceMax: filters.priceMax, tags: filters.tags }),
+      getRecentWinners(supabase),
+      getRestaurantSuggestions(supabase, SUGGESTION_SIZE),
+      // Ses propres contraintes (#60) : lisibles par soi seul, sous RLS. Les
+      // membres d'un groupe pré-invité ne comptent pas encore : une invitation
+      // n'est pas une présence, et une RPC qui compterait les contraintes d'un
+      // groupe sur une liste de restos libre permettrait de les sonder resto
+      // par resto. Ils comptent dès qu'ils entrent dans la salle.
+      getMyFoodConstraints(supabase, user.id),
+      getTranslations('session.create'),
+      getFormatter(),
+    ])
+
+  // « Déj du mardi » : le repas et le jour, lus dans le fuseau du produit.
+  const now = new Date()
+  const defaultName = t('defaultName', {
+    meal: mealAt(now, TIME_ZONE),
+    day: format.dateTime(now, { weekday: 'long' }),
+  })
 
   return (
     <CreateSessionForm
       lists={lists}
       groups={groups}
       initialPage={initialPage}
-      defaultName={defaultSessionName()}
+      defaultName={defaultName}
       recentWinners={recentWinnerDates(recentWinners)}
       initialFilters={filters}
       suggestion={toRestaurantSuggestion(suggestions)}
+      myConstraints={myConstraints}
     />
   )
 }
@@ -85,6 +99,7 @@ export async function CreateSessionSection({ searchParams }: CreateSessionSectio
  * serveur.
  */
 export function CreateSessionSectionFallback() {
+  const t = useTranslations('session.create')
   return (
     <div
       aria-busy="true"
@@ -92,9 +107,7 @@ export function CreateSessionSectionFallback() {
     >
       <SessionStep
         number={1}
-        title={
-          <p className="text-base leading-none font-semibold text-ink">{SESSION_STEPS.name}</p>
-        }
+        title={<p className="text-base leading-none font-semibold text-ink">{t('steps.name')}</p>}
       >
         <Skeleton className="h-12 w-full rounded-md" />
       </SessionStep>
@@ -102,8 +115,8 @@ export function CreateSessionSectionFallback() {
       <div className="contents lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:block">
         <SessionStep
           number={2}
-          title={<p className="text-base font-semibold">{SESSION_STEPS.restaurants}</p>}
-          hint={SESSION_STEPS.restaurantsHint}
+          title={<p className="text-base font-semibold">{t('steps.restaurants')}</p>}
+          hint={t('steps.restaurantsHint')}
         >
           <RestaurantPickerFallback />
         </SessionStep>
@@ -113,7 +126,7 @@ export function CreateSessionSectionFallback() {
         <DeadlinePickerFallback
           legend={
             <StepTitle number={3}>
-              <span className="text-base font-semibold">{SESSION_STEPS.deadline}</span>
+              <span className="text-base font-semibold">{t('steps.deadline')}</span>
             </StepTitle>
           }
         />
@@ -124,7 +137,7 @@ export function CreateSessionSectionFallback() {
 
       <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md sm:-mx-6 sm:px-6 lg:static lg:col-start-1 lg:m-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
         <button type="button" disabled className={cn(buttonVariants({ size: 'lg' }), 'w-full')}>
-          Sélectionne des restaurants
+          {t('selectRestaurants')}
         </button>
       </div>
     </div>

@@ -1,0 +1,412 @@
+{
+  "vote": {
+    "actions": {
+      "veto": "Veto",
+      "no": "Bof",
+      "yes": "Ça me va",
+      "fav": "Coup de cœur"
+    },
+    "short": {
+      "veto": "Veto",
+      "no": "Bof",
+      "yes": "Oui",
+      "fav": "Cœur"
+    },
+    "hints": {
+      "veto": "Jamais. Compte −2, en quota limité.",
+      "no": "Pas cette fois. Compte 0.",
+      "yes": "Partant. Compte +1.",
+      "fav": "Vraiment envie. Compte +2, en quota limité."
+    },
+    "group": "Voter",
+    "button": "{action} — {hint}",
+    "buttonWithBadge": "{action} — {hint} {badge}",
+    "titleWithBadge": "{hint} {badge}",
+    "jokerBadge": {
+      "off": "hors jeu",
+      "spent": "épuisé",
+      "remaining": "{count, plural, one {# restant} other {# restants}}"
+    }
+  },
+  "status": {
+    "waiting": "Salle d’attente",
+    "voting": "Vote en cours",
+    "closed": "Terminée"
+  },
+  "connection": {
+    "connecting": "Connexion…",
+    "live": "En direct",
+    "offline": "Hors ligne · actualisation auto"
+  },
+  "rules": {
+    "label": "Règles du vote",
+    "lines": {
+      "open": "Session ouverte : chacun vote à son heure",
+      "duo": "À deux : le premier « ça me va » commun décide",
+      "superlikes": "{count, plural, =0 {Aucun coup de cœur} one {# coup de cœur} other {# coups de cœur}}",
+      "vetos": "{count, plural, =0 {Aucun veto} one {# veto} other {# vetos}}",
+      "closeAtDeadline": "Clôture à l’échéance",
+      "closeDuo": "Sans accord, classement quand vous avez fini tous les deux",
+      "closeAll": "Clôture quand tout le monde a voté",
+      "closeAtRatio": "Clôture dès {ratio} des votants"
+    },
+    "picker": {
+      "hint": "Les règles sont figées au lancement. Sous 100 %, le classement tombe dès le seuil atteint : les bulletins manquants comptent 0, comme lors d’une clôture forcée.",
+      "openHint": "Session ouverte : pas de seuil de clôture, le nombre de votants n’est pas connu d’avance. L’échéance clôt le vote — ou toi, à la main. Les bulletins manquants comptent 0.",
+      "superlikes": "Coups de cœur par personne",
+      "vetos": "Vetos par personne",
+      "threshold": "Seuil de clôture",
+      "noJoker": "Aucun",
+      "everyone": "Tout le monde"
+    }
+  },
+  "suggestion": {
+    "label": "Sélection proposée",
+    "title": "Une sélection pour démarrer",
+    "summary": "{recent, plural, one {Vu} other {Vus}} récemment{winners, plural, =0 {} one {, sans le gagnant des {days} derniers jours} other {, sans les # gagnants des {days} derniers jours}}{fresh, select, mine { — plus un jamais proposé, le dernier que tu as ajouté} catalog { — plus un jamais proposé, le dernier arrivé au carnet} other {}}.",
+    "editable": "Tout reste modifiable.",
+    "reset": "Repartir de zéro"
+  },
+  "create": {
+    "page": {
+      "eyebrow": "Nouvelle session",
+      "title": "Qui décide ce midi ?",
+      "description": "Trois étapes, puis tu invites le groupe à voter.",
+      "duo": "À deux ?"
+    },
+    "steps": {
+      "name": "Nom de la session",
+      "restaurants": "Les restos à départager",
+      "restaurantsHint": "Tes listes, le carnet des restos déjà connus, Google : pioche où tu veux et mélange.",
+      "deadline": "Clôture automatique",
+      "groups": "Inviter un groupe",
+      "groupsHint": "L’équipe du déjeuner, prévenue d’un clic — sans que personne ne retape le code."
+    },
+    "defaultName": "{meal, select, lunch {Déj} other {Dîner}} du {day}",
+    "namePlaceholder": "Lunch du vendredi",
+    "groupsLabel": "Mes groupes",
+    "groupsNote": "Les membres reçoivent une invitation en attente. Ils ne comptent comme participants qu’une fois entrés dans la session — personne ne bloque le vote sans être là.",
+    "members": "{count, plural, one {# membre} other {# membres}}",
+    "submit": "Créer la session · {count, plural, one {# resto} other {# restos}}",
+    "allExcluded": "Tout est écarté par l’anti-fatigue",
+    "selectRestaurants": "Sélectionne des restaurants",
+    "antiFatigue": {
+      "label": "Exclure les gagnants récents",
+      "recent": "{count, plural, one {# resto a gagné} other {# restos ont gagné}} dans les {days} derniers jours.",
+      "excluded": "{count, plural, one {# resto écarté} other {# restos écartés}} de cette session.",
+      "none": "Aucun de tes choix n’a gagné récemment."
+    }
+  },
+  "open": {
+    "label": "Session ouverte",
+    "tagline": "· chacun vote à son heure",
+    "hintOff": "Salle d’attente : tu lances le vote quand tout le monde est là, et plus personne n’entre ensuite.",
+    "hintOn": "Pas de salle d’attente : le vote commence tout de suite, chacun vote quand il voit le lien, jusqu’à l’échéance."
+  },
+  "deadline": {
+    "legend": "Clôture automatique",
+    "none": "Sans limite",
+    "inMinutes": "{minutes, plural, other {dans # min}}",
+    "inHours": "{hours, plural, other {dans # h}}",
+    "at": "à une heure",
+    "time": "Heure de clôture",
+    "hints": {
+      "none": "Sans échéance, la session se clôture quand tout le monde a voté — ou quand tu la clôtures.",
+      "timed": "À l’heure dite, le classement s’affiche : les votes manquants comptent 0. Tu pourras prolonger avant.",
+      "required": "Session ouverte : l’échéance est obligatoire, c’est elle qui clôt le vote. Chacun vote d’ici là, et tu pourras prolonger."
+    }
+  },
+  "countdown": {
+    "closesAt": "Clôture automatique {time}",
+    "launchBefore": "Vote à lancer avant {time}",
+    "closing": "Clôture…",
+    "passed": "Dépassée",
+    "extend": "+{minutes} min"
+  },
+  "join": {
+    "page": {
+      "eyebrow": "Rejoindre",
+      "title": "Scanne ou entre le code",
+      "description": "Le host te montre son QR code, te dit le code, ou t’envoie le lien."
+    },
+    "scan": "Scanner le QR code du host",
+    "notAnInvite": "Ce QR code n’est pas une invitation onmangekoi.",
+    "or": "ou saisis le code",
+    "label": "Code ou lien d’invitation",
+    "placeholder": "A3F 9B2",
+    "hint": "Le code à 6 caractères, ou le lien complet collé tel quel. Majuscules et tirets sont optionnels.",
+    "failed": "Impossible de rejoindre",
+    "failedNamed": "Impossible de rejoindre « {name} »",
+    "enterCode": "Entrer un code",
+    "entering": "On te fait entrer…"
+  },
+  "scanner": {
+    "preview": "Aperçu de la caméra",
+    "starting": "Ouverture de la caméra…",
+    "scanning": "Vise le QR code",
+    "denied": "Accès à la caméra refusé. Saisis le code à la main.",
+    "unsupported": "Pas de caméra disponible ici. Saisis le code à la main.",
+    "close": "Fermer le scanner"
+  },
+  "invite": {
+    "title": "Code d’invitation",
+    "code": "Code d’invitation : {code}",
+    "howTo": "À dire à voix haute (majuscules et tirets sans importance), à faire scanner, ou à envoyer en lien.",
+    "enlarge": "Agrandir le QR code d’invitation",
+    "qrHint": "Les autres scannent ce QR code avec l’appareil photo de leur téléphone. Touche-le pour l’afficher en grand.",
+    "dialogTitle": "Scanner pour rejoindre",
+    "dialogDescription": "Vise ce code avec l’appareil photo, ou depuis « J’ai un code » dans l’app.",
+    "qrLabel": "QR code du lien d’invitation",
+    "close": "Fermer",
+    "copyCode": "Copier le code",
+    "copyLink": "Copier le lien",
+    "send": "Envoyer l’invitation",
+    "shareTitle": "Rejoins « {name} » sur onmangekoi",
+    "shareText": "On vote pour choisir où manger, ça prend deux minutes."
+  },
+  "participants": {
+    "finished": "{finished}/{total} ont terminé",
+    "you": "(toi)",
+    "host": "Host",
+    "done": "Terminé"
+  },
+  "invitees": {
+    "waiting": "{count, plural, one {# invité en attente} other {# invités en attente}}",
+    "note": "Envoie-leur le lien : ils ne comptent comme participants qu’une fois entrés dans la session.",
+    "invite": "Inviter « {group} »",
+    "invited": "{count, plural, one {# personne de « {group} » est attendue.} other {# personnes de « {group} » sont attendues.}}",
+    "allHere": "Tout « {group} » est déjà là."
+  },
+  "duo": {
+    "page": {
+      "eyebrow": "À deux",
+      "title": "On décide à deux ?",
+      "description": "Choisis quelques restos, envoie le lien. Vous balayez les mêmes : au premier « ça me va » commun, c’est décidé."
+    },
+    "sessionName": "À deux · {meal, select, lunch {déj} other {dîner}} du {day}",
+    "create": {
+      "title": "Les restos à balayer",
+      "hint": "Vous verrez les mêmes, dans le même ordre. Quelques-uns suffisent : on s’arrête au premier « ça me va » commun.",
+      "submit": "C’est parti · {count, plural, one {# resto} other {# restos}}",
+      "oneMore": "Encore un resto au moins"
+    },
+    "together": "À deux avec <strong>{partner}</strong> : au premier « ça me va » commun, c’est décidé.",
+    "inviteTitle": "Envoie ce lien",
+    "inviteText": "Pas de code à dicter : l’autre ouvre le lien et tombe directement sur les mêmes restos. Tu peux commencer à voter sans l’attendre — au premier « ça me va » commun, c’est décidé.",
+    "send": "Envoyer le lien",
+    "shareTitle": "« {name} » sur onmangekoi",
+    "shareText": "On choisit où manger à deux : balaie les restos, au premier « ça me va » commun, c’est décidé."
+  },
+  "openPanel": {
+    "label": "Session ouverte",
+    "bringPeople": "Faire venir du monde",
+    "summary": "On entre jusqu’à l’échéance · {count, plural, one {# participant} other {# participants}}"
+  },
+  "finished": {
+    "allVoted": "Tu as tout voté.",
+    "inProgress": "Le vote est en cours.",
+    "duo": {
+      "partnerAbsent": "L’autre n’a pas encore ouvert le lien. Dès qu’il ou elle dit « ça me va » à un resto que tu as aimé, c’est décidé.",
+      "bothDone": "Vous avez fini tous les deux sans accord : le classement arrive.",
+      "partnerVoting": "Pas d’accord pour l’instant. Si {partner} dit « ça me va » à un resto que tu as aimé, c’est décidé ; sinon le classement tombe à la fin de son deck."
+    },
+    "open": "La session reste ouverte jusqu’à l’échéance : d’autres peuvent encore arriver et voter. Le classement s’affichera à la clôture.",
+    "everyoneDone": "Tout le monde a terminé, le classement arrive.",
+    "thresholdReached": "Le seuil de clôture est atteint, le classement arrive.",
+    "waitingFor": "On attend {count, plural, one {# personne} other {# personnes}}. Le classement s’affichera automatiquement.",
+    "threshold": "Clôture dès {ratio} des participants — soit {required} sur {total}.",
+    "progress": "Participants ayant terminé",
+    "closeNow": "Clôturer maintenant",
+    "confirmClose": "Confirmer la clôture — les votes manquants comptent 0",
+    "closeHint": {
+      "duo": "Sinon, la session se clôture au premier accord, ou quand vous aurez fini tous les deux.",
+      "open": "Sinon, la session se clôture toute seule à l’échéance.",
+      "threshold": "Sinon, la session se clôture toute seule au seuil choisi.",
+      "all": "Sinon, la session se clôture toute seule quand tout le monde a voté."
+    }
+  },
+  "room": {
+    "eyebrow": {
+      "runoff": "Second tour",
+      "duo": "À deux",
+      "session": "Session"
+    },
+    "firstRound": "On départage l’égalité du <link>premier tour</link>.",
+    "announcements": {
+      "waiting": "Retour en salle d’attente.",
+      "voting": "Le vote est lancé : à toi de voter.",
+      "closed": "Le vote est terminé, ouverture du classement.",
+      "agreed": "C’est d’accord : ouverture du résultat."
+    },
+    "agreedOpening": "C’est d’accord ! Ouverture du résultat…",
+    "opening": "Ouverture du classement…"
+  },
+  "waiting": {
+    "launch": "Lancer le vote",
+    "delete": "Supprimer la session",
+    "confirmDelete": "Confirmer la suppression",
+    "waitingFor": "En attente du lancement par {host}…",
+    "leave": "Quitter la session",
+    "confirm": "Confirmer",
+    "hints": {
+      "both": "Il faut au moins {participants} participants et {restaurants} restos pour lancer.",
+      "participants": "Il faut au moins {participants} participants pour lancer.",
+      "restaurants": "Avec un seul resto, il n’y a rien à départager : chacun peut apporter le sien.",
+      "ready": "Une fois lancé, plus personne ne peut rejoindre."
+    }
+  },
+  "sessionRestaurants": {
+    "title": "{count, plural, one {# resto à départager} other {# restos à départager}}",
+    "addMine": "Ajouter le mien",
+    "label": "Restaurants de la session",
+    "removed": "Restaurant retiré",
+    "addedBy": "Ajouté par {author}",
+    "addedByYou": "Ajouté par toi",
+    "remove": "Retirer {name}",
+    "add": "Ajouter {count, plural, one {# resto} other {# restos}}",
+    "addNone": "Ajouter"
+  },
+  "constraints": {
+    "blocked": "{count, plural, one {# participant ne peut pas y manger} other {# participants ne peuvent pas y manger}}"
+  },
+  "card": {
+    "label": "{name}, restaurant {index} sur {total}",
+    "budget": "Budget {level}",
+    "diets": "Régimes servis",
+    "fromYou": "de toi",
+    "lastWin": "Déjà gagnant le {date}"
+  },
+  "deck": {
+    "progress": "Progression du vote",
+    "announce": "Restaurant {position} sur {total} : {name}.",
+    "announceAfterVote": "{vote} enregistré. Restaurant {position} sur {total} : {name}.",
+    "swipe": "Glisse la carte à droite pour « ça me va », à gauche pour « bof ».",
+    "jokers": {
+      "none": "Pas de joker dans cette session : seuls « bof » et « ça me va » comptent.",
+      "superlikes": "Les jokers comptent double : {superlikes, plural, one {# coup de cœur} other {# coups de cœur}} pour toute la session.",
+      "vetos": "Les jokers comptent double : {vetos, plural, one {# veto} other {# vetos}} pour toute la session.",
+      "both": "Les jokers comptent double : {superlikes, plural, one {# coup de cœur} other {# coups de cœur}} et {vetos, plural, one {# veto} other {# vetos}} pour toute la session."
+    },
+    "keyboard": "Au clavier :",
+    "keyboardArrows": "<key>←</key> et <key>→</key> reprennent « bof » et « ça me va », <key>Entrée</key> valide « ça me va »."
+  },
+  "results": {
+    "eyebrow": {
+      "agreement": "C’est d’accord · on mange chez",
+      "decided": "C’est décidé · on mange chez",
+      "winner": "On mange chez"
+    },
+    "score": "Score {score} · {votes}/{participants} votes",
+    "directions": "Itinéraire",
+    "website": "Le site",
+    "agreementNote": "Vous avez dit oui tous les deux : pas besoin d’aller plus loin dans le deck.",
+    "overrideNote": "Choix du host : le vote plaçait {leader} en tête.",
+    "tie": {
+      "draw": "Désigné par tirage au sort, à égalité parfaite avec {others}.",
+      "runoff": "Égalité parfaite avec {others} : le second tour est en cours.",
+      "decided": "Retenu par le host, à égalité parfaite avec {others}.",
+      "open": "Égalité parfaite avec {others}."
+    },
+    "fullRanking": "Classement complet",
+    "rest": "Le reste du classement",
+    "breakdown": {
+      "label": "Détail des votes",
+      "superlikes": "coups de cœur",
+      "likes": "ça me va",
+      "dislikes": "bof",
+      "vetos": "vetos"
+    },
+    "page": {
+      "eyebrow": "Classement final",
+      "agreementEyebrow": "C’est d’accord",
+      "description": "{participants, plural, one {# participant} other {# participants}} · {restaurants, plural, one {# resto} other {# restos}}",
+      "again": "Encore à deux",
+      "newSession": "Nouvelle session",
+      "empty": "Aucun résultat",
+      "emptyDescription": "La session s’est terminée sans restaurant."
+    }
+  },
+  "podium": {
+    "eyebrow": "Classement partagé",
+    "description": "{count, plural, one {# participant a tranché} other {# participants ont tranché}}",
+    "rest": "Suite du podium",
+    "votePodium": "Le podium du vote",
+    "alsoOnPodium": "Sur le podium aussi",
+    "cta": "Ce classement vient d’un vote de groupe. Le vôtre prend deux minutes, sans compte.",
+    "launch": "Lancer notre vote"
+  },
+  "tiebreak": {
+    "title": "Égalité parfaite",
+    "runoffTitle": "Second tour en cours",
+    "runoffText": "{names} se départagent dans une nouvelle session : mêmes participants, jokers remis à zéro.",
+    "hostText": "{names} terminent au même score, avec autant de coups de cœur. À toi de trancher.",
+    "guestText": "{names} terminent au même score, avec autant de coups de cœur. Le host va trancher.",
+    "seeRunoff": "Voir le classement du second tour",
+    "joinRunoff": "Rejoindre le second tour",
+    "runoff": "Second tour",
+    "confirmRunoff": "Confirmer — on revote entre les ex æquo",
+    "draw": "Tirage au sort",
+    "confirmDraw": "Confirmer — le sort désigne le gagnant"
+  },
+  "decision": {
+    "title": "On y va ?",
+    "decidedTitle": "C’est décidé",
+    "confirmText": "Confirme le lieu : tout le monde verra « On mange chez {name} » à la place du seul classement.",
+    "decidedText": "Tout le monde voit « On mange chez {name} ». Un imprévu ? Tu peux encore changer.",
+    "where": "Où va le groupe ?",
+    "change": "Changer d’avis",
+    "confirmChoice": "Confirmer ce choix",
+    "go": "On y va",
+    "other": "Choisir un autre resto"
+  },
+  "sharing": {
+    "shareTitle": "{session} : on mange chez {winner}",
+    "shareResult": "Partager le résultat",
+    "title": "Partager les résultats",
+    "publicText": "Toute personne avec le lien voit le podium et le nombre de participants. Aucun pseudo, aucun détail de vote.",
+    "privateText": "Le classement n’est visible que par les participants de la session.",
+    "publicOn": "Lien public actif",
+    "makePublic": "Rendre le classement public",
+    "sharePodium": "Partager le podium",
+    "shareParticipants": "Partager aux participants",
+    "copyPublic": "Copier le lien public",
+    "closeNote": "Refermer le lien le rend inaccessible aussitôt, aperçus compris."
+  },
+  "push": {
+    "launch": {
+      "action": "Me prévenir au lancement",
+      "done": "Ce navigateur te préviendra au lancement du vote, même l’onglet fermé."
+    },
+    "results": {
+      "action": "Me prévenir du résultat",
+      "done": "Ce navigateur te préviendra dès que le classement tombe, même l’onglet fermé."
+    },
+    "stop": "Ne plus me prévenir",
+    "denied": "Les notifications sont bloquées pour onmangekoi : autorise-les dans les réglages du navigateur pour recevoir l’alerte.",
+    "installFirst": "Sur iPhone, les notifications passent par l’app : ajoute onmangekoi à l’écran d’accueil (Partager → Sur l’écran d’accueil), puis ouvre la session depuis l’app.",
+    "failed": "Impossible d’activer les notifications sur ce navigateur. Réessaie plus tard."
+  },
+  "history": {
+    "page": {
+      "eyebrow": "Historique",
+      "title": "Mes sessions",
+      "description": "Où on a mangé, et ce que le groupe avait choisi.",
+      "new": "Nouvelle"
+    },
+    "hostedByYou": "organisée par toi",
+    "decided": "On y est allés :",
+    "leader": "En tête du vote :",
+    "pagination": "Pagination",
+    "older": "Sessions plus anciennes",
+    "newest": "Les plus récentes",
+    "empty": {
+      "title": "Aucune session pour l’instant",
+      "description": "Lance une session ou rejoins celle d’un collègue : elle restera consultable ici, classement compris.",
+      "action": "Créer une session"
+    },
+    "end": {
+      "title": "Fin de l’historique",
+      "description": "Il n’y a rien de plus ancien à afficher."
+    }
+  }
+}

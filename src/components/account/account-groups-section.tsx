@@ -1,5 +1,6 @@
 import { RiGroupLine } from '@remixicon/react'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 
 import { GroupCard } from '@/components/groups/group-card'
 import { router } from '@/config/router.config'
@@ -21,7 +22,11 @@ export async function AccountGroupsSection() {
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
   if (!user) return null
 
-  const groups = await getMyGroups(supabase)
+  const [groups, t, tCommon] = await Promise.all([
+    getMyGroups(supabase),
+    getTranslations('account.groups'),
+    getTranslations('common'),
+  ])
   if (groups.length === 0) return null
 
   return (
@@ -29,16 +34,13 @@ export async function AccountGroupsSection() {
       <div className="flex items-baseline justify-between">
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
           <RiGroupLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
-          Mes groupes
+          {t('title')}
         </h2>
         <Link href={router.groups()} className="text-sm font-medium text-brand hover:underline">
-          Tout voir
+          {tCommon('actions.seeAll')}
         </Link>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Quitter un groupe, c’est ne plus être pré-invité à ses sessions. Celles déjà rejointes ne
-        bougent pas.
-      </p>
+      <p className="text-sm text-muted-foreground">{t('description')}</p>
       <ul className="flex flex-col gap-3">
         {groups.slice(0, PREVIEW).map((group) => (
           <GroupCard key={group.id} group={group} meId={user.id} />

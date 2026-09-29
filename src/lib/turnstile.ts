@@ -4,6 +4,8 @@
  * elle-même est côté serveur uniquement (`data-access/turnstile.ts`).
  */
 
+import type { ErrorCode } from '@/domain/errors'
+
 /** Nom du champ que le widget dépose dans le formulaire, imposé par Cloudflare. */
 export const TURNSTILE_FIELD = 'cf-turnstile-response'
 
@@ -20,7 +22,8 @@ export const TURNSTILE_SCRIPT_SRC =
  */
 export type TurnstileVerdict = 'ok' | 'missing' | 'rejected'
 
-export const TURNSTILE_MESSAGES: Record<Exclude<TurnstileVerdict, 'ok'>, string> = {
-  missing: 'Vérification anti-robot en cours. Réessaie dans un instant.',
-  rejected: 'La vérification anti-robot a échoué. Recharge la page et réessaie.',
+/** Code d'erreur de chaque refus, traduit dans `errors.codes` (messages). */
+export const TURNSTILE_ERRORS: Record<Exclude<TurnstileVerdict, 'ok'>, ErrorCode> = {
+  missing: 'turnstile_missing',
+  rejected: 'turnstile_rejected',
 }

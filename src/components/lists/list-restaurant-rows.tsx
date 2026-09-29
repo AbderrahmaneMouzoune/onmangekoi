@@ -1,3 +1,5 @@
+import { useTranslations } from 'next-intl'
+
 import { RestaurantThumb } from '@/components/restaurants/restaurant-thumb'
 
 import type { Restaurant } from '@/data-access/models'
@@ -9,15 +11,17 @@ import type { Restaurant } from '@/data-access/models'
  */
 export function ListRestaurantRows({
   restaurants,
-  emptyLabel = 'Cette liste est encore vide.',
+  emptyLabel,
 }: {
   restaurants: Restaurant[]
+  /** « Cette liste est encore vide. » par défaut (`lists.rows.empty`). */
   emptyLabel?: string
 }) {
+  const t = useTranslations('lists.rows')
   if (restaurants.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-line-strong p-6 text-center text-sm text-muted-foreground">
-        {emptyLabel}
+        {emptyLabel ?? t('empty')}
       </p>
     )
   }

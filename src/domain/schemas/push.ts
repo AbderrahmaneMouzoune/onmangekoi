@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { omkMessage } from '@/domain/errors'
 import { PUSH_STATUSES } from '@/domain/push'
 
 /** Les bornes de `public.push_subscriptions` : la base les rejoue et tranche en dernier. */
@@ -7,8 +8,8 @@ export const PUSH_ENDPOINT_MAX = 2048
 const BASE64URL = /^[A-Za-z0-9_-]+=*$/
 
 export const PushEndpointSchema = z
-  .url({ protocol: /^https$/, error: 'Abonnement invalide' })
-  .max(PUSH_ENDPOINT_MAX, 'Abonnement invalide')
+  .url({ protocol: /^https$/, error: omkMessage('invalid_push_subscription') })
+  .max(PUSH_ENDPOINT_MAX, omkMessage('invalid_push_subscription'))
 
 /**
  * Ce que `PushSubscription.toJSON()` rend dans le navigateur — les seuls
@@ -18,8 +19,8 @@ export const PushEndpointSchema = z
 export const PushSubscriptionSchema = z.object({
   endpoint: PushEndpointSchema,
   keys: z.object({
-    p256dh: z.string().min(1).max(256).regex(BASE64URL, 'Abonnement invalide'),
-    auth: z.string().min(1).max(64).regex(BASE64URL, 'Abonnement invalide'),
+    p256dh: z.string().min(1).max(256).regex(BASE64URL, omkMessage('invalid_push_subscription')),
+    auth: z.string().min(1).max(64).regex(BASE64URL, omkMessage('invalid_push_subscription')),
   }),
 })
 

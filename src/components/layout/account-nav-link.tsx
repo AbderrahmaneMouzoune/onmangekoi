@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { AccountMenu } from '@/components/layout/account-menu'
 import { VisitMemo } from '@/components/layout/visit-memo'
@@ -18,7 +20,10 @@ import { cn } from '@/lib/utils'
  */
 export async function AccountNavLink() {
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
-  const profile = user ? await getProfile(supabase, user.id) : null
+  const [profile, t] = await Promise.all([
+    user ? getProfile(supabase, user.id) : null,
+    getTranslations('common.people'),
+  ])
 
   if (!user) {
     return (
@@ -33,7 +38,7 @@ export async function AccountNavLink() {
     <>
       <VisitMemo account />
       <AccountMenu
-        pseudo={displayPseudo(profile?.pseudo)}
+        pseudo={displayPseudo(profile?.pseudo, t('guest'))}
         isAnonymous={Boolean(user.is_anonymous)}
       />
     </>
@@ -42,12 +47,13 @@ export async function AccountNavLink() {
 
 /** Bouton des visiteurs sans pseudo — partagé avec la silhouette de l'en-tête. */
 export function ChoosePseudoLink({ className }: { className?: string }) {
+  const t = useTranslations('layout.header')
   return (
     <Link
       href={router.setup()}
       className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), className)}
     >
-      Choisir un pseudo
+      {t('choosePseudo')}
     </Link>
   )
 }

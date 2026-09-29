@@ -3,9 +3,17 @@ import { compareVersions } from '@/lib/version'
 import { RELEASE_NOTES } from './entries'
 
 import type { ReleaseNote } from './types'
+import type { Locale } from '@/i18n/config'
 
 export { CHANGE_KINDS, ChangeSchema, ReleaseNoteSchema } from './types'
 export type { Change, ChangeKind, ReleaseNote } from './types'
+
+/**
+ * Langue des notes de version (issue #14). Elles sont du contenu éditorial,
+ * rédigé en français après chaque release : l'interface de `/nouveautes` se
+ * traduit, pas elles — ni le flux RSS qui les reprend.
+ */
+export const CHANGELOG_LOCALE: Locale = 'fr'
 
 /** Notes de version, de la plus récente à la plus ancienne. */
 export function getReleaseNotes(): ReleaseNote[] {

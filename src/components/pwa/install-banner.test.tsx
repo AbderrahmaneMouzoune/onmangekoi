@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { act, render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -11,6 +11,7 @@ import {
   resetInstallOfferCache,
 } from '@/lib/pwa/install-offer'
 import { INSTALL_PROMPT_CHANGE } from '@/lib/pwa/install-prompt'
+import { renderWithIntl } from '@/test/render'
 
 import { InstallBanner } from './install-banner'
 
@@ -55,7 +56,7 @@ describe('InstallBanner', () => {
   })
 
   it('should not show before a first successful session', () => {
-    render(<InstallBanner />)
+    renderWithIntl(<InstallBanner />)
     browserOffersInstall(fakePrompt().event)
 
     expect(screen.queryByRole('button', { name: 'Installer' })).not.toBeInTheDocument()
@@ -63,7 +64,7 @@ describe('InstallBanner', () => {
 
   it('should not show without a browser prompt, even after a session', () => {
     markSessionCompleted()
-    render(<InstallBanner />)
+    renderWithIntl(<InstallBanner />)
 
     expect(screen.queryByRole('region')).not.toBeInTheDocument()
   })
@@ -72,7 +73,7 @@ describe('InstallBanner', () => {
     const user = userEvent.setup()
     markSessionCompleted()
     const { event, prompt } = fakePrompt('accepted')
-    render(<InstallBanner />)
+    renderWithIntl(<InstallBanner />)
     browserOffersInstall(event)
 
     expect(
@@ -89,7 +90,7 @@ describe('InstallBanner', () => {
   it('should remember « Plus tard » and step aside', async () => {
     const user = userEvent.setup()
     markSessionCompleted()
-    render(<InstallBanner />)
+    renderWithIntl(<InstallBanner />)
     browserOffersInstall(fakePrompt().event)
 
     await user.click(screen.getByRole('button', { name: 'Plus tard' }))
@@ -102,7 +103,7 @@ describe('InstallBanner', () => {
   it('should stay hidden once the app runs installed', () => {
     window.matchMedia = vi.fn(() => ({ matches: true }) as unknown as MediaQueryList)
     markSessionCompleted()
-    render(<InstallBanner />)
+    renderWithIntl(<InstallBanner />)
     browserOffersInstall(fakePrompt().event)
 
     expect(screen.queryByRole('button', { name: 'Installer' })).not.toBeInTheDocument()

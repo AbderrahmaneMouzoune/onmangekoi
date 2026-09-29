@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { AppError, GENERIC_ERROR, OMK_MESSAGES, omkCode, omkError, toUserMessage } from './errors'
+import { AppError, omkCode, omkError } from './errors'
 
 describe('omkCode', () => {
   it('should extract the code from a database business error', () => {
@@ -16,33 +16,18 @@ describe('omkCode', () => {
   })
 })
 
-describe('toUserMessage', () => {
-  it('should translate every known business code', () => {
-    for (const [code, message] of Object.entries(OMK_MESSAGES)) {
-      expect(toUserMessage({ message: `omk:${code}` })).toBe(message)
-    }
-  })
-
-  it('should never leak a raw Postgres message', () => {
-    const raw = 'permission denied for table sessions'
-    expect(toUserMessage(new Error(raw))).toBe(GENERIC_ERROR)
-    expect(toUserMessage(new Error(raw))).not.toContain('sessions')
-  })
-
-  it('should use the provided fallback for unknown codes', () => {
-    expect(toUserMessage({ message: 'omk:unknown_code' }, 'Oups')).toBe('Oups')
-  })
-
-  it('should keep AppError messages when passed through the fallback', () => {
-    const error = new AppError('Sélectionne au moins un restaurant.')
-    expect(toUserMessage(error, error.message)).toBe('Sélectionne au moins un restaurant.')
+describe('omkError', () => {
+  it('should build an error the rest of the app reads like a database one', () => {
+    expect(omkCode(omkError('too_many_attempts'))).toBe('too_many_attempts')
   })
 })
 
-describe('omkError', () => {
-  it('should build an error the rest of the app reads like a database one', () => {
-    const error = omkError('too_many_attempts')
-    expect(omkCode(error)).toBe('too_many_attempts')
-    expect(toUserMessage(error)).toBe(OMK_MESSAGES.too_many_attempts)
+describe('AppError', () => {
+  it('should follow the database contract, with the values of its message', () => {
+    const error = new AppError('all_recent_winners', { days: 7 })
+    expect(omkCode(error)).toBe('all_recent_winners')
+    expect(error.code).toBe('all_recent_winners')
+    expect(error.values).toEqual({ days: 7 })
+    expect(error).toBeInstanceOf(Error)
   })
 })

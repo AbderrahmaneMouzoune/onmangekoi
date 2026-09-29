@@ -1,5 +1,7 @@
 import { RiArrowRightLine } from '@remixicon/react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
+import { getLocale, getTranslations } from 'next-intl/server'
 
 import { PendingInvitations } from '@/components/home/pending-invitations'
 import { VisitMemo } from '@/components/layout/visit-memo'
@@ -12,7 +14,7 @@ import { getMyPendingInvitations } from '@/data-access/groups'
 import { getListsByOwner } from '@/data-access/lists'
 import { getMySessions } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
-import { countLabel, relativeDate } from '@/lib/format'
+import { relativeDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 /**
@@ -26,10 +28,13 @@ export async function HomeDashboard() {
   if (!user) return null
 
   // Les trois lectures sont indépendantes : un seul aller-retour de latence.
-  const [sessions, lists, invitations] = await Promise.all([
+  const [sessions, lists, invitations, t, tCommon, locale] = await Promise.all([
     getMySessions(supabase),
     getListsByOwner(supabase, user.id),
     getMyPendingInvitations(supabase),
+    getTranslations('home.dashboard'),
+    getTranslations('common'),
+    getLocale(),
   ])
 
   return (
@@ -41,15 +46,15 @@ export async function HomeDashboard() {
       {sessions.length > 0 && (
         <section className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-lg font-bold">Tes sessions</h2>
+            <h2 className="text-lg font-bold">{t('sessions')}</h2>
             <Link
               href={router.sessions()}
               className="text-sm font-medium text-brand hover:underline"
             >
-              Tout voir
+              {tCommon('actions.seeAll')}
             </Link>
           </div>
-          <ArrowKeyList aria-label="Tes sessions" className="flex flex-col gap-2">
+          <ArrowKeyList aria-label={t('sessions')} className="flex flex-col gap-2">
             {sessions.map((session) => (
               <li key={session.id}>
                 <Link
@@ -63,8 +68,12 @@ export async function HomeDashboard() {
                   <div className="flex min-w-0 flex-col gap-0.5">
                     <span className="truncate font-semibold">{session.name}</span>
                     <span className="text-xs text-muted-foreground">
-                      {countLabel(session.participant_count, 'participant')} ·{' '}
-                      {relativeDate(session.created_at)}
+                      {t('sessionMeta', {
+                        participants: tCommon('counts.participants', {
+                          count: session.participant_count,
+                        }),
+                        date: relativeDate(session.created_at, locale),
+                      })}
                     </span>
                   </div>
                   <SessionStatusBadge status={session.status} />
@@ -77,18 +86,18 @@ export async function HomeDashboard() {
 
       <section className={cn('flex flex-col gap-3', sessions.length === 0 && 'lg:col-span-2')}>
         <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-bold">Tes listes</h2>
+          <h2 className="text-lg font-bold">{t('lists')}</h2>
           <Link
             href={router.lists()}
             className="rounded-sm text-sm font-medium text-brand hover:underline"
           >
-            Tout voir
+            {tCommon('actions.seeAll')}
           </Link>
         </div>
         {lists.length === 0 ? (
           <FirstListInvite />
         ) : (
-          <ArrowKeyList orientation="both" aria-label="Tes listes" className="flex flex-wrap gap-2">
+          <ArrowKeyList orientation="both" aria-label={t('lists')} className="flex flex-wrap gap-2">
             {lists.slice(0, 6).map((list) => (
               <li key={list.id}>
                 <Link
@@ -111,6 +120,7 @@ export async function HomeDashboard() {
 
 /** Invite à créer une première liste — partagée avec la silhouette. */
 function FirstListInvite({ className }: { className?: string }) {
+  const t = useTranslations('home.dashboard')
   return (
     <Link
       href={router.listNew()}
@@ -119,7 +129,7 @@ function FirstListInvite({ className }: { className?: string }) {
         className
       )}
     >
-      <span>Crée ta première liste de favoris</span>
+      <span>{t('firstList')}</span>
       <RiArrowRightLine aria-hidden="true" className="size-4" />
     </Link>
   )
@@ -133,13 +143,15 @@ function FirstListInvite({ className }: { className?: string }) {
  * fait en CSS, sur l'attribut posé avant le premier pixel (`visit-hint.ts`).
  */
 export function HomeDashboardFallback() {
+  const t = useTranslations('home.dashboard')
+  const tCommon = useTranslations('common')
   return (
     <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-8">
       <section aria-busy="true" className="hidden flex-col gap-3 seen-sessions:flex">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-bold">Tes sessions</h2>
+          <h2 className="text-lg font-bold">{t('sessions')}</h2>
           <Link href={router.sessions()} className="text-sm font-medium text-brand hover:underline">
-            Tout voir
+            {tCommon('actions.seeAll')}
           </Link>
         </div>
         <div className="flex flex-col gap-2">
@@ -155,12 +167,12 @@ export function HomeDashboardFallback() {
         className="hidden flex-col gap-3 lg:col-span-2 seen-account:flex seen-sessions:lg:col-span-1"
       >
         <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-bold">Tes listes</h2>
+          <h2 className="text-lg font-bold">{t('lists')}</h2>
           <Link
             href={router.lists()}
             className="rounded-sm text-sm font-medium text-brand hover:underline"
           >
-            Tout voir
+            {tCommon('actions.seeAll')}
           </Link>
         </div>
         {/* Personne connue sans liste : l'invite affichée est déjà la bonne. */}

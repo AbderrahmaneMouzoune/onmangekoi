@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { omkMessage, type ErrorCode } from '@/domain/errors'
+
 export const RESTAURANT_NAME_MIN = 2
 export const RESTAURANT_NAME_MAX = 100
 export const RESTAURANT_CUISINE_MAX = 40
@@ -16,18 +18,11 @@ export const PRICE_LEVEL_LABELS: Record<number, string> = { 1: '€', 2: '€€
  * un régime demande donc une migration, pas seulement une ligne ici.
  *
  * L'ordre est celui d'affichage — la base, elle, range les régimes par ordre
- * alphabétique pour que deux restos tagués pareil aient le même tableau.
+ * alphabétique pour que deux restos tagués pareil aient le même tableau. Les
+ * libellés sont dans les messages (`restaurants.tags.<régime>`).
  */
 export const RESTAURANT_TAGS = ['vegetarian', 'vegan', 'halal', 'kosher', 'gluten_free'] as const
 export type RestaurantTag = (typeof RESTAURANT_TAGS)[number]
-
-export const RESTAURANT_TAG_LABELS: Record<RestaurantTag, string> = {
-  vegetarian: 'Végétarien',
-  vegan: 'Vegan',
-  halal: 'Halal',
-  kosher: 'Casher',
-  gluten_free: 'Sans gluten',
-}
 
 /** Régimes d'un formulaire : absents, dédoublonnés, jamais inventés. */
 export const RestaurantTagsSchema = z
@@ -42,20 +37,20 @@ export const RestaurantTagsSchema = z
  * ne pas stocker de chaîne vide en base. Le `.default(null)` rend aussi la
  * clé facultative dans l'objet parent.
  */
-function optionalText(max: number, message: string) {
+function optionalText(max: number, code: ErrorCode) {
   return z
     .union([z.string(), z.null()])
     .default(null)
     .transform((value) => (value === null ? '' : value.trim()))
-    .pipe(z.string().max(max, message))
+    .pipe(z.string().max(max, omkMessage(code)))
     .transform((value) => (value.length > 0 ? value : null))
 }
 
 export const RestaurantNameSchema = z
   .string()
   .trim()
-  .min(RESTAURANT_NAME_MIN, `Le nom doit faire au moins ${RESTAURANT_NAME_MIN} caractères`)
-  .max(RESTAURANT_NAME_MAX, `Le nom ne peut pas dépasser ${RESTAURANT_NAME_MAX} caractères`)
+  .min(RESTAURANT_NAME_MIN, omkMessage('invalid_restaurant_name'))
+  .max(RESTAURANT_NAME_MAX, omkMessage('invalid_restaurant_name'))
 
 /** Accepte le nombre, la chaîne d'un champ de formulaire et l'absence de choix. */
 export const PriceLevelSchema = z
@@ -69,18 +64,9 @@ export const PriceLevelSchema = z
 
 export const CreateRestaurantSchema = z.object({
   name: RestaurantNameSchema,
-  cuisineType: optionalText(
-    RESTAURANT_CUISINE_MAX,
-    `Le type de cuisine ne peut pas dépasser ${RESTAURANT_CUISINE_MAX} caractères`
-  ),
-  address: optionalText(
-    RESTAURANT_ADDRESS_MAX,
-    `L’adresse ne peut pas dépasser ${RESTAURANT_ADDRESS_MAX} caractères`
-  ),
-  city: optionalText(
-    RESTAURANT_CITY_MAX,
-    `La ville ne peut pas dépasser ${RESTAURANT_CITY_MAX} caractères`
-  ),
+  cuisineType: optionalText(RESTAURANT_CUISINE_MAX, 'cuisine_too_long'),
+  address: optionalText(RESTAURANT_ADDRESS_MAX, 'address_too_long'),
+  city: optionalText(RESTAURANT_CITY_MAX, 'city_too_long'),
   priceLevel: PriceLevelSchema,
   tags: RestaurantTagsSchema,
 })

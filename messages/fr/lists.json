@@ -1,0 +1,84 @@
+{
+  "page": {
+    "eyebrow": "Favoris",
+    "title": "Mes listes",
+    "description": "Des restos prêts à importer dans une session.",
+    "new": "Nouvelle"
+  },
+  "newPage": {
+    "title": "Nouvelle liste",
+    "description": "Nomme-la, remplis-la : tu la ressortiras dans tes sessions."
+  },
+  "overview": {
+    "meta": "{count, plural, one {# resto} other {# restos}} · modifiée {updated}",
+    "collaborative": "Collaborative",
+    "empty": {
+      "title": "Aucune liste pour l’instant",
+      "description": "Regroupe les restos du bureau, du quartier, du vendredi soir… et importe-les en un clic.",
+      "action": "Créer ma première liste"
+    }
+  },
+  "identity": {
+    "eyebrow": "Liste de favoris",
+    "description": "Une réserve de restos à ressortir dans tes sessions. Ici, on ne lance pas de vote."
+  },
+  "form": {
+    "name": "Nom de la liste",
+    "namePlaceholder": "Restos du bureau",
+    "restaurants": "Les restos de la liste",
+    "restaurantsHint": "Tu pourras en ajouter ou en retirer plus tard.",
+    "submitEmpty": "Enregistrer la liste vide",
+    "submit": "Enregistrer la liste · {count, plural, one {# resto} other {# restos}}"
+  },
+  "editor": {
+    "name": "Nom",
+    "rename": "Renommer",
+    "renamed": "Liste renommée.",
+    "share": {
+      "title": "Partager",
+      "code": "Code",
+      "copyLink": "Copier le lien",
+      "audience": {
+        "public": "N’importe qui peut voir la liste.",
+        "link": "Toute personne avec le lien peut voir la liste.",
+        "publicCollaborative": "N’importe qui peut voir la liste et y ajouter des restos.",
+        "linkCollaborative": "Toute personne avec le lien peut voir la liste et y ajouter des restos."
+      },
+      "collaborative": "Collaborative",
+      "readOnly": "Lecture seule",
+      "public": "Publique",
+      "private": "Privée",
+      "publicNote": "Cette liste a sa page publique : son nom, ses adresses et ses cuisines — jamais ton pseudo. Elle peut être trouvée sur le web.",
+      "privateNote": "En publique, la liste gagne une page présentable, un aperçu quand on la partage, et peut être trouvée sur le web. Ton pseudo n’y figure jamais."
+    },
+    "delete": "Supprimer la liste",
+    "confirmDelete": "Confirmer la suppression",
+    "count": "{count, plural, one {# restaurant} other {# restaurants}}",
+    "add": "Ajouter",
+    "addSelected": "{count, plural, =0 {Ajouter} other {Ajouter #}}",
+    "empty": "Liste vide. Ajoute des restos pour pouvoir l’importer dans une session.",
+    "remove": "Retirer {name}"
+  },
+  "rows": {
+    "empty": "Cette liste est encore vide."
+  },
+  "public": {
+    "eyebrow": "Liste publique",
+    "description": "{count, plural, one {# resto} other {# restos}} à se partager.",
+    "empty": "Cette liste n’a pas encore d’adresse.",
+    "pitch": "onmangekoi départage les restos d’un groupe en deux minutes, sans compte.",
+    "top": "Le plus souvent choisi : <strong>{restaurant}</strong>",
+    "topWithWins": "Le plus souvent choisi : <strong>{restaurant}</strong> — {count, plural, one {# fois} other {# fois}}"
+  },
+  "shared": {
+    "ownerEyebrow": "Liste de {owner}",
+    "count": "{count, plural, one {# resto} other {# restos}}",
+    "public": "Publique",
+    "collaborative": "Collaborative",
+    "yours": "C’est ta liste — la modifier",
+    "addOne": "Ajouter un resto à cette liste",
+    "add": "Ajouter",
+    "save": "Enregistrer dans mes listes"
+  },
+  "start": "Lancer une session depuis cette liste"
+}

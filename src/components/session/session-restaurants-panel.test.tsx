@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { SessionRestaurantsPanel } from './session-restaurants-panel'
 
@@ -90,7 +92,7 @@ const RESTAURANTS = [
 
 function renderPanel(props: Partial<Parameters<typeof SessionRestaurantsPanel>[0]> = {}) {
   const onChanged = vi.fn()
-  render(
+  renderWithIntl(
     <SessionRestaurantsPanel
       sessionId="session-1"
       restaurants={RESTAURANTS}
@@ -168,6 +170,15 @@ describe('SessionRestaurantsPanel', () => {
       await screen.findByText('Tu ne peux retirer que les restos que tu as ajoutés.')
     ).toBeInTheDocument()
     expect(onChanged).not.toHaveBeenCalled()
+  })
+
+  it('should flag how many participants cannot eat somewhere, without naming anyone', () => {
+    renderPanel({ isHost: true, conflicts: { 'resto-2': 2 } })
+    const badge = screen.getByText('2 participants ne peuvent pas y manger')
+    expect(screen.getByText('Pizza Napolitana').closest('li')).toContainElement(badge)
+    // Signalé, pas interdit : le host peut garder ou retirer, comme avant.
+    expect(screen.getByRole('button', { name: /retirer pizza napolitana/i })).toBeInTheDocument()
+    expect(screen.getByText('Sushi Bar Sakura').closest('li')).not.toHaveTextContent(/y manger/)
   })
 
   it('should hide the add form when the catalogue was not loaded', () => {

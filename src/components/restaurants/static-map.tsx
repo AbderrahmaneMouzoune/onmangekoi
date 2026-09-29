@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { useTranslations } from 'next-intl'
 
 import { staticMap } from '@/lib/maps'
 import { cn } from '@/lib/utils'
@@ -19,6 +20,7 @@ interface StaticMapProps {
  */
 export function StaticMap({ point, label, zoom, className }: StaticMapProps) {
   const map = staticMap(point, zoom)
+  const t = useTranslations('restaurants.map')
 
   return (
     <figure
@@ -52,7 +54,7 @@ export function StaticMap({ point, label, zoom, className }: StaticMapProps) {
           rel="noreferrer noopener"
           className="shrink-0 underline underline-offset-2"
         >
-          © OpenStreetMap
+          {t('attribution')}
         </a>
       </figcaption>
     </figure>

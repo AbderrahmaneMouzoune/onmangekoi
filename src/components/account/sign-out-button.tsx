@@ -1,12 +1,14 @@
 'use client'
 
 import { RiLogoutBoxRLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useTransition } from 'react'
 
 import { signOutAction } from '@/actions/auth'
 import { TwoStepButton } from '@/components/ui/two-step-button'
 
 export function SignOutButton({ isAnonymous }: { isAnonymous: boolean }) {
+  const t = useTranslations('account.signOut')
   const [isPending, startTransition] = useTransition()
 
   return (
@@ -16,14 +18,10 @@ export function SignOutButton({ isAnonymous }: { isAnonymous: boolean }) {
       label={
         <>
           <RiLogoutBoxRLine aria-hidden="true" />
-          Se déconnecter
+          {t('label')}
         </>
       }
-      confirmLabel={
-        isAnonymous
-          ? 'Confirmer — sans email lié, tes listes seront perdues'
-          : 'Confirmer la déconnexion'
-      }
+      confirmLabel={isAnonymous ? t('confirmAnonymous') : t('confirm')}
       onConfirm={() => startTransition(() => signOutAction())}
       disabled={isPending}
     />

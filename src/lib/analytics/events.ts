@@ -17,7 +17,10 @@ export type ShareMethod = 'code_copy' | 'link_copy' | 'native_share' | 'qr'
 /** Chemin emprunté pour entrer dans une session. */
 export type JoinMethod = 'code' | 'link' | 'scan'
 
-/** Qui a mis fin à la session : le host, le vote complet, ou l'échéance. */
+/**
+ * Qui a mis fin à la session : le host, le vote complet, l'échéance, ou
+ * l'accord d'un duo.
+ */
 export type CloseReason = SessionCloseReason
 
 /** Comment le host a tranché une égalité parfaite. */
@@ -61,6 +64,8 @@ export interface AnalyticsEventMap {
     close_at_ratio: number
     /** Session ouverte : pas de salle d'attente, on vote à son heure (issue #58) */
     open: boolean
+    /** Mode duo : deux places, le premier accord décide (issue #61) */
+    duo: boolean
     /** Sélection proposée à la création (issue #59) : restos proposés, et gardés */
     suggested_count: number
     suggested_kept: number
@@ -115,6 +120,17 @@ export interface AnalyticsEventMap {
     /** Le host revient-il sur une décision déjà posée ? */
     is_change: boolean
   }
+  /**
+   * Un duo vient de tomber d'accord (issue #61) : le bulletin qui l'a scellé
+   * ferme la session et pose la décision. Envoyé une seule fois, par qui a
+   * voté en second — jamais le restaurant.
+   */
+  duo_matched: {
+    session_id: string
+    /** Rang de la carte votée, à partir de 1 : combien de cartes a-t-il fallu */
+    position: number
+    restaurant_count: number
+  }
   list_shared: {
     method: ShareMethod
   }
@@ -161,6 +177,15 @@ export interface AnalyticsEventMap {
   push_subscribed: {
     session_id: string
     context: PushOptInContext
+  }
+  /**
+   * La personne a enregistré ce qu'elle ne peut pas manger (issue #60). Un
+   * compte, et rien d'autre : jamais quels régimes ni quel budget — un
+   * régime halal ou casher dit une religion, un sans gluten une santé.
+   */
+  constraints_updated: {
+    /** Régimes déclarés, plus un si un budget maximum est posé. 0 : tout retiré. */
+    constraint_count: number
   }
 }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { RiDownload2Line } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
 import { useAnalyticsConsent } from '@/hooks/use-analytics-consent'
@@ -15,6 +16,7 @@ import { useInstallOffer } from '@/hooks/use-install-offer'
  * Elle s'efface derrière le bandeau de consentement : une question à la fois.
  */
 export function InstallBanner() {
+  const t = useTranslations('pwa.install')
   const { visible, install, dismiss } = useInstallOffer()
   const consent = useAnalyticsConsent()
 
@@ -32,12 +34,9 @@ export function InstallBanner() {
           </span>
           <div className="flex flex-col gap-1">
             <h2 id="install-title" className="font-display text-base font-semibold text-chalk">
-              Garder onmangekoi sous la main
+              {t('title')}
             </h2>
-            <p className="text-sm text-chalk-muted">
-              Installe l’app sur ton écran d’accueil : elle s’ouvre d’un geste, en plein écran, pour
-              la prochaine pause déjeuner.
-            </p>
+            <p className="text-sm text-chalk-muted">{t('description')}</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -47,10 +46,10 @@ export function InstallBanner() {
             className="text-chalk hover:bg-chalk/10 hover:text-chalk"
             onClick={dismiss}
           >
-            Plus tard
+            {t('later')}
           </Button>
           <Button type="button" onClick={() => void install()}>
-            Installer
+            {t('install')}
           </Button>
         </div>
       </div>

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { FinishedPanel } from './finished-panel'
 import { OpenSessionPanel } from './open-session-panel'
@@ -56,7 +58,7 @@ function participant(profileId: string, finished = false): ParticipantWithProfil
 }
 
 function renderPanel(participants: ParticipantWithProfile[], isHost = true) {
-  return render(
+  return renderWithIntl(
     <OpenSessionPanel
       session={session}
       rules={OPEN_RULES}
@@ -92,7 +94,7 @@ describe('OpenSessionPanel', () => {
 
 describe('FinishedPanel in an open session', () => {
   it('should not wait for anyone: the deadline closes the vote', () => {
-    render(
+    renderWithIntl(
       <FinishedPanel
         session={session}
         participants={[participant(HOST_ID, true), participant(GUEST_ID)]}

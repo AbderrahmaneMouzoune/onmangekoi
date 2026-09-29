@@ -7,6 +7,7 @@ import {
   RiGoogleLine,
   RiSearchLine,
 } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from 'react'
 
 import { importPlaceAction } from '@/actions/places'
@@ -28,6 +29,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { NO_FOOD_CONSTRAINTS } from '@/domain/food-constraints'
 import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
 import { countActiveFilters, NO_FILTERS } from '@/domain/restaurant-filters'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
@@ -37,6 +39,7 @@ import { geoPoint } from '@/lib/maps'
 import type { ListWithRestaurantIds } from '@/data-access/lists'
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { FoodConstraints } from '@/domain/food-constraints'
 import type { PlaceResult, PlacesPage } from '@/domain/places'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { RestaurantFilters } from '@/domain/restaurant-filters'
@@ -44,12 +47,6 @@ import type { RestaurantFilters } from '@/domain/restaurant-filters'
 const NO_LISTS: ListWithRestaurantIds[] = []
 const NO_IDS: string[] = []
 const NO_RESTAURANTS: Restaurant[] = []
-
-const SEARCH_PLACEHOLDER: Record<RestaurantSource, string> = {
-  lists: '',
-  base: 'Chercher un resto ou une cuisine',
-  google: 'Chercher un resto chez Google',
-}
 
 interface RestaurantPickerProps {
   /** Première page du carnet, chargée côté serveur */
@@ -68,8 +65,15 @@ interface RestaurantPickerProps {
   recentWinners?: RecentWinnerDates
   /** Anti-fatigue actif : les gagnants récents sont écartés, donc ni cochés ni cochables */
   excludeRecent?: boolean
+  /**
+   * Ses propres contraintes alimentaires (#60) : un resto du carnet qui les
+   * heurte est badgé — pas masqué, pas bloqué. Celles des autres ne se
+   * lisent jamais ici.
+   */
+  myConstraints?: FoodConstraints
   /** name des inputs hidden pour un envoi via formulaire */
   inputName?: string
+  /** Phrase quand le carnet ne trouve rien ; par défaut, « Aucun resto du carnet ne correspond. » */
   emptyLabel?: string
   /**
    * Listes de favoris proposées comme source, au même niveau que le carnet et
@@ -107,8 +111,9 @@ export function RestaurantPicker({
   lockedIds = NO_IDS,
   recentWinners = NO_RECENT_WINNERS,
   excludeRecent = false,
+  myConstraints = NO_FOOD_CONSTRAINTS,
   inputName,
-  emptyLabel = 'Aucun resto du carnet ne correspond.',
+  emptyLabel,
   lists = NO_LISTS,
   selectedListIds = NO_IDS,
   onListsChange,
@@ -118,6 +123,7 @@ export function RestaurantPicker({
   onFiltersChange,
 }: RestaurantPickerProps) {
   const sources = useRestaurantSources()
+  const t = useTranslations('restaurants.picker')
   const hasLists = Boolean(onListsChange) && lists.length > 0
 
   const tabs = useMemo<SourceTab[]>(
@@ -126,7 +132,6 @@ export function RestaurantPicker({
         ? [
             {
               key: 'lists' as const,
-              label: 'Mes listes',
               icon: <RiBookmarkLine aria-hidden="true" />,
               count: selectedListIds.length,
             },
@@ -134,11 +139,10 @@ export function RestaurantPicker({
         : []),
       {
         key: 'base' as const,
-        label: 'Le carnet',
         icon: <RiContactsBook2Line aria-hidden="true" />,
       },
       ...(sources.google
-        ? [{ key: 'google' as const, label: 'Google', icon: <RiGoogleLine aria-hidden="true" /> }]
+        ? [{ key: 'google' as const, icon: <RiGoogleLine aria-hidden="true" /> }]
         : []),
     ],
     [hasLists, selectedListIds.length, sources.google]
@@ -436,8 +440,8 @@ export function RestaurantPicker({
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={SEARCH_PLACEHOLDER[source]}
-              aria-label="Chercher un restaurant"
+              placeholder={source === 'google' ? t('searchGoogle') : t('searchBase')}
+              aria-label={t('searchLabel')}
               autoComplete="off"
               autoFocus={autoFocus}
               className="pl-10"
@@ -501,13 +505,14 @@ export function RestaurantPicker({
               }
               recentWinners={recentWinners}
               excludeRecent={excludeRecent}
+              myConstraints={myConstraints}
             />
           </>
         )}
 
         {showSearch && (
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-muted-foreground">Il n’est nulle part ?</p>
+            <p className="text-xs text-muted-foreground">{t('nowhere')}</p>
             <Button
               ref={addButtonRef}
               type="button"
@@ -516,7 +521,7 @@ export function RestaurantPicker({
               onClick={() => setIsAdding(true)}
             >
               <RiAddLine aria-hidden="true" />
-              Ajouter un resto à la main
+              {t('addManually')}
             </Button>
           </div>
         )}

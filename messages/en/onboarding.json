@@ -1,0 +1,19 @@
+{
+  "pseudo": {
+    "label": "Your nickname",
+    "placeholder": "E.g. Alex",
+    "help": "It’s the name the others will see. You can change it anytime.",
+    "submit": "Let’s go",
+    "submitJoin": "Join"
+  },
+  "setup": {
+    "invitation": "Invitation",
+    "invitedBy": "{host} invites you · {restaurants} · {participants}",
+    "askName": "What should we call you?",
+    "eyebrow": "First visit",
+    "title": "A nickname, that’s all.",
+    "lead": "No account to create. You can link one later to find your lists elsewhere.",
+    "hasAccount": "Already have an account?",
+    "signIn": "Sign in"
+  }
+}

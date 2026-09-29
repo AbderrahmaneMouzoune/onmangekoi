@@ -1,6 +1,7 @@
-import { expect, test, type Browser, type Page } from '@playwright/test'
-
 import { auditA11y } from './support/a11y'
+import { expect, test } from './support/i18n'
+
+import type { Browser, Page } from '@playwright/test'
 
 /**
  * La liste partagée comme objet public (issue #57).
@@ -15,22 +16,22 @@ import { auditA11y } from './support/a11y'
 test.describe('Liste publique', () => {
   test.skip(process.env.E2E !== '1', 'Nécessite une stack Supabase locale (E2E=1).')
 
-  test('du partage public à la session', async ({ browser }, testInfo) => {
+  test('du partage public à la session', async ({ browser, i18n: { t } }, testInfo) => {
     const owner = await newPage(browser)
     const visitor = await newPage(browser)
 
     // 1. Alex : onboarding + création de la liste
     await owner.goto('/lists/new')
     await expect(owner).toHaveURL(/\/setup\?next=/)
-    await owner.getByLabel('Ton pseudo').fill('Alex')
-    await owner.getByRole('button', { name: /c’est parti/i }).click()
+    await owner.getByLabel(t('onboarding.pseudo.label')).fill('Alex')
+    await owner.getByRole('button', { name: t('onboarding.pseudo.submit') }).click()
     await expect(owner).toHaveURL(/\/lists\/new$/)
 
-    await owner.getByLabel('Nom de la liste').fill('Les restos du bureau')
-    const results = owner.getByRole('list', { name: 'Résultats' })
+    await owner.getByLabel(t('lists.form.name')).fill('Les restos du bureau')
+    const results = owner.getByRole('list', { name: t('restaurants.catalog.label') })
     await results.getByRole('checkbox').nth(0).click()
     await results.getByRole('checkbox').nth(1).click()
-    await owner.getByRole('button', { name: /enregistrer la liste · 2 restos/i }).click()
+    await owner.getByRole('button', { name: t('lists.form.submit', { count: 2 }) }).click()
 
     // URL lisible : le code de partage, pas d'uuid
     await expect(owner).toHaveURL(/\/lists\/[0-9A-HJKMNP-TV-Z]{10}$/)
@@ -40,33 +41,37 @@ test.describe('Liste publique', () => {
     await visitor.goto(`/l/${code}`)
     await expect(visitor).toHaveURL(new RegExp(`/setup\\?next=%2Fl%2F${code}`))
 
-    await owner.getByRole('switch', { name: 'Privée' }).click()
+    const makePublic = owner.getByRole('switch', { name: t('lists.editor.share.private') })
+    const makePrivate = owner.getByRole('switch', { name: t('lists.editor.share.public') })
+    await makePublic.click()
     // La bascule est optimiste : elle ne se réactive qu'une fois l'écriture
     // confirmée en base — c'est ce qu'il faut attendre avant d'envoyer le visiteur.
-    await expect(owner.getByRole('switch', { name: 'Publique' })).toBeEnabled()
+    await expect(makePrivate).toBeEnabled()
 
     // 3. Le visiteur sans pseudo voit la page — et rien d'Alex
     await visitor.goto(`/l/${code}`)
     await expect(visitor.getByRole('heading', { name: 'Les restos du bureau' })).toBeVisible()
-    await expect(visitor.getByText('Liste publique')).toBeVisible()
+    await expect(visitor.getByText(t('lists.public.eyebrow'))).toBeVisible()
     await expect(visitor.getByText('Alex')).toHaveCount(0)
     await auditA11y(visitor, testInfo, 'liste publique')
 
     // 4. Lancer une session : onboarding, retour à la liste, puis la session
-    await visitor.getByRole('link', { name: /lancer une session/i }).click()
+    await visitor.getByRole('link', { name: t('lists.start') }).click()
     await expect(visitor).toHaveURL(new RegExp(`/setup\\?next=%2Fl%2F${code}`))
-    await visitor.getByLabel('Ton pseudo').fill('Sam')
-    await visitor.getByRole('button', { name: /c’est parti/i }).click()
+    await visitor.getByLabel(t('onboarding.pseudo.label')).fill('Sam')
+    await visitor.getByRole('button', { name: t('onboarding.pseudo.submit') }).click()
     await expect(visitor).toHaveURL(`/l/${code}`)
 
-    await visitor.getByRole('button', { name: /lancer une session/i }).click()
+    await visitor.getByRole('button', { name: t('lists.start') }).click()
     await expect(visitor).toHaveURL(/\/sessions\/[0-9A-HJKMNP-TV-Z]{6}$/)
     await expect(visitor.getByRole('heading', { name: 'Les restos du bureau' })).toBeVisible()
-    await expect(visitor.getByText('2 restos à départager')).toBeVisible()
+    await expect(
+      visitor.getByText(t('session.sessionRestaurants.title', { count: 2 }))
+    ).toBeVisible()
 
     // 5. Refermée d'un clic : la vitrine disparaît pour qui n'a pas de pseudo
-    await owner.getByRole('switch', { name: 'Publique' }).click()
-    await expect(owner.getByRole('switch', { name: 'Privée' })).toBeEnabled()
+    await makePrivate.click()
+    await expect(makePublic).toBeEnabled()
 
     const passerby = await newPage(browser)
     await passerby.goto(`/l/${code}`)

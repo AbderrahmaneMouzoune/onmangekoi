@@ -1,0 +1,113 @@
+{
+  "page": {
+    "eyebrow": "Compte",
+    "title": "Mon compte"
+  },
+  "authLink": {
+    "invalid": "Ce lien de confirmation est invalide.",
+    "expired": "Ce lien de confirmation a expiré. Renvoie un email depuis cette page.",
+    "confirmed": "Adresse email confirmée."
+  },
+  "identity": {
+    "linked": "Compte lié · {email}",
+    "guest": "Invité · sans compte"
+  },
+  "pseudo": {
+    "title": "Pseudo",
+    "label": "Pseudo",
+    "save": "Enregistrer",
+    "updated": "Pseudo mis à jour."
+  },
+  "link": {
+    "title": "Retrouver mes listes ailleurs",
+    "description": "Optionnel. Lier un email et un mot de passe permet de se reconnecter depuis un autre appareil. Tout le reste fonctionne sans.",
+    "emailStep": "Lier une adresse email",
+    "passwordStep": "Définir un mot de passe",
+    "afterConfirm": "Disponible une fois l’email confirmé."
+  },
+  "email": {
+    "label": "Adresse email",
+    "placeholder": "toi@exemple.fr",
+    "link": "Lier",
+    "resend": "Renvoyer",
+    "pending": "Un email de confirmation a été envoyé à <strong>{email}</strong>. Ouvre le lien pour valider.",
+    "sent": "Un email de confirmation a été envoyé à {email}. Ouvre le lien pour valider."
+  },
+  "password": {
+    "label": "Mot de passe",
+    "newLabel": "Nouveau mot de passe",
+    "confirm": "Confirmer",
+    "set": "Définir le mot de passe",
+    "change": "Changer le mot de passe",
+    "saved": "Mot de passe enregistré. Tu peux te connecter depuis un autre appareil."
+  },
+  "signOut": {
+    "label": "Se déconnecter",
+    "confirm": "Confirmer la déconnexion",
+    "confirmAnonymous": "Confirmer — sans email lié, tes listes seront perdues"
+  },
+  "login": {
+    "eyebrow": "Compte",
+    "title": "Retrouver mes listes",
+    "description": "Connecte-toi avec l’email et le mot de passe définis depuis ton autre appareil.",
+    "email": "Email",
+    "password": "Mot de passe",
+    "submit": "Se connecter",
+    "noAccount": "Pas de compte ? Il n’en faut pas : <link>choisis juste un pseudo</link>."
+  },
+  "stats": {
+    "title": "Mes statistiques",
+    "history": "Historique",
+    "empty": "Rien à compter pour l’instant. Après ta première session, tu retrouveras ici tes votes, ta cuisine préférée et le resto qui gagne le plus souvent.",
+    "sessions": "Sessions",
+    "sessionsHint": "{count, plural, one {# organisée} other {# organisées}}",
+    "votes": "Votes",
+    "votesHint": "{count, plural, one {# veto} other {# vetos}}",
+    "favourites": "Coups de cœur",
+    "favouritesHint": "{count, plural, one {# vote} other {# votes}}",
+    "favoriteCuisine": "Cuisine préférée",
+    "favoriteCuisineHint": "{count, plural, one {# vote positif} other {# votes positifs}}",
+    "topRestaurant": "Resto le plus souvent choisi",
+    "topRestaurantHint": "{count, plural, one {# victoire} other {# victoires}}",
+    "sessionsClosed": "Sessions terminées",
+    "privacy": "Ces chiffres ne comptent que tes votes à toi — jamais ceux des autres participants."
+  },
+  "groups": {
+    "title": "Mes groupes",
+    "description": "Quitter un groupe, c’est ne plus être pré-invité à ses sessions. Celles déjà rejointes ne bougent pas."
+  },
+  "foodConstraints": {
+    "title": "Ce que je ne peux pas manger",
+    "description": "Optionnel. Un resto qui ne te convient pas est signalé dans tes sessions, sans jamais dire qui : « 1 participant ne peut pas y manger ». Tu gardes ton veto pour trancher entre deux envies.",
+    "diets": "Régime à respecter",
+    "budget": "Budget maximum",
+    "noCap": "Pas de plafond",
+    "atMost": "Au plus {level}",
+    "save": "Enregistrer",
+    "saved": "C’est noté : tes sessions le signaleront.",
+    "cleared": "Plus rien de déclaré."
+  },
+  "analytics": {
+    "title": "Statistiques d’usage",
+    "on": "Activées. Elles mesurent le parcours (création, invitation, vote, classement) sans jamais transmettre ton pseudo, ton email ni tes codes.",
+    "off": "Désactivées. Aucune mesure n’est chargée : ni script, ni cookie, ni identifiant.",
+    "enable": "Activer",
+    "disable": "Désactiver"
+  },
+  "data": {
+    "title": "Mes données",
+    "description": "Récupère une copie de tout ce que l’app sait de toi, ou supprime ton compte. Le détail de ce qui est conservé est sur la <link>page confidentialité</link>.",
+    "export": "Exporter mes données (JSON)",
+    "exportFailed": "L’export a échoué. Réessaie dans un instant.",
+    "exportFileName": "onmangekoi-mes-donnees-{day}.json",
+    "deleteNote": "La suppression est immédiate et définitive. Une confirmation à recopier détaille ce qui disparaît avant de lancer quoi que ce soit."
+  },
+  "delete": {
+    "button": "Supprimer mon compte",
+    "title": "Supprimer mon compte ?",
+    "description": "Ton profil, ton pseudo, ton email et tes listes seront effacés définitivement. Les votes déjà comptés dans une session terminée restent dans le classement, mais plus rien ne les reliera à toi.",
+    "word": "effacer",
+    "prompt": "Écris <mono>{word}</mono> pour confirmer",
+    "submit": "Supprimer définitivement"
+  }
+}
