@@ -10,7 +10,7 @@
 4. Chacun vote dans son coin, carte par carte : **bof** · **ça me va** · **coup de cœur** · **veto**
 5. Quand tout le monde a voté (ou que l'heure limite tombe, ou que le host clôture), le **classement** s'affiche
 
-**Zéro friction** : tout est utilisable avec un simple pseudo. Lier un email et un mot de passe est optionnel et ne sert qu'à retrouver ses listes depuis un autre appareil.
+**Zéro friction** : tout est utilisable avec un simple pseudo. Lier un compte Google ou Apple, ou un email et un mot de passe, est optionnel et ne sert qu'à retrouver ses listes depuis un autre appareil.
 
 ## Système de vote
 
@@ -329,6 +329,21 @@ Tout se fait au clavier, et `?` affiche l'aide dans l'app :
 
 Les séquences (`src/lib/shortcuts.ts`) ne se déclenchent jamais dans un champ de saisie ni dans une modale, et une lettre tenue avec `Ctrl`, `Alt` ou `⌘` reste au navigateur. Le focus est toujours visible (contour tomate, `:focus-visible` global), il revient sur le bouton qui a ouvert un panneau quand celui-ci se ferme, et chaque changement d'état de la session — lancement du vote, clôture — est annoncé aux lecteurs d'écran et reçoit le focus.
 
+## Retrouver ses listes ailleurs
+
+Le pseudo crée un utilisateur anonyme : tout marche, mais seulement sur cet appareil. « Mon compte » propose deux façons de le rattacher à quelque chose qu'on retrouve ailleurs :
+
+| Parcours             | Sur « Mon compte »                                                           | Pour se reconnecter (`/login`) |
+| -------------------- | ---------------------------------------------------------------------------- | ------------------------------ |
+| Google ou Apple      | « Continuer avec Google / Apple » — un clic, pas d'email                     | le même bouton                 |
+| Email + mot de passe | lier l'adresse, ouvrir l'email de confirmation, puis définir le mot de passe | email et mot de passe          |
+
+Dans les deux cas, **l'utilisateur garde son `user_id`** : listes, sessions, votes et groupes restent les siens, rien n'est migré. Google et Apple passent par `linkIdentity`, qui ajoute une identité à l'utilisateur courant au lieu d'en créer un nouveau ; le retour du fournisseur arrive sur `/auth/callback`, qui échange le code PKCE contre la session (`exchangeCodeForSession`).
+
+Une identité Google ou Apple **déjà liée à un autre compte** ne se partage pas : Supabase renvoie `identity_already_exists` dans l'URL de retour, traduit en `omk:identity_taken`, qui invite à se connecter avec ce compte-là depuis `/login`. Symétriquement, « Continuer avec Google » sur `/login` avec une identité encore liée à personne crée un compte neuf : le retour mène alors à « Mon compte », qui le dit et propose de choisir un pseudo.
+
+Les boutons n'apparaissent que si `NEXT_PUBLIC_AUTH_PROVIDERS` les liste (`google,apple`) : tant que les identifiants ne sont pas créés, l'app reste sur le parcours email, sans rien casser en local ni en CI. La marche à suivre est dans [Déployer](#déployer-vercel--supabase-cloud).
+
 ## Stack
 
 | Couche     | Choix                                                                                    |
@@ -338,7 +353,7 @@ Les séquences (`src/lib/shortcuts.ts`) ne se déclenchent jamais dans un champ 
 | UI         | Tailwind CSS 4 · Base UI · Remix Icon · charte « L'ardoise »                             |
 | Données    | Supabase (PostgreSQL 17, RLS, RPC `security definer`)                                    |
 | Temps réel | Supabase Realtime (Postgres Changes, resync au retour au premier plan)                   |
-| Auth       | Utilisateur anonyme créé au choix du pseudo · email/mot de passe optionnel               |
+| Auth       | Utilisateur anonyme au choix du pseudo · Google, Apple ou email/mot de passe             |
 | Validation | Zod 4 · `@t3-oss/env-nextjs`                                                             |
 | Mesure     | PostHog (EU), après consentement — désactivée sans clé                                   |
 | Tests      | Vitest 5 + Testing Library · Playwright · axe-core · Lighthouse CI                       |
@@ -451,6 +466,7 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - **Aucune donnée personnelle n'est mise en cache.** Seul le catalogue public de restaurants est mémorisé, via un client Supabase sans cookie ; voir [Rendu et cache](#rendu-et-cache).
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.
 - Les messages d'erreur Postgres ne remontent jamais tels quels : seuls les codes métier `omk:*` sont traduits.
+- **Retours d'authentification** (`/auth/confirm`, `/auth/callback`) : la destination `next` passe par `sanitizeNextPath` — un chemin interne, jamais `//evil.com` ni une URL absolue. Les erreurs renvoyées par Supabase ou le fournisseur sont ramenées à un code `omk:` connu, jamais affichées telles quelles. Un fournisseur absent de `NEXT_PUBLIC_AUTH_PROVIDERS` est refusé par `startOAuthAction`, même en forgeant le formulaire.
 
 ## Anti-abus
 
@@ -500,9 +516,14 @@ Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adress
 ## Déployer (Vercel + Supabase cloud)
 
 1. Créer un projet Supabase, puis pousser le schéma : `supabase link --project-ref <ref>` et `supabase db push` (migrations, RLS, RPC, seed). Sans terminal sous la main, les mêmes opérations se pilotent depuis GitHub — voir [`docs/ci-database.md`](docs/ci-database.md).
-2. Dans Supabase → Authentication → URL Configuration : ajouter `https://<domaine>/auth/confirm` aux _Redirect URLs_ (compte optionnel).
+2. Dans Supabase → Authentication → URL Configuration : régler le _Site URL_ sur `https://<domaine>`, puis ajouter aux _Redirect URLs_ `https://<domaine>/auth/confirm` (email) et `https://<domaine>/auth/callback**` (Google et Apple — le `**` laisse passer `?intent=…&next=…`). Pour les previews Vercel, une entrée générique du type `https://*-<équipe>.vercel.app/**`.
 3. Dans Supabase → Database → Extensions : activer `pg_cron` si ce n'est pas déjà fait, puis rejouer les migrations de purge et de vote chronométré — sans l'extension elles s'appliquent quand même, mais leurs jobs ne sont pas planifiés (vérifier avec `select jobname, schedule from cron.job` : `omk-nightly-maintenance` et `omk-close-expired-sessions`).
-4. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
+4. Optionnel — **connexion Google et Apple** (voir [Retrouver ses listes ailleurs](#retrouver-ses-listes-ailleurs)). Dans les deux consoles, l'URL de retour à déclarer est celle de Supabase, pas celle du site : `https://<ref>.supabase.co/auth/v1/callback`.
+   - **Supabase → Authentication → Sign In / Providers** : activer **Allow manual linking** (sans elle, `linkIdentity` est refusé et l'utilisateur anonyme ne peut rien lier) — les connexions anonymes restent activées.
+   - **Google** — Google Cloud Console → _APIs & Services_ : configurer l'écran de consentement OAuth (type « Externe », nom de l'app, domaine autorisé `<domaine>` et `<ref>.supabase.co`, scopes `openid`, `email`, `profile`), puis _Credentials_ → _Create credentials_ → _OAuth client ID_ de type **Web application** : _Authorized JavaScript origins_ `https://<domaine>`, _Authorized redirect URIs_ `https://<ref>.supabase.co/auth/v1/callback`. Reporter le _Client ID_ et le _Client secret_ dans Supabase → Providers → Google.
+   - **Apple** — Apple Developer (compte payant) → _Certificates, Identifiers & Profiles_ : un **App ID** avec la capacité _Sign in with Apple_, puis un **Services ID** (ex. `fr.onmangekoi.web`) rattaché à cet App ID, avec le domaine `<ref>.supabase.co` et l'URL de retour `https://<ref>.supabase.co/auth/v1/callback` ; enfin une **clé** (_Keys_) avec _Sign in with Apple_, téléchargée une seule fois au format `.p8`. Dans Supabase → Providers → Apple : le _Services ID_ comme _Client ID_, et le _Secret Key_ — un JWT généré à partir de la clé `.p8`, du _Key ID_ et du _Team ID_ (Supabase fournit l'outil). **Ce secret expire au plus tous les six mois** : le régénérer avant, sinon la connexion Apple tombe.
+   - Enfin, dans Vercel, `NEXT_PUBLIC_AUTH_PROVIDERS=google,apple` (ou un seul des deux) pour faire apparaître les boutons, puis redéployer — la variable est lue au build.
+5. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
 
 | Variable                               | Valeur                                                    |
 | -------------------------------------- | --------------------------------------------------------- |
@@ -514,6 +535,7 @@ Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adress
 | `NEXT_PUBLIC_POSTHOG_HOST`             | optionnel — `https://eu.i.posthog.com` par défaut         |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`       | optionnel — active le captcha de l'onboarding             |
 | `TURNSTILE_SECRET_KEY`                 | optionnel — l'autre moitié du captcha (serveur seulement) |
+| `NEXT_PUBLIC_AUTH_PROVIDERS`           | optionnel — `google,apple` : boutons de connexion         |
 
 L'URL publique (`env.SITE_URL`, côté serveur) est résolue dans cet ordre : `NEXT_PUBLIC_SITE_URL` si définie et non locale, sinon les variables système Vercel — `VERCEL_PROJECT_PRODUCTION_URL` en production, `VERCEL_BRANCH_URL` / `VERCEL_URL` en preview — et enfin `http://localhost:3000` en développement. Un `localhost` copié par erreur dans les variables Vercel est ignoré.
 

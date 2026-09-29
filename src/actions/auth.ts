@@ -6,7 +6,15 @@ import { redirect } from 'next/navigation'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { createServerClient } from '@/data-access/supabase/server'
-import { LinkEmailSchema, LoginSchema, SetPasswordSchema } from '@/domain/schemas/auth'
+import { omkError, toUserMessage } from '@/domain/errors'
+import { oauthFailureFromCode } from '@/domain/oauth'
+import {
+  LinkEmailSchema,
+  LoginSchema,
+  OAuthStartSchema,
+  SetPasswordSchema,
+} from '@/domain/schemas/auth'
+import { env } from '@/env'
 import { sanitizeNextPath } from '@/lib/routing'
 import { absoluteUrl } from '@/lib/site'
 
@@ -92,6 +100,49 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
 
   revalidatePath(router.home(), 'layout')
   redirect(sanitizeNextPath(parsed.data.next, router.home()))
+}
+
+/**
+ * « Continuer avec Google / Apple ». Deux intentions, une seule route de retour :
+ *  - `link` (depuis « Mon compte ») : `linkIdentity` rattache l'identité à
+ *    l'utilisateur courant, anonyme ou non. Il garde son `user_id` — listes,
+ *    sessions et votes restent les siens, sans migration ;
+ *  - `login` (depuis `/login`) : on se reconnecte au compte déjà lié.
+ *
+ * Le client serveur pose le `code_verifier` PKCE en cookie avant de renvoyer
+ * l'URL du fournisseur ; `/auth/callback` le consomme au retour. Le
+ * fournisseur doit figurer dans `NEXT_PUBLIC_AUTH_PROVIDERS` : un bouton
+ * masqué ne doit pas rester appelable en forgeant le formulaire.
+ */
+export async function startOAuthAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = OAuthStartSchema.safeParse({
+    provider: formData.get('provider'),
+    intent: formData.get('intent'),
+    next: formData.get('next') ?? undefined,
+  })
+  if (!parsed.success || !env.NEXT_PUBLIC_AUTH_PROVIDERS.includes(parsed.data.provider)) {
+    return { error: toUserMessage(omkError('oauth_unavailable')) }
+  }
+
+  const { provider, intent } = parsed.data
+  const fallback = intent === 'link' ? router.account() : router.home()
+  const redirectTo = absoluteUrl(
+    router.authCallback({ intent, next: sanitizeNextPath(parsed.data.next, fallback) })
+  )
+
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  if (intent === 'link' && !user) return { error: 'Tu dois d’abord choisir un pseudo.' }
+
+  const { data, error } =
+    intent === 'link'
+      ? await supabase.auth.linkIdentity({ provider, options: { redirectTo } })
+      : await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } })
+
+  if (error || !data.url) {
+    return { error: toUserMessage(omkError(oauthFailureFromCode(error?.code))) }
+  }
+
+  redirect(data.url)
 }
 
 export async function signOutAction(): Promise<void> {

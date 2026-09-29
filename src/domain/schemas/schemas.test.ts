@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { LoginSchema, SetPasswordSchema } from './auth'
+import { LoginSchema, OAuthProvidersSchema, OAuthStartSchema, SetPasswordSchema } from './auth'
 import { CreateGroupSchema, RenameGroupSchema } from './group'
 import { CreateListSchema } from './list'
 import { ImportPlaceSchema, SearchPlacesSchema } from './place'
@@ -179,6 +179,23 @@ describe('auth schemas', () => {
     expect(
       SetPasswordSchema.safeParse({ password: 'longenough', confirm: 'longenough' }).success
     ).toBe(true)
+  })
+
+  it('should read the enabled OAuth providers from a comma separated list', () => {
+    expect(OAuthProvidersSchema.parse(undefined)).toEqual([])
+    expect(OAuthProvidersSchema.parse('google')).toEqual(['google'])
+    expect(OAuthProvidersSchema.parse(' Google , apple,google ')).toEqual(['google', 'apple'])
+  })
+
+  it('should reject an unknown OAuth provider instead of hiding it silently', () => {
+    expect(OAuthProvidersSchema.safeParse('google,facebook').success).toBe(false)
+    expect(OAuthProvidersSchema.safeParse('gogle').success).toBe(false)
+  })
+
+  it('should only start an OAuth flow for a known provider and intent', () => {
+    expect(OAuthStartSchema.safeParse({ provider: 'apple', intent: 'link' }).success).toBe(true)
+    expect(OAuthStartSchema.safeParse({ provider: 'github', intent: 'link' }).success).toBe(false)
+    expect(OAuthStartSchema.safeParse({ provider: 'google', intent: 'admin' }).success).toBe(false)
   })
 })
 

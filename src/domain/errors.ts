@@ -55,6 +55,12 @@ export const OMK_MESSAGES: Record<string, string> = {
   too_many_groups: 'Tu as atteint la limite de 20 groupes.',
   too_many_invitations: 'Cette session ne peut pas dépasser 50 invitations en attente.',
   group_owner_cannot_leave: 'Tu es le propriétaire de ce groupe : supprime-le pour t’en défaire.',
+  // Connexion Google / Apple (issue #20) : codes posés par l'app, pas par la base.
+  identity_taken:
+    'Ce compte Google ou Apple est déjà rattaché à un autre compte onmangekoi : connecte-toi plutôt avec lui.',
+  oauth_cancelled: 'Connexion annulée : rien n’a changé.',
+  oauth_unavailable: 'Cette connexion n’est pas disponible pour le moment.',
+  oauth_failed: 'La connexion n’a pas abouti. Réessaie dans un instant.',
 }
 
 export const GENERIC_ERROR = 'Une erreur est survenue. Réessaie dans un instant.'

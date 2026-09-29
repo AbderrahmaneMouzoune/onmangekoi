@@ -28,6 +28,16 @@ describe('router', () => {
     expect(router.login('/lists')).toBe('/login?next=%2Flists')
   })
 
+  it('should route the OAuth return through /auth/callback with its intent', () => {
+    expect(router.authCallback()).toBe('/auth/callback')
+    expect(router.authCallback({ intent: 'link', next: '/account' })).toBe(
+      '/auth/callback?intent=link&next=%2Faccount'
+    )
+    expect(router.authCallback({ intent: 'login', next: '/' })).toBe('/auth/callback?intent=login')
+    expect(router.login(null, { error: 'identity_taken' })).toBe('/login?error=identity_taken')
+    expect(router.account({ auth: 'identity_taken' })).toBe('/account?auth=identity_taken')
+  })
+
   it('should page the history by cursor, never by offset', () => {
     expect(router.sessions({ cursor: null })).toBe('/sessions')
     expect(router.sessions({ cursor: 'MjAyNi0wOS0wNA' })).toBe('/sessions?cursor=MjAyNi0wOS0wNA')
