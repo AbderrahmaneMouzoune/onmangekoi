@@ -108,7 +108,7 @@ test.describe('Accessibilité', () => {
     await guest.getByRole('button', { name: /veto/i }).click()
 
     await expect(host).toHaveURL(/\/results$/, { timeout: 15_000 })
-    await expect(host.getByText(/on mange chez/i)).toBeVisible()
+    await expect(host.getByText('On mange chez', { exact: true })).toBeVisible()
     await auditA11y(host, testInfo, 'classement')
 
     // Le classement public : la seule page que des inconnus vont ouvrir, donc

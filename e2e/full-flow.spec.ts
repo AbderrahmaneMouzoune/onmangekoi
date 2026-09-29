@@ -89,7 +89,7 @@ test.describe('Session de vote complète', () => {
     // 5. Clôture automatique → classement pour les deux
     await expect(host).toHaveURL(/\/results$/, { timeout: 15_000 })
     await expect(guest).toHaveURL(/\/results$/, { timeout: 15_000 })
-    await expect(host.getByText(/on mange chez/i)).toBeVisible()
+    await expect(host.getByText('On mange chez', { exact: true })).toBeVisible()
     await expect(host.getByText('+3')).toBeVisible()
     await expect(guest.getByText('−2')).toBeVisible()
     const resultsUrl = host.url()
