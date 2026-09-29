@@ -31,9 +31,10 @@ async function requirePublicResults(code: string) {
  * Podium public d'une session close : `/r/7K3M9P2QWX`.
  *
  * Ce que la page montre est exactement ce que la RPC renvoie — le nom de la
- * session, combien de personnes ont voté, et les trois premiers. Pas de
- * pseudo, pas de détail de vote, pas de reste du classement : ce qui n'est
- * pas là ne peut pas fuiter.
+ * session, combien de personnes ont voté, les trois premiers, et le
+ * restaurant où le groupe va quand le host l'a confirmé. Pas de pseudo, pas
+ * de détail de vote, pas de reste du classement : ce qui n'est pas là ne peut
+ * pas fuiter.
  */
 export async function PublicPodiumSection({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
@@ -43,8 +44,11 @@ export async function PublicPodiumSection({ params }: { params: Promise<{ code: 
   const canonical = router.publicResults(canonicalCode)
   if (`/r/${code}` !== canonical) redirect(canonical)
 
-  const [winner, ...rest] = results.podium
+  // La décision du host prend la carte ; le podium du vote reste dessous,
+  // premier compris quand le host en a retenu un autre.
+  const winner = results.decision ?? results.podium[0]
   if (!winner) notFound()
+  const rest = results.podium.filter((row) => row !== winner)
 
   return (
     <>
@@ -54,11 +58,19 @@ export async function PublicPodiumSection({ params }: { params: Promise<{ code: 
         description={`${countLabel(results.participantCount, 'participant')} ont tranché`}
       />
 
-      <WinnerCard winner={winner} participantCount={results.participantCount} />
+      <WinnerCard
+        winner={winner}
+        participantCount={results.participantCount}
+        decided={results.decision !== null}
+      />
 
       {rest.length > 0 && (
         <section aria-label="Suite du podium" className="flex flex-col gap-2">
-          <h2 className="font-display text-base font-semibold">Sur le podium aussi</h2>
+          <h2 className="font-display text-base font-semibold">
+            {results.decision && results.decision.rank > 3
+              ? 'Le podium du vote'
+              : 'Sur le podium aussi'}
+          </h2>
           <ol className="flex flex-col gap-2">
             {rest.map((row) => (
               <li
@@ -95,9 +107,12 @@ export async function PublicPodiumSection({ params }: { params: Promise<{ code: 
 function WinnerCard({
   winner,
   participantCount,
+  decided,
 }: {
   winner: PublicResultRow
   participantCount: number
+  /** Le host a confirmé ce restaurant : ce n'est plus un score, c'est un déjeuner. */
+  decided: boolean
 }) {
   const photo = remoteImageUrl(winner.photo_url)
 
@@ -122,7 +137,7 @@ function WinnerCard({
       )}
 
       <p className="relative font-mono text-[0.7rem] tracking-[0.12em] text-chalk-muted uppercase">
-        On mange chez
+        {decided ? 'C’est décidé · on mange chez' : 'On mange chez'}
       </p>
       <h2
         id="public-winner-title"

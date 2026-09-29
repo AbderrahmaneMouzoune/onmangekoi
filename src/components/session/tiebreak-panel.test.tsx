@@ -14,7 +14,6 @@ const refresh = vi.hoisted(() => vi.fn())
 
 vi.mock('@/actions/sessions', () => ({ createRunoffSessionAction, drawWinnerAction }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push, refresh }) }))
-vi.mock('@/hooks/use-session-watch', () => ({ useSessionWatch: vi.fn() }))
 vi.mock('@/lib/analytics/client', () => ({ captureEvent: vi.fn() }))
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'

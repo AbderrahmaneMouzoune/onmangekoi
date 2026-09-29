@@ -50,6 +50,8 @@ const session: Session = {
   status: 'waiting',
   tiebreak_method: null,
   tiebreak_winner_id: null,
+  decided_restaurant_id: null,
+  decided_at: null,
 }
 
 function participant(profileId: string, pseudo: string): ParticipantWithProfile {

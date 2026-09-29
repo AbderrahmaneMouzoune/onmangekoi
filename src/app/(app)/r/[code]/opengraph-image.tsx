@@ -30,12 +30,13 @@ export default async function PublicResultsOpenGraphImage({
   const { code } = await params
   const parsed = parseResultsParam(code)
   const results = parsed ? await getPublicResults(parsed).catch(() => null) : null
-  const winner = results?.podium[0]
+  // La décision du host, quand elle existe, passe avant le premier du vote.
+  const winner = results?.decision ?? results?.podium[0]
 
   return new ImageResponse(
     results && winner ? (
       <OgCard
-        eyebrow="On mange chez"
+        eyebrow={results.decision ? 'C’est décidé · on mange chez' : 'On mange chez'}
         title={winner.restaurant_name}
         subtitle={`Score ${formatScore(winner.score)} · ${countLabel(results.participantCount, 'participant')}`}
         footer={results.sessionName}

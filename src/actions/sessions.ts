@@ -9,6 +9,7 @@ import { PUBLIC_RESULTS_CACHE_PROFILE, publicResultsCacheTag } from '@/data-acce
 import {
   addSessionRestaurants,
   closeSession,
+  confirmDecision,
   createRunoffSession,
   deleteSession,
   drawTiebreakWinner,
@@ -230,6 +231,37 @@ export async function drawWinnerAction(sessionId: string): Promise<ActionResult<
   // Le podium public, s'il est ouvert, doit lui aussi montrer le gagnant tiré.
   revalidateTag(publicResultsCacheTag(session.results_code), PUBLIC_RESULTS_CACHE_PROFILE)
   revalidatePath(router.sessionResults(session))
+  return { ok: true, data: session }
+}
+
+/**
+ * « On y va » : le host confirme le restaurant où le groupe va — le gagnant
+ * du vote, ou un autre de la session. La base vérifie le rôle, la clôture et
+ * l'appartenance du restaurant ; les participants reçoivent la décision par
+ * Realtime, comme la clôture.
+ */
+export async function confirmDecisionAction(
+  sessionId: string,
+  restaurantId: string
+): Promise<ActionResult<Session>> {
+  const parsed = SessionRestaurantSchema.safeParse({ sessionId, restaurantId })
+  if (!parsed.success) return { ok: false, error: 'Restaurant invalide' }
+
+  const { supabase, user } = await requireUser()
+  if (!user) return { ok: false, error: 'Non authentifié' }
+
+  let session: Session
+  try {
+    session = await confirmDecision(supabase, parsed.data.sessionId, parsed.data.restaurantId)
+  } catch (error) {
+    return { ok: false, error: toUserMessage(error) }
+  }
+
+  // Le lien public, s'il est ouvert, annonce désormais la décision ; et
+  // l'historique la montre à la place du gagnant calculé.
+  revalidateTag(publicResultsCacheTag(session.results_code), PUBLIC_RESULTS_CACHE_PROFILE)
+  revalidatePath(router.sessionResults(session))
+  revalidatePath(router.sessions())
   return { ok: true, data: session }
 }
 

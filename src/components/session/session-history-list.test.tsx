@@ -21,6 +21,7 @@ function entry(overrides: Partial<SessionHistoryEntry> = {}): SessionHistoryEntr
     restaurant_count: 5,
     winner_name: 'Maison Pho',
     winner_score: 4,
+    winner_decided: false,
     ...overrides,
   }
 }
@@ -58,6 +59,18 @@ describe('SessionHistoryList', () => {
       '/sessions/7K3M9P'
     )
     expect(screen.getByText('Vote en cours', { selector: 'span.truncate' })).toBeInTheDocument()
+  })
+
+  it('should show where the group went once the host decided', () => {
+    render(
+      <SessionHistoryList
+        entries={[entry({ winner_name: 'Chez Marcel', winner_score: 1, winner_decided: true })]}
+      />
+    )
+
+    expect(screen.getByText('Chez Marcel')).toBeInTheDocument()
+    expect(screen.getByText(/On y est allés/)).toBeInTheDocument()
+    expect(screen.queryByText(/En tête du vote/)).not.toBeInTheDocument()
   })
 
   it('should tell apart the sessions I organized', () => {
