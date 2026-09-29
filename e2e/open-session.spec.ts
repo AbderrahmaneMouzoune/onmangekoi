@@ -37,7 +37,15 @@ test.describe('Session ouverte', () => {
     // 2. Pas de salle d'attente : le deck, et l'invitation au-dessus
     await expect(host.getByRole('button', { name: /lancer le vote/i })).toHaveCount(0)
     await expect(host.getByRole('group', { name: 'Voter' })).toBeVisible()
-    await expect(host.getByText('Session ouverte : chacun vote à son heure')).toBeVisible()
+    // La pastille des règles, texte exact : le résumé du formulaire de création
+    // (« Session ouverte : chacun vote à son heure · 1 coup de cœur · … ») peut
+    // encore être dans le DOM pendant la redirection, et une recherche par
+    // sous-chaîne le trouverait aussi.
+    await expect(
+      host
+        .getByRole('list', { name: 'Règles du vote' })
+        .getByText('Session ouverte : chacun vote à son heure', { exact: true })
+    ).toBeVisible()
     const code = await host.getByTestId('invite-code').getAttribute('data-code')
     const sessionUrl = host.url()
 
