@@ -10,7 +10,7 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = { title: 'Connexion' }
 
 interface Props {
-  searchParams: Promise<{ next?: string }>
+  searchParams: Promise<{ next?: string; error?: string }>
 }
 
 export default function LoginPage({ searchParams }: Props) {

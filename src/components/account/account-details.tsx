@@ -1,7 +1,10 @@
 import { RiCheckLine, RiMailLine, RiShieldCheckLine } from '@remixicon/react'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { LinkEmailForm } from '@/components/account/link-email-form'
+import { OAuthButtons } from '@/components/account/oauth-buttons'
+import { OrSeparator } from '@/components/account/or-separator'
 import { SetPasswordForm } from '@/components/account/set-password-form'
 import { SignOutButton } from '@/components/account/sign-out-button'
 import { UpdatePseudoForm } from '@/components/account/update-pseudo-form'
@@ -13,13 +16,39 @@ import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { getProfile } from '@/data-access/profile'
 import { createServerClient } from '@/data-access/supabase/server'
+import { omkError, toUserMessage } from '@/domain/errors'
+import { isOAuthFailure, linkedOAuthProviders, OAUTH_PROVIDER_LABELS } from '@/domain/oauth'
+import { env } from '@/env'
 import { displayPseudo } from '@/lib/format'
 
-const AUTH_MESSAGES: Record<string, { error?: string; success?: string }> = {
+import type { AccountAuthNotice } from '@/config/router.config'
+
+/** Fournisseurs activés au build : la silhouette de chargement en dépend aussi. */
+const PROVIDERS = env.NEXT_PUBLIC_AUTH_PROVIDERS
+
+const AUTH_MESSAGES: Partial<Record<AccountAuthNotice, { error?: string; success?: string }>> = {
   invalid: { error: 'Ce lien de confirmation est invalide.' },
   expired: { error: 'Ce lien de confirmation a expiré. Renvoie un email depuis cette page.' },
   confirmed: { success: 'Adresse email confirmée.' },
+  linked: { success: 'Compte lié : tu peux te reconnecter depuis un autre appareil.' },
+  created: {
+    success:
+      'Aucun compte n’était encore lié à cette identité : un nouveau compte vient d’être créé. Choisis ton pseudo pour commencer.',
+  },
 }
+
+/** Bandeau de retour : les échecs OAuth sont des codes `omk:`, traduits comme les autres. */
+function authNotice(auth: string | undefined): { error?: string; success?: string } | undefined {
+  if (!auth) return undefined
+  if (isOAuthFailure(auth)) return { error: toUserMessage(omkError(auth)) }
+  return AUTH_MESSAGES[auth as AccountAuthNotice]
+}
+
+const ACCOUNT_INTRO_WITH_PROVIDERS =
+  'Optionnel. Lier un compte Google ou Apple — ou un email et un mot de passe — permet de se reconnecter depuis un autre appareil, avec les mêmes listes. Tout le reste fonctionne sans.'
+const ACCOUNT_INTRO_EMAIL_ONLY =
+  'Optionnel. Lier un email et un mot de passe permet de se reconnecter depuis un autre appareil. Tout le reste fonctionne sans.'
+const ACCOUNT_INTRO = PROVIDERS.length > 0 ? ACCOUNT_INTRO_WITH_PROVIDERS : ACCOUNT_INTRO_EMAIL_ONLY
 
 /** Tout le contenu de `/account` dépend de l'utilisateur : un seul `<Suspense>`. */
 export async function AccountDetails({
@@ -40,11 +69,22 @@ export async function AccountDetails({
   const emailConfirmed = Boolean(user.email_confirmed_at) && !isAnonymous
   const pendingEmail = user.new_email ?? (!emailConfirmed ? user.email : null)
   const hasPassword = emailConfirmed && Boolean(user.app_metadata?.providers?.includes('email'))
-  const authMessage = auth ? AUTH_MESSAGES[auth] : undefined
+  const linkedProviders = linkedOAuthProviders(user.app_metadata?.providers)
+  const linkableProviders = PROVIDERS.filter((provider) => !linkedProviders.includes(provider))
+  const authMessage = authNotice(auth)
 
   return (
     <>
       <FormMessage error={authMessage?.error} success={authMessage?.success} />
+      {auth === 'identity_taken' && (
+        // Se connecter quitte cet utilisateur-ci : c'est bien l'autre compte, celui
+        // qui porte déjà l'identité, que la personne cherche à retrouver.
+        <p className="-mt-3 text-sm">
+          <Link href={router.login()} className="font-medium text-brand hover:underline">
+            Se connecter avec ce compte
+          </Link>
+        </p>
+      )}
 
       <section className="flex items-center gap-4 rounded-lg bg-surface p-4 ring-1 ring-line">
         <Avatar name={pseudo} size="lg" />
@@ -72,11 +112,27 @@ export async function AccountDetails({
             <RiMailLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
             Retrouver mes listes ailleurs
           </h2>
-          <p className="text-sm text-muted-foreground">
-            Optionnel. Lier un email et un mot de passe permet de se reconnecter depuis un autre
-            appareil. Tout le reste fonctionne sans.
-          </p>
+          <p className="text-sm text-muted-foreground">{ACCOUNT_INTRO}</p>
         </div>
+
+        {linkedProviders.length > 0 && (
+          <ul className="flex flex-wrap gap-2" aria-label="Identités liées">
+            {linkedProviders.map((provider) => (
+              <li key={provider}>
+                <Badge variant="yes">
+                  <RiCheckLine aria-hidden="true" />
+                  Lié à {OAUTH_PROVIDER_LABELS[provider]}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {linkableProviders.length > 0 && (
+          <OAuthButtons providers={linkableProviders} intent="link" />
+        )}
+
+        {PROVIDERS.length > 0 && <OrSeparator>ou avec un email et un mot de passe</OrSeparator>}
 
         <ol className="flex flex-col gap-4">
           <li className="flex flex-col gap-2">
@@ -169,11 +225,19 @@ export function AccountDetailsFallback() {
             <RiMailLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
             Retrouver mes listes ailleurs
           </h2>
-          <p className="text-sm text-muted-foreground">
-            Optionnel. Lier un email et un mot de passe permet de se reconnecter depuis un autre
-            appareil. Tout le reste fonctionne sans.
-          </p>
+          <p className="text-sm text-muted-foreground">{ACCOUNT_INTRO}</p>
         </div>
+
+        {PROVIDERS.length > 0 && (
+          <>
+            <div className="flex flex-col gap-2">
+              {PROVIDERS.map((provider) => (
+                <Skeleton key={provider} className="h-12 w-full rounded-md" />
+              ))}
+            </div>
+            <OrSeparator>ou avec un email et un mot de passe</OrSeparator>
+          </>
+        )}
 
         <ol className="flex flex-col gap-4">
           <li className="flex flex-col gap-2">

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { OAUTH_INTENTS, OAUTH_PROVIDERS, splitProviderList } from '@/domain/oauth'
+
 export const EmailSchema = z
   .string()
   .trim()
@@ -33,3 +35,22 @@ export const LoginSchema = z.object({
 })
 
 export type LoginInput = z.infer<typeof LoginSchema>
+
+export const OAuthProviderSchema = z.enum(OAUTH_PROVIDERS, 'Fournisseur de connexion inconnu')
+
+/**
+ * Liste des fournisseurs activés sur un déploiement (`google,apple`). Absente,
+ * aucun bouton ne s'affiche ; une valeur inconnue fait échouer le démarrage
+ * plutôt que de masquer silencieusement un bouton mal orthographié.
+ */
+export const OAuthProvidersSchema = z
+  .string()
+  .optional()
+  .transform(splitProviderList)
+  .pipe(z.array(OAuthProviderSchema))
+
+export const OAuthStartSchema = z.object({
+  provider: OAuthProviderSchema,
+  intent: z.enum(OAUTH_INTENTS),
+  next: z.string().optional(),
+})

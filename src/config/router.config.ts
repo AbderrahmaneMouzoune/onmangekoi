@@ -12,6 +12,8 @@
  * reconduire un paramètre reçu tel quel (ancien lien, code saisi à la main).
  */
 
+import type { OAuthFailure, OAuthIntent } from '@/domain/oauth'
+
 /**
  * Préfixes qui exigent un utilisateur (le proxy redirige vers l'onboarding).
  *
@@ -63,6 +65,23 @@ function resultsSegment(target: ResultsTarget): string {
   return typeof target === 'string' ? target : target.results_code
 }
 
+/**
+ * Bandeau affiché en haut de « Mon compte » au retour d'un parcours d'auth :
+ * lien de confirmation d'email, ou liaison Google / Apple (`linked`, `created`
+ * et les échecs `OAuthFailure`, traduits par `OMK_MESSAGES`).
+ */
+export type AccountAuthNotice =
+  'invalid' | 'expired' | 'confirmed' | 'linked' | 'created' | OAuthFailure
+
+function withQuery(pathname: string, params: Record<string, string | null | undefined>): string {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value) query.set(key, value)
+  }
+  const search = query.toString()
+  return search ? `${pathname}?${search}` : pathname
+}
+
 function withNext(pathname: string, next?: string | null): string {
   if (!next || next === '/') return pathname
   return `${pathname}?next=${encodeURIComponent(next)}`
@@ -73,8 +92,12 @@ export const router = {
 
   /** Onboarding pseudo ; `next` est la destination à reprendre ensuite. */
   setup: (next?: string | null) => withNext('/setup', next),
-  login: (next?: string | null) => withNext('/login', next),
-  account: (params?: { auth?: 'invalid' | 'expired' | 'confirmed' }) =>
+  /** Connexion ; `error` rapporte l'échec d'un retour Google / Apple. */
+  login: (next?: string | null, params?: { error?: OAuthFailure }) =>
+    params?.error
+      ? withQuery('/login', { next: next === '/' ? null : next, error: params.error })
+      : withNext('/login', next),
+  account: (params?: { auth?: AccountAuthNotice }) =>
     params?.auth ? `/account?auth=${params.auth}` : '/account',
   /** Export RGPD : Route Handler qui renvoie le JSON des données du compte. */
   accountExport: () => '/account/export',
@@ -109,6 +132,15 @@ export const router = {
   publicResults: (target: ResultsTarget) => `/r/${resultsSegment(target)}`,
 
   authConfirm: () => '/auth/confirm',
+  /**
+   * Retour d'un fournisseur OAuth (échange du code PKCE). `intent` distingue
+   * la liaison depuis « Mon compte » de la reconnexion depuis `/login`.
+   */
+  authCallback: (params?: { intent?: OAuthIntent; next?: string | null }) =>
+    withQuery('/auth/callback', {
+      intent: params?.intent,
+      next: params?.next === '/' ? null : params?.next,
+    }),
 
   privacy: () => '/legal/privacy',
 

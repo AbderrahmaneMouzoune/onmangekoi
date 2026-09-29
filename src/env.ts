@@ -1,6 +1,8 @@
 import { createEnv } from '@t3-oss/env-nextjs'
 import { z } from 'zod'
 
+import { OAuthProvidersSchema } from '@/domain/schemas/auth'
+
 const LOCAL_HOST = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i
 
 /**
@@ -64,6 +66,13 @@ export const env = createEnv({
     NEXT_PUBLIC_POSTHOG_HOST: z.url().default('https://eu.i.posthog.com'),
     /** Clé publique Turnstile — l'autre moitié de l'interrupteur du captcha. */
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+    /**
+     * Fournisseurs de connexion activés, séparés par des virgules
+     * (`google,apple`). **Optionnelle** : sans elle, les boutons « Continuer
+     * avec Google / Apple » n'apparaissent pas — tant que les identifiants ne
+     * sont pas créés côté Google, Apple et Supabase, l'app reste sur l'email.
+     */
+    NEXT_PUBLIC_AUTH_PROVIDERS: OAuthProvidersSchema,
   },
   runtimeEnv: {
     SITE_URL: resolveSiteUrl(),
@@ -75,6 +84,7 @@ export const env = createEnv({
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+    NEXT_PUBLIC_AUTH_PROVIDERS: process.env.NEXT_PUBLIC_AUTH_PROVIDERS,
   },
   emptyStringAsUndefined: true,
 })
