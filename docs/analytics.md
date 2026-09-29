@@ -55,6 +55,7 @@ Le seul identifiant transmis est l'**UUID du profil Supabase**, opaque, passé �
 | `pwa_install_prompted`       | réponse à la bannière « Installer l'app »                        | `outcome` (`accepted` · `dismissed` · `later`)                                                                                       |
 | `pwa_installed`              | l'app vient d'être installée sur l'appareil                      | `via` (`banner` · `browser`)                                                                                                         |
 | `push_subscribed`            | ce navigateur s'abonne aux notifications push                    | `session_id`, `context` (`launch` · `results`)                                                                                       |
+| `constraints_updated`        | la personne enregistre ce qu'elle ne peut pas manger             | `constraint_count` — un compte, jamais les régimes ni le budget                                                                      |
 | `$pageview`                  | à chaque changement de route, sur la route **masquée**           | —                                                                                                                                    |
 
 Le catalogue est typé (`src/lib/analytics/events.ts`) : une propriété non prévue ne compile pas. C'est le garde-fou qui empêche d'y glisser une donnée personnelle par inadvertance.

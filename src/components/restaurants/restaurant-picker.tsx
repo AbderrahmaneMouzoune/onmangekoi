@@ -28,6 +28,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { NO_FOOD_CONSTRAINTS } from '@/domain/food-constraints'
 import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
 import { countActiveFilters, NO_FILTERS } from '@/domain/restaurant-filters'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
@@ -37,6 +38,7 @@ import { geoPoint } from '@/lib/maps'
 import type { ListWithRestaurantIds } from '@/data-access/lists'
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { FoodConstraints } from '@/domain/food-constraints'
 import type { PlaceResult, PlacesPage } from '@/domain/places'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { RestaurantFilters } from '@/domain/restaurant-filters'
@@ -68,6 +70,12 @@ interface RestaurantPickerProps {
   recentWinners?: RecentWinnerDates
   /** Anti-fatigue actif : les gagnants récents sont écartés, donc ni cochés ni cochables */
   excludeRecent?: boolean
+  /**
+   * Ses propres contraintes alimentaires (#60) : un resto du carnet qui les
+   * heurte est badgé — pas masqué, pas bloqué. Celles des autres ne se
+   * lisent jamais ici.
+   */
+  myConstraints?: FoodConstraints
   /** name des inputs hidden pour un envoi via formulaire */
   inputName?: string
   emptyLabel?: string
@@ -107,6 +115,7 @@ export function RestaurantPicker({
   lockedIds = NO_IDS,
   recentWinners = NO_RECENT_WINNERS,
   excludeRecent = false,
+  myConstraints = NO_FOOD_CONSTRAINTS,
   inputName,
   emptyLabel = 'Aucun resto du carnet ne correspond.',
   lists = NO_LISTS,
@@ -501,6 +510,7 @@ export function RestaurantPicker({
               }
               recentWinners={recentWinners}
               excludeRecent={excludeRecent}
+              myConstraints={myConstraints}
             />
           </>
         )}

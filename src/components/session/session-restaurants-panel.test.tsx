@@ -170,6 +170,15 @@ describe('SessionRestaurantsPanel', () => {
     expect(onChanged).not.toHaveBeenCalled()
   })
 
+  it('should flag how many participants cannot eat somewhere, without naming anyone', () => {
+    renderPanel({ isHost: true, conflicts: { 'resto-2': 2 } })
+    const badge = screen.getByText('2 participants ne peuvent pas y manger')
+    expect(screen.getByText('Pizza Napolitana').closest('li')).toContainElement(badge)
+    // Signalé, pas interdit : le host peut garder ou retirer, comme avant.
+    expect(screen.getByRole('button', { name: /retirer pizza napolitana/i })).toBeInTheDocument()
+    expect(screen.getByText('Sushi Bar Sakura').closest('li')).not.toHaveTextContent(/y manger/)
+  })
+
   it('should hide the add form when the catalogue was not loaded', () => {
     renderPanel({ initialPage: null })
     expect(screen.queryByRole('button', { name: /ajouter le mien/i })).toBeNull()

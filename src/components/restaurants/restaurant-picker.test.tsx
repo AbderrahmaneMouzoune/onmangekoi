@@ -12,6 +12,7 @@ import { RestaurantSourcesProvider } from './restaurant-sources'
 import type { ListWithRestaurantIds } from '@/data-access/lists'
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { FoodConstraints } from '@/domain/food-constraints'
 import type { PlaceResult } from '@/domain/places'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { RestaurantFilters } from '@/domain/restaurant-filters'
@@ -139,6 +140,7 @@ function Harness({
   onFiltersChange,
   recentWinners,
   excludeRecent,
+  myConstraints,
   initialPage = PAGE,
 }: {
   lists?: ListWithRestaurantIds[]
@@ -147,6 +149,7 @@ function Harness({
   onFiltersChange?: (filters: RestaurantFilters) => void
   recentWinners?: RecentWinnerDates
   excludeRecent?: boolean
+  myConstraints?: FoodConstraints
   initialPage?: RestaurantPage
 }) {
   const [value, setValue] = useState<string[]>([])
@@ -162,6 +165,7 @@ function Harness({
         }}
         recentWinners={recentWinners}
         excludeRecent={excludeRecent}
+        myConstraints={myConstraints}
         inputName="restaurantIds"
         lists={lists}
         selectedListIds={listIds}
@@ -651,6 +655,22 @@ describe('RestaurantPicker', () => {
     expect(onChange).toHaveBeenCalledWith([SAKURA.id])
     const basket = screen.getByRole('region', { name: 'Ta sélection' })
     expect(within(basket).getByText('1 resto')).toBeInTheDocument()
+  })
+
+  // ─── Contraintes alimentaires (#60) ────────────────────────
+  it('should badge what I cannot eat, without hiding or locking it', async () => {
+    const onChange = vi.fn()
+    // Chez Marcel est à €€, Sakura sert vegan, Wok Garden ne dit rien.
+    render(<Harness myConstraints={{ tags: ['vegan'], maxPriceLevel: 1 }} onChange={onChange} />)
+
+    const marcel = screen.getByRole('checkbox', { name: /chez marcel/i })
+    expect(marcel).toHaveTextContent('Hors budget')
+    expect(screen.getByRole('checkbox', { name: /sakura/i })).not.toHaveTextContent(/Pas |Hors/)
+    // Rien n'est connu de Wok Garden : on se tait plutôt que d'accuser.
+    expect(screen.getByRole('checkbox', { name: /wok garden/i })).not.toHaveTextContent(/Pas |Hors/)
+
+    await userEvent.click(marcel)
+    expect(onChange).toHaveBeenCalledWith([MARCEL.id])
   })
 
   it('should say the same thing on the Google tab for a place the address book knows', async () => {

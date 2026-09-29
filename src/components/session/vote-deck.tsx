@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
+import { NO_CONFLICTS } from '@/domain/food-constraints'
 import { jokerQuotas, jokersSentence } from '@/domain/session-rules'
 import { VOTE_ACTIONS, voteActionByKey, voteActionByValue } from '@/domain/vote'
 import { useCompletedRestaurant } from '@/hooks/use-completed-restaurant'
@@ -19,6 +20,7 @@ import { geoPoint } from '@/lib/maps'
 import { cn } from '@/lib/utils'
 
 import type { Restaurant, SessionRestaurantWithRestaurant } from '@/data-access/models'
+import type { ConstraintConflictCounts } from '@/domain/food-constraints'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { JokerKind, SessionRules } from '@/domain/session-rules'
 import type { VoteValue } from '@/domain/vote'
@@ -33,6 +35,11 @@ interface VoteDeckProps {
   initialJokersUsed: Record<JokerKind, number>
   /** Anti-fatigue : date du dernier sacre par restaurant, chargée avec la session */
   lastWins: RecentWinnerDates
+  /**
+   * Contraintes alimentaires (#60) : par resto, combien de participants ne
+   * peuvent pas y manger. Absent : personne, ou personne qu'on sache.
+   */
+  conflicts?: ConstraintConflictCounts
   onFinished: () => void
 }
 
@@ -60,6 +67,7 @@ export function VoteDeck({
   rules,
   initialJokersUsed,
   lastWins,
+  conflicts = NO_CONFLICTS,
   onFinished,
 }: VoteDeckProps) {
   const [votedIds, setVotedIds] = useState<Set<string>>(() => new Set(initialVotedIds))
@@ -279,6 +287,7 @@ export function VoteDeck({
               index={done + 2}
               total={total}
               lastWonAt={lastWins[next.restaurants.id]}
+              blockedCount={conflicts[next.restaurants.id]}
               priority={false}
               position={here}
             />
@@ -296,6 +305,7 @@ export function VoteDeck({
             index={done + 1}
             total={total}
             lastWonAt={lastWins[current.restaurants.id]}
+            blockedCount={conflicts[current.restaurants.id]}
             style={cardStyle}
             overlay={overlay}
             priority

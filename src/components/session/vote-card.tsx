@@ -1,8 +1,14 @@
 'use client'
 
-import { RiHistoryLine, RiMapPin2Line, RiNavigationLine } from '@remixicon/react'
+import {
+  RiErrorWarningLine,
+  RiHistoryLine,
+  RiMapPin2Line,
+  RiNavigationLine,
+} from '@remixicon/react'
 import Image from 'next/image'
 
+import { blockedLabel } from '@/domain/food-constraints'
 import { lastWinLabel } from '@/domain/recent-winners'
 import {
   PRICE_LEVEL_LABELS,
@@ -27,6 +33,11 @@ interface VoteCardProps {
    * groupe. Absente quand il n'a rien gagné dans la fenêtre.
    */
   lastWonAt?: string | null
+  /**
+   * Contraintes alimentaires (#60) : combien de participants ne peuvent pas
+   * y manger. Un compte, jamais qui — c'est tout ce que la base en dit.
+   */
+  blockedCount?: number
   className?: string
   style?: React.CSSProperties
   /** Voile affiché pendant un swipe */
@@ -49,6 +60,7 @@ export function VoteCard({
   index,
   total,
   lastWonAt,
+  blockedCount,
   className,
   style,
   overlay,
@@ -66,6 +78,7 @@ export function VoteCard({
   // serveur produirait une hydratation divergente, comme pour les horaires.
   const isClient = useIsClient()
   const lastWin = isClient && lastWonAt ? lastWinLabel(lastWonAt) : null
+  const blocked = blockedLabel(blockedCount)
 
   return (
     <article
@@ -167,6 +180,14 @@ export function VoteCard({
           <p className="flex items-center gap-1.5 text-sm text-chalk-muted">
             <RiHistoryLine aria-hidden="true" className="size-4 shrink-0" />
             <span className="line-clamp-1">{lastWin}</span>
+          </p>
+        )}
+        {/* Discret mais lisible : c'est ce qui évite de dépenser un veto pour
+            dire « je ne peux pas manger là ». */}
+        {blocked && (
+          <p className="flex items-center gap-1.5 self-start rounded-full border border-chalk/25 px-2.5 py-1 text-sm text-chalk">
+            <RiErrorWarningLine aria-hidden="true" className="size-4 shrink-0" />
+            <span>{blocked}</span>
           </p>
         )}
       </div>

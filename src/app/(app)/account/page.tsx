@@ -2,6 +2,10 @@ import { Suspense } from 'react'
 
 import { AccountDataSection } from '@/components/account/account-data-section'
 import { AccountDetails, AccountDetailsFallback } from '@/components/account/account-details'
+import {
+  AccountFoodConstraintsFallback,
+  AccountFoodConstraintsSection,
+} from '@/components/account/account-food-constraints-section'
 import { AccountGroupsSection } from '@/components/account/account-groups-section'
 import { AccountStats, AccountStatsFallback } from '@/components/account/account-stats'
 import { AnalyticsPreference } from '@/components/analytics/analytics-preference'
@@ -27,8 +31,8 @@ export default function AccountPage({ searchParams }: Props) {
       />
 
       {/* Sur grand écran : l'identité, le compte et les groupes à gauche, les
-          réglages qui ne dépendent de personne — mesure d'usage, données — à
-          droite. */}
+          réglages qui ne dépendent de personne — ce qu'on ne peut pas manger,
+          mesure d'usage, données — à droite. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
         <div className="flex flex-col gap-6">
           <Suspense fallback={<AccountDetailsFallback />}>
@@ -45,6 +49,9 @@ export default function AccountPage({ searchParams }: Props) {
           </Suspense>
         </div>
         <div className="flex flex-col gap-6">
+          <Suspense fallback={<AccountFoodConstraintsFallback />}>
+            <AccountFoodConstraintsSection />
+          </Suspense>
           <AnalyticsPreference />
           <AccountDataSection />
         </div>

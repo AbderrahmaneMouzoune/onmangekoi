@@ -134,6 +134,10 @@ test.describe('Accessibilité', () => {
     await host.goto('/lists/new')
     await auditA11y(host, testInfo, 'nouvelle liste')
     await host.goto('/account')
+    // La section des contraintes alimentaires (#60) arrive en streaming :
+    // l'audit l'attend, cases et boutons radio compris.
+    await expect(host.getByRole('heading', { name: 'Ce que je ne peux pas manger' })).toBeVisible()
+    await expect(host.getByRole('radio', { name: 'Pas de plafond' })).toBeVisible()
     await auditA11y(host, testInfo, 'compte')
   })
 

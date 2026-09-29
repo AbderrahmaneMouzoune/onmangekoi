@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { LoginSchema, SetPasswordSchema } from './auth'
+import { FoodConstraintsSchema } from './food-constraints'
 import { CreateGroupSchema, RenameGroupSchema } from './group'
 import { CreateListSchema } from './list'
 import { ImportPlaceSchema, SearchPlacesSchema } from './place'
@@ -339,5 +340,26 @@ describe('ImportPlaceSchema', () => {
     expect(ImportPlaceSchema.safeParse({ placeId: '../etc/passwd' }).success).toBe(false)
     expect(ImportPlaceSchema.safeParse({ placeId: 'a b' }).success).toBe(false)
     expect(ImportPlaceSchema.safeParse({ placeId: 'a'.repeat(256) }).success).toBe(false)
+  })
+})
+
+describe('FoodConstraintsSchema', () => {
+  it('should read checked diets and a budget from a form, in catalogue order', () => {
+    expect(
+      FoodConstraintsSchema.parse({ tags: ['halal', 'vegetarian', 'halal'], maxPriceLevel: '2' })
+    ).toEqual({ tags: ['vegetarian', 'halal'], maxPriceLevel: 2 })
+  })
+
+  it('should accept declaring nothing at all — reverting is the same gesture', () => {
+    expect(FoodConstraintsSchema.parse({ tags: [], maxPriceLevel: '' })).toEqual({
+      tags: [],
+      maxPriceLevel: null,
+    })
+    expect(FoodConstraintsSchema.parse({})).toEqual({ tags: [], maxPriceLevel: null })
+  })
+
+  it('should reject an unknown diet or a budget out of bounds', () => {
+    expect(FoodConstraintsSchema.safeParse({ tags: ['carnivore'] }).success).toBe(false)
+    expect(FoodConstraintsSchema.safeParse({ tags: [], maxPriceLevel: '5' }).success).toBe(false)
   })
 })

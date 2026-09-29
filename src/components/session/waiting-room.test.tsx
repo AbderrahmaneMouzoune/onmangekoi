@@ -103,6 +103,8 @@ function renderRoom({
       connection="live"
       invitations={[]}
       groups={[]}
+      conflicts={{}}
+      myConstraints={null}
       onLaunched={vi.fn()}
       onRestaurantsChanged={vi.fn()}
     />

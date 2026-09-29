@@ -42,6 +42,16 @@ describe('VoteCard', () => {
     vi.useRealTimers()
   })
 
+  it('should say how many participants cannot eat there, never who', () => {
+    render(<VoteCard restaurant={restaurant()} index={1} total={3} blockedCount={1} />)
+    expect(screen.getByText('1 participant ne peut pas y manger')).toBeInTheDocument()
+  })
+
+  it('should stay silent when nobody is blocked', () => {
+    render(<VoteCard restaurant={restaurant()} index={1} total={3} blockedCount={0} />)
+    expect(screen.queryByText(/y manger/)).not.toBeInTheDocument()
+  })
+
   it('should show the address when it is known', () => {
     render(
       <VoteCard

@@ -25,6 +25,7 @@ import type {
   SessionRestaurantWithRestaurant,
 } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { ConstraintConflictCounts, FoodConstraints } from '@/domain/food-constraints'
 import type { SessionRules } from '@/domain/session-rules'
 import type { ConnectionState } from '@/hooks/use-session-room'
 
@@ -48,6 +49,10 @@ interface WaitingRoomProps {
   invitations: InvitationWithProfile[]
   /** Groupes du host, pour en inviter un depuis la salle d'attente. */
   groups: GroupWithMembers[]
+  /** Par resto, combien de participants ne peuvent pas y manger (#60). */
+  conflicts: ConstraintConflictCounts
+  /** Ses propres contraintes, pour badger le sélecteur. */
+  myConstraints: FoodConstraints | null
   onLaunched: (session: Session) => void
   /** Resynchronise la salle après un ajout ou un retrait de restaurant */
   onRestaurantsChanged: () => void
@@ -71,6 +76,8 @@ export function WaitingRoom({
   connection,
   invitations,
   groups,
+  conflicts,
+  myConstraints,
   onLaunched,
   onRestaurantsChanged,
 }: WaitingRoomProps) {
@@ -138,6 +145,8 @@ export function WaitingRoom({
             participants={participants}
             meId={meId}
             isHost={isHost}
+            conflicts={conflicts}
+            myConstraints={myConstraints}
             initialPage={restaurantCatalog}
             onChanged={onRestaurantsChanged}
           />

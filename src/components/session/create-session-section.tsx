@@ -10,6 +10,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
+import { getMyFoodConstraints } from '@/data-access/food-constraints'
 import { getMyGroups } from '@/data-access/groups'
 import { getListsWithRestaurantIds } from '@/data-access/lists'
 import { getRecentWinners } from '@/data-access/recent-winners'
@@ -54,16 +55,24 @@ export async function CreateSessionSection({ searchParams }: CreateSessionSectio
 
   const filters = parseRestaurantFilters(params)
 
-  const [lists, groups, initialPage, recentWinners, suggestions] = await Promise.all([
-    getListsWithRestaurantIds(supabase, user.id),
-    getMyGroups(supabase),
-    // Le rayon reste au vestiaire : le serveur ne connaît pas la position de
-    // la personne. Il s'applique dès que le navigateur la donne — d'ici là,
-    // un lien partagé avec `?km=1` arrive simplement sans filtre distance.
-    getRestaurantCatalogPage({ priceMax: filters.priceMax, tags: filters.tags }),
-    getRecentWinners(supabase),
-    getRestaurantSuggestions(supabase, SUGGESTION_SIZE),
-  ])
+  const [lists, groups, initialPage, recentWinners, suggestions, myConstraints] = await Promise.all(
+    [
+      getListsWithRestaurantIds(supabase, user.id),
+      getMyGroups(supabase),
+      // Le rayon reste au vestiaire : le serveur ne connaît pas la position de
+      // la personne. Il s'applique dès que le navigateur la donne — d'ici là,
+      // un lien partagé avec `?km=1` arrive simplement sans filtre distance.
+      getRestaurantCatalogPage({ priceMax: filters.priceMax, tags: filters.tags }),
+      getRecentWinners(supabase),
+      getRestaurantSuggestions(supabase, SUGGESTION_SIZE),
+      // Ses propres contraintes (#60) : lisibles par soi seul, sous RLS. Les
+      // membres d'un groupe pré-invité ne comptent pas encore : une invitation
+      // n'est pas une présence, et une RPC qui compterait les contraintes d'un
+      // groupe sur une liste de restos libre permettrait de les sonder resto
+      // par resto. Ils comptent dès qu'ils entrent dans la salle.
+      getMyFoodConstraints(supabase, user.id),
+    ]
+  )
 
   return (
     <CreateSessionForm
@@ -74,6 +83,7 @@ export async function CreateSessionSection({ searchParams }: CreateSessionSectio
       recentWinners={recentWinnerDates(recentWinners)}
       initialFilters={filters}
       suggestion={toRestaurantSuggestion(suggestions)}
+      myConstraints={myConstraints}
     />
   )
 }

@@ -50,6 +50,11 @@ const RETENTION = [
     kept: 'Conservés en agrégat, détachés de leur auteur à la suppression du compte',
   },
   {
+    data: 'Contraintes alimentaires',
+    why: 'Optionnelles — signaler dans tes sessions un resto où tu ne peux pas manger, sans jamais dire qui',
+    kept: 'Jusqu’à ce que tu les retires, ou la suppression du compte',
+  },
+  {
     data: 'Abonnement aux notifications',
     why: 'Optionnel — te prévenir du lancement d’un vote ou d’un classement, onglet fermé',
     kept: 'Jusqu’à « Ne plus me prévenir », la suppression du compte, ou l’abandon par le navigateur',
@@ -139,14 +144,34 @@ export default function PrivacyPage() {
       </section>
 
       <section className="flex flex-col gap-3">
+        <h2 className="font-display text-lg font-bold">Ce que tu ne peux pas manger</h2>
+        <p className="text-sm text-ink-2">
+          Un régime halal ou casher peut dire une religion, un sans gluten une santé : ce sont des
+          données sensibles. Tu es seul à les déclarer, depuis «&nbsp;Mon compte&nbsp;», et
+          seulement si tu le souhaites — les déclarer vaut consentement à cet usage, et un clic les
+          retire.
+        </p>
+        <ul className="flex list-disc flex-col gap-2 pl-5 text-sm text-ink-2 marker:text-line-strong">
+          <li>Personne d’autre ne peut les lire, pas même le host de tes sessions.</li>
+          <li>
+            Une session n’en montre qu’un compte par restaurant — «&nbsp;2 participants ne peuvent
+            pas y manger&nbsp;» —, jamais qui ni pourquoi. À deux dans une session, ce compte peut
+            suffire à deviner : c’est le prix d’un signal utile.
+          </li>
+          <li>Elles ne partent jamais vers l’outil de mesure d’audience.</li>
+          <li>L’export les contient, la suppression du compte les efface.</li>
+        </ul>
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h2 className="font-display text-lg font-bold">Ce qui se passe à la suppression</h2>
         <p className="text-sm text-ink-2">
           Supprimer un compte ne doit pas réécrire l’histoire des autres. Concrètement :
         </p>
         <ul className="flex list-disc flex-col gap-2 pl-5 text-sm text-ink-2 marker:text-line-strong">
           <li>
-            Le profil, le pseudo, l’email, le mot de passe, les listes et les abonnements aux
-            notifications sont supprimés définitivement.
+            Le profil, le pseudo, l’email, le mot de passe, les listes, les contraintes alimentaires
+            et les abonnements aux notifications sont supprimés définitivement.
           </li>
           <li>
             Les groupes dont le compte est propriétaire disparaissent pour tous leurs membres, et le

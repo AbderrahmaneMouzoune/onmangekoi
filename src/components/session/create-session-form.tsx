@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils'
 import type { ListWithRestaurantIds } from '@/data-access/lists'
 import type { GroupWithMembers } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { FoodConstraints } from '@/domain/food-constraints'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { RestaurantFilters } from '@/domain/restaurant-filters'
 import type { RestaurantSuggestion } from '@/domain/suggestions'
@@ -51,6 +52,13 @@ interface CreateSessionFormProps {
    * `null` sans historique : la page part alors d'un panier vide, comme avant.
    */
   suggestion?: RestaurantSuggestion | null
+  /**
+   * Ses propres contraintes alimentaires (#60) : les restos du carnet qui les
+   * heurtent sont badgés. À la création, personne d'autre n'est encore dans
+   * la salle — les contraintes des participants se comptent dès qu'ils y
+   * entrent.
+   */
+  myConstraints?: FoodConstraints
 }
 
 /**
@@ -97,6 +105,7 @@ export function CreateSessionForm({
   recentWinners,
   initialFilters = NO_FILTERS,
   suggestion = null,
+  myConstraints,
 }: CreateSessionFormProps) {
   const [state, formAction, isPending] = useActionState(createSessionAction, null)
   const [selectedListIds, setSelectedListIds] = useState<string[]>([])
@@ -207,6 +216,7 @@ export function CreateSessionForm({
             listsInputName="listIds"
             defaultFilters={initialFilters}
             onFiltersChange={syncFiltersToUrl}
+            myConstraints={myConstraints}
           />
 
           {recentCount > 0 && (

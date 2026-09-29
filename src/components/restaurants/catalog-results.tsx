@@ -6,6 +6,11 @@ import { RecentWinnerBadge } from '@/components/restaurants/recent-winner-badge'
 import { ResultRow } from '@/components/restaurants/result-row'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import {
+  constraintConflicts,
+  NO_FOOD_CONSTRAINTS,
+  ownConflictLabel,
+} from '@/domain/food-constraints'
 import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
 import { PRICE_LEVEL_LABELS } from '@/domain/schemas/restaurant'
 import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
@@ -14,6 +19,7 @@ import { cn } from '@/lib/utils'
 
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { FoodConstraints } from '@/domain/food-constraints'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { Geolocation } from '@/hooks/use-geolocation'
 
@@ -36,6 +42,8 @@ interface CatalogResultsProps {
   recentWinners?: RecentWinnerDates
   /** Anti-fatigue actif : un gagnant récent est écarté, donc ni coché ni cochable */
   excludeRecent?: boolean
+  /** Ses propres contraintes alimentaires : un resto qui les heurte est badgé (#60) */
+  myConstraints?: FoodConstraints
 }
 
 /** Ligne d'adresse d'un resto du carnet : rue et ville, sinon sa description. */
@@ -64,6 +72,7 @@ export function CatalogResults({
   onClearFilters,
   recentWinners = NO_RECENT_WINNERS,
   excludeRecent = false,
+  myConstraints = NO_FOOD_CONSTRAINTS,
 }: CatalogResultsProps) {
   const here = geoPoint(geolocation.position)
   const isLocating = geolocation.status === 'locating'
@@ -130,6 +139,9 @@ export function CatalogResults({
           // décochée : c'est bien ce qui n'ira pas dans la session.
           const locked = excluded || isLocked(restaurant.id)
           const distance = distanceLabel(here, restaurant.location)
+          // Ses propres contraintes : on peut les nommer. Un signal, pas un
+          // filtre — la ligne reste cochable.
+          const notForMe = ownConflictLabel(constraintConflicts(restaurant, myConstraints))
           return (
             <li key={restaurant.id}>
               <ResultRow
@@ -139,9 +151,14 @@ export function CatalogResults({
                 subtitle={placeLine(restaurant)}
                 openingHours={restaurant.opening_hours}
                 meta={
-                  wonAt || distance ? (
+                  wonAt || distance || notForMe ? (
                     <>
                       {wonAt && <RecentWinnerBadge wonAt={wonAt} excluded={excluded} />}
+                      {notForMe && (
+                        <span className="rounded-full bg-veto-soft px-2 py-0.5 font-medium text-veto">
+                          {notForMe}
+                        </span>
+                      )}
                       {distance && <span className="font-medium text-ink-2">{distance}</span>}
                     </>
                   ) : undefined

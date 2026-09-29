@@ -181,6 +181,27 @@ Un bandeau au-dessus du panier dit d'où vient la sélection — « Vus récemme
 
 La source est la RPC `suggest_restaurants(p_limit)` : **une seule requête** au chargement, restaurants compris — le panier nomme les pré-cochés même hors de la première page du carnet. Comme `recent_winners()`, elle ne prend pas d'identifiant et répond pour `auth.uid()` ; elle ne lit que des participations et des gagnants, jamais un vote. Chaque ligne porte sa raison (`recent`, `never_proposed`), sa source (`history`, `mine`, `catalog`) et le nombre de gagnants écartés : de quoi écrire la phrase sans seconde requête. Le comportement est figé par `supabase/tests/suggest-restaurants.test.sql`.
 
+## Ce que je ne peux pas manger
+
+Un veto dépensé pour dire « je ne peux pas manger là » est un joker gâché : ce n'est pas une préférence, c'est une contrainte, et elle ne change pas d'un midi à l'autre. Chacun la déclare **une fois**, depuis « Mon compte » — les régimes du carnet (végétarien, vegan, halal, casher, sans gluten) et un budget maximum — et les sessions la signalent d'elles-mêmes. Aucun réglage par session, aucun host qui devine.
+
+| Où                          | Ce qui s'affiche                                                                                                |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| « Mon compte »              | Section « Ce que je ne peux pas manger » : des cases, un budget, un bouton — tout décocher retire tout          |
+| Nouvelle session, le carnet | Ses **propres** contraintes : « Pas halal », « Hors budget », « Pas pour toi » sur la ligne, qui reste cochable |
+| Salle d'attente, restos     | « 2 participants ne peuvent pas y manger » sous le resto — le host garde ou retire, comme avant                 |
+| Carte de vote               | La même mention, discrète, en bas de carte                                                                      |
+
+**Signaler, jamais masquer ni interdire.** Aucune RPC de création, de lancement ou de vote ne lit ces contraintes : elles ne bloquent rien, et une session sans personne qui en déclare vit exactement comme avant.
+
+**Se taire plutôt que rassurer — ou accuser — à tort.** Un resto heurte une contrainte de régime seulement s'il a **déclaré** ses régimes (`restaurants.tags` non vide) et que celui exigé n'y est pas — un resto vegan sert végétarien. Il heurte le budget seulement si son `price_level` est **connu** et le dépasse. Des régimes non renseignés ou un prix inconnu ne comptent pour personne. La règle vit en un seul endroit, `restaurant_conflicts_with()` en base, et son équivalent pur `src/domain/food-constraints.ts` sert l'écran de composition ; les deux sont figés par les mêmes cas de test.
+
+**Jamais nominatif.** `profile_constraints (profile_id, tag)` et `profile_budgets (profile_id, max_price_level)` sont en RLS propriétaire stricte : personne d'autre, host compris, ne les lit. Le budget n'est pas dans `profiles`, que les co-participants lisent pour les pseudos. L'écriture passe par `save_my_constraints`, qui remplace l'ensemble d'un coup. L'agrégat passe par `session_constraint_conflicts(p_session_id)`, réservée aux participants, qui ne rend que `(restaurant_id, blocked_count)` pour les restos concernés. À deux dans une session, le compte peut trahir l'autre : c'est accepté, et l'interface ne met jamais un nom à côté. Le salon relit les comptes quand quelqu'un entre, sort ou apporte un resto — pas à chaque vote.
+
+**À la création, seulement soi.** Personne d'autre n'est encore dans la salle. Les membres d'un groupe pré-invité ne comptent pas avant d'entrer : une invitation n'est pas une présence, et une RPC qui compterait les contraintes d'un groupe sur une liste de restos choisie librement permettrait de les sonder resto par resto. Ils comptent dès qu'ils rejoignent la salle d'attente.
+
+**Donnée sensible.** Un régime halal ou casher peut dire une religion, un sans gluten une santé. La déclaration est volontaire et se retire d'un clic ; l'export RGPD la contient, la suppression du compte l'emporte en cascade. La mesure d'audience n'en reçoit qu'un compte (`constraints_updated`, `constraint_count`), jamais le détail. Scénario rejouable avec `bun run db:test` (`supabase/tests/profile-constraints.test.sql`).
+
 ## URLs, codes et liens de partage
 
 Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **son code court**, celui qu'on se dit à voix haute.
@@ -478,7 +499,7 @@ src/components/          ui/ (primitives) · layout/ · home/ · session/ · lis
 src/content/changelog/   notes de version produit (schéma Zod + entrées), lues par /nouveautes et son flux RSS
 src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + recent-winners.ts (anti-fatigue) + suggestions.ts (sélection proposée) + stats.ts + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
-src/domain/              règles et vocabulaire métier : votes, codes de partage, curseur d'historique, erreurs, horaires, places, anti-fatigue, sélection proposée, schemas/ (Zod)
+src/domain/              règles et vocabulaire métier : votes, codes de partage, curseur d'historique, erreurs, horaires, places, anti-fatigue, sélection proposée, contraintes alimentaires, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
                          images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache, version (semver), changelog-seen
@@ -556,6 +577,7 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - **Aucune donnée personnelle n'est mise en cache.** Seul le catalogue public de restaurants est mémorisé, via un client Supabase sans cookie ; voir [Rendu et cache](#rendu-et-cache).
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.
 - Les messages d'erreur Postgres ne remontent jamais tels quels : seuls les codes métier `omk:*` sont traduits.
+- **Contraintes alimentaires** : `profile_constraints` et `profile_budgets` ne sont lisibles et supprimables que par leur propriétaire, et ne s'écrivent que par `save_my_constraints`. Les contraintes des autres ne sortent de la base que par `session_constraint_conflicts`, réservée aux participants, et seulement en comptes par resto — jamais qui ni quoi. Voir [Ce que je ne peux pas manger](#ce-que-je-ne-peux-pas-manger).
 - **Notifications push** : `push_subscriptions` n'est lisible et supprimable que par son propriétaire, et ne s'écrit que par `save_push_subscription`. La clé secrète Supabase (`SUPABASE_SECRET_KEY`, client `src/data-access/supabase/admin.ts`, `server-only`) ne sert qu'à `/api/push/dispatch`, qui n'accepte que le secret partagé avec la base, comparé à temps constant. La route n'est pas sous le proxy, et le service worker ne la touche pas.
 
 ## Anti-abus
@@ -581,10 +603,10 @@ Le scénario est rejouable avec `bun run db:test` (`supabase/tests/join-rate-lim
 
 L'app est utilisable avec un simple pseudo, et les deux droits qui comptent au quotidien sont en libre-service depuis « Mon compte » :
 
-| Droit                | Chemin            | Effet                                                                                                                                                                                        |
-| -------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Export (portabilité) | `/account/export` | JSON téléchargeable — profil, listes, groupes, sessions hébergées, participations, restos apportés, votes et navigateurs abonnés aux notifications — assemblé en base par `export_my_data()` |
-| Suppression          | « Mon compte »    | `delete_my_account()` : profil, listes, groupes, abonnements aux notifications et compte auth supprimés en une transaction                                                                   |
+| Droit                | Chemin            | Effet                                                                                                                                                                                                                  |
+| -------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Export (portabilité) | `/account/export` | JSON téléchargeable — profil, contraintes alimentaires, listes, groupes, sessions hébergées, participations, restos apportés, votes et navigateurs abonnés aux notifications — assemblé en base par `export_my_data()` |
+| Suppression          | « Mon compte »    | `delete_my_account()` : profil, contraintes alimentaires, listes, groupes, abonnements aux notifications et compte auth supprimés en une transaction                                                                   |
 
 Supprimer un compte ne réécrit pas l'histoire des autres. Les votes déjà comptés dans une **session terminée** restent dans le classement mais perdent leur auteur (`Participant supprimé`) ; les sessions **en attente ou en cours** que le compte hébergeait sont supprimées, puisque sans host elles ne peuvent plus aboutir. La garantie est portée par le schéma (`on delete set null` sur `sessions.host_id` et `session_participants.profile_id`), pas seulement par la RPC : une suppression faite depuis le dashboard Supabase donne le même résultat.
 

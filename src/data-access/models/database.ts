@@ -238,6 +238,58 @@ export type Database = {
           },
         ]
       }
+      profile_budgets: {
+        Row: {
+          max_price_level: number
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          max_price_level: number
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          max_price_level?: number
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'profile_budgets_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: true
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      profile_constraints: {
+        Row: {
+          created_at: string
+          profile_id: string
+          tag: string
+        }
+        Insert: {
+          created_at?: string
+          profile_id: string
+          tag: string
+        }
+        Update: {
+          created_at?: string
+          profile_id?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'profile_constraints_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1224,9 +1276,22 @@ export type Database = {
         Args: { p_restaurant_id: string; p_session_id: string }
         Returns: undefined
       }
+      restaurant_conflicts_with: {
+        Args: {
+          p_constraint_tags: string[]
+          p_max_price_level: number
+          p_price_level: number
+          p_restaurant_tags: string[]
+        }
+        Returns: boolean
+      }
       restaurant_tag_values: { Args: never; Returns: string[] }
       rules_are_valid: { Args: { p_rules: Json }; Returns: boolean }
       run_maintenance: { Args: never; Returns: Json }
+      save_my_constraints: {
+        Args: { p_max_price_level?: number; p_tags?: string[] }
+        Returns: undefined
+      }
       save_push_subscription: {
         Args: { p_auth: string; p_endpoint: string; p_p256dh: string }
         Returns: undefined
@@ -1266,6 +1331,13 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      session_constraint_conflicts: {
+        Args: { p_session_id: string }
+        Returns: {
+          blocked_count: number
+          restaurant_id: string
+        }[]
       }
       session_is_open: { Args: { p_rules: Json }; Returns: boolean }
       session_preview: {

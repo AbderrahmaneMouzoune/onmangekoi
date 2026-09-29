@@ -162,6 +162,15 @@ export interface AnalyticsEventMap {
     session_id: string
     context: PushOptInContext
   }
+  /**
+   * La personne a enregistré ce qu'elle ne peut pas manger (issue #60). Un
+   * compte, et rien d'autre : jamais quels régimes ni quel budget — un
+   * régime halal ou casher dit une religion, un sans gluten une santé.
+   */
+  constraints_updated: {
+    /** Régimes déclarés, plus un si un budget maximum est posé. 0 : tout retiré. */
+    constraint_count: number
+  }
 }
 
 export type AnalyticsEvent = keyof AnalyticsEventMap

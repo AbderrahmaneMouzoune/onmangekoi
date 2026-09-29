@@ -26,6 +26,7 @@ import type {
   SessionStatus,
 } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { ConstraintConflictCounts, FoodConstraints } from '@/domain/food-constraints'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { JokerKind } from '@/domain/session-rules'
 
@@ -50,6 +51,13 @@ interface SessionRoomProps {
   invitations: InvitationWithProfile[]
   /** Groupes du host, à inviter depuis la salle d'attente ou pendant un vote ouvert. */
   groups: GroupWithMembers[]
+  /**
+   * Contraintes alimentaires (#60) : par resto, combien de participants ne
+   * peuvent pas y manger. Un compte, jamais qui.
+   */
+  constraintConflicts: ConstraintConflictCounts
+  /** Ses propres contraintes, pour le sélecteur de la salle d'attente. */
+  myConstraints: FoodConstraints | null
 }
 
 /** Ce qu'un lecteur d'écran entend quand la session change d'état sous ses yeux. */
@@ -85,14 +93,18 @@ export function SessionRoom({
   firstRoundUrl,
   invitations,
   groups,
+  constraintConflicts,
+  myConstraints,
 }: SessionRoomProps) {
   const navigation = useRouter()
-  const { session, participants, restaurants, connection, refresh, setSession } = useSessionRoom({
-    sessionId: initialSession.id,
-    initialSession,
-    initialParticipants,
-    initialRestaurants,
-  })
+  const { session, participants, restaurants, conflicts, connection, refresh, setSession } =
+    useSessionRoom({
+      sessionId: initialSession.id,
+      initialSession,
+      initialParticipants,
+      initialRestaurants,
+      initialConflicts: constraintConflicts,
+    })
 
   const me = participants.find((p) => p.profile_id === meId)
   const isHost = session.host_id === meId
@@ -239,6 +251,8 @@ export function SessionRoom({
             connection={connection}
             invitations={invitations}
             groups={groups}
+            conflicts={conflicts}
+            myConstraints={myConstraints}
             onLaunched={setSession}
             onRestaurantsChanged={refresh}
           />
@@ -265,6 +279,7 @@ export function SessionRoom({
             rules={rules}
             initialJokersUsed={myJokersUsed}
             lastWins={recentWinners}
+            conflicts={conflicts}
             onFinished={handleFinished}
           />
         )}
