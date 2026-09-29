@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useActionState, useMemo, useState } from 'react'
 
 import { createSessionAction } from '@/actions/sessions'
@@ -16,7 +17,6 @@ import {
   withoutSuggestion,
 } from '@/domain/suggestions'
 import { rememberSessionEntry } from '@/lib/analytics/handoff'
-import { countLabel } from '@/lib/format'
 
 import type { ListWithRestaurantIds } from '@/data-access/lists'
 import type { RestaurantPage } from '@/data-access/restaurants'
@@ -57,6 +57,8 @@ export function DuoCreateForm({
   const [proposedIds] = useState(() => suggestedIds(suggestion))
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState<string[]>(proposedIds)
   const [suggestionDismissed, setSuggestionDismissed] = useState(false)
+  const t = useTranslations('session.duo.create')
+  const tCreate = useTranslations('session.create')
 
   const total = useMemo(() => {
     const ids = new Set(selectedRestaurantIds)
@@ -92,12 +94,9 @@ export function DuoCreateForm({
       <section aria-labelledby="duo-restaurants-title" className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h2 id="duo-restaurants-title" className="text-base font-semibold">
-            Les restos à balayer
+            {t('title')}
           </h2>
-          <p className="text-sm text-muted-foreground">
-            Vous verrez les mêmes, dans le même ordre. Quelques-uns suffisent : on s’arrête au
-            premier « ça me va » commun.
-          </p>
+          <p className="text-sm text-muted-foreground">{t('hint')}</p>
         </div>
 
         {suggestion && !suggestionDismissed && keptSuggested > 0 && (
@@ -131,11 +130,11 @@ export function DuoCreateForm({
           {isPending ? (
             <Spinner />
           ) : total >= DUO_MIN_RESTAURANTS ? (
-            `C’est parti · ${countLabel(total, 'resto')}`
+            t('submit', { count: total })
           ) : total === 1 ? (
-            'Encore un resto au moins'
+            t('oneMore')
           ) : (
-            'Sélectionne des restaurants'
+            tCreate('selectRestaurants')
           )}
         </Button>
       </div>

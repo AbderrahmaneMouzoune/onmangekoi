@@ -6,7 +6,7 @@ import { getCurrentUser } from '@/data-access/auth'
 import { RESTAURANTS_CACHE_PROFILE, RESTAURANTS_CACHE_TAG } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
 import { ImportPlaceSchema, SeedNeighbourhoodSchema } from '@/domain/schemas/place'
-import { translateError } from '@/i18n/server'
+import { errorMessage, translateError } from '@/i18n/server'
 import { importPlaceUseCase } from '@/use-cases/import-place'
 import { seedNeighbourhoodUseCase } from '@/use-cases/seed-neighbourhood'
 
@@ -24,10 +24,10 @@ import type { SeededNeighbourhood } from '@/use-cases/seed-neighbourhood'
  */
 async function writePlace(placeId: string): Promise<ActionResult<Restaurant>> {
   const parsed = ImportPlaceSchema.safeParse({ placeId })
-  if (!parsed.success) return { ok: false, error: 'Lieu invalide' }
+  if (!parsed.success) return { ok: false, error: await errorMessage('invalid_place') }
 
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
-  if (!user) return { ok: false, error: 'Tu dois d’abord choisir un pseudo.' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     return { ok: true, data: await importPlaceUseCase(supabase, parsed.data.placeId) }
@@ -74,10 +74,10 @@ export async function seedNeighbourhoodAction(input: {
   longitude?: number | null
 }): Promise<ActionResult<SeededNeighbourhood>> {
   const parsed = SeedNeighbourhoodSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: 'Position invalide' }
+  if (!parsed.success) return { ok: false, error: await errorMessage('invalid_position') }
 
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
-  if (!user) return { ok: false, error: 'Tu dois d’abord choisir un pseudo.' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     const seeded = await seedNeighbourhoodUseCase(supabase, parsed.data)

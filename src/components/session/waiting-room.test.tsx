@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { DEFAULT_SESSION_RULES } from '@/domain/session-rules'
+import { renderWithIntl } from '@/test/render'
 
 import { WaitingRoom } from './waiting-room'
 
@@ -89,7 +90,7 @@ function renderRoom({
   participants?: ParticipantWithProfile[]
   restaurants?: SessionRestaurantWithRestaurant[]
 } = {}) {
-  return render(
+  return renderWithIntl(
     <WaitingRoom
       session={session}
       participants={participants}

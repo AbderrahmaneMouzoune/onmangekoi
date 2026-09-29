@@ -1,23 +1,17 @@
 'use client'
 
+import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 
+import { useRuleLineText } from '@/components/session/rules-summary'
 import {
   CLOSE_AT_RATIO_CHOICES,
   DEFAULT_SESSION_RULES,
   JOKER_CHOICES,
   describeRules,
-  formatRatio,
 } from '@/domain/session-rules'
+import { percentLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
-
-const LEGEND = 'Règles du vote'
-
-const HINT =
-  'Les règles sont figées au lancement. Sous 100 %, le classement tombe dès le seuil atteint : les bulletins manquants comptent 0, comme lors d’une clôture forcée.'
-
-const OPEN_HINT =
-  'Session ouverte : pas de seuil de clôture, le nombre de votants n’est pas connu d’avance. L’échéance clôt le vote — ou toi, à la main. Les bulletins manquants comptent 0.'
 
 function optionClassName(isSelected: boolean) {
   return cn(
@@ -67,9 +61,6 @@ function ChoiceGroup<T extends number>({
   )
 }
 
-const jokerLabel = (count: number) => (count === 0 ? 'Aucun' : String(count))
-const ratioLabel = (ratio: number) => (ratio >= 1 ? 'Tout le monde' : formatRatio(ratio))
-
 interface RulesPickerProps {
   /**
    * Session ouverte, cochée plus haut dans le formulaire : le seuil n'y a pas
@@ -91,25 +82,34 @@ export function RulesPicker({ open = false }: RulesPickerProps = {}) {
   const [superlikes, setSuperlikes] = useState<number>(DEFAULT_SESSION_RULES.superlikes)
   const [vetos, setVetos] = useState<number>(DEFAULT_SESSION_RULES.vetos)
   const [closeAtRatio, setCloseAtRatio] = useState<number>(DEFAULT_SESSION_RULES.close_at_ratio)
+  const t = useTranslations('session.rules')
+  const locale = useLocale()
+  const describe = useRuleLineText()
+
+  const jokerLabel = (count: number) => (count === 0 ? t('picker.noJoker') : String(count))
+  const ratioLabel = (ratio: number) =>
+    ratio >= 1 ? t('picker.everyone') : percentLabel(ratio, locale)
 
   const summary = describeRules(
     open
       ? { superlikes, vetos, close_at_ratio: 1, open: true }
       : { superlikes, vetos, close_at_ratio: closeAtRatio }
-  ).join(' · ')
+  )
+    .map(describe)
+    .join(' · ')
 
   return (
     <details className="rounded-lg border border-line bg-surface">
       <summary className="cursor-pointer list-none px-4 py-3 outline-none focus-visible:ring-3 focus-visible:ring-brand [&::-webkit-details-marker]:hidden">
         <span className="flex flex-col gap-0.5">
-          <span className="text-sm font-medium">{LEGEND}</span>
+          <span className="text-sm font-medium">{t('label')}</span>
           <span className="text-xs text-muted-foreground">{summary}</span>
         </span>
       </summary>
 
       <div className="flex flex-col gap-5 border-t border-line px-4 py-4">
         <ChoiceGroup
-          legend="Coups de cœur par personne"
+          legend={t('picker.superlikes')}
           options={JOKER_CHOICES}
           value={superlikes}
           onChange={setSuperlikes}
@@ -117,7 +117,7 @@ export function RulesPicker({ open = false }: RulesPickerProps = {}) {
           name="superlikes"
         />
         <ChoiceGroup
-          legend="Vetos par personne"
+          legend={t('picker.vetos')}
           options={JOKER_CHOICES}
           value={vetos}
           onChange={setVetos}
@@ -126,7 +126,7 @@ export function RulesPicker({ open = false }: RulesPickerProps = {}) {
         />
         {!open && (
           <ChoiceGroup
-            legend="Seuil de clôture"
+            legend={t('picker.threshold')}
             options={CLOSE_AT_RATIO_CHOICES}
             value={closeAtRatio}
             onChange={setCloseAtRatio}
@@ -134,7 +134,9 @@ export function RulesPicker({ open = false }: RulesPickerProps = {}) {
             name="closeAtRatio"
           />
         )}
-        <p className="text-xs text-muted-foreground">{open ? OPEN_HINT : HINT}</p>
+        <p className="text-xs text-muted-foreground">
+          {open ? t('picker.openHint') : t('picker.hint')}
+        </p>
       </div>
     </details>
   )
@@ -146,11 +148,13 @@ export function RulesPicker({ open = false }: RulesPickerProps = {}) {
  * arrive, et les règles de départ sont les mêmes pour tout le monde.
  */
 export function RulesPickerFallback() {
+  const t = useTranslations('session.rules')
+  const describe = useRuleLineText()
   return (
     <div className="rounded-lg border border-line bg-surface px-4 py-3">
-      <p className="text-sm font-medium">{LEGEND}</p>
+      <p className="text-sm font-medium">{t('label')}</p>
       <p className="text-xs text-muted-foreground">
-        {describeRules(DEFAULT_SESSION_RULES).join(' · ')}
+        {describeRules(DEFAULT_SESSION_RULES).map(describe).join(' · ')}
       </p>
     </div>
   )

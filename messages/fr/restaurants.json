@@ -1,1 +1,126 @@
-{}
+{
+  "tags": {
+    "vegetarian": "Végétarien",
+    "vegan": "Vegan",
+    "halal": "Halal",
+    "kosher": "Casher",
+    "gluten_free": "Sans gluten"
+  },
+  "notForMe": {
+    "several": "Pas pour toi",
+    "budget": "Hors budget",
+    "tags": {
+      "vegetarian": "Pas végétarien",
+      "vegan": "Pas vegan",
+      "halal": "Pas halal",
+      "kosher": "Pas casher",
+      "gluten_free": "Pas sans gluten"
+    }
+  },
+  "openNow": {
+    "open": "Ouvert",
+    "closed": "Fermé"
+  },
+  "geo": {
+    "aroundMe": "Autour de moi",
+    "aroundYou": "Autour de toi",
+    "unsupported": "Ton navigateur ne sait pas donner ta position.",
+    "denied": "Position refusée : pas de restos autour de toi, mais la recherche par nom marche.",
+    "failed": "Impossible de te situer pour l’instant."
+  },
+  "recentWinner": {
+    "won": "Gagnant {when}",
+    "excluded": "Écarté"
+  },
+  "sources": {
+    "label": "Source des restaurants",
+    "lists": "Mes listes",
+    "base": "Le carnet",
+    "google": "Google"
+  },
+  "picker": {
+    "searchBase": "Chercher un resto ou une cuisine",
+    "searchGoogle": "Chercher un resto chez Google",
+    "searchLabel": "Chercher un restaurant",
+    "empty": "Aucun resto du carnet ne correspond.",
+    "nowhere": "Il n’est nulle part ?",
+    "addManually": "Ajouter un resto à la main"
+  },
+  "basket": {
+    "title": "Ta sélection",
+    "label": "Sélection",
+    "clear": "Tout retirer",
+    "removeList": "Retirer la liste {name}",
+    "remove": "Retirer {name}",
+    "importing": "{name}, import en cours"
+  },
+  "lists": {
+    "label": "Mes listes",
+    "empty": "vide",
+    "hint": "Coche autant de listes que tu veux, puis complète depuis le carnet ou Google."
+  },
+  "filters": {
+    "budget": "Budget",
+    "budgetMax": "Budget maximum",
+    "budgetMaxLevel": "Budget maximum {level}",
+    "diet": "Régime",
+    "dietLabel": "Régime alimentaire",
+    "distance": "Distance",
+    "radius": "Rayon autour de moi",
+    "within": "Moins de {radius} d’ici",
+    "clear": "Tout effacer",
+    "hidden": {
+      "sentence": "Les restos {reasons} n’apparaissent pas.",
+      "budget": "dont le budget n’est pas renseigné",
+      "tags": "{count, plural, one {qui ne déclarent pas ce régime} other {qui ne déclarent pas ces régimes}}",
+      "distance": "dont l’adresse n’est pas localisée"
+    }
+  },
+  "catalog": {
+    "caption": "Le carnet",
+    "captionNearby": "Le carnet, avec les distances depuis toi",
+    "label": "Résultats",
+    "noMatchFilters": "Aucun resto du carnet ne passe les filtres.",
+    "clearFilters": "Efface les filtres",
+    "addIt": "Ajoute-le",
+    "more": "Afficher plus"
+  },
+  "google": {
+    "networkFailure": "La recherche Google a échoué. Réessaie.",
+    "outOfFive": "sur 5",
+    "nearest": "Les plus proches de toi",
+    "resultsNearby": "Résultats Google, autour de toi",
+    "results": "Résultats Google",
+    "locating": "On regarde ce qu’il y a autour de toi…",
+    "searchingNearby": "On cherche les restos autour de toi…",
+    "allowPosition": "Autorise ta position pour voir les restos autour de toi, ou cherche un nom.",
+    "noResults": "Google ne trouve rien pour « {query} ».",
+    "nothingNearby": "Rien à moins de deux kilomètres. Cherche un resto par son nom.",
+    "more": "Voir plus",
+    "hint": "Cocher un resto l’ajoute à la sélection et importe sa fiche — photo, adresse, horaires. Un lieu déjà importé rejoint la sélection sans créer de doublon."
+  },
+  "seed": {
+    "title": "Amorcer mon quartier",
+    "description": "Jusqu’à {max} restos autour de toi entrent dans le carnet d’un coup. Tu coches ensuite ceux que tu veux.",
+    "action": "Amorcer",
+    "outcome": "{added, plural, one {# resto est entré} other {# restos sont entrés}} dans le carnet{failed, plural, =0 {} one {, # n’a pas pu être enregistré} other {, # n’ont pas pu être enregistrés}}. {remaining, plural, =0 {C’était ton dernier amorçage du jour.} one {Il te reste # amorçage aujourd’hui.} other {Il te reste # amorçages aujourd’hui.}}"
+  },
+  "add": {
+    "label": "Ajouter un resto",
+    "name": "Nom du resto",
+    "namePlaceholder": "Le petit libanais",
+    "similar": "Un resto au nom proche existe déjà. C’est peut-être le même :",
+    "cuisine": "Cuisine <optional>(optionnel)</optional>",
+    "cuisinePlaceholder": "Libanais",
+    "address": "Adresse <optional>(optionnel)</optional>",
+    "addressPlaceholder": "3 rue du Four",
+    "budget": "Budget <optional>(optionnel)</optional>",
+    "budgetLabel": "Budget",
+    "diet": "Régime <optional>(optionnel)</optional>",
+    "dietLabel": "Régime alimentaire",
+    "submit": "Ajouter ce resto"
+  },
+  "map": {
+    "attribution": "© OpenStreetMap"
+  }
+}

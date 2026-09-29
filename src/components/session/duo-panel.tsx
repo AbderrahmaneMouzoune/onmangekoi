@@ -1,6 +1,7 @@
 'use client'
 
 import { RiHeartsLine, RiShareForwardLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/copy-button'
@@ -31,6 +32,9 @@ interface DuoPanelProps {
 export function DuoPanel({ sessionId, sessionName, participants, meId, inviteUrl }: DuoPanelProps) {
   const canShare = useCanShare()
   const partner = partnerOf(participants, meId)
+  const t = useTranslations('session.duo')
+  const tInvite = useTranslations('session.invite')
+  const tCommon = useTranslations('common')
 
   function trackShare(method: ShareMethod) {
     captureEvent('invite_shared', { session_id: sessionId, method })
@@ -39,8 +43,8 @@ export function DuoPanel({ sessionId, sessionName, participants, meId, inviteUrl
   async function share() {
     try {
       await navigator.share({
-        title: `« ${sessionName} » sur onmangekoi`,
-        text: 'On choisit où manger à deux : balaie les restos, au premier « ça me va » commun, c’est décidé.',
+        title: t('shareTitle', { name: sessionName }),
+        text: t('shareText'),
         url: inviteUrl,
       })
       trackShare('native_share')
@@ -54,9 +58,10 @@ export function DuoPanel({ sessionId, sessionName, participants, meId, inviteUrl
       <p className="flex items-center gap-2.5 rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink-2">
         <RiHeartsLine aria-hidden="true" className="size-4.5 shrink-0 text-brand" />
         <span>
-          À deux avec{' '}
-          <strong className="font-semibold">{displayPseudo(partner?.profiles?.pseudo)}</strong> : au
-          premier « ça me va » commun, c’est décidé.
+          {t.rich('together', {
+            partner: displayPseudo(partner?.profiles?.pseudo, tCommon('people.guest')),
+            strong: (chunks) => <strong className="font-semibold">{chunks}</strong>,
+          })}
         </span>
       </p>
     )
@@ -69,24 +74,21 @@ export function DuoPanel({ sessionId, sessionName, participants, meId, inviteUrl
     >
       <div className="flex flex-col gap-1.5">
         <h2 id="duo-invite-title" className="font-display text-xl font-bold text-chalk">
-          Envoie ce lien
+          {t('inviteTitle')}
         </h2>
-        <p className="max-w-prose text-sm text-chalk-muted">
-          Pas de code à dicter : l’autre ouvre le lien et tombe directement sur les mêmes restos. Tu
-          peux commencer à voter sans l’attendre — au premier « ça me va » commun, c’est décidé.
-        </p>
+        <p className="max-w-prose text-sm text-chalk-muted">{t('inviteText')}</p>
       </div>
 
       <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
         {canShare && (
           <Button type="button" onClick={share}>
             <RiShareForwardLine aria-hidden="true" />
-            Envoyer le lien
+            {t('send')}
           </Button>
         )}
         <CopyButton
           value={inviteUrl}
-          label="Copier le lien"
+          label={tInvite('copyLink')}
           variant="chalk"
           onCopied={() => trackShare('link_copy')}
         />

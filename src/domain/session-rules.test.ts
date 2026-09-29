@@ -106,10 +106,10 @@ describe('open sessions', () => {
 
   it('should announce the open mode first and replace the threshold by the deadline', () => {
     expect(describeRules(rules({ open: true, close_at_ratio: 0.8 }))).toEqual([
-      'Session ouverte : chacun vote à son heure',
-      '1 coup de cœur',
-      '1 veto',
-      'Clôture à l’échéance',
+      { kind: 'open' },
+      { kind: 'superlikes', count: 1 },
+      { kind: 'vetos', count: 1 },
+      { kind: 'closeAtDeadline' },
     ])
   })
 })
@@ -148,10 +148,10 @@ describe('duo sessions', () => {
 
   it('should announce the agreement rule first and the fallback ranking last', () => {
     expect(describeRules(rules({ duo: true }))).toEqual([
-      'À deux : le premier « ça me va » commun décide',
-      '1 coup de cœur',
-      '1 veto',
-      'Sans accord, classement quand vous avez fini tous les deux',
+      { kind: 'duo' },
+      { kind: 'superlikes', count: 1 },
+      { kind: 'vetos', count: 1 },
+      { kind: 'closeDuo' },
     ])
   })
 })
@@ -180,17 +180,17 @@ describe('requiredFinishers', () => {
 describe('describeRules', () => {
   it('should read the default rules as they have always worked', () => {
     expect(describeRules(DEFAULT_SESSION_RULES)).toEqual([
-      '1 coup de cœur',
-      '1 veto',
-      'Clôture quand tout le monde a voté',
+      { kind: 'superlikes', count: 1 },
+      { kind: 'vetos', count: 1 },
+      { kind: 'closeAll' },
     ])
   })
 
   it('should say a threshold and a disabled joker', () => {
     expect(describeRules(rules({ superlikes: 2, vetos: 0, close_at_ratio: 0.8 }))).toEqual([
-      '2 coups de cœur',
-      'Aucun veto',
-      expect.stringMatching(/^Clôture dès 80/),
+      { kind: 'superlikes', count: 2 },
+      { kind: 'vetos', count: 0 },
+      { kind: 'closeAtRatio', ratio: 0.8 },
     ])
   })
 })
@@ -213,28 +213,28 @@ describe('jokerQuotas', () => {
 
 describe('jokerBadge', () => {
   it('should tell a disabled joker from a spent one', () => {
-    expect(jokerBadge({ limit: 0, remaining: 0 })).toBe('hors jeu')
-    expect(jokerBadge({ limit: 1, remaining: 0 })).toBe('épuisé')
-    expect(jokerBadge({ limit: 1, remaining: 1 })).toBe('1 restant')
-    expect(jokerBadge({ limit: 3, remaining: 2 })).toBe('2 restants')
+    expect(jokerBadge({ limit: 0, remaining: 0 })).toEqual({ kind: 'off' })
+    expect(jokerBadge({ limit: 1, remaining: 0 })).toEqual({ kind: 'spent' })
+    expect(jokerBadge({ limit: 3, remaining: 2 })).toEqual({ kind: 'remaining', count: 2 })
   })
 })
 
 describe('jokersSentence', () => {
   it('should announce the quotas of the session', () => {
-    expect(jokersSentence(rules({ superlikes: 1, vetos: 2 }))).toBe(
-      'Les jokers comptent double : 1 coup de cœur et 2 vetos pour toute la session.'
-    )
+    expect(jokersSentence(rules({ superlikes: 1, vetos: 2 }))).toEqual({
+      kind: 'both',
+      superlikes: 1,
+      vetos: 2,
+    })
   })
 
   it('should drop a joker that is out of play', () => {
-    expect(jokersSentence(rules({ vetos: 0 }))).toBe(
-      'Les jokers comptent double : 1 coup de cœur pour toute la session.'
-    )
+    expect(jokersSentence(rules({ vetos: 0 }))).toEqual({ kind: 'superlikes', superlikes: 1 })
+    expect(jokersSentence(rules({ superlikes: 0 }))).toEqual({ kind: 'vetos', vetos: 1 })
   })
 
   it('should say when no joker is in play at all', () => {
-    expect(jokersSentence(rules({ superlikes: 0, vetos: 0 }))).toMatch(/Pas de joker/)
+    expect(jokersSentence(rules({ superlikes: 0, vetos: 0 }))).toEqual({ kind: 'none' })
   })
 })
 

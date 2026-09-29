@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { DEFAULT_SESSION_RULES } from '@/domain/session-rules'
+import { renderWithIntl } from '@/test/render'
 
 import { VoteDeck } from './vote-deck'
 
@@ -52,7 +53,7 @@ function deckOf(...names: string[]): SessionRestaurantWithRestaurant[] {
 }
 
 function renderDeck(props: Partial<React.ComponentProps<typeof VoteDeck>> = {}) {
-  return render(
+  return renderWithIntl(
     <VoteDeck
       sessionId="session-1"
       restaurants={deckOf('Chez Marcel', 'Sushi Sakura')}
@@ -204,6 +205,32 @@ describe('VoteDeck — annonce', () => {
     await waitFor(() =>
       expect(
         screen.getByText('Ça me va enregistré. Restaurant 2 sur 2 : Sushi Sakura.')
+      ).toBeInTheDocument()
+    )
+  })
+
+  it('should announce in English, with the English name of the vote', async () => {
+    const user = userEvent.setup()
+    renderWithIntl(
+      <VoteDeck
+        sessionId="session-1"
+        restaurants={deckOf('Chez Marcel', 'Sushi Sakura')}
+        initialVotedIds={[]}
+        rules={{ ...DEFAULT_SESSION_RULES, vetos: 0 }}
+        initialJokersUsed={{ fav: 0, veto: 0 }}
+        lastWins={{}}
+        onFinished={vi.fn()}
+      />,
+      { locale: 'en' }
+    )
+    expect(
+      screen.getByText(/left for “nah”\. Jokers count double: 1 favourite for the whole session\./)
+    ).toBeInTheDocument()
+
+    await user.keyboard('{ArrowRight}')
+    await waitFor(() =>
+      expect(
+        screen.getByText('Works for me saved. Restaurant 2 of 2: Sushi Sakura.')
       ).toBeInTheDocument()
     )
   })

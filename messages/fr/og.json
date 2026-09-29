@@ -4,5 +4,25 @@
     "title": "Où est-ce qu’on mange ?",
     "subtitle": "Le groupe vote, le classement tranche. Sans compte.",
     "footer": "2 minutes, promis"
+  },
+  "invite": {
+    "alt": "Invitation à voter sur onmangekoi",
+    "eyebrow": "{host} t’invite",
+    "duo": "{count, plural, one {# resto} other {# restos}} à balayer à deux. Au premier « ça me va » commun, c’est décidé.",
+    "open": "{count, plural, one {# resto} other {# restos}} à départager. Vote quand tu veux, avant la clôture.",
+    "default": "{count, plural, one {# resto} other {# restos}} à départager. Vote en deux minutes.",
+    "footer": "Sans compte",
+    "fallbackEyebrow": "Invitation",
+    "fallbackTitle": "Où est-ce qu’on mange ?",
+    "fallbackSubtitle": "Rejoins la session et vote sur les restos."
+  },
+  "results": {
+    "alt": "Le classement d’un vote onmangekoi",
+    "decided": "C’est décidé · on mange chez",
+    "winner": "On mange chez",
+    "subtitle": "Score {score} · {count, plural, one {# participant} other {# participants}}",
+    "fallbackEyebrow": "Classement",
+    "fallbackTitle": "Où est-ce qu’on mange ?",
+    "fallbackSubtitle": "Le groupe vote, le classement tranche."
   }
 }

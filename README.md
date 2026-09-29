@@ -481,9 +481,9 @@ L'interface existe en français et en anglais ([#14](https://github.com/Abderrah
 - **À la première visite**, la langue suit le navigateur (`Accept-Language`) ; le français reste la langue par défaut.
 - **Le pied de page** propose FR / EN. Le choix est retenu un an dans le cookie `NEXT_LOCALE` et l'emporte ensuite sur le navigateur.
 - **Les liens ne changent pas** : pas de `/en/` dans l'URL. Un lien d'invitation, une liste partagée ou un classement public s'ouvre dans la langue de qui le reçoit.
-- `<html lang>`, le titre, les métadonnées Open Graph, l'image de partage de l'accueil et le manifest suivent la langue.
+- `<html lang>`, le titre, les métadonnées Open Graph, les images de partage (accueil, invitation, classement public, texte alternatif compris) et le manifest suivent la langue.
 
-La traduction est en cours : l'accueil, l'onboarding, l'en-tête, le pied de page, les erreurs métier et les pages d'erreur sont traduits ; les écrans de session, de listes, de groupes et de compte le seront ensuite. Le fonctionnement (`next-intl`, segment `[locale]` caché, messages par espace de noms, erreurs par code) et le guide pour traduire un écran sont dans [`docs/i18n.md`](docs/i18n.md).
+La traduction est en cours : l'accueil, l'onboarding, l'en-tête, le pied de page, les erreurs métier, les pages d'erreur, tout le parcours de session (création, duo, salle d'attente, vote, résultats, départage, décision, historique, invitation, podium public) et le sélecteur de restaurants sont traduits ; les écrans de listes, de groupes et de compte le seront ensuite. Le fonctionnement (`next-intl`, segment `[locale]` caché, messages par espace de noms, erreurs par code) et le guide pour traduire un écran sont dans [`docs/i18n.md`](docs/i18n.md).
 
 ## Stack
 

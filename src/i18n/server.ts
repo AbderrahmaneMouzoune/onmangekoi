@@ -3,7 +3,7 @@ import 'server-only'
 import { revalidatePath } from 'next/cache'
 import { getTranslations } from 'next-intl/server'
 
-import { omkCode } from '@/domain/errors'
+import { AppError, omkCode, type ErrorCode } from '@/domain/errors'
 
 import { LOCALES } from './config'
 import { describeError, type ErrorFallback } from './errors'
@@ -15,6 +15,14 @@ import { describeError, type ErrorFallback } from './errors'
 export async function translateError(error: unknown, fallback?: ErrorFallback): Promise<string> {
   const t = await getTranslations('errors')
   return describeError(t, error, fallback)
+}
+
+/**
+ * Message d'un refus que l'action décide elle-même, avant tout appel — pas de
+ * pseudo, identifiant illisible : le même texte que si la base l'avait levé.
+ */
+export async function errorMessage(code: ErrorCode): Promise<string> {
+  return translateError(new AppError(code))
 }
 
 /**

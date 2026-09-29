@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { OpenSessionToggle } from './open-session-toggle'
 
@@ -19,14 +21,14 @@ function Harness() {
 
 describe('OpenSessionToggle', () => {
   it('should send nothing while unchecked: the session keeps its waiting room', () => {
-    render(<Harness />)
+    renderWithIntl(<Harness />)
     expect(screen.getByRole('checkbox', { name: /session ouverte/i })).not.toBeChecked()
     expect(hidden('open')).toBeNull()
     expect(screen.getByText(/Salle d’attente/)).toBeInTheDocument()
   })
 
   it('should send the open mode once checked, and say what it changes', async () => {
-    render(<Harness />)
+    renderWithIntl(<Harness />)
     await userEvent.click(screen.getByRole('checkbox', { name: /session ouverte/i }))
 
     expect(screen.getByRole('checkbox', { name: /session ouverte/i })).toBeChecked()

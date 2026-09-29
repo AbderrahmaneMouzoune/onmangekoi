@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 import { SessionRoom } from '@/components/session/session-room'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -121,11 +122,12 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
  * ouvrent : la carte à gauche, les commandes à droite sur grand écran.
  */
 export function SessionRoomFallback() {
+  const t = useTranslations('session.room.eyebrow')
   return (
     <div aria-busy="true" className="flex flex-col gap-6 lg:gap-8">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="eyebrow">Session</p>
+          <p className="eyebrow">{t('session')}</p>
           <Skeleton className="h-8 w-48 sm:h-9 lg:h-10" />
         </div>
         <Skeleton className="h-6 w-24 rounded-full" />

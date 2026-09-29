@@ -1,6 +1,8 @@
 import { RiErrorWarningLine } from '@remixicon/react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -22,10 +24,12 @@ import type { Session } from '@/data-access/models'
  * coquille « on te fait entrer » est prérendue.
  */
 export async function JoinByCode({ params }: { params: Promise<{ code: string }> }) {
-  const [{ code }, supabase, user] = await Promise.all([
+  const [{ code }, supabase, user, t, tCommon] = await Promise.all([
     params,
     createServerClient(),
     getCurrentUser(),
+    getTranslations('session.join'),
+    getTranslations('common'),
   ])
   if (!user) redirect(router.setup(router.joinInvite(code)))
 
@@ -49,15 +53,15 @@ export async function JoinByCode({ params }: { params: Promise<{ code: string }>
   return (
     <EmptyState
       icon={<RiErrorWarningLine />}
-      title={preview ? `Impossible de rejoindre « ${preview.name} »` : 'Impossible de rejoindre'}
+      title={preview ? t('failedNamed', { name: preview.name }) : t('failed')}
       description={errorMessage ?? undefined}
       action={
         <div className="flex flex-wrap justify-center gap-2">
           <Link href={router.join()} className={cn(buttonVariants({ variant: 'outline' }))}>
-            Entrer un code
+            {t('enterCode')}
           </Link>
           <Link href={router.home()} className={cn(buttonVariants())}>
-            Accueil
+            {tCommon('actions.home')}
           </Link>
         </div>
       }
@@ -66,6 +70,7 @@ export async function JoinByCode({ params }: { params: Promise<{ code: string }>
 }
 
 export function JoinByCodeFallback() {
+  const t = useTranslations('session.join')
   return (
     <div
       aria-busy="true"
@@ -73,7 +78,7 @@ export function JoinByCodeFallback() {
       className="flex flex-col items-center gap-3 text-muted-foreground"
     >
       <Spinner className="size-6" />
-      <p className="text-sm">On te fait entrer…</p>
+      <p className="text-sm">{t('entering')}</p>
     </div>
   )
 }

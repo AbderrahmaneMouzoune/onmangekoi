@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { SessionRestaurantsPanel } from './session-restaurants-panel'
 
@@ -90,7 +92,7 @@ const RESTAURANTS = [
 
 function renderPanel(props: Partial<Parameters<typeof SessionRestaurantsPanel>[0]> = {}) {
   const onChanged = vi.fn()
-  render(
+  renderWithIntl(
     <SessionRestaurantsPanel
       sessionId="session-1"
       restaurants={RESTAURANTS}

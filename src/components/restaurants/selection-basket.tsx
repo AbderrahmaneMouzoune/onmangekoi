@@ -1,12 +1,12 @@
 'use client'
 
 import { RiBookmarkFill, RiCloseLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useEffect, useRef } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
-import { countLabel } from '@/lib/format'
 
 import type { Restaurant } from '@/data-access/models'
 import type { PlaceResult } from '@/domain/places'
@@ -55,6 +55,8 @@ export function SelectionBasket({
 }: SelectionBasketProps) {
   const onKeyDown = useArrowNavigation('both')
   const strip = useRef<HTMLUListElement>(null)
+  const t = useTranslations('restaurants.basket')
+  const tCommon = useTranslations('common')
   const count = lists.length + restaurants.length + pending.length
 
   useEffect(() => {
@@ -67,12 +69,12 @@ export function SelectionBasket({
   if (count === 0) return null
 
   return (
-    <section aria-label="Ta sélection" className="flex flex-col gap-1.5">
+    <section aria-label={t('title')} className="flex flex-col gap-1.5">
       <p className="flex items-baseline justify-between gap-3 text-sm">
-        <span className="font-medium">Ta sélection</span>
+        <span className="font-medium">{t('title')}</span>
         <span className="flex items-center gap-2">
           <span className="font-mono text-xs text-muted-foreground tabular">
-            {countLabel(total, 'resto')}
+            {tCommon('counts.restaurants', { count: total })}
           </span>
           <Button
             type="button"
@@ -81,7 +83,7 @@ export function SelectionBasket({
             className="-my-2 h-8 px-2 text-muted-foreground"
             onClick={onClear}
           >
-            Tout retirer
+            {t('clear')}
           </Button>
         </span>
       </p>
@@ -89,7 +91,7 @@ export function SelectionBasket({
         ref={strip}
         onKeyDown={onKeyDown}
         className="flex [scrollbar-width:thin] gap-1.5 overflow-x-auto py-0.5"
-        aria-label="Sélection"
+        aria-label={t('label')}
       >
         {lists.map((list) => (
           <li key={list.id} className="shrink-0">
@@ -97,7 +99,7 @@ export function SelectionBasket({
               type="button"
               onClick={() => onRemoveList(list.id)}
               className="inline-flex items-center gap-1.5 rounded-full bg-fav-soft py-1 pr-2 pl-2.5 text-xs font-semibold text-fav transition-colors hover:bg-fav hover:text-surface"
-              aria-label={`Retirer la liste ${list.name}`}
+              aria-label={t('removeList', { name: list.name })}
             >
               <RiBookmarkFill aria-hidden="true" className="size-3.5" />
               {list.name}
@@ -112,7 +114,7 @@ export function SelectionBasket({
               type="button"
               onClick={() => onRemoveRestaurant(restaurant.id)}
               className="inline-flex max-w-48 items-center gap-1 rounded-full bg-brand-soft py-1 pr-2 pl-3 text-xs font-semibold text-brand-hover transition-colors hover:bg-brand hover:text-on-brand"
-              aria-label={`Retirer ${restaurant.name}`}
+              aria-label={t('remove', { name: restaurant.name })}
             >
               <span className="truncate">{restaurant.name}</span>
               <RiCloseLine aria-hidden="true" className="size-3.5 shrink-0" />
@@ -123,7 +125,7 @@ export function SelectionBasket({
           <li key={place.placeId} className="shrink-0">
             <span
               role="status"
-              aria-label={`${place.name}, import en cours`}
+              aria-label={t('importing', { name: place.name })}
               className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft py-1 pr-2.5 pl-3 text-xs font-semibold text-brand-hover"
             >
               {place.name}

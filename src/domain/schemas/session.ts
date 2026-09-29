@@ -12,13 +12,19 @@ export const SESSION_RESTAURANTS_MAX = 100
 const absent = (value: unknown) =>
   value === null || (typeof value === 'string' && value.trim() === '') ? undefined : value
 
+/**
+ * Chaque message de validation est un code (`omkMessage`), traduit par
+ * l'action (`translateIssue`) — dans la langue de la personne, et avec le
+ * même texte que le refus de la base quand elle dit la même chose. Les
+ * libellés portent les bornes en clair : 100, 12 heures, 5 jokers.
+ */
 export const CreateSessionSchema = z
   .object({
     name: z
       .string()
       .trim()
-      .min(1, 'Donne un nom à la session')
-      .max(SESSION_NAME_MAX, `Le nom ne peut pas dépasser ${SESSION_NAME_MAX} caractères`),
+      .min(1, omkMessage('session_name_required'))
+      .max(SESSION_NAME_MAX, omkMessage('session_name_too_long')),
     listIds: z.array(z.uuid()).default([]),
     restaurantIds: z.array(z.uuid()).default([]),
     /** Groupes récurrents à pré-inviter — des invitations, pas des participants. */
@@ -29,8 +35,8 @@ export const CreateSessionSchema = z
       z.coerce
         .number()
         .int()
-        .min(DEADLINE_MIN_MINUTES, 'Choisis une échéance dans au moins une minute')
-        .max(DEADLINE_MAX_MINUTES, 'Une échéance ne peut pas dépasser 12 heures')
+        .min(DEADLINE_MIN_MINUTES, omkMessage('deadline_too_soon'))
+        .max(DEADLINE_MAX_MINUTES, omkMessage('deadline_too_far'))
         .optional()
     ),
     /** « à 12:00 » : l'instant est calculé par le navigateur, seul à connaître son fuseau. */
@@ -44,8 +50,8 @@ export const CreateSessionSchema = z
       z.coerce
         .number()
         .int()
-        .min(0, 'Un quota de jokers ne peut pas être négatif')
-        .max(JOKERS_MAX, `Au-delà de ${JOKERS_MAX}, le joker n’en est plus un`)
+        .min(0, omkMessage('jokers_negative'))
+        .max(JOKERS_MAX, omkMessage('jokers_too_many'))
         .optional()
     ),
     vetos: z.preprocess(
@@ -53,19 +59,16 @@ export const CreateSessionSchema = z
       z.coerce
         .number()
         .int()
-        .min(0, 'Un quota de jokers ne peut pas être négatif')
-        .max(JOKERS_MAX, `Au-delà de ${JOKERS_MAX}, le joker n’en est plus un`)
+        .min(0, omkMessage('jokers_negative'))
+        .max(JOKERS_MAX, omkMessage('jokers_too_many'))
         .optional()
     ),
     closeAtRatio: z.preprocess(
       absent,
       z.coerce
         .number()
-        .min(
-          CLOSE_AT_RATIO_MIN,
-          'La clôture ne peut pas se décider à moins de la moitié des votants'
-        )
-        .max(1, 'La clôture ne peut pas attendre plus que tout le monde')
+        .min(CLOSE_AT_RATIO_MIN, omkMessage('close_ratio_too_low'))
+        .max(1, omkMessage('close_ratio_too_high'))
         .optional()
     ),
     /**
@@ -85,7 +88,7 @@ export const CreateSessionSchema = z
     excludeRecentWinners: z.coerce.boolean().optional(),
   })
   .refine((data) => data.listIds.length + data.restaurantIds.length > 0, {
-    message: 'Sélectionne au moins une liste ou un restaurant',
+    message: omkMessage('nothing_selected'),
     path: ['restaurantIds'],
   })
   // Sans échéance, une session ouverte ne se fermerait jamais. La base refuse
@@ -98,12 +101,12 @@ export const CreateSessionSchema = z
   // Deux places d'un côté, la porte ouverte jusqu'à l'échéance de l'autre. La
   // base refuse aussi la combinaison (`omk:invalid_rules`).
   .refine((data) => !(data.open && data.duo), {
-    message: 'Une session à deux ne peut pas être ouverte à tous.',
+    message: omkMessage('duo_cannot_be_open'),
     path: ['duo'],
   })
 
 export const JoinSessionSchema = z.object({
-  identifier: z.string().trim().min(1, 'Entre un code ou colle un lien').max(500),
+  identifier: z.string().trim().min(1, omkMessage('identifier_required')).max(500),
 })
 
 export const SessionIdSchema = z.uuid()
@@ -113,7 +116,7 @@ export const AddSessionRestaurantsSchema = z.object({
   sessionId: z.uuid(),
   restaurantIds: z
     .array(z.uuid())
-    .min(1, 'Sélectionne au moins un restaurant')
+    .min(1, omkMessage('no_restaurant_selected'))
     .max(SESSION_RESTAURANTS_MAX),
 })
 

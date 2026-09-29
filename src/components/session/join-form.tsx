@@ -2,6 +2,7 @@
 
 import { RiQrScanLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useActionState, useCallback, useRef, useState } from 'react'
 
 import { joinSessionAction } from '@/actions/sessions'
@@ -21,6 +22,8 @@ export function JoinForm({ initialError }: { initialError?: string }) {
   const [scanning, setScanning] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
   const scanButtonRef = useRef<HTMLButtonElement>(null)
+  const t = useTranslations('session.join')
+  const tCommon = useTranslations('common')
 
   const closeScanner = useCallback(() => {
     setScanning(false)
@@ -31,14 +34,14 @@ export function JoinForm({ initialError }: { initialError?: string }) {
     (value: string) => {
       const identifier = parseInviteIdentifier(value)
       if (identifier.kind === 'invalid') {
-        setScanError('Ce QR code n’est pas une invitation onmangekoi.')
+        setScanError(t('notAnInvite'))
         return
       }
       setScanning(false)
       rememberSessionEntry({ kind: 'joined', via: 'scan' })
       navigation.push(router.joinInvite(identifier.value))
     },
-    [navigation]
+    [navigation, t]
   )
 
   return (
@@ -57,7 +60,7 @@ export function JoinForm({ initialError }: { initialError?: string }) {
           }}
         >
           <RiQrScanLine aria-hidden="true" />
-          Scanner le QR code du host
+          {t('scan')}
         </Button>
       )}
 
@@ -65,7 +68,7 @@ export function JoinForm({ initialError }: { initialError?: string }) {
 
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-line" />
-        ou saisis le code
+        {t('or')}
         <span className="h-px flex-1 bg-line" />
       </div>
 
@@ -75,11 +78,11 @@ export function JoinForm({ initialError }: { initialError?: string }) {
         className="flex flex-col gap-4"
       >
         <div className="flex flex-col gap-2">
-          <Label htmlFor="identifier">Code ou lien d’invitation</Label>
+          <Label htmlFor="identifier">{t('label')}</Label>
           <Input
             id="identifier"
             name="identifier"
-            placeholder="A3F 9B2"
+            placeholder={t('placeholder')}
             required
             autoComplete="off"
             autoCapitalize="characters"
@@ -87,16 +90,13 @@ export function JoinForm({ initialError }: { initialError?: string }) {
             aria-invalid={state?.error ? true : undefined}
             className="h-14 font-mono text-2xl tracking-[0.25em] uppercase placeholder:tracking-[0.25em]"
           />
-          <p className="text-xs text-muted-foreground">
-            Le code à 6 caractères, ou le lien complet collé tel quel. Majuscules et tirets sont
-            optionnels.
-          </p>
+          <p className="text-xs text-muted-foreground">{t('hint')}</p>
         </div>
 
         <FormMessage error={state?.error ?? initialError} />
 
         <Button type="submit" size="lg" disabled={isPending} className="w-full">
-          {isPending ? <Spinner /> : 'Rejoindre'}
+          {isPending ? <Spinner /> : tCommon('actions.join')}
         </Button>
       </form>
     </div>

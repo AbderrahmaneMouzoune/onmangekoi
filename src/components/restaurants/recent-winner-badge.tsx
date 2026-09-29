@@ -1,4 +1,6 @@
-import { recentWinLabel } from '@/domain/recent-winners'
+import { useLocale, useTranslations } from 'next-intl'
+
+import { relativeDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 interface RecentWinnerBadgeProps {
@@ -15,6 +17,8 @@ interface RecentWinnerBadgeProps {
  * dit ce qui lui arrive plutôt que ce qu'elle a fait.
  */
 export function RecentWinnerBadge({ wonAt, excluded }: RecentWinnerBadgeProps) {
+  const t = useTranslations('restaurants.recentWinner')
+  const locale = useLocale()
   return (
     <span
       className={cn(
@@ -22,7 +26,7 @@ export function RecentWinnerBadge({ wonAt, excluded }: RecentWinnerBadgeProps) {
         excluded ? 'bg-surface-2 text-ink-muted' : 'bg-fav-soft text-fav'
       )}
     >
-      {excluded ? 'Écarté' : recentWinLabel(wonAt)}
+      {excluded ? t('excluded') : t('won', { when: relativeDate(wonAt, locale) })}
     </span>
   )
 }

@@ -52,7 +52,7 @@
     "invalid_push_subscription": "Ton navigateur a renvoyé un abonnement aux notifications illisible. Réessaie.",
     "list_empty": "Cette liste est encore vide : il n’y a rien à départager.",
     "no_restaurant_selected": "Sélectionne au moins un restaurant.",
-    "all_recent_winners": "Tous ces restos ont gagné dans les {days} derniers jours. Décoche l’anti-fatigue ou ajoute un autre resto.",
+    "all_recent_winners": "Tous ces restos ont gagné dans les {days} derniers jours. Décoche « Exclure les gagnants récents » ou ajoute un autre resto.",
     "places_not_configured": "La recherche Google n’est pas configurée sur ce déploiement.",
     "places_timeout": "Google n’a pas répondu à temps. Réessaie dans un instant.",
     "places_key_rejected": "Google refuse la clé de ce déploiement : la recherche est indisponible.",
@@ -62,13 +62,33 @@
     "places_nothing_nearby": "Google ne trouve aucun resto autour de toi.",
     "seed_nothing_saved": "Aucun resto n’a pu être enregistré. Réessaie dans un instant.",
     "turnstile_missing": "Vérification anti-robot en cours. Réessaie dans un instant.",
-    "turnstile_rejected": "La vérification anti-robot a échoué. Recharge la page et réessaie."
+    "turnstile_rejected": "La vérification anti-robot a échoué. Recharge la page et réessaie.",
+    "invalid_request": "Requête invalide.",
+    "invalid_form": "Formulaire invalide.",
+    "invalid_session": "Session invalide.",
+    "invalid_position": "Position invalide.",
+    "invalid_search": "Recherche invalide.",
+    "search_too_long": "Recherche trop longue.",
+    "search_too_short": "Entre au moins deux caractères, ou autorise ta position.",
+    "session_name_required": "Donne un nom à la session.",
+    "session_name_too_long": "Le nom ne peut pas dépasser 100 caractères.",
+    "nothing_selected": "Sélectionne au moins une liste ou un restaurant.",
+    "jokers_negative": "Un quota de jokers ne peut pas être négatif.",
+    "jokers_too_many": "Au-delà de 5, le joker n’en est plus un.",
+    "close_ratio_too_low": "La clôture ne peut pas se décider à moins de la moitié des votants.",
+    "close_ratio_too_high": "La clôture ne peut pas attendre plus que tout le monde.",
+    "duo_cannot_be_open": "Une session à deux ne peut pas être ouverte à tous.",
+    "identifier_required": "Entre un code ou colle un lien.",
+    "cuisine_too_long": "Le type de cuisine ne peut pas dépasser 40 caractères.",
+    "address_too_long": "L’adresse ne peut pas dépasser 200 caractères.",
+    "city_too_long": "La ville ne peut pas dépasser 80 caractères."
   },
   "fallback": {
     "profileSave": "Impossible d’enregistrer le pseudo. Réessaie.",
     "pseudoUpdate": "Impossible de modifier le pseudo.",
     "accountDelete": "Impossible de supprimer le compte.",
     "foodConstraintsSave": "Impossible d’enregistrer tes contraintes. Réessaie.",
-    "joinLink": "Lien invalide ou session introuvable."
+    "joinLink": "Lien invalide ou session introuvable.",
+    "restaurantSearch": "La recherche a échoué. Réessaie."
   }
 }

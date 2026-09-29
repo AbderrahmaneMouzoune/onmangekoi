@@ -21,6 +21,13 @@ const I18N_EXTRACTED = [
   'src/components/layout/**',
   'src/components/onboarding/**',
   'src/components/home/**',
+  // Phase B : sessions et carnet de restaurants.
+  'src/app/[[]locale]/(app)/sessions/**',
+  'src/app/[[]locale]/(app)/duo/**',
+  'src/app/[[]locale]/(app)/join/**',
+  'src/app/[[]locale]/(app)/r/**',
+  'src/components/session/**',
+  'src/components/restaurants/**',
 ]
 
 const eslintConfig = defineConfig([
@@ -123,6 +130,16 @@ const eslintConfig = defineConfig([
               'aria-current',
               'action',
               '.*Width$',
+              // Attributs techniques : chargement d'image, valeur de champ
+              // caché, nom d'input transmis, contexte passé à un composant.
+              'loading',
+              'sizes',
+              'value',
+              '.*Name$',
+              'context',
+              'widths',
+              'data-.*',
+              'on[A-Z].*',
             ],
           },
           // Les traducteurs s'appellent `t` ou `t<Espace>` (`tCommon`), voir
@@ -144,6 +161,8 @@ const eslintConfig = defineConfig([
               'indexOf',
               'endsWith',
               'startsWith',
+              // Événements de mesure : des identifiants, jamais affichés.
+              'captureEvent',
             ],
           },
         },

@@ -1,17 +1,13 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useActionState, useEffect, useRef } from 'react'
 
 import { saveFoodConstraintsAction } from '@/actions/food-constraints'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
-import {
-  PRICE_LEVEL_LABELS,
-  PRICE_LEVELS,
-  RESTAURANT_TAG_LABELS,
-  RESTAURANT_TAGS,
-} from '@/domain/schemas/restaurant'
+import { PRICE_LEVEL_LABELS, PRICE_LEVELS, RESTAURANT_TAGS } from '@/domain/schemas/restaurant'
 import { captureEvent } from '@/lib/analytics/client'
 import { cn } from '@/lib/utils'
 
@@ -45,6 +41,7 @@ export function FoodConstraintsForm({ initial }: FoodConstraintsFormProps) {
   const [state, formAction, isPending] = useActionState(saveFoodConstraintsAction, null)
   /** Le compte envoyé à la mesure, relevé au moment de l'envoi. */
   const submittedCount = useRef(0)
+  const tTags = useTranslations('restaurants.tags')
 
   // Un compte, jamais le détail : un régime halal ou casher dit une religion.
   useEffect(() => {
@@ -74,7 +71,7 @@ export function FoodConstraintsForm({ initial }: FoodConstraintsFormProps) {
                 defaultChecked={initial.tags.includes(tag)}
                 className={HIDDEN_INPUT}
               />
-              {RESTAURANT_TAG_LABELS[tag]}
+              {tTags(tag)}
             </label>
           ))}
         </div>

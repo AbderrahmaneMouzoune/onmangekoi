@@ -76,7 +76,8 @@ describe('formatCountdown', () => {
 
 describe('formatDeadlineTime', () => {
   it('should show the closing hour', () => {
-    expect(formatDeadlineTime('2026-09-07T10:05:00.000Z')).toMatch(/\d{2}[:h]\d{2}/)
+    expect(formatDeadlineTime('2026-09-07T10:05:00.000Z', 'fr')).toMatch(/\d{2}[:h]\d{2}/)
+    expect(formatDeadlineTime('2026-09-07T10:05:00.000Z', 'en')).toMatch(/\d{2}:\d{2}/)
   })
 })
 

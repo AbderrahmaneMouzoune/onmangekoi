@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { DuoPanel } from './duo-panel'
 import { FinishedPanel } from './finished-panel'
@@ -55,7 +57,7 @@ function participant(profileId: string, finished = false): ParticipantWithProfil
 }
 
 function renderPanel(participants: ParticipantWithProfile[]) {
-  return render(
+  return renderWithIntl(
     <DuoPanel
       sessionId={session.id}
       sessionName={session.name}
@@ -85,7 +87,7 @@ describe('DuoPanel', () => {
 
 describe('FinishedPanel in a duo', () => {
   function renderFinished(participants: ParticipantWithProfile[]) {
-    return render(
+    return renderWithIntl(
       <FinishedPanel
         session={session}
         participants={participants}

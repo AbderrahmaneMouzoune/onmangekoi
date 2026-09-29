@@ -1,6 +1,8 @@
 import { RiTrophyLine } from '@remixicon/react'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { SaveGroupForm } from '@/components/groups/save-group-form'
 import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
@@ -26,16 +28,17 @@ import { decisionCandidates, headlineOf, readDecision } from '@/domain/decision'
 import { duoAgreement } from '@/domain/duo'
 import { isDuoSession, parseSessionRules } from '@/domain/session-rules'
 import { readTiebreak } from '@/domain/tiebreak'
-import { countLabel } from '@/lib/format'
 import { absoluteUrl, publicResultsUrl } from '@/lib/site'
 import { cn } from '@/lib/utils'
 
 /** Classement final d'une session : réservé à ses participants (RLS). */
 export async function SessionResultsSection({ params }: { params: Promise<{ code: string }> }) {
-  const [{ code }, supabase, user] = await Promise.all([
+  const [{ code }, supabase, user, t, tCommon] = await Promise.all([
     params,
     createServerClient(),
     getCurrentUser(),
+    getTranslations('session.results.page'),
+    getTranslations('common'),
   ])
   if (!user) redirect(router.setup(router.sessionResults(code)))
 
@@ -72,10 +75,13 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
   return (
     <>
       <PageHeader
-        eyebrow={agreement ? 'C’est d’accord' : 'Classement final'}
+        eyebrow={agreement ? t('agreementEyebrow') : t('eyebrow')}
         title={session.name}
-        description={`${countLabel(participants.length, 'participant')} · ${countLabel(results.length, 'resto')}`}
-        back={{ href: router.home(), label: 'Accueil' }}
+        description={t('description', {
+          participants: participants.length,
+          restaurants: results.length,
+        })}
+        back={{ href: router.home(), label: tCommon('actions.home') }}
       />
 
       {winner ? (
@@ -135,11 +141,11 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
               <div className="flex flex-wrap gap-2">
                 {duo ? (
                   <Link href={router.duo()} className={cn(buttonVariants())}>
-                    Encore à deux
+                    {t('again')}
                   </Link>
                 ) : (
                   <Link href={router.sessionNew()} className={cn(buttonVariants())}>
-                    Nouvelle session
+                    {t('newSession')}
                   </Link>
                 )}
                 {!duo && <SaveGroupForm sessionId={session.id} memberCount={participants.length} />}
@@ -150,11 +156,11 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
       ) : (
         <EmptyState
           icon={<RiTrophyLine />}
-          title="Aucun résultat"
-          description="La session s’est terminée sans restaurant."
+          title={t('empty')}
+          description={t('emptyDescription')}
           action={
             <Link href={router.home()} className={cn(buttonVariants())}>
-              Accueil
+              {tCommon('actions.home')}
             </Link>
           }
         />
@@ -169,11 +175,13 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
  * le nom de la session, le podium et les scores attendent la base.
  */
 export function SessionResultsFallback() {
+  const t = useTranslations('session.results')
+  const tCommon = useTranslations('common')
   return (
     <>
       <PageHeaderFallback
-        eyebrow="Classement final"
-        back={{ href: router.home(), label: 'Accueil' }}
+        eyebrow={t('page.eyebrow')}
+        back={{ href: router.home(), label: tCommon('actions.home') }}
         description
       />
       <div
@@ -182,7 +190,7 @@ export function SessionResultsFallback() {
       >
         <Skeleton className="h-64 w-full rounded-xl lg:h-80" />
         <section className="flex flex-col gap-2">
-          <h2 className="font-display text-base font-semibold">Le reste du classement</h2>
+          <h2 className="font-display text-base font-semibold">{t('rest')}</h2>
           <SkeletonResult nameWidth="max-w-40" />
           <SkeletonResult nameWidth="max-w-32" />
           <SkeletonResult nameWidth="max-w-36" />

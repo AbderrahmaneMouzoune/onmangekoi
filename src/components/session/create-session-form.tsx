@@ -1,6 +1,7 @@
 'use client'
 
 import { RiCheckLine, RiGroupLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useActionState, useId, useMemo, useState } from 'react'
 
 import { createSessionAction } from '@/actions/sessions'
@@ -8,7 +9,7 @@ import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
 import { DeadlinePicker } from '@/components/session/deadline-picker'
 import { OpenSessionToggle } from '@/components/session/open-session-toggle'
 import { RulesPicker } from '@/components/session/rules-picker'
-import { SESSION_STEPS, SessionStep, StepTitle } from '@/components/session/session-step'
+import { SessionStep, StepTitle } from '@/components/session/session-step'
 import { SuggestionNotice } from '@/components/session/suggestion-notice'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
@@ -26,7 +27,6 @@ import {
   withoutSuggestion,
 } from '@/domain/suggestions'
 import { rememberSessionEntry } from '@/lib/analytics/handoff'
-import { countLabel, plural } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import type { ListWithRestaurantIds } from '@/data-access/lists'
@@ -121,6 +121,7 @@ export function CreateSessionForm({
   // Session ouverte : elle rend l'échéance obligatoire et efface le seuil de
   // clôture. L'état vit ici, seul endroit qui voit les trois blocs.
   const [open, setOpen] = useState(false)
+  const t = useTranslations('session.create')
 
   // `chosen` compte ce qu'on a pris, `total` ce qui partira vraiment : le
   // serveur refait ce tri, une liste apportant des restos que cet écran n'a
@@ -176,7 +177,7 @@ export function CreateSessionForm({
         number={1}
         title={
           <Label htmlFor="name" className="text-base font-semibold">
-            {SESSION_STEPS.name}
+            {t('steps.name')}
           </Label>
         }
       >
@@ -184,7 +185,7 @@ export function CreateSessionForm({
           id="name"
           name="name"
           defaultValue={defaultName}
-          placeholder="Lunch du vendredi"
+          placeholder={t('namePlaceholder')}
           required
           maxLength={SESSION_NAME_MAX}
           autoComplete="off"
@@ -195,8 +196,8 @@ export function CreateSessionForm({
       <div className="contents lg:col-start-2 lg:row-span-full lg:block">
         <SessionStep
           number={2}
-          title={<h2 className="text-base font-semibold">{SESSION_STEPS.restaurants}</h2>}
-          hint={SESSION_STEPS.restaurantsHint}
+          title={<h2 className="text-base font-semibold">{t('steps.restaurants')}</h2>}
+          hint={t('steps.restaurantsHint')}
         >
           {suggestion && !suggestionDismissed && keptSuggested > 0 && (
             <SuggestionNotice summary={suggestionSummary(suggestion)} onReset={resetSuggestion} />
@@ -235,7 +236,7 @@ export function CreateSessionForm({
           required={open}
           legend={
             <StepTitle number={3}>
-              <span className="text-base font-semibold">{SESSION_STEPS.deadline}</span>
+              <span className="text-base font-semibold">{t('steps.deadline')}</span>
             </StepTitle>
           }
         />
@@ -245,13 +246,13 @@ export function CreateSessionForm({
       {groups.length > 0 && (
         <SessionStep
           number={4}
-          title={<h2 className="text-base font-semibold">{SESSION_STEPS.groups}</h2>}
-          hint={SESSION_STEPS.groupsHint}
+          title={<h2 className="text-base font-semibold">{t('steps.groups')}</h2>}
+          hint={t('steps.groupsHint')}
         >
           {selectedGroupIds.map((id) => (
             <input key={id} type="hidden" name="groupIds" value={id} />
           ))}
-          <ul className="flex flex-col gap-2" aria-label="Mes groupes">
+          <ul className="flex flex-col gap-2" aria-label={t('groupsLabel')}>
             {groups.map((group) => (
               <li key={group.id}>
                 <GroupToggle
@@ -263,10 +264,7 @@ export function CreateSessionForm({
               </li>
             ))}
           </ul>
-          <p className="text-xs text-muted-foreground">
-            Les membres reçoivent une invitation en attente. Ils ne comptent comme participants
-            qu’une fois entrés dans la session — personne ne bloque le vote sans être là.
-          </p>
+          <p className="text-xs text-muted-foreground">{t('groupsNote')}</p>
         </SessionStep>
       )}
 
@@ -281,11 +279,11 @@ export function CreateSessionForm({
           {isPending ? (
             <Spinner />
           ) : total > 0 ? (
-            `Créer la session · ${countLabel(total, 'resto')}`
+            t('submit', { count: total })
           ) : chosen > 0 ? (
-            'Tout est écarté par l’anti-fatigue'
+            t('allExcluded')
           ) : (
-            'Sélectionne des restaurants'
+            t('selectRestaurants')
           )}
         </Button>
       </div>
@@ -302,6 +300,7 @@ interface GroupToggleProps {
 
 /** Un groupe à pré-inviter, coché d'un bloc comme une liste de favoris. */
 function GroupToggle({ name, memberCount, selected, onToggle }: GroupToggleProps) {
+  const t = useTranslations('session.create')
   return (
     <button
       type="button"
@@ -329,7 +328,7 @@ function GroupToggle({ name, memberCount, selected, onToggle }: GroupToggleProps
         </span>
       </span>
       <span className="shrink-0 font-mono text-xs text-muted-foreground tabular">
-        {countLabel(memberCount, 'membre')}
+        {t('members', { count: memberCount })}
       </span>
     </button>
   )
@@ -357,6 +356,7 @@ function AntiFatigueToggle({
   excludedCount,
 }: AntiFatigueToggleProps) {
   const hintId = useId()
+  const t = useTranslations('session.create.antiFatigue')
 
   return (
     <div className="flex flex-col gap-2">
@@ -380,17 +380,17 @@ function AntiFatigueToggle({
         >
           {checked && <RiCheckLine className="size-3.5" />}
         </span>
-        <span className="font-medium">Exclure les gagnants récents</span>
+        <span className="font-medium">{t('label')}</span>
       </button>
 
       {checked && <input type="hidden" name="excludeRecentWinners" value="on" />}
 
       <p id={hintId} className="text-xs text-muted-foreground">
         {!checked
-          ? `${countLabel(recentCount, 'resto')} ${plural(recentCount, 'a', 'ont')} gagné dans les ${RECENT_WINNER_WINDOW_DAYS} derniers jours.`
+          ? t('recent', { count: recentCount, days: RECENT_WINNER_WINDOW_DAYS })
           : excludedCount > 0
-            ? `${countLabel(excludedCount, 'resto')} ${plural(excludedCount, 'écarté', 'écartés')} de cette session.`
-            : 'Aucun de tes choix n’a gagné récemment.'}
+            ? t('excluded', { count: excludedCount })
+            : t('none')}
       </p>
     </div>
   )

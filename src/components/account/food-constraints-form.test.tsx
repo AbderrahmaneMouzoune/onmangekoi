@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { FoodConstraintsForm } from './food-constraints-form'
 
@@ -22,7 +24,7 @@ describe('FoodConstraintsForm', () => {
   })
 
   it('should start from what was already declared', () => {
-    render(<FoodConstraintsForm initial={{ tags: ['halal'], maxPriceLevel: 2 }} />)
+    renderWithIntl(<FoodConstraintsForm initial={{ tags: ['halal'], maxPriceLevel: 2 }} />)
 
     expect(screen.getByRole('checkbox', { name: 'Halal' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Vegan' })).not.toBeChecked()
@@ -31,14 +33,14 @@ describe('FoodConstraintsForm', () => {
   })
 
   it('should offer no ceiling by default, nothing being mandatory', () => {
-    render(<FoodConstraintsForm initial={{ tags: [], maxPriceLevel: null }} />)
+    renderWithIntl(<FoodConstraintsForm initial={{ tags: [], maxPriceLevel: null }} />)
 
     expect(screen.getByRole('radio', { name: 'Pas de plafond' })).toBeChecked()
     for (const checkbox of screen.getAllByRole('checkbox')) expect(checkbox).not.toBeChecked()
   })
 
   it('should send the checked diets and budget, then count them — only count them', async () => {
-    render(<FoodConstraintsForm initial={{ tags: [], maxPriceLevel: null }} />)
+    renderWithIntl(<FoodConstraintsForm initial={{ tags: [], maxPriceLevel: null }} />)
 
     await userEvent.click(screen.getByRole('checkbox', { name: 'Végétarien' }))
     await userEvent.click(screen.getByRole('radio', { name: 'Au plus €€' }))
@@ -55,7 +57,7 @@ describe('FoodConstraintsForm', () => {
 
   it('should let everything be taken back with the same button', async () => {
     saveFoodConstraintsAction.mockResolvedValue({ success: 'Plus rien de déclaré.' })
-    render(<FoodConstraintsForm initial={{ tags: ['vegan'], maxPriceLevel: 3 }} />)
+    renderWithIntl(<FoodConstraintsForm initial={{ tags: ['vegan'], maxPriceLevel: 3 }} />)
 
     await userEvent.click(screen.getByRole('checkbox', { name: 'Vegan' }))
     await userEvent.click(screen.getByRole('radio', { name: 'Pas de plafond' }))

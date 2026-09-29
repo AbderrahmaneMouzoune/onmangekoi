@@ -1,16 +1,10 @@
 'use client'
 
 import { RiCheckLine, RiDoorOpenLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useId } from 'react'
 
 import { cn } from '@/lib/utils'
-
-const LABEL = 'Session ouverte'
-
-const HINTS = {
-  off: 'Salle d’attente : tu lances le vote quand tout le monde est là, et plus personne n’entre ensuite.',
-  on: 'Pas de salle d’attente : le vote commence tout de suite, chacun vote quand il voit le lien, jusqu’à l’échéance.',
-}
 
 interface OpenSessionToggleProps {
   checked: boolean
@@ -25,6 +19,7 @@ interface OpenSessionToggleProps {
  */
 export function OpenSessionToggle({ checked, onChange }: OpenSessionToggleProps) {
   const hintId = useId()
+  const t = useTranslations('session.open')
 
   return (
     <div className="flex flex-col gap-2">
@@ -50,15 +45,15 @@ export function OpenSessionToggle({ checked, onChange }: OpenSessionToggleProps)
         </span>
         <span className="flex min-w-0 items-center gap-2">
           <RiDoorOpenLine aria-hidden="true" className="size-4 shrink-0 text-brand" />
-          <span className="font-medium">{LABEL}</span>
-          <span className="truncate text-sm text-muted-foreground">· chacun vote à son heure</span>
+          <span className="font-medium">{t('label')}</span>
+          <span className="truncate text-sm text-muted-foreground">{t('tagline')}</span>
         </span>
       </button>
 
       {checked && <input type="hidden" name="open" value="on" />}
 
       <p id={hintId} className="text-xs text-muted-foreground">
-        {checked ? HINTS.on : HINTS.off}
+        {checked ? t('hintOn') : t('hintOff')}
       </p>
     </div>
   )
@@ -66,6 +61,7 @@ export function OpenSessionToggle({ checked, onChange }: OpenSessionToggleProps)
 
 /** Silhouette : la case décochée, en clair — le départ est le même pour tous. */
 export function OpenSessionToggleFallback() {
+  const t = useTranslations('session.open')
   return (
     <div className="flex flex-col gap-2">
       <div className="flex w-full items-center gap-3 rounded-lg border border-line bg-surface p-3.5">
@@ -75,11 +71,11 @@ export function OpenSessionToggleFallback() {
         />
         <span className="flex min-w-0 items-center gap-2">
           <RiDoorOpenLine aria-hidden="true" className="size-4 shrink-0 text-brand" />
-          <span className="font-medium">{LABEL}</span>
-          <span className="truncate text-sm text-muted-foreground">· chacun vote à son heure</span>
+          <span className="font-medium">{t('label')}</span>
+          <span className="truncate text-sm text-muted-foreground">{t('tagline')}</span>
         </span>
       </div>
-      <p className="text-xs text-muted-foreground">{HINTS.off}</p>
+      <p className="text-xs text-muted-foreground">{t('hintOff')}</p>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { RiEyeLine, RiGlobalLine, RiLockLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useState, useTransition } from 'react'
 
 import { setResultsPublicAction } from '@/actions/sessions'
@@ -42,8 +43,9 @@ export function ResultsSharing({
   const [isPublic, setIsPublic] = useState(initialPublic)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const t = useTranslations('session.sharing')
 
-  const shareTitle = `${sessionName} : on mange chez ${winnerName}`
+  const shareTitle = t('shareTitle', { session: sessionName, winner: winnerName })
 
   function toggle() {
     const next = !isPublic
@@ -65,7 +67,7 @@ export function ResultsSharing({
       <ShareResultsButton
         url={isPublic ? publicUrl : privateUrl}
         title={shareTitle}
-        label="Partager le résultat"
+        label={t('shareResult')}
         onShared={() =>
           captureEvent('results_shared', {
             session_id: sessionId,
@@ -84,12 +86,10 @@ export function ResultsSharing({
     >
       <div className="flex flex-col gap-0.5">
         <h2 id="results-sharing-title" className="font-display text-base font-semibold">
-          Partager les résultats
+          {t('title')}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {isPublic
-            ? 'Toute personne avec le lien voit le podium et le nombre de participants. Aucun pseudo, aucun détail de vote.'
-            : 'Le classement n’est visible que par les participants de la session.'}
+          {isPublic ? t('publicText') : t('privateText')}
         </p>
       </div>
 
@@ -111,7 +111,7 @@ export function ResultsSharing({
         ) : (
           <RiLockLine aria-hidden="true" className="size-4.5" />
         )}
-        {isPublic ? 'Lien public actif' : 'Rendre le classement public'}
+        {isPublic ? t('publicOn') : t('makePublic')}
       </button>
 
       <FormMessage error={error} />
@@ -127,7 +127,7 @@ export function ResultsSharing({
         <ShareResultsButton
           url={isPublic ? publicUrl : privateUrl}
           title={shareTitle}
-          label={isPublic ? 'Partager le podium' : 'Partager aux participants'}
+          label={isPublic ? t('sharePodium') : t('shareParticipants')}
           className="sm:flex-1"
           onShared={() =>
             captureEvent('results_shared', {
@@ -140,7 +140,7 @@ export function ResultsSharing({
         {isPublic && (
           <CopyButton
             value={publicUrl}
-            label="Copier le lien public"
+            label={t('copyPublic')}
             variant="outline"
             className="sm:flex-1"
             onCopied={() =>
@@ -157,7 +157,7 @@ export function ResultsSharing({
       {isPublic && (
         <p className="inline-flex items-start gap-1.5 text-xs text-muted-foreground">
           <RiEyeLine aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-          Refermer le lien le rend inaccessible aussitôt, aperçus compris.
+          {t('closeNote')}
         </p>
       )}
     </section>

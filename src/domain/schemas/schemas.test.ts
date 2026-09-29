@@ -98,7 +98,7 @@ describe('CreateSessionSchema', () => {
 
     const refused = CreateSessionSchema.safeParse({ ...base, open: 'on', closesInMinutes: '60' })
     expect(refused.success).toBe(false)
-    expect(refused.error?.issues[0]?.message).toMatch(/deux/)
+    expect(refused.error?.issues[0]?.message).toBe('omk:duo_cannot_be_open')
   })
 
   it('should read an unchecked open box as an ordinary session', () => {
@@ -336,7 +336,7 @@ describe('SearchPlacesSchema', () => {
   it('should refuse a search with neither text nor position', () => {
     const empty = SearchPlacesSchema.safeParse({ query: '' })
     expect(empty.success).toBe(false)
-    expect(empty.error?.issues[0]?.message).toMatch(/autorise ta position/)
+    expect(empty.error?.issues[0]?.message).toBe('omk:search_too_short')
     expect(SearchPlacesSchema.safeParse({ query: 'a', latitude: 45.76 }).success).toBe(false)
   })
 })

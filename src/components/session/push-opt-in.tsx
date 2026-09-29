@@ -1,6 +1,7 @@
 'use client'
 
 import { RiNotification3Line, RiNotificationOffLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
@@ -17,17 +18,6 @@ interface PushOptInProps {
   className?: string
 }
 
-const COPY: Record<PushOptInContext, { action: string; done: string }> = {
-  launch: {
-    action: 'Me prévenir au lancement',
-    done: 'Ce navigateur te préviendra au lancement du vote, même l’onglet fermé.',
-  },
-  results: {
-    action: 'Me prévenir du résultat',
-    done: 'Ce navigateur te préviendra dès que le classement tombe, même l’onglet fermé.',
-  },
-}
-
 /**
  * « Me prévenir » (issue #7) : une notification quand le vote est lancé ou
  * quand le classement est prêt, pour qui a fermé l'onglet — le Realtime, lui,
@@ -39,7 +29,7 @@ const COPY: Record<PushOptInContext, { action: string; done: string }> = {
  */
 export function PushOptIn({ sessionId, context, className }: PushOptInProps) {
   const { state, pending, error, subscribe, unsubscribe } = usePushOptIn({ sessionId, context })
-  const copy = COPY[context]
+  const t = useTranslations('session.push')
 
   if (state === 'hidden' || state === 'checking') return null
 
@@ -48,7 +38,7 @@ export function PushOptIn({ sessionId, context, className }: PushOptInProps) {
       {state === 'idle' && (
         <Button type="button" variant="outline" onClick={subscribe} disabled={pending}>
           {pending ? <Spinner /> : <RiNotification3Line aria-hidden="true" />}
-          {copy.action}
+          {t(`${context}.action`)}
         </Button>
       )}
 
@@ -56,7 +46,7 @@ export function PushOptIn({ sessionId, context, className }: PushOptInProps) {
         <>
           <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
             <RiNotification3Line aria-hidden="true" className="size-4 shrink-0 text-brand" />
-            {copy.done}
+            {t(`${context}.done`)}
           </p>
           <Button
             type="button"
@@ -67,23 +57,15 @@ export function PushOptIn({ sessionId, context, className }: PushOptInProps) {
             disabled={pending}
           >
             {pending ? <Spinner /> : <RiNotificationOffLine aria-hidden="true" />}
-            Ne plus me prévenir
+            {t('stop')}
           </Button>
         </>
       )}
 
-      {state === 'denied' && (
-        <p className="text-xs text-muted-foreground">
-          Les notifications sont bloquées pour onmangekoi : autorise-les dans les réglages du
-          navigateur pour recevoir l’alerte.
-        </p>
-      )}
+      {state === 'denied' && <p className="text-xs text-muted-foreground">{t('denied')}</p>}
 
       {state === 'install-first' && (
-        <p className="text-xs text-muted-foreground">
-          Sur iPhone, les notifications passent par l’app : ajoute onmangekoi à l’écran d’accueil
-          (Partager → Sur l’écran d’accueil), puis ouvre la session depuis l’app.
-        </p>
+        <p className="text-xs text-muted-foreground">{t('installFirst')}</p>
       )}
 
       <FormMessage error={error} />

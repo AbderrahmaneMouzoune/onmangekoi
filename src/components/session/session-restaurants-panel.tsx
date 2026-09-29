@@ -1,6 +1,7 @@
 'use client'
 
 import { RiAddLine, RiCloseLine, RiErrorWarningLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useMemo, useState, useTransition } from 'react'
 
 import { addSessionRestaurantsAction, removeSessionRestaurantAction } from '@/actions/sessions'
@@ -8,10 +9,11 @@ import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
-import { blockedLabel, NO_CONFLICTS, NO_FOOD_CONSTRAINTS } from '@/domain/food-constraints'
+import { blockedCount, NO_CONFLICTS, NO_FOOD_CONSTRAINTS } from '@/domain/food-constraints'
 import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
+import { usePeopleLabels } from '@/i18n/use-people-labels'
 import { captureEvent } from '@/lib/analytics/client'
-import { countLabel, participantLabel } from '@/lib/format'
+import { participantLabel } from '@/lib/format'
 
 import type { ParticipantWithProfile, SessionRestaurantWithRestaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
@@ -65,6 +67,10 @@ export function SessionRestaurantsPanel({
   const [picked, setPicked] = useState<string[]>([])
   const [isPending, startTransition] = useTransition()
   const onKeyDown = useArrowNavigation()
+  const t = useTranslations('session.sessionRestaurants')
+  const tSession = useTranslations('session')
+  const tCommon = useTranslations('common')
+  const { guest, deletedParticipant } = usePeopleLabels()
 
   const pseudoById = useMemo(
     () =>
@@ -73,10 +79,13 @@ export function SessionRestaurantsPanel({
           .filter((participant) => participant.profile_id !== null)
           .map((participant) => [
             participant.profile_id,
-            participantLabel(participant.profile_id, participant.profiles?.pseudo),
+            participantLabel(participant.profile_id, participant.profiles?.pseudo, {
+              guest,
+              deletedParticipant,
+            }),
           ])
       ),
-    [participants]
+    [participants, guest, deletedParticipant]
   )
 
   const presentIds = useMemo(() => restaurants.map((row) => row.restaurant_id), [restaurants])
@@ -116,29 +125,25 @@ export function SessionRestaurantsPanel({
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="font-display text-base font-semibold">
-          {countLabel(restaurants.length, 'resto')} à départager
+          {t('title', { count: restaurants.length })}
         </h2>
         {initialPage && !isAdding && (
           <Button type="button" variant="ghost" size="sm" onClick={() => setIsAdding(true)}>
             <RiAddLine aria-hidden="true" />
-            Ajouter le mien
+            {t('addMine')}
           </Button>
         )}
       </div>
 
-      <ul
-        onKeyDown={onKeyDown}
-        className="flex flex-col gap-1.5"
-        aria-label="Restaurants de la session"
-      >
+      <ul onKeyDown={onKeyDown} className="flex flex-col gap-1.5" aria-label={t('label')}>
         {restaurants.map((row) => {
-          const name = row.restaurants?.name ?? 'Restaurant retiré'
+          const name = row.restaurants?.name ?? t('removed')
           const mine = row.added_by !== null && row.added_by === meId
           // `added_by` est nul quand la personne a supprimé son compte : le
           // resto reste dans la session, sans auteur à afficher.
-          const author = mine ? 'toi' : row.added_by ? (pseudoById.get(row.added_by) ?? null) : null
+          const author = mine ? null : row.added_by ? (pseudoById.get(row.added_by) ?? null) : null
           const canRemove = (mine || isHost) && restaurants.length > 1
-          const blocked = blockedLabel(conflicts[row.restaurant_id])
+          const blocked = blockedCount(conflicts[row.restaurant_id])
           return (
             <li
               key={row.id}
@@ -146,15 +151,15 @@ export function SessionRestaurantsPanel({
             >
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-sm font-medium">{name}</span>
-                {author && (
+                {(mine || author) && (
                   <span className="truncate text-xs text-muted-foreground">
-                    Ajouté par {author}
+                    {mine ? t('addedByYou') : t('addedBy', { author: author ?? '' })}
                   </span>
                 )}
                 {blocked && (
                   <span className="mt-1 inline-flex items-center gap-1 self-start rounded-full bg-veto-soft px-2 py-0.5 text-xs font-medium text-veto">
                     <RiErrorWarningLine aria-hidden="true" className="size-3.5 shrink-0" />
-                    {blocked}
+                    {tSession('constraints.blocked', { count: blocked })}
                   </span>
                 )}
               </span>
@@ -171,7 +176,7 @@ export function SessionRestaurantsPanel({
                   className="shrink-0 hover:text-veto"
                   onClick={() => remove(row.restaurant_id)}
                   disabled={isPending}
-                  aria-label={`Retirer ${name}`}
+                  aria-label={t('remove', { name })}
                 >
                   <RiCloseLine aria-hidden="true" />
                 </Button>
@@ -202,9 +207,9 @@ export function SessionRestaurantsPanel({
               {isPending ? (
                 <Spinner />
               ) : picked.length > 0 ? (
-                `Ajouter ${countLabel(picked.length, 'resto')}`
+                t('add', { count: picked.length })
               ) : (
-                'Ajouter'
+                t('addNone')
               )}
             </Button>
             <Button
@@ -215,7 +220,7 @@ export function SessionRestaurantsPanel({
                 setIsAdding(false)
               }}
             >
-              Annuler
+              {tCommon('actions.cancel')}
             </Button>
           </div>
         </div>

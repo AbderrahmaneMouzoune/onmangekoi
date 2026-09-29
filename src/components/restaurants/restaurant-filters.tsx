@@ -1,6 +1,7 @@
 'use client'
 
 import { RiCloseLine } from '@remixicon/react'
+import { useLocale, useTranslations } from 'next-intl'
 
 import {
   countActiveFilters,
@@ -12,7 +13,6 @@ import {
 import {
   PRICE_LEVEL_LABELS,
   PRICE_LEVELS,
-  RESTAURANT_TAG_LABELS,
   RESTAURANT_TAGS,
   type RestaurantTag,
 } from '@/domain/schemas/restaurant'
@@ -46,6 +46,8 @@ export function RestaurantFiltersBar({ value, onChange, here }: RestaurantFilter
    */
   const effective = here ? value : { ...value, withinKm: null }
   const activeCount = countActiveFilters(effective)
+  const t = useTranslations('restaurants')
+  const hiddenNotice = useHiddenNotice()
 
   function togglePrice(level: number) {
     onChange({ ...value, priceMax: value.priceMax === level ? null : level })
@@ -67,9 +69,13 @@ export function RestaurantFiltersBar({ value, onChange, here }: RestaurantFilter
   return (
     <div className="flex flex-col gap-3 rounded-lg bg-surface p-3 ring-1 ring-line">
       <fieldset className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <legend className="sr-only">Budget</legend>
-        <FilterLabel>Budget</FilterLabel>
-        <div role="radiogroup" aria-label="Budget maximum" className="flex flex-wrap gap-1.5">
+        <legend className="sr-only">{t('filters.budget')}</legend>
+        <FilterLabel>{t('filters.budget')}</FilterLabel>
+        <div
+          role="radiogroup"
+          aria-label={t('filters.budgetMax')}
+          className="flex flex-wrap gap-1.5"
+        >
           {PRICE_LEVELS.map((level) => (
             <Chip
               key={level}
@@ -77,7 +83,7 @@ export function RestaurantFiltersBar({ value, onChange, here }: RestaurantFilter
               selected={value.priceMax === level}
               // « ≤ €€ » se lit mal à voix haute : le libellé accessible dit
               // la règle en toutes lettres.
-              label={`Budget maximum ${PRICE_LEVEL_LABELS[level]}`}
+              label={t('filters.budgetMaxLevel', { level: PRICE_LEVEL_LABELS[level] })}
               onClick={() => togglePrice(level)}
             >
               {PRICE_LEVEL_LABELS[level]}
@@ -87,9 +93,9 @@ export function RestaurantFiltersBar({ value, onChange, here }: RestaurantFilter
       </fieldset>
 
       <fieldset className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <legend className="sr-only">Régime alimentaire</legend>
-        <FilterLabel>Régime</FilterLabel>
-        <div role="group" aria-label="Régime alimentaire" className="flex flex-wrap gap-1.5">
+        <legend className="sr-only">{t('filters.dietLabel')}</legend>
+        <FilterLabel>{t('filters.diet')}</FilterLabel>
+        <div role="group" aria-label={t('filters.dietLabel')} className="flex flex-wrap gap-1.5">
           {RESTAURANT_TAGS.map((tag) => (
             <Chip
               key={tag}
@@ -97,7 +103,7 @@ export function RestaurantFiltersBar({ value, onChange, here }: RestaurantFilter
               selected={value.tags.includes(tag)}
               onClick={() => toggleTag(tag)}
             >
-              {RESTAURANT_TAG_LABELS[tag]}
+              {t(`tags.${tag}`)}
             </Chip>
           ))}
         </div>
@@ -105,11 +111,11 @@ export function RestaurantFiltersBar({ value, onChange, here }: RestaurantFilter
 
       {here && (
         <fieldset className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <legend className="sr-only">Distance</legend>
-          <FilterLabel>Distance</FilterLabel>
+          <legend className="sr-only">{t('filters.distance')}</legend>
+          <FilterLabel>{t('filters.distance')}</FilterLabel>
           <div
             role="radiogroup"
-            aria-label="Rayon autour de moi"
+            aria-label={t('filters.radius')}
             className="flex flex-wrap gap-1.5"
           >
             {DISTANCE_CHOICES_KM.map((km) => (
@@ -117,7 +123,7 @@ export function RestaurantFiltersBar({ value, onChange, here }: RestaurantFilter
                 key={km}
                 role="radio"
                 selected={value.withinKm === km}
-                label={`Moins de ${radiusLabel(km)} d’ici`}
+                label={t('filters.within', { radius: radiusLabel(km) })}
                 onClick={() => toggleDistance(km)}
               >
                 {radiusLabel(km)}
@@ -136,7 +142,7 @@ export function RestaurantFiltersBar({ value, onChange, here }: RestaurantFilter
             className="inline-flex items-center gap-1 text-xs font-semibold text-brand underline-offset-4 hover:underline"
           >
             <RiCloseLine aria-hidden="true" className="size-3.5" />
-            Tout effacer
+            {t('filters.clear')}
           </button>
         </div>
       )}
@@ -187,20 +193,19 @@ function Chip({ role, selected, onClick, label, children }: ChipProps) {
  * coordonnées n'est pas à côté. La phrase le dit plutôt que de laisser croire
  * à un carnet plus pauvre qu'il n'est.
  */
-function hiddenNotice(filters: RestaurantFilters): string {
-  const reasons = [
-    filters.priceMax !== null && 'dont le budget n’est pas renseigné',
-    filters.tags.length > 0 &&
-      (filters.tags.length > 1
-        ? 'qui ne déclarent pas ces régimes'
-        : 'qui ne déclarent pas ce régime'),
-    filters.withinKm !== null && 'dont l’adresse n’est pas localisée',
-  ].filter((reason): reason is string => typeof reason === 'string')
+function useHiddenNotice(): (filters: RestaurantFilters) => string {
+  const t = useTranslations('restaurants.filters.hidden')
+  const locale = useLocale()
+  return (filters) => {
+    const reasons = [
+      filters.priceMax !== null && t('budget'),
+      filters.tags.length > 0 && t('tags', { count: filters.tags.length }),
+      filters.withinKm !== null && t('distance'),
+    ].filter((reason): reason is string => typeof reason === 'string')
 
-  const listed =
-    reasons.length > 1
-      ? `${reasons.slice(0, -1).join(', ')} et ${reasons[reasons.length - 1]}`
-      : reasons[0]
-
-  return `Les restos ${listed} n’apparaissent pas.`
+    const listed = new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(
+      reasons
+    )
+    return t('sentence', { reasons: listed })
+  }
 }

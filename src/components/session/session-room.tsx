@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { DuoPanel } from '@/components/session/duo-panel'
@@ -24,7 +25,6 @@ import type {
   ParticipantWithProfile,
   Session,
   SessionRestaurantWithRestaurant,
-  SessionStatus,
 } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
 import type { ConstraintConflictCounts, FoodConstraints } from '@/domain/food-constraints'
@@ -61,13 +61,6 @@ interface SessionRoomProps {
   myConstraints: FoodConstraints | null
 }
 
-/** Ce qu'un lecteur d'écran entend quand la session change d'état sous ses yeux. */
-const STATUS_ANNOUNCEMENTS: Record<SessionStatus, string> = {
-  waiting: 'Retour en salle d’attente.',
-  voting: 'Le vote est lancé : à toi de voter.',
-  closed: 'Le vote est terminé, ouverture du classement.',
-}
-
 /**
  * Orchestre l'écran de session selon son statut, en temps réel :
  *  waiting → salle d'attente · voting → deck (ou attente des autres) · closed → résultats.
@@ -100,6 +93,7 @@ export function SessionRoom({
   myConstraints,
 }: SessionRoomProps) {
   const navigation = useRouter()
+  const t = useTranslations('session.room')
   const { session, participants, restaurants, conflicts, connection, refresh, setSession } =
     useSessionRoom({
       sessionId: initialSession.id,
@@ -198,7 +192,8 @@ export function SessionRoom({
   }, [session, navigation])
 
   // Annonce et focus à chaque changement d'état — pas au premier rendu, où la
-  // page elle-même dit déjà tout.
+  // page elle-même dit déjà tout. C'est ce qu'un lecteur d'écran entend quand
+  // la session change d'état sous ses yeux.
   const stageRef = useRef<HTMLDivElement>(null)
   const [announcement, setAnnouncement] = useState('')
   const previousStatus = useRef(session.status)
@@ -207,11 +202,11 @@ export function SessionRoom({
     previousStatus.current = session.status
     setAnnouncement(
       duo && session.status === 'closed' && session.decided_restaurant_id !== null
-        ? 'C’est d’accord : ouverture du résultat.'
-        : STATUS_ANNOUNCEMENTS[session.status]
+        ? t('announcements.agreed')
+        : t(`announcements.${session.status}`)
     )
     stageRef.current?.focus({ preventScroll: true })
-  }, [session.status, session.decided_restaurant_id, duo])
+  }, [session.status, session.decided_restaurant_id, duo, t])
 
   const handleFinished = useCallback(() => {
     setFinishedLocally(true)
@@ -229,18 +224,22 @@ export function SessionRoom({
     <div className="flex flex-col gap-6 lg:gap-8">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="eyebrow">{firstRoundUrl ? 'Second tour' : duo ? 'À deux' : 'Session'}</p>
+          <p className="eyebrow">
+            {firstRoundUrl ? t('eyebrow.runoff') : duo ? t('eyebrow.duo') : t('eyebrow.session')}
+          </p>
           <h1 className="truncate text-2xl font-bold sm:text-3xl lg:text-4xl">{session.name}</h1>
           {firstRoundUrl && (
             <p className="text-sm text-muted-foreground">
-              On départage l’égalité du{' '}
-              <Link
-                href={firstRoundUrl}
-                className="underline underline-offset-2 hover:text-foreground"
-              >
-                premier tour
-              </Link>
-              .
+              {t.rich('firstRound', {
+                link: (chunks) => (
+                  <Link
+                    href={firstRoundUrl}
+                    className="underline underline-offset-2 hover:text-foreground"
+                  >
+                    {chunks}
+                  </Link>
+                ),
+              })}
             </p>
           )}
         </div>
@@ -306,9 +305,7 @@ export function SessionRoom({
         )}
 
         {session.status === 'voting' && agreed && (
-          <p className="text-center text-sm text-muted-foreground">
-            C’est d’accord ! Ouverture du résultat…
-          </p>
+          <p className="text-center text-sm text-muted-foreground">{t('agreedOpening')}</p>
         )}
 
         {session.status === 'voting' && !meFinished && !agreed && (
@@ -338,9 +335,7 @@ export function SessionRoom({
 
         {session.status === 'closed' && (
           <p className="text-center text-sm text-muted-foreground">
-            {duo && session.decided_restaurant_id !== null
-              ? 'C’est d’accord ! Ouverture du résultat…'
-              : 'Ouverture du classement…'}
+            {duo && session.decided_restaurant_id !== null ? t('agreedOpening') : t('opening')}
           </p>
         )}
       </div>

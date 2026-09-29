@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/data-access/auth'
 import { isPlacesSearchEnabled, searchNearbyPlaces, searchPlaces } from '@/data-access/places'
 import { AppError } from '@/domain/errors'
 import { hasPosition, PLACES_QUERY_MIN, SearchPlacesSchema } from '@/domain/schemas/place'
-import { translateError } from '@/i18n/server'
+import { errorMessage, translateError, translateIssue } from '@/i18n/server'
 
 import type { PlacesPage } from '@/domain/places'
 
@@ -22,27 +22,29 @@ import type { PlacesPage } from '@/domain/places'
 export async function POST(request: Request): Promise<NextResponse> {
   if (!isPlacesSearchEnabled()) {
     return NextResponse.json(
-      { error: 'La recherche Google n’est pas configurée sur ce déploiement.' },
+      { error: await errorMessage('places_not_configured') },
       { status: 503 }
     )
   }
 
   const user = await getCurrentUser()
   if (!user) {
-    return NextResponse.json({ error: 'Tu dois d’abord choisir un pseudo.' }, { status: 401 })
+    return NextResponse.json({ error: await errorMessage('not_authenticated') }, { status: 401 })
   }
 
   let body: unknown
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Requête invalide' }, { status: 400 })
+    return NextResponse.json({ error: await errorMessage('invalid_request') }, { status: 400 })
   }
 
   const parsed = SearchPlacesSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? 'Recherche invalide' },
+      {
+        error: await translateIssue(parsed.error.issues[0], await errorMessage('invalid_search')),
+      },
       { status: 400 }
     )
   }

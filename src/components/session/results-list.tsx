@@ -8,6 +8,7 @@ import {
   RiThumbUpLine,
 } from '@remixicon/react'
 import Image from 'next/image'
+import { useLocale, useTranslations } from 'next-intl'
 
 import { StaticMap } from '@/components/restaurants/static-map'
 import { buttonVariants } from '@/components/ui/button'
@@ -51,6 +52,7 @@ export function ResultsList({
   actions,
   agreement = false,
 }: ResultsListProps) {
+  const t = useTranslations('session.results')
   const maxAbs = Math.max(1, ...results.map((r) => Math.abs(r.score)))
   const winner = headlineOf(results)
 
@@ -91,10 +93,10 @@ export function ResultsList({
 
           <p className="relative font-mono text-[0.7rem] tracking-[0.12em] text-chalk-muted uppercase">
             {agreement
-              ? 'C’est d’accord · on mange chez'
+              ? t('eyebrow.agreement')
               : decision
-                ? 'C’est décidé · on mange chez'
-                : 'On mange chez'}
+                ? t('eyebrow.decided')
+                : t('eyebrow.winner')}
           </p>
           <h2
             id="winner-title"
@@ -105,7 +107,11 @@ export function ResultsList({
           <div className="relative flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-chalk-muted">
             {winner.cuisine_type && <span className="uppercase">{winner.cuisine_type}</span>}
             <span className="font-mono tabular">
-              Score {formatScore(winner.score)} · {winner.votes_count}/{participantCount} votes
+              {t('score', {
+                score: formatScore(winner.score),
+                votes: winner.votes_count,
+                participants: participantCount,
+              })}
             </span>
           </div>
           {place && (
@@ -128,7 +134,7 @@ export function ResultsList({
                   className={cn(buttonVariants({ variant: 'chalk', size: 'sm' }))}
                 >
                   <RiRoadMapLine aria-hidden="true" />
-                  Itinéraire
+                  {t('directions')}
                 </a>
               )}
               {winner.website && (
@@ -142,19 +148,17 @@ export function ResultsList({
                   )}
                 >
                   <RiExternalLinkLine aria-hidden="true" />
-                  Le site
+                  {t('website')}
                 </a>
               )}
             </div>
           )}
 
           {agreement ? (
-            <p className="relative text-sm text-chalk-muted">
-              Vous avez dit oui tous les deux : pas besoin d’aller plus loin dans le deck.
-            </p>
+            <p className="relative text-sm text-chalk-muted">{t('agreementNote')}</p>
           ) : decision?.overridesVote ? (
             <p className="relative text-sm text-chalk-muted">
-              Choix du host : le vote plaçait {decision.leader.name} en tête.
+              {t('overrideNote', { leader: decision.leader.name })}
             </p>
           ) : (
             tiebreak &&
@@ -175,8 +179,8 @@ export function ResultsList({
 
       <div className="flex flex-col gap-6">
         {rest.length > 0 && (
-          <section aria-label="Classement complet" className="flex flex-col gap-2">
-            <h3 className="font-display text-base font-semibold">Le reste du classement</h3>
+          <section aria-label={t('fullRanking')} className="flex flex-col gap-2">
+            <h3 className="font-display text-base font-semibold">{t('rest')}</h3>
             <ol className="flex flex-col gap-2">
               {rest.map((row) => (
                 <li
@@ -228,16 +232,21 @@ function TieNote({
   winner: SessionResultRow
   decision: Decision | null
 }) {
-  const others = joinNames(tiebreak.tied.filter((row) => row !== winner).map((row) => row.name))
+  const t = useTranslations('session.results.tie')
+  const locale = useLocale()
+  const others = joinNames(
+    tiebreak.tied.filter((row) => row !== winner).map((row) => row.name),
+    locale
+  )
   return (
     <p className="relative text-sm text-chalk-muted">
       {tiebreak.method === 'draw' && winner.tiebreak === 'winner'
-        ? `Désigné par tirage au sort, à égalité parfaite avec ${others}.`
+        ? t('draw', { others })
         : tiebreak.method === 'runoff'
-          ? `Égalité parfaite avec ${others} : le second tour est en cours.`
+          ? t('runoff', { others })
           : decision
-            ? `Retenu par le host, à égalité parfaite avec ${others}.`
-            : `Égalité parfaite avec ${others}.`}
+            ? t('decided', { others })
+            : t('open', { others })}
     </p>
   )
 }
@@ -275,19 +284,20 @@ function ScoreBar({ score, maxAbs }: { score: number; maxAbs: number }) {
 }
 
 function Breakdown({ row, tone }: { row: SessionResultRow; tone: 'chalk' | 'ink' }) {
+  const t = useTranslations('session.results.breakdown')
   const items = [
-    { icon: RiHeart3Fill, count: row.superlikes, label: 'coups de cœur', color: 'text-fav' },
-    { icon: RiThumbUpLine, count: row.likes, label: 'ça me va', color: 'text-yes' },
+    { icon: RiHeart3Fill, count: row.superlikes, label: t('superlikes'), color: 'text-fav' },
+    { icon: RiThumbUpLine, count: row.likes, label: t('likes'), color: 'text-yes' },
     {
       icon: RiThumbDownLine,
       count: row.dislikes,
-      label: 'bof',
+      label: t('dislikes'),
       color: tone === 'chalk' ? 'text-chalk-muted' : 'text-no',
     },
-    { icon: RiForbid2Line, count: row.super_dislikes, label: 'vetos', color: 'text-veto' },
+    { icon: RiForbid2Line, count: row.super_dislikes, label: t('vetos'), color: 'text-veto' },
   ]
   return (
-    <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label="Détail des votes">
+    <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label={t('label')}>
       {items.map((item) => (
         <li
           key={item.label}

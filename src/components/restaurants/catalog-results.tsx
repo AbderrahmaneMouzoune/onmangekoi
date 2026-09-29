@@ -1,16 +1,13 @@
 'use client'
 
 import { RiMapPin2Fill, RiMapPin2Line } from '@remixicon/react'
+import { useLocale, useTranslations } from 'next-intl'
 
 import { RecentWinnerBadge } from '@/components/restaurants/recent-winner-badge'
 import { ResultRow } from '@/components/restaurants/result-row'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import {
-  constraintConflicts,
-  NO_FOOD_CONSTRAINTS,
-  ownConflictLabel,
-} from '@/domain/food-constraints'
+import { constraintConflicts, NO_FOOD_CONSTRAINTS, ownConflict } from '@/domain/food-constraints'
 import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
 import { PRICE_LEVEL_LABELS } from '@/domain/schemas/restaurant'
 import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
@@ -19,7 +16,7 @@ import { cn } from '@/lib/utils'
 
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
-import type { FoodConstraints } from '@/domain/food-constraints'
+import type { FoodConstraints, OwnConflict } from '@/domain/food-constraints'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { Geolocation } from '@/hooks/use-geolocation'
 
@@ -33,7 +30,8 @@ interface CatalogResultsProps {
   isSelected: (id: string) => boolean
   isLocked: (id: string) => boolean
   onToggle: (restaurant: Restaurant) => void
-  emptyLabel: string
+  /** Phrase quand rien ne correspond ; par défaut, celle du carnet. */
+  emptyLabel?: string
   /** Ouvre l'ajout manuel, prérempli avec la recherche en cours. */
   onAddManually: () => void
   /** Lève les filtres du carnet. Absent quand il n'y en a aucun de posé. */
@@ -77,12 +75,21 @@ export function CatalogResults({
   const here = geoPoint(geolocation.position)
   const isLocating = geolocation.status === 'locating'
   const onKeyDown = useArrowNavigation()
+  const t = useTranslations('restaurants')
+  const locale = useLocale()
+
+  /** Ses propres contraintes : « Pas halal », « Hors budget », « Pas pour toi ». */
+  function notForMeLabel(conflict: OwnConflict | null): string | null {
+    if (!conflict) return null
+    if (conflict.kind === 'tag') return t(`notForMe.tags.${conflict.tag}`)
+    return t(`notForMe.${conflict.kind}`)
+  }
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex min-h-9 items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          {here ? 'Le carnet, avec les distances depuis toi' : 'Le carnet'}
+          {here ? t('catalog.captionNearby') : t('catalog.caption')}
         </p>
         <Button
           type="button"
@@ -100,7 +107,7 @@ export function CatalogResults({
           ) : (
             <RiMapPin2Line aria-hidden="true" />
           )}
-          {here ? 'Autour de toi' : 'Autour de moi'}
+          {here ? t('geo.aroundYou') : t('geo.aroundMe')}
         </Button>
       </div>
 
@@ -113,7 +120,7 @@ export function CatalogResults({
       <ul
         onKeyDown={onKeyDown}
         className="flex max-h-[26rem] flex-col gap-1 overflow-y-auto overscroll-contain rounded-lg bg-surface p-1.5 ring-1 ring-line lg:max-h-[30rem]"
-        aria-label="Résultats"
+        aria-label={t('catalog.label')}
         aria-busy={isSearching || undefined}
       >
         {page.items.length === 0 && !isSearching && (
@@ -121,13 +128,13 @@ export function CatalogResults({
             {/* Des filtres sont posés : le carnet n'est pas vide, il est
                 restreint. On propose de les lever plutôt que d'ajouter un
                 resto qui s'y trouve peut-être déjà. */}
-            {onClearFilters ? 'Aucun resto du carnet ne passe les filtres.' : emptyLabel}{' '}
+            {onClearFilters ? t('catalog.noMatchFilters') : (emptyLabel ?? t('picker.empty'))}{' '}
             <button
               type="button"
               onClick={onClearFilters ?? onAddManually}
               className="font-semibold text-brand underline-offset-4 hover:underline"
             >
-              {onClearFilters ? 'Efface les filtres' : 'Ajoute-le'}
+              {onClearFilters ? t('catalog.clearFilters') : t('catalog.addIt')}
             </button>
             .
           </li>
@@ -138,10 +145,12 @@ export function CatalogResults({
           // Écartée, la carte se grise comme une carte verrouillée — mais
           // décochée : c'est bien ce qui n'ira pas dans la session.
           const locked = excluded || isLocked(restaurant.id)
-          const distance = distanceLabel(here, restaurant.location)
+          const distance = distanceLabel(here, restaurant.location, locale)
           // Ses propres contraintes : on peut les nommer. Un signal, pas un
           // filtre — la ligne reste cochable.
-          const notForMe = ownConflictLabel(constraintConflicts(restaurant, myConstraints))
+          const notForMe = notForMeLabel(
+            ownConflict(constraintConflicts(restaurant, myConstraints))
+          )
           return (
             <li key={restaurant.id}>
               <ResultRow
@@ -180,7 +189,7 @@ export function CatalogResults({
               onClick={onLoadMore}
               disabled={isLoadingMore}
             >
-              {isLoadingMore ? <Spinner /> : 'Afficher plus'}
+              {isLoadingMore ? <Spinner /> : t('catalog.more')}
             </Button>
           </li>
         )}

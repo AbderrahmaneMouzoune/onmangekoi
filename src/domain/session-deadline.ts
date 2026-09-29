@@ -5,6 +5,8 @@
  * source de vérité ; ces fonctions servent l'interface.
  */
 
+import type { Locale } from '@/i18n/config'
+
 /** La base refuse une échéance à moins d'une minute. */
 export const DEADLINE_MIN_MINUTES = 1
 /** Au-delà, ce n'est plus un chronomètre : 12 heures, comme en base. */
@@ -75,8 +77,8 @@ export function formatCountdown(ms: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
-/** Heure de clôture affichable, dans le fuseau du visiteur. */
-export function formatDeadlineTime(closesAt: string, locale = 'fr'): string {
+/** Heure de clôture affichable, dans la langue et le fuseau du visiteur. */
+export function formatDeadlineTime(closesAt: string, locale: Locale): string {
   return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(
     new Date(closesAt)
   )

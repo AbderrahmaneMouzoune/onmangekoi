@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   duoAgreement,
-  duoFinishedMessage,
-  duoSessionName,
+  duoFinishedState,
   isAgreementVote,
   isWaitingForPartner,
   partnerOf,
@@ -48,17 +47,20 @@ describe('partnerOf', () => {
   })
 })
 
-describe('duoFinishedMessage', () => {
+describe('duoFinishedState', () => {
   it('should wait for the other to open the link', () => {
-    expect(duoFinishedMessage(null)).toMatch(/pas encore ouvert le lien/)
+    expect(duoFinishedState(null)).toEqual({ kind: 'partnerAbsent' })
   })
 
   it('should name the other while an agreement is still possible', () => {
-    expect(duoFinishedMessage(participant(OTHER, 'Camille'))).toMatch(/Si Camille dit « ça me va »/)
+    expect(duoFinishedState(participant(OTHER, 'Camille'))).toEqual({
+      kind: 'partnerVoting',
+      pseudo: 'Camille',
+    })
   })
 
   it('should announce the ranking when both decks are done without agreement', () => {
-    expect(duoFinishedMessage(participant(OTHER, 'Camille', true))).toMatch(/le classement arrive/)
+    expect(duoFinishedState(participant(OTHER, 'Camille', true))).toEqual({ kind: 'bothDone' })
   })
 })
 
@@ -83,12 +85,5 @@ describe('duoAgreement', () => {
   it('should find nothing while nothing is decided', () => {
     expect(duoAgreement([row(false, 2, 0)])).toBeNull()
     expect(duoAgreement([])).toBeNull()
-  })
-})
-
-describe('duoSessionName', () => {
-  it('should name the meal and the day, nothing to type', () => {
-    expect(duoSessionName(new Date(2026, 8, 29, 12, 0))).toBe('À deux · déj du mardi')
-    expect(duoSessionName(new Date(2026, 8, 29, 20, 0))).toBe('À deux · dîner du mardi')
   })
 })

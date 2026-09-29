@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  blockedLabel,
+  blockedCount,
   conflictsWith,
   constraintConflicts,
   countFoodConstraints,
   hasFoodConstraints,
   NO_FOOD_CONSTRAINTS,
-  ownConflictLabel,
+  ownConflict,
   toConflictCounts,
 } from './food-constraints'
 
@@ -104,30 +104,30 @@ describe('toConflictCounts', () => {
   })
 })
 
-describe('blockedLabel', () => {
-  it('should agree in number, without ever naming anyone', () => {
-    expect(blockedLabel(1)).toBe('1 participant ne peut pas y manger')
-    expect(blockedLabel(2)).toBe('2 participants ne peuvent pas y manger')
+describe('blockedCount', () => {
+  it('should keep the count, without ever naming anyone', () => {
+    expect(blockedCount(1)).toBe(1)
+    expect(blockedCount(2)).toBe(2)
   })
 
   it('should say nothing when nobody is concerned', () => {
-    expect(blockedLabel(0)).toBeNull()
-    expect(blockedLabel(undefined)).toBeNull()
+    expect(blockedCount(0)).toBeNull()
+    expect(blockedCount(undefined)).toBeNull()
   })
 })
 
-describe('ownConflictLabel', () => {
+describe('ownConflict', () => {
   it('should name a single diet or the budget', () => {
-    expect(ownConflictLabel(['halal'])).toBe('Pas halal')
-    expect(ownConflictLabel(['gluten_free'])).toBe('Pas sans gluten')
-    expect(ownConflictLabel(['budget'])).toBe('Hors budget')
+    expect(ownConflict(['halal'])).toEqual({ kind: 'tag', tag: 'halal' })
+    expect(ownConflict(['gluten_free'])).toEqual({ kind: 'tag', tag: 'gluten_free' })
+    expect(ownConflict(['budget'])).toEqual({ kind: 'budget' })
   })
 
   it('should summarise several conflicts', () => {
-    expect(ownConflictLabel(['vegan', 'budget'])).toBe('Pas pour toi')
+    expect(ownConflict(['vegan', 'budget'])).toEqual({ kind: 'several' })
   })
 
   it('should say nothing without conflict', () => {
-    expect(ownConflictLabel([])).toBeNull()
+    expect(ownConflict([])).toBeNull()
   })
 })

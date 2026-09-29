@@ -1,10 +1,10 @@
+import { getTranslations } from 'next-intl/server'
 import { Suspense } from 'react'
 
 import { Shell } from '@/components/layout/shell'
 import { PublicPodiumFallback, PublicPodiumSection } from '@/components/session/public-podium'
 import { getPublicResults } from '@/data-access/public-results'
 import { parseResultsParam } from '@/domain/share'
-import { countLabel } from '@/lib/format'
 
 import type { Metadata } from 'next'
 
@@ -13,19 +13,20 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { code } = await params
+  const [{ code }, t] = await Promise.all([params, getTranslations('metadata')])
   const parsed = parseResultsParam(code)
   const results = parsed ? await getPublicResults(parsed).catch(() => null) : null
   const winner = results?.decision ?? results?.podium[0]
 
-  if (!results || !winner) return { title: 'Classement', robots: { index: false } }
+  if (!results || !winner) return { title: t('titles.results'), robots: { index: false } }
 
+  const values = { session: results.sessionName, restaurant: winner.restaurant_name }
   return {
-    title: `On mange chez ${winner.restaurant_name}`,
+    title: t('publicResults.title', values),
     // Une fois la décision posée, le lien annonce un déjeuner, plus un vote.
     description: results.decision
-      ? `${results.sessionName} : c’est décidé, on mange chez ${winner.restaurant_name}.`
-      : `${results.sessionName} : ${countLabel(results.participantCount, 'participant')} ont voté, ${winner.restaurant_name} l’emporte.`,
+      ? t('publicResults.decided', values)
+      : t('publicResults.voted', { ...values, count: results.participantCount }),
     // Le lien se partage, il ne s'indexe pas : le nom d'une session est celui
     // d'un groupe, il n'a rien à faire dans un moteur de recherche.
     robots: { index: false },

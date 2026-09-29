@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test'
 
 /**
- * Langues (issue #14, phase A) : la langue suit le navigateur à la première
- * visite, le sélecteur du pied de page la change et la retient, et les URL
- * restent sans préfixe de langue — un lien d'invitation est le même pour tous.
+ * Langues (issue #14) : la langue suit le navigateur à la première visite, le
+ * sélecteur du pied de page la change et la retient, et les URL restent sans
+ * préfixe de langue — un lien d'invitation est le même pour tous.
  *
  * Les autres specs tournent en `fr-FR` ; celle-ci part d'un navigateur anglais.
+ * Le parcours de session complet dans les deux langues viendra avec la
+ * phase C ; ici, un aller simple jusqu'à la salle d'attente (phase B).
  */
 test.describe('Langues', () => {
   test.skip(process.env.E2E !== '1', 'Nécessite une stack Supabase locale (E2E=1).')
@@ -48,5 +50,33 @@ test.describe('Langues', () => {
     expect(response?.status()).toBe(404)
     await expect(page.getByText('This page isn’t on the menu')).toBeVisible()
     await expect(page.getByText('Cette page n’est pas au menu')).toBeVisible()
+  })
+
+  test('une session se crée et s’ouvre en anglais', async ({ page }) => {
+    await page.goto('/sessions/new')
+    await expect(page).toHaveURL(/\/setup\?next=/)
+    await page.getByLabel('Your nickname').fill('Robin')
+    await page.getByRole('button', { name: 'Let’s go' }).click()
+    await expect(page).toHaveURL(/\/sessions\/new$/)
+
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Who’s deciding lunch?')
+    await page.getByLabel('Session name').fill('English lunch')
+    const results = page.getByRole('list', { name: 'Results' })
+    await results.getByRole('checkbox').nth(0).click()
+    await results.getByRole('checkbox').nth(1).click()
+    await page.getByRole('button', { name: 'Create the session · 2 restaurants' }).click()
+
+    // Même URL que pour tout le monde : le code, sans préfixe de langue.
+    await expect(page).toHaveURL(/\/sessions\/[0-9A-HJKMNP-TV-Z]{6}$/)
+    await expect(page.getByRole('heading', { name: 'English lunch' })).toBeVisible()
+    await expect(page.getByText('Waiting room', { exact: true })).toBeVisible()
+    await expect(page.getByRole('list', { name: 'Voting rules' })).toContainText(
+      'Closes when everyone has voted'
+    )
+    await expect(page.getByText('2 restaurants to choose from')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start the vote' })).toBeDisabled()
+    await expect(
+      page.getByRole('button', { name: /enlarge the invitation qr code/i })
+    ).toBeVisible()
   })
 })

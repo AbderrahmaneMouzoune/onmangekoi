@@ -1,5 +1,7 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
+
 import { cn } from '@/lib/utils'
 
 /** D'où viennent les restos qu'on pioche : ses listes, le carnet, ou Google. */
@@ -7,7 +9,6 @@ export type RestaurantSource = 'lists' | 'base' | 'google'
 
 export interface SourceTab {
   key: RestaurantSource
-  label: string
   icon: React.ReactNode
   /** Petit compteur à droite du libellé — ce qu'on a déjà pris dans cette source. */
   count?: number
@@ -38,6 +39,8 @@ export function sourcePanelId(idPrefix: string): string {
  * aller aux extrémités, comme un `tablist` doit le faire.
  */
 export function SourceTabs({ tabs, value, onChange, idPrefix }: SourceTabsProps) {
+  const t = useTranslations('restaurants.sources')
+
   function moveFocus(event: React.KeyboardEvent<HTMLDivElement>) {
     const index = tabs.findIndex((tab) => tab.key === value)
     if (index === -1) return
@@ -57,7 +60,7 @@ export function SourceTabs({ tabs, value, onChange, idPrefix }: SourceTabsProps)
   return (
     <div
       role="tablist"
-      aria-label="Source des restaurants"
+      aria-label={t('label')}
       onKeyDown={moveFocus}
       className="grid gap-1 rounded-lg bg-surface-2 p-1"
       style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
@@ -82,7 +85,7 @@ export function SourceTabs({ tabs, value, onChange, idPrefix }: SourceTabsProps)
             )}
           >
             {tab.icon}
-            <span className="truncate">{tab.label}</span>
+            <span className="truncate">{t(tab.key)}</span>
             {tab.count ? (
               // Décoratif : le panier, juste au-dessus, dit déjà ce qui est pris.
               <span

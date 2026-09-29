@@ -7,8 +7,6 @@
  * en est le duo, et reconnaître un accord dans le classement.
  */
 
-import { displayPseudo } from '@/lib/format'
-
 import type { ParticipantWithProfile } from '@/data-access/models'
 import type { VoteValue } from '@/domain/vote'
 
@@ -46,19 +44,20 @@ export function isWaitingForPartner(participants: ParticipantWithProfile[]): boo
 }
 
 /**
- * Ce que l'ardoise dit à qui a fini son deck. Sans accord, le vote ne
- * s'arrête pas là : il attend l'autre — son arrivée d'abord, puis la fin de
- * son deck —, et le premier « ça me va » commun peut encore tout régler.
+ * Ce que l'ardoise dit à qui a fini son deck (`session.finished.duo.<kind>`).
+ * Sans accord, le vote ne s'arrête pas là : il attend l'autre — son arrivée
+ * d'abord, puis la fin de son deck —, et le premier « ça me va » commun peut
+ * encore tout régler.
  */
-export function duoFinishedMessage(partner: ParticipantWithProfile | null): string {
-  if (!partner) {
-    return 'L’autre n’a pas encore ouvert le lien. Dès qu’il ou elle dit « ça me va » à un resto que tu as aimé, c’est décidé.'
-  }
-  const name = displayPseudo(partner.profiles?.pseudo)
-  if (partner.has_finished_voting) {
-    return 'Vous avez fini tous les deux sans accord : le classement arrive.'
-  }
-  return `Pas d’accord pour l’instant. Si ${name} dit « ça me va » à un resto que tu as aimé, c’est décidé ; sinon le classement tombe à la fin de son deck.`
+export type DuoFinishedState =
+  | { kind: 'partnerAbsent' }
+  | { kind: 'bothDone' }
+  | { kind: 'partnerVoting'; pseudo: string | null }
+
+export function duoFinishedState(partner: ParticipantWithProfile | null): DuoFinishedState {
+  if (!partner) return { kind: 'partnerAbsent' }
+  if (partner.has_finished_voting) return { kind: 'bothDone' }
+  return { kind: 'partnerVoting', pseudo: partner.profiles?.pseudo ?? null }
 }
 
 /** Ce que le classement doit porter pour reconnaître un accord. */
@@ -82,15 +81,4 @@ export function duoAgreement<T extends AgreementRow>(rows: T[]): T | null {
   const decided = rows.find((row) => row.decided)
   if (!decided) return null
   return decided.likes + decided.superlikes >= DUO_SEATS ? decided : null
-}
-
-const DAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
-
-/**
- * Nom d'un duo : personne ne le tape, il sert à retrouver la session dans
- * l'historique et à la reconnaître dans une notification.
- */
-export function duoSessionName(now: Date = new Date()): string {
-  const meal = now.getHours() < 15 ? 'déj' : 'dîner'
-  return `À deux · ${meal} du ${DAY_NAMES[now.getDay()]}`
 }

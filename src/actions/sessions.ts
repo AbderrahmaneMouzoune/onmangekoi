@@ -28,7 +28,12 @@ import {
   SessionRestaurantSchema,
 } from '@/domain/schemas/session'
 import { EXTEND_MINUTES } from '@/domain/session-deadline'
-import { revalidateLocalizedPath, translateError, translateIssue } from '@/i18n/server'
+import {
+  errorMessage,
+  revalidateLocalizedPath,
+  translateError,
+  translateIssue,
+} from '@/i18n/server'
 import { createSessionUseCase } from '@/use-cases/create-session'
 import { joinSessionUseCase } from '@/use-cases/join-session'
 
@@ -59,11 +64,13 @@ export async function createSessionAction(
     excludeRecentWinners: formData.get('excludeRecentWinners'),
   })
   if (!parsed.success) {
-    return { error: await translateIssue(parsed.error.issues[0], 'Formulaire invalide') }
+    return {
+      error: await translateIssue(parsed.error.issues[0], await errorMessage('invalid_form')),
+    }
   }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { error: 'Tu dois d’abord choisir un pseudo.' }
+  if (!user) return { error: await errorMessage('not_authenticated') }
 
   let session: Session
   try {
@@ -79,11 +86,13 @@ export async function createSessionAction(
 export async function joinSessionAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = JoinSessionSchema.safeParse({ identifier: formData.get('identifier') })
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'Code invalide' }
+    return {
+      error: await translateIssue(parsed.error.issues[0], await errorMessage('invalid_identifier')),
+    }
   }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { error: 'Tu dois d’abord choisir un pseudo.' }
+  if (!user) return { error: await errorMessage('not_authenticated') }
 
   let session: Session
   try {
@@ -106,11 +115,14 @@ export async function addSessionRestaurantsAction(
 ): Promise<ActionResult> {
   const parsed = AddSessionRestaurantsSchema.safeParse({ sessionId, restaurantIds })
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Requête invalide' }
+    return {
+      ok: false,
+      error: await translateIssue(parsed.error.issues[0], await errorMessage('invalid_request')),
+    }
   }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     await addSessionRestaurants(supabase, parsed.data.sessionId, parsed.data.restaurantIds)
@@ -128,10 +140,10 @@ export async function removeSessionRestaurantAction(
   restaurantId: string
 ): Promise<ActionResult> {
   const parsed = SessionRestaurantSchema.safeParse({ sessionId, restaurantId })
-  if (!parsed.success) return { ok: false, error: 'Requête invalide' }
+  if (!parsed.success) return { ok: false, error: await errorMessage('invalid_request') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     await removeSessionRestaurant(supabase, parsed.data.sessionId, parsed.data.restaurantId)
@@ -145,10 +157,10 @@ export async function removeSessionRestaurantAction(
 
 export async function launchSessionAction(sessionId: string): Promise<ActionResult<Session>> {
   const id = SessionIdSchema.safeParse(sessionId)
-  if (!id.success) return { ok: false, error: 'Session invalide' }
+  if (!id.success) return { ok: false, error: await errorMessage('invalid_session') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     const session = await launchSession(supabase, id.data)
@@ -161,10 +173,10 @@ export async function launchSessionAction(sessionId: string): Promise<ActionResu
 
 export async function closeSessionAction(sessionId: string): Promise<ActionResult<Session>> {
   const id = SessionIdSchema.safeParse(sessionId)
-  if (!id.success) return { ok: false, error: 'Session invalide' }
+  if (!id.success) return { ok: false, error: await errorMessage('invalid_session') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     const session = await closeSession(supabase, id.data)
@@ -178,10 +190,10 @@ export async function closeSessionAction(sessionId: string): Promise<ActionResul
 
 export async function extendSessionAction(sessionId: string): Promise<ActionResult<Session>> {
   const id = SessionIdSchema.safeParse(sessionId)
-  if (!id.success) return { ok: false, error: 'Session invalide' }
+  if (!id.success) return { ok: false, error: await errorMessage('invalid_session') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     const session = await extendSession(supabase, id.data, EXTEND_MINUTES)
@@ -198,10 +210,10 @@ export async function extendSessionAction(sessionId: string): Promise<ActionResu
  */
 export async function createRunoffSessionAction(sessionId: string): Promise<ActionResult<Session>> {
   const id = SessionIdSchema.safeParse(sessionId)
-  if (!id.success) return { ok: false, error: 'Session invalide' }
+  if (!id.success) return { ok: false, error: await errorMessage('invalid_session') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     const runoff = await createRunoffSession(supabase, id.data)
@@ -218,10 +230,10 @@ export async function createRunoffSessionAction(sessionId: string): Promise<Acti
 /** Tirage au sort entre les ex æquo — le résultat est décidé et gardé en base. */
 export async function drawWinnerAction(sessionId: string): Promise<ActionResult<Session>> {
   const id = SessionIdSchema.safeParse(sessionId)
-  if (!id.success) return { ok: false, error: 'Session invalide' }
+  if (!id.success) return { ok: false, error: await errorMessage('invalid_session') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   let session: Session
   try {
@@ -247,10 +259,10 @@ export async function confirmDecisionAction(
   restaurantId: string
 ): Promise<ActionResult<Session>> {
   const parsed = SessionRestaurantSchema.safeParse({ sessionId, restaurantId })
-  if (!parsed.success) return { ok: false, error: 'Restaurant invalide' }
+  if (!parsed.success) return { ok: false, error: await errorMessage('invalid_restaurant') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   let session: Session
   try {
@@ -277,10 +289,10 @@ export async function setResultsPublicAction(
   isPublic: boolean
 ): Promise<ActionResult<Session>> {
   const id = SessionIdSchema.safeParse(sessionId)
-  if (!id.success) return { ok: false, error: 'Session invalide' }
+  if (!id.success) return { ok: false, error: await errorMessage('invalid_session') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   let session: Session
   try {
@@ -296,10 +308,10 @@ export async function setResultsPublicAction(
 
 export async function leaveSessionAction(sessionId: string): Promise<ActionResult> {
   const id = SessionIdSchema.safeParse(sessionId)
-  if (!id.success) return { ok: false, error: 'Session invalide' }
+  if (!id.success) return { ok: false, error: await errorMessage('invalid_session') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     await leaveSession(supabase, id.data, user.id)
@@ -313,10 +325,10 @@ export async function leaveSessionAction(sessionId: string): Promise<ActionResul
 
 export async function deleteSessionAction(sessionId: string): Promise<ActionResult> {
   const id = SessionIdSchema.safeParse(sessionId)
-  if (!id.success) return { ok: false, error: 'Session invalide' }
+  if (!id.success) return { ok: false, error: await errorMessage('invalid_session') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     await deleteSession(supabase, id.data)

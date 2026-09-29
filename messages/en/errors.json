@@ -52,7 +52,7 @@
     "invalid_push_subscription": "Your browser sent back an unreadable notification subscription. Try again.",
     "list_empty": "This list is still empty: there’s nothing to decide.",
     "no_restaurant_selected": "Select at least one restaurant.",
-    "all_recent_winners": "All these restaurants have won in the last {days} days. Untick the “no repeats” option or add another restaurant.",
+    "all_recent_winners": "All these restaurants have won in the last {days} days. Untick “Skip recent winners” or add another restaurant.",
     "places_not_configured": "Google search isn’t set up on this deployment.",
     "places_timeout": "Google didn’t answer in time. Try again in a moment.",
     "places_key_rejected": "Google rejects this deployment’s key: search is unavailable.",
@@ -62,13 +62,33 @@
     "places_nothing_nearby": "Google can’t find any restaurants around you.",
     "seed_nothing_saved": "No restaurant could be saved. Try again in a moment.",
     "turnstile_missing": "Bot check in progress. Try again in a moment.",
-    "turnstile_rejected": "The bot check failed. Reload the page and try again."
+    "turnstile_rejected": "The bot check failed. Reload the page and try again.",
+    "invalid_request": "Invalid request.",
+    "invalid_form": "Invalid form.",
+    "invalid_session": "Invalid session.",
+    "invalid_position": "Invalid location.",
+    "invalid_search": "Invalid search.",
+    "search_too_long": "That search is too long.",
+    "search_too_short": "Type at least two characters, or allow your location.",
+    "session_name_required": "Give the session a name.",
+    "session_name_too_long": "The name can’t be longer than 100 characters.",
+    "nothing_selected": "Select at least one list or restaurant.",
+    "jokers_negative": "A joker quota can’t be negative.",
+    "jokers_too_many": "Beyond 5, a joker is no longer a joker.",
+    "close_ratio_too_low": "Closing can’t be decided by less than half of the voters.",
+    "close_ratio_too_high": "Closing can’t wait for more than everyone.",
+    "duo_cannot_be_open": "A session for two can’t be open to everyone.",
+    "identifier_required": "Enter a code or paste a link.",
+    "cuisine_too_long": "The cuisine can’t be longer than 40 characters.",
+    "address_too_long": "The address can’t be longer than 200 characters.",
+    "city_too_long": "The city can’t be longer than 80 characters."
   },
   "fallback": {
     "profileSave": "Couldn’t save your nickname. Try again.",
     "pseudoUpdate": "Couldn’t change your nickname.",
     "accountDelete": "Couldn’t delete the account.",
     "foodConstraintsSave": "Couldn’t save your dietary preferences. Try again.",
-    "joinLink": "Invalid link or session not found."
+    "joinLink": "Invalid link or session not found.",
+    "restaurantSearch": "The search failed. Try again."
   }
 }

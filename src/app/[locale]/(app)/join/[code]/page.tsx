@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server'
 import { Suspense } from 'react'
 
 import { Shell } from '@/components/layout/shell'
@@ -15,40 +16,40 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const [{ code }, supabase] = await Promise.all([params, createServerClient()])
+  const [{ code }, supabase, t, tCommon] = await Promise.all([
+    params,
+    createServerClient(),
+    getTranslations('metadata'),
+    getTranslations('common'),
+  ])
   const identifier = parseInviteIdentifier(code)
   const preview =
     identifier.kind === 'invalid'
       ? null
       : await getSessionPreview(supabase, identifier.value).catch(() => null)
 
-  if (!preview) return { title: 'Invitation' }
+  if (!preview) return { title: t('titles.invitation') }
 
-  const host = displayPseudo(preview.host_pseudo)
+  const host = displayPseudo(preview.host_pseudo, tCommon('people.guest'))
   const rules = parseSessionRules(preview.rules)
   const open = isOpenSession(rules)
   if (isDuoSession(rules)) {
     // Un duo (#61) : un lien envoyé à une seule personne, pas un groupe.
     return {
-      title: `${host} te propose de décider à deux`,
-      description: `${host} t’invite à choisir où manger à deux : au premier « ça me va » commun, c’est décidé. Sans compte.`,
+      title: t('invite.duoTitle', { host }),
+      description: t('invite.duoDescription', { host }),
       openGraph: {
-        title: `${host} te propose de décider à deux`,
-        description:
-          'Vous balayez les mêmes restos : au premier « ça me va » commun, c’est décidé.',
+        title: t('invite.duoTitle', { host }),
+        description: t('invite.duoOgDescription'),
       },
     }
   }
   return {
-    title: `Rejoins « ${preview.name} »`,
-    description: open
-      ? `${host} t’invite à choisir où manger. Vote quand tu veux avant la clôture, sans compte.`
-      : `${host} t’invite à choisir où manger. Vote en deux minutes, sans compte.`,
+    title: t('invite.title', { name: preview.name }),
+    description: open ? t('invite.openDescription', { host }) : t('invite.description', { host }),
     openGraph: {
-      title: `${host} t’invite : ${preview.name}`,
-      description: open
-        ? 'Session ouverte : chacun vote à son heure, le classement tombe à la clôture.'
-        : 'Vote sur les restos, le classement tranche.',
+      title: t('invite.ogTitle', { host, name: preview.name }),
+      description: open ? t('invite.openOgDescription') : t('invite.ogDescription'),
     },
   }
 }

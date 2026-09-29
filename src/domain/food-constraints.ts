@@ -16,8 +16,7 @@
  * Des `tags` vides veulent dire « on ne sait pas », un `price_level` nul
  * aussi : dans les deux cas, rien n'est signalé.
  */
-import { RESTAURANT_TAG_LABELS, type RestaurantTag } from '@/domain/schemas/restaurant'
-import { plural } from '@/lib/format'
+import type { RestaurantTag } from '@/domain/schemas/restaurant'
 
 export interface FoodConstraints {
   /** Régimes exigés, dans l'ordre du catalogue. */
@@ -105,25 +104,28 @@ export function toConflictCounts(
 }
 
 /**
- * « 2 participants ne peuvent pas y manger ». Jamais qui, jamais pourquoi :
- * le compte est tout ce que la base accepte de dire des contraintes des
- * autres. `null` quand personne n'est concerné — rien à afficher.
+ * « 2 participants ne peuvent pas y manger » (`session.constraints.blocked`).
+ * Jamais qui, jamais pourquoi : le compte est tout ce que la base accepte de
+ * dire des contraintes des autres. `null` quand personne n'est concerné —
+ * rien à afficher.
  */
-export function blockedLabel(count: number | undefined): string | null {
-  if (!count || count <= 0) return null
-  return `${count} ${plural(count, 'participant')} ${plural(count, 'ne peut', 'ne peuvent')} pas y manger`
+export function blockedCount(count: number | undefined): number | null {
+  return count && count > 0 ? count : null
 }
 
 /**
  * Le témoin de ses **propres** contraintes, à la composition : « Pas halal »,
- * « Hors budget », ou « Pas pour toi » quand plusieurs se cumulent. Ce sont
- * les siennes, on peut donc les nommer — ce qu'on ne fait jamais pour les
- * autres. `null` : rien à signaler.
+ * « Hors budget », ou « Pas pour toi » quand plusieurs se cumulent
+ * (`restaurants.notForMe.<clé>`). Ce sont les siennes, on peut donc les
+ * nommer — ce qu'on ne fait jamais pour les autres. `null` : rien à signaler.
  */
-export function ownConflictLabel(conflicts: ConstraintConflict[]): string | null {
+export type OwnConflict =
+  { kind: 'several' } | { kind: 'budget' } | { kind: 'tag'; tag: RestaurantTag }
+
+export function ownConflict(conflicts: ConstraintConflict[]): OwnConflict | null {
   const [only, ...rest] = conflicts
   if (only === undefined) return null
-  if (rest.length > 0) return 'Pas pour toi'
-  if (only === 'budget') return 'Hors budget'
-  return `Pas ${RESTAURANT_TAG_LABELS[only].toLowerCase()}`
+  if (rest.length > 0) return { kind: 'several' }
+  if (only === 'budget') return { kind: 'budget' }
+  return { kind: 'tag', tag: only }
 }

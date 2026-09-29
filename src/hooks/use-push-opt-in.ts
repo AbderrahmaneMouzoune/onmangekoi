@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState, useTransition } from 'react'
 
 import { subscribePushAction, unsubscribePushAction } from '@/actions/push'
@@ -37,8 +38,6 @@ export interface PushOptIn {
   unsubscribe: () => void
 }
 
-const FAILED = 'Impossible d’activer les notifications sur ce navigateur. Réessaie plus tard.'
-
 async function readState(): Promise<PushOptInState> {
   const permission = pushPermission()
   if (permission === 'unsupported') return isAppleMobile() ? 'install-first' : 'hidden'
@@ -71,6 +70,7 @@ export function usePushOptIn({
   const [state, setState] = useState<PushOptInState>('checking')
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
+  const t = useTranslations('session.push')
 
   useEffect(() => {
     if (!enabled) return
@@ -98,7 +98,7 @@ export function usePushOptIn({
         return
       }
       if (outcome.status === 'failed') {
-        setError(FAILED)
+        setError(t('failed'))
         return
       }
 
@@ -110,7 +110,7 @@ export function usePushOptIn({
       setState('subscribed')
       captureEvent('push_subscribed', { session_id: sessionId, context })
     })
-  }, [publicKey, sessionId, context])
+  }, [publicKey, sessionId, context, t])
 
   const unsubscribe = useCallback(() => {
     setError(null)

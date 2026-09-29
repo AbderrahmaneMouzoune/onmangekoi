@@ -5,6 +5,33 @@
   "titles": {
     "setup": "Choisir un pseudo",
     "login": "Connexion",
-    "offline": "Hors ligne"
+    "offline": "Hors ligne",
+    "sessions": "Mes sessions",
+    "newSession": "Nouvelle session",
+    "session": "Session",
+    "results": "Classement",
+    "resultsOf": "Classement · {name}",
+    "duo": "À deux",
+    "join": "Rejoindre une session",
+    "invitation": "Invitation"
+  },
+  "duo": {
+    "description": "Décider à deux où manger : un lien à envoyer, les mêmes restos à balayer, et le premier « ça me va » commun tranche."
+  },
+  "invite": {
+    "duoTitle": "{host} te propose de décider à deux",
+    "duoDescription": "{host} t’invite à choisir où manger à deux : au premier « ça me va » commun, c’est décidé. Sans compte.",
+    "duoOgDescription": "Vous balayez les mêmes restos : au premier « ça me va » commun, c’est décidé.",
+    "title": "Rejoins « {name} »",
+    "openDescription": "{host} t’invite à choisir où manger. Vote quand tu veux avant la clôture, sans compte.",
+    "description": "{host} t’invite à choisir où manger. Vote en deux minutes, sans compte.",
+    "ogTitle": "{host} t’invite : {name}",
+    "openOgDescription": "Session ouverte : chacun vote à son heure, le classement tombe à la clôture.",
+    "ogDescription": "Vote sur les restos, le classement tranche."
+  },
+  "publicResults": {
+    "title": "On mange chez {restaurant}",
+    "decided": "{session} : c’est décidé, on mange chez {restaurant}.",
+    "voted": "{session} : {count, plural, one {# participant a voté} other {# participants ont voté}}, {restaurant} l’emporte."
   }
 }

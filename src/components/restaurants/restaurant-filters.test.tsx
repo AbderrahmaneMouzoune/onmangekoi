@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import { NO_FILTERS, type RestaurantFilters } from '@/domain/restaurant-filters'
+import { renderWithIntl } from '@/test/render'
 
 import { RestaurantFiltersBar } from './restaurant-filters'
 
@@ -16,7 +17,7 @@ const HERE: GeoPoint = { lat: 48.8719, lng: 2.3316 }
 
 function setup(value: RestaurantFilters = NO_FILTERS, here: GeoPoint | null = null) {
   const onChange = vi.fn()
-  render(<RestaurantFiltersBar value={value} onChange={onChange} here={here} />)
+  renderWithIntl(<RestaurantFiltersBar value={value} onChange={onChange} here={here} />)
   return { onChange }
 }
 
@@ -67,6 +68,25 @@ describe('RestaurantFiltersBar', () => {
         'Les restos dont le budget n’est pas renseigné, qui ne déclarent pas ce régime et dont l’adresse n’est pas localisée n’apparaissent pas.'
       )
     ).toBeInTheDocument()
+  })
+
+  it('should say it in English, listed the English way', () => {
+    const onChange = vi.fn()
+    renderWithIntl(
+      <RestaurantFiltersBar
+        value={{ priceMax: 2, tags: ['vegan', 'halal'], withinKm: null }}
+        onChange={onChange}
+        here={null}
+      />,
+      { locale: 'en' }
+    )
+
+    expect(
+      screen.getByText(
+        'Restaurants with no budget listed and that don’t list these diets don’t show up.'
+      )
+    ).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Vegan' })).toBeInTheDocument()
   })
 
   it('should not count a radius that has no position to measure from', () => {
