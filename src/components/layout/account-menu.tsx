@@ -8,6 +8,7 @@ import {
   RiUserSettingsLine,
 } from '@remixicon/react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { useState, useTransition } from 'react'
 
 import { signOutAction } from '@/actions/auth'
@@ -52,6 +53,8 @@ interface AccountMenuProps {
 export function AccountMenu({ pseudo, isAnonymous }: AccountMenuProps) {
   const [confirmingSignOut, setConfirmingSignOut] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const t = useTranslations('layout.accountMenu')
+  const tCommon = useTranslations('common.actions')
 
   return (
     <>
@@ -77,15 +80,15 @@ export function AccountMenu({ pseudo, isAnonymous }: AccountMenuProps) {
         <DropdownMenuPopup>
           <DropdownMenuLinkItem render={<Link href={router.account()} />}>
             <RiUserSettingsLine aria-hidden="true" />
-            Mon compte
+            {t('account')}
           </DropdownMenuLinkItem>
           <DropdownMenuLinkItem render={<Link href={router.lists()} />}>
             <RiBookmarkLine aria-hidden="true" />
-            Mes listes
+            {t('lists')}
           </DropdownMenuLinkItem>
           <DropdownMenuLinkItem render={<Link href={router.groups()} />}>
             <RiGroupLine aria-hidden="true" />
-            Mes groupes
+            {t('groups')}
           </DropdownMenuLinkItem>
 
           <DropdownMenuSeparator />
@@ -95,7 +98,7 @@ export function AccountMenu({ pseudo, isAnonymous }: AccountMenuProps) {
             onClick={() => setConfirmingSignOut(true)}
           >
             <RiLogoutBoxRLine aria-hidden="true" />
-            Se déconnecter
+            {t('signOut')}
           </DropdownMenuItem>
         </DropdownMenuPopup>
       </DropdownMenuRoot>
@@ -110,11 +113,9 @@ export function AccountMenu({ pseudo, isAnonymous }: AccountMenuProps) {
         }}
       >
         <AlertDialogPopup>
-          <AlertDialogTitle>Se déconnecter ?</AlertDialogTitle>
+          <AlertDialogTitle>{t('confirmTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
-            {isAnonymous
-              ? 'Ton pseudo n’est lié à aucun email : une fois déconnecté, tes listes et tes sessions seront perdues.'
-              : 'Tu pourras revenir avec ton email et ton mot de passe.'}
+            {isAnonymous ? t('confirmAnonymous') : t('confirmLinked')}
           </AlertDialogDescription>
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -122,7 +123,7 @@ export function AccountMenu({ pseudo, isAnonymous }: AccountMenuProps) {
               disabled={isPending}
               render={
                 <button type="button" className={cn(buttonVariants({ variant: 'outline' }))}>
-                  Annuler
+                  {tCommon('cancel')}
                 </button>
               }
             />
@@ -132,7 +133,7 @@ export function AccountMenu({ pseudo, isAnonymous }: AccountMenuProps) {
               disabled={isPending}
               onClick={() => startTransition(() => signOutAction())}
             >
-              {isPending ? <Spinner /> : 'Se déconnecter'}
+              {isPending ? <Spinner /> : t('signOut')}
             </Button>
           </div>
         </AlertDialogPopup>

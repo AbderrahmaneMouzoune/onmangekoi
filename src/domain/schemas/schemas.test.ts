@@ -83,7 +83,8 @@ describe('CreateSessionSchema', () => {
     const base = { name: 'Lunch', restaurantIds: [UUID], open: 'on' }
     const refused = CreateSessionSchema.safeParse(base)
     expect(refused.success).toBe(false)
-    expect(refused.error?.issues[0]?.message).toMatch(/échéance/)
+    // Même code que le refus de la base : l'action le traduit comme lui.
+    expect(refused.error?.issues[0]?.message).toBe('omk:open_session_needs_deadline')
 
     expect(CreateSessionSchema.safeParse({ ...base, closesInMinutes: '60' }).data?.open).toBe(true)
     expect(

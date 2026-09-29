@@ -19,7 +19,7 @@ export async function importPlaceUseCase(
   placeId: string
 ): Promise<Restaurant> {
   const place = await getPlaceDetails(placeId)
-  if (!place) throw new AppError('Ce lieu n’existe plus chez Google.')
+  if (!place) throw new AppError('place_gone')
 
   return upsertRestaurantFromPlace(supabase, place)
 }

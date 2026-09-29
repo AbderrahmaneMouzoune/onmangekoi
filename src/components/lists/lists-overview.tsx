@@ -1,6 +1,7 @@
 import { RiBookmarkLine, RiGroupLine } from '@remixicon/react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { getLocale } from 'next-intl/server'
 
 import { VisitMemo } from '@/components/layout/visit-memo'
 import { ArrowKeyList } from '@/components/ui/arrow-key-list'
@@ -20,7 +21,7 @@ export async function ListsOverview() {
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
   if (!user) redirect(router.setup(router.lists()))
 
-  const lists = await getListsByOwner(supabase, user.id)
+  const [lists, locale] = await Promise.all([getListsByOwner(supabase, user.id), getLocale()])
 
   if (lists.length === 0) {
     return (
@@ -49,7 +50,7 @@ export async function ListsOverview() {
                 <span className="truncate font-semibold">{list.name}</span>
                 <span className="text-xs text-muted-foreground">
                   {countLabel(list.restaurant_count, 'resto')} · modifiée{' '}
-                  {relativeDate(list.updated_at)}
+                  {relativeDate(list.updated_at, locale)}
                 </span>
               </div>
               {list.is_collaborative && (

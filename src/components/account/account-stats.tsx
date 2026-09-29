@@ -1,5 +1,6 @@
 import { RiBarChartLine } from '@remixicon/react'
 import Link from 'next/link'
+import { useLocale } from 'next-intl'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
@@ -30,6 +31,7 @@ export async function AccountStats() {
 
 /** Le panneau lui-même, sans lecture : `null` ou zéro session donnent l'invite. */
 export function StatsPanel({ stats }: { stats: MyStats | null }) {
+  const locale = useLocale()
   const rate = stats ? favoriteRate(stats.fav_votes, stats.votes_total) : null
 
   return (
@@ -64,7 +66,7 @@ export function StatsPanel({ stats }: { stats: MyStats | null }) {
             />
             <Tile
               label="Coups de cœur"
-              value={rate === null ? '—' : percentLabel(rate)}
+              value={rate === null ? '—' : percentLabel(rate, locale)}
               hint={countLabel(stats.fav_votes, 'vote')}
             />
           </dl>

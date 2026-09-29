@@ -1,12 +1,12 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { createServerClient } from '@/data-access/supabase/server'
 import { LinkEmailSchema, LoginSchema, SetPasswordSchema } from '@/domain/schemas/auth'
+import { revalidateLocalizedPath } from '@/i18n/server'
 import { sanitizeNextPath } from '@/lib/routing'
 import { absoluteUrl } from '@/lib/site'
 
@@ -40,7 +40,7 @@ export async function linkEmailAction(_prev: FormState, formData: FormData): Pro
     }
   }
 
-  revalidatePath(router.account())
+  revalidateLocalizedPath(router.account())
   return {
     success: `Un email de confirmation a été envoyé à ${parsed.data.email}. Ouvre le lien pour valider.`,
   }
@@ -67,7 +67,7 @@ export async function setPasswordAction(_prev: FormState, formData: FormData): P
     return { error: humanizeAuthError(error.message, 'Impossible de définir le mot de passe.') }
   }
 
-  revalidatePath(router.account())
+  revalidateLocalizedPath(router.account())
   return { success: 'Mot de passe enregistré. Tu peux te connecter depuis un autre appareil.' }
 }
 
@@ -90,14 +90,14 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
     return { error: humanizeAuthError(error.message, 'Email ou mot de passe incorrect.') }
   }
 
-  revalidatePath(router.home(), 'layout')
+  revalidateLocalizedPath(router.home(), 'layout')
   redirect(sanitizeNextPath(parsed.data.next, router.home()))
 }
 
 export async function signOutAction(): Promise<void> {
   const supabase = await createServerClient()
   await supabase.auth.signOut()
-  revalidatePath(router.home(), 'layout')
+  revalidateLocalizedPath(router.home(), 'layout')
   redirect(router.home())
 }
 

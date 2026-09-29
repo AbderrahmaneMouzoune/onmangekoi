@@ -1,0 +1,36 @@
+{
+  "hero": {
+    "eyebrow": "Group vote · 2 minutes",
+    "title": "Where are we <brand>eating</brand>?",
+    "lead": "No more “whatever you want”. The group votes restaurant by restaurant, and the ranking settles it. No account needed.",
+    "create": "Create a session",
+    "haveCode": "I have a code",
+    "duo": "Just the two of you? One link, and the first shared “works for me” decides"
+  },
+  "how": {
+    "title": "How it works",
+    "steps": {
+      "pick": {
+        "title": "Pick the restaurants",
+        "text": "Choose from the database or from one of your favourite lists."
+      },
+      "share": {
+        "title": "Share the link",
+        "text": "A code to say out loud, a QR code to show, or a link to paste."
+      },
+      "vote": {
+        "title": "Everyone votes, the ranking lands",
+        "text": "Nah, works for me, favourite or veto. Once everyone has voted, it’s settled."
+      }
+    }
+  },
+  "dashboard": {
+    "sessions": "Your sessions",
+    "lists": "Your lists",
+    "firstList": "Create your first list of favourites",
+    "sessionMeta": "{participants} · {date}"
+  },
+  "invitations": {
+    "title": "They’re waiting for you"
+  }
+}

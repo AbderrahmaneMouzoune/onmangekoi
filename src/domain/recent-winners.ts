@@ -47,7 +47,8 @@ export function recentWinnerCount(recent: RecentWinnerDates): number {
 
 /** « Gagnant il y a 6 jours » — au moment de choisir les restaurants. */
 export function recentWinLabel(iso: string, now: Date = new Date()): string {
-  return `Gagnant ${relativeDate(iso, now)}`
+  // Libellé encore en français : extrait avec le reste de la session (#14, phase B).
+  return `Gagnant ${relativeDate(iso, 'fr', now)}`
 }
 
 const dayAndMonth = new Intl.DateTimeFormat('fr', { day: 'numeric', month: 'long' })

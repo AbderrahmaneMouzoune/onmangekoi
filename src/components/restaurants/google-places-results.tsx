@@ -10,7 +10,6 @@ import { SeedNeighbourhood } from '@/components/restaurants/seed-neighbourhood'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
-import { GENERIC_ERROR } from '@/domain/errors'
 import { NO_RECENT_WINNERS } from '@/domain/recent-winners'
 import { PLACES_QUERY_MIN } from '@/domain/schemas/place'
 import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
@@ -96,7 +95,8 @@ async function fetchPlaces(request: SearchRequest, signal?: AbortSignal): Promis
     throw new Error(NETWORK_FAILURE)
   }
   const payload = await response.json().catch(() => null)
-  if (!response.ok) throw new Error(payload?.error ?? GENERIC_ERROR)
+  // Sans message du serveur, l'appelant retombe sur `NETWORK_FAILURE`.
+  if (!response.ok) throw new Error(payload?.error ?? '')
   return { places: payload?.results ?? [], nextPageToken: payload?.nextPageToken ?? null }
 }
 

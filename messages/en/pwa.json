@@ -1,0 +1,7 @@
+{
+  "offline": {
+    "eyebrow": "Offline",
+    "title": "No network, no vote.",
+    "lead": "Sessions, votes and the ranking happen live with the group. As soon as the connection is back, the page reloads by itself."
+  }
+}

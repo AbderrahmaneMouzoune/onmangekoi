@@ -1,0 +1,10 @@
+{
+  "tagline": "Décidez où manger ensemble, sans débat.",
+  "description": "Créez une session, partagez un lien, chacun vote sur les restaurants et le classement tranche. Sans compte, en deux minutes.",
+  "ogDescription": "Le groupe vote, le classement tranche. Sans compte, en deux minutes.",
+  "titles": {
+    "setup": "Choisir un pseudo",
+    "login": "Connexion",
+    "offline": "Hors ligne"
+  }
+}

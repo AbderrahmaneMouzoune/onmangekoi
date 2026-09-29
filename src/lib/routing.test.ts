@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import { isProtectedPath, sanitizeNextPath } from './routing'
+import { PROTECTED_PREFIXES } from '@/config/router.config'
+
+import { isProtectedPath, needsSessionRefresh, sanitizeNextPath } from './routing'
 
 describe('isProtectedPath', () => {
   it('should protect session, duo, join, list and account routes', () => {
@@ -24,6 +26,29 @@ describe('isProtectedPath', () => {
     // Une liste publique se montre sans pseudo ; une liste privée renvoie
     // elle-même vers l'onboarding, depuis la page et non depuis le proxy.
     expect(isProtectedPath('/l/H4V2Q8ZX0M')).toBe(false)
+  })
+})
+
+describe('needsSessionRefresh', () => {
+  it('should refresh the Supabase session on every protected route', () => {
+    for (const prefix of PROTECTED_PREFIXES) {
+      expect(needsSessionRefresh(prefix)).toBe(true)
+      expect(needsSessionRefresh(`${prefix}/ABC`)).toBe(true)
+    }
+  })
+
+  it('should refresh it where the user is read without being required', () => {
+    expect(needsSessionRefresh('/setup')).toBe(true)
+    expect(needsSessionRefresh('/login')).toBe(true)
+    expect(needsSessionRefresh('/l/H4V2Q8ZX0M')).toBe(true)
+    expect(needsSessionRefresh('/auth/confirm')).toBe(true)
+  })
+
+  it('should leave the static pages alone', () => {
+    expect(needsSessionRefresh('/')).toBe(false)
+    expect(needsSessionRefresh('/r/H4V2Q8ZX0M')).toBe(false)
+    expect(needsSessionRefresh('/nouveautes')).toBe(false)
+    expect(needsSessionRefresh('/offline')).toBe(false)
   })
 })
 

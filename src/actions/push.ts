@@ -3,8 +3,8 @@
 import { getCurrentUser } from '@/data-access/auth'
 import { deletePushSubscription, savePushSubscription } from '@/data-access/push'
 import { createServerClient } from '@/data-access/supabase/server'
-import { toUserMessage } from '@/domain/errors'
 import { PushEndpointSchema, PushSubscriptionSchema } from '@/domain/schemas/push'
+import { translateError } from '@/i18n/server'
 
 import type { ActionResult } from './types'
 
@@ -26,7 +26,7 @@ export async function subscribePushAction(subscription: unknown): Promise<Action
   try {
     await savePushSubscription(supabase, parsed.data)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
   return { ok: true, data: undefined }
 }
@@ -42,7 +42,7 @@ export async function unsubscribePushAction(endpoint: unknown): Promise<ActionRe
   try {
     await deletePushSubscription(supabase, parsed.data)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
   return { ok: true, data: undefined }
 }

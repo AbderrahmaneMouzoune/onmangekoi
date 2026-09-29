@@ -431,14 +431,14 @@ Les séquences (`src/lib/shortcuts.ts`) ne se déclenchent jamais dans un champ 
 
 onmangekoi s'installe sur l'écran d'accueil comme une app (PWA) : fenêtre plein écran, icône « k » à la craie, et une page dédiée quand le réseau manque plutôt que le dinosaure du navigateur.
 
-| Pièce                  | Où                                                           | Rôle                                                                                         |
-| ---------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| Manifest               | `src/app/manifest.ts`                                        | `id`, `start_url`, `scope`, `display: standalone`, icônes 192 et 512, classiques et maskable |
-| Icônes                 | `src/app/icon.tsx`, `src/app/icons/*/route.tsx`              | un seul dessin (`components/og/app-icon.tsx`) ; la maskable réduit le glyphe à 80 %          |
-| Service worker         | `/sw.js` ← `src/app/sw.js/route.ts`                          | script maison, généré au build par `src/lib/pwa/service-worker.ts`                           |
-| Page hors ligne        | `/offline`                                                   | précachée, style ardoise, se recharge seule au retour du réseau                              |
-| Enregistrement         | `PwaProvider` (layout racine), `src/lib/pwa/registration.ts` | build de production uniquement ; `getServiceWorkerRegistration()` pour les notifications     |
-| Bannière « Installer » | `InstallBanner` (accueil), `src/lib/pwa/install-offer.ts`    | après une première session réussie, « Plus tard » la fait taire 90 jours                     |
+| Pièce                  | Où                                                                   | Rôle                                                                                                              |
+| ---------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Manifest               | `src/lib/pwa/manifest.ts`, servi par `[locale]/manifest.webmanifest` | `id`, `start_url`, `scope`, `display: standalone`, icônes 192 et 512 ; traduit, même `id` dans toutes les langues |
+| Icônes                 | `src/app/icon.tsx`, `src/app/icons/*/route.tsx`                      | un seul dessin (`components/og/app-icon.tsx`) ; la maskable réduit le glyphe à 80 %                               |
+| Service worker         | `/sw.js` ← `src/app/sw.js/route.ts`                                  | script maison, généré au build par `src/lib/pwa/service-worker.ts`                                                |
+| Page hors ligne        | `/offline`                                                           | précachée, style ardoise, se recharge seule au retour du réseau                                                   |
+| Enregistrement         | `PwaProvider` (layout racine), `src/lib/pwa/registration.ts`         | build de production uniquement ; `getServiceWorkerRegistration()` pour les notifications                          |
+| Bannière « Installer » | `InstallBanner` (accueil), `src/lib/pwa/install-offer.ts`            | après une première session réussie, « Plus tard » la fait taire 90 jours                                          |
 
 **Ce que le service worker cache, et rien d'autre.** À l'installation : la page `/offline`, ses scripts, sa feuille de style et ses polices (lus dans son HTML), le manifest et les icônes. Au fil de l'eau : les fichiers immuables de `/_next/static/` (cache d'abord). Les pages ne sont **jamais** mises en cache, puisqu'elles portent pseudo, sessions et listes : une navigation va au réseau et reçoit la page hors ligne s'il ne répond pas. Supabase, `/api/`, `/auth/`, les Server Actions (en-tête `Next-Action`) et les charges RSC passent sans être touchés. Les règles sont des fonctions pures (`src/lib/pwa/sw-routing.ts`) dont la source est recopiée dans le script ; les tests exécutent le script réellement servi contre un faux environnement de service worker.
 
@@ -474,12 +474,24 @@ La charge utile se limite au titre, au nom de la session et au chemin à ouvrir 
 
 **Désactivé par défaut.** Sans les secrets du Vault, le trigger ne fait rien ; sans clés VAPID ou sans `SUPABASE_SECRET_KEY`, la route répond 204 sans rien envoyer ; sans `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, le bouton ne s'affiche pas. C'est le cas en local, en CI et sur les previews. Pour activer, voir [Déployer](#déployer-vercel--supabase-cloud). Pour essayer en local : un build de production (`bun run build && bun run start`, le service worker n'existe pas en `next dev`), les variables de `.env.local.example`, et deux secrets Vault posés dans la base locale — l'URL doit viser l'hôte vu depuis le conteneur Postgres, `http://host.docker.internal:3000/api/push/dispatch`. Scénario rejouable avec `bun run db:test` (`supabase/tests/push.test.sql`).
 
+## Langues
+
+L'interface existe en français et en anglais ([#14](https://github.com/AbderrahmaneMouzoune/onmangekoi/issues/14)) : un collègue anglophone peut rejoindre la même session que le reste de l'équipe.
+
+- **À la première visite**, la langue suit le navigateur (`Accept-Language`) ; le français reste la langue par défaut.
+- **Le pied de page** propose FR / EN. Le choix est retenu un an dans le cookie `NEXT_LOCALE` et l'emporte ensuite sur le navigateur.
+- **Les liens ne changent pas** : pas de `/en/` dans l'URL. Un lien d'invitation, une liste partagée ou un classement public s'ouvre dans la langue de qui le reçoit.
+- `<html lang>`, le titre, les métadonnées Open Graph, l'image de partage de l'accueil et le manifest suivent la langue.
+
+La traduction est en cours : l'accueil, l'onboarding, l'en-tête, le pied de page, les erreurs métier et les pages d'erreur sont traduits ; les écrans de session, de listes, de groupes et de compte le seront ensuite. Le fonctionnement (`next-intl`, segment `[locale]` caché, messages par espace de noms, erreurs par code) et le guide pour traduire un écran sont dans [`docs/i18n.md`](docs/i18n.md).
+
 ## Stack
 
 | Couche     | Choix                                                                                    |
 | ---------- | ---------------------------------------------------------------------------------------- |
 | Frontend   | Next.js 16 (App Router, Cache Components, Turbopack, `proxy.ts`) · React 19 · TypeScript |
 | Routage    | `src/config/router.config.ts` — toutes les URL construites au même endroit               |
+| Langues    | next-intl 4 · `messages/<langue>/*.json` · langue en segment caché, sans préfixe d'URL   |
 | UI         | Tailwind CSS 4 · Base UI · Remix Icon · charte « L'ardoise »                             |
 | Données    | Supabase (PostgreSQL 17, RLS, RPC `security definer`)                                    |
 | Temps réel | Supabase Realtime (Postgres Changes, resync au retour au premier plan)                   |
@@ -515,9 +527,12 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ## Architecture
 
 ```
-src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
+src/proxy.ts             choisit la langue et réécrit vers app/[locale], rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join/[code], sessions, sessions/[code], lists/[code], l/[code], groups, account, nouveautes, legal, auth, api/places, offline, sw.js, icons)
+src/app/[locale]/        pages App Router, sous un segment de langue caché (setup, login, join/[code], sessions, sessions/[code], lists/[code], l/[code], groups, account, nouveautes, legal, auth, offline, manifest)
+src/app/                 hors langue : api/, sw.js, icons, robots, sitemap, flux RSS, global-error, global-not-found
+src/i18n/                next-intl : langues, routage, configuration de requête, erreurs traduites, revalidation par langue
+messages/                textes de l'interface, un fichier JSON par espace de noms et par langue (fr fait foi)
 src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · groups/ · account/ · restaurants/ · onboarding/ · changelog/ · pwa/
 src/content/changelog/   notes de version produit (schéma Zod + entrées), lues par /nouveautes et son flux RSS
 src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + recent-winners.ts (anti-fatigue) + suggestions.ts (sélection proposée) + stats.ts + models/ (types générés)

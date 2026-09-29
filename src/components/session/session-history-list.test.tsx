@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { SessionHistoryList } from './session-history-list'
 
@@ -28,7 +30,7 @@ function entry(overrides: Partial<SessionHistoryEntry> = {}): SessionHistoryEntr
 
 describe('SessionHistoryList', () => {
   it('should open a closed session on its results, winner in plain sight', () => {
-    render(<SessionHistoryList entries={[entry()]} />)
+    renderWithIntl(<SessionHistoryList entries={[entry()]} />)
 
     expect(screen.getByRole('link', { name: /Midi de mardi/ })).toHaveAttribute(
       'href',
@@ -40,7 +42,7 @@ describe('SessionHistoryList', () => {
   })
 
   it('should send a live session back to its room, with no winner yet', () => {
-    render(
+    renderWithIntl(
       <SessionHistoryList
         entries={[
           entry({
@@ -62,7 +64,7 @@ describe('SessionHistoryList', () => {
   })
 
   it('should show where the group went once the host decided', () => {
-    render(
+    renderWithIntl(
       <SessionHistoryList
         entries={[entry({ winner_name: 'Chez Marcel', winner_score: 1, winner_decided: true })]}
       />
@@ -74,7 +76,7 @@ describe('SessionHistoryList', () => {
   })
 
   it('should tell apart the sessions I organized', () => {
-    render(
+    renderWithIntl(
       <SessionHistoryList
         entries={[entry({ is_host: true }), entry({ name: 'Chez les autres', is_host: false })]}
       />

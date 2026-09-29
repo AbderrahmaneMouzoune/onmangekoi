@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { AppError } from '@/domain/errors'
+import { AppError, type ErrorCode } from '@/domain/errors'
 import {
   mapPlaceDetails,
   mapPlacesPage,
@@ -108,7 +108,7 @@ export function isPlacesSearchEnabled(): boolean {
 
 function requireApiKey(): string {
   const key = env.GOOGLE_PLACES_API_KEY
-  if (!key) throw new AppError('La recherche Google n’est pas configurée sur ce déploiement.')
+  if (!key) throw new AppError('places_not_configured')
   return key
 }
 
@@ -119,11 +119,10 @@ function requireApiKey(): string {
  * s'il faut réessayer ou aller regarder la configuration — sans jamais citer
  * ce que Google a répondu.
  */
-function failureMessage(status: number): string {
-  if (status === 401 || status === 403)
-    return 'Google refuse la clé de ce déploiement : la recherche est indisponible.'
-  if (status === 429) return 'Trop de recherches Google d’un coup. Réessaie dans une minute.'
-  return 'La recherche Google a échoué. Réessaie dans un instant.'
+function failureCode(status: number): ErrorCode {
+  if (status === 401 || status === 403) return 'places_key_rejected'
+  if (status === 429) return 'places_rate_limited'
+  return 'places_failed'
 }
 
 /**
@@ -166,7 +165,7 @@ async function callGoogle(
     // statut à interpréter. Sans ce filet, l'appel remonterait en erreur
     // technique et l'interface afficherait un message générique.
     console.error('places: %s injoignable', label, error)
-    throw new AppError('Google n’a pas répondu à temps. Réessaie dans un instant.')
+    throw new AppError('places_timeout')
   }
 
   if (!response.ok) {
@@ -174,7 +173,7 @@ async function callGoogle(
     // il reste dans les logs serveur, jamais dans la réponse à l'utilisateur.
     const body = await response.text()
     console.error('places: %s → %d %s', label, response.status, errorReason(body), body)
-    throw new AppError(failureMessage(response.status))
+    throw new AppError(failureCode(response.status))
   }
 
   return response.json()

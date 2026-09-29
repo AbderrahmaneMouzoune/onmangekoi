@@ -313,7 +313,9 @@ describe('data-access/places', () => {
     fetchMock.mockResolvedValue({ ok: false, status: 403, text: async () => '{}' })
     const { searchPlaces } = await importPlaces()
 
-    await expect(searchPlaces({ query: 'sushi' })).rejects.toThrow(/refuse la clé/)
+    await expect(searchPlaces({ query: 'sushi' })).rejects.toMatchObject({
+      code: 'places_key_rejected',
+    })
   })
 
   it('should send someone hitting the quota away for a minute, not an instant', async () => {
@@ -321,7 +323,9 @@ describe('data-access/places', () => {
     fetchMock.mockResolvedValue({ ok: false, status: 429, text: async () => '{}' })
     const { searchPlaces } = await importPlaces()
 
-    await expect(searchPlaces({ query: 'sushi' })).rejects.toThrow(/dans une minute/)
+    await expect(searchPlaces({ query: 'sushi' })).rejects.toMatchObject({
+      code: 'places_rate_limited',
+    })
   })
 
   it('should treat a Google outage as the passing failure it is', async () => {
@@ -329,9 +333,7 @@ describe('data-access/places', () => {
     fetchMock.mockResolvedValue({ ok: false, status: 503, text: async () => 'upstream down' })
     const { searchPlaces } = await importPlaces()
 
-    await expect(searchPlaces({ query: 'sushi' })).rejects.toThrow(
-      'La recherche Google a échoué. Réessaie dans un instant.'
-    )
+    await expect(searchPlaces({ query: 'sushi' })).rejects.toMatchObject({ code: 'places_failed' })
   })
 
   it('should name the timeout rather than fall back on a technical error', async () => {
@@ -339,7 +341,7 @@ describe('data-access/places', () => {
     fetchMock.mockRejectedValue(new DOMException('The operation was aborted', 'TimeoutError'))
     const { searchPlaces } = await importPlaces()
 
-    await expect(searchPlaces({ query: 'sushi' })).rejects.toThrow(/n’a pas répondu à temps/)
+    await expect(searchPlaces({ query: 'sushi' })).rejects.toMatchObject({ code: 'places_timeout' })
   })
 
   it('should not call Google at all when no key is configured', async () => {
@@ -347,7 +349,9 @@ describe('data-access/places', () => {
     const { searchPlaces, isPlacesSearchEnabled } = await importPlaces()
 
     expect(isPlacesSearchEnabled()).toBe(false)
-    await expect(searchPlaces({ query: 'sushi' })).rejects.toThrow(/pas configurée/)
+    await expect(searchPlaces({ query: 'sushi' })).rejects.toMatchObject({
+      code: 'places_not_configured',
+    })
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

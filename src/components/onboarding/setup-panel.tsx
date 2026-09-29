@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { PseudoForm } from '@/components/onboarding/pseudo-form'
 import { RulesSummary } from '@/components/session/rules-summary'
@@ -9,7 +11,7 @@ import { getCurrentUser } from '@/data-access/auth'
 import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { parseSessionRules } from '@/domain/session-rules'
-import { countLabel, displayPseudo } from '@/lib/format'
+import { displayPseudo } from '@/lib/format'
 import { sanitizeNextPath } from '@/lib/routing'
 
 const JOIN_PATH = /^\/join\/([^/?#]+)(?:[?#].*)?$/
@@ -32,43 +34,44 @@ export async function SetupPanel({ searchParams }: { searchParams: Promise<{ nex
 
   if (user) redirect(next)
 
+  const [t, tCommon] = await Promise.all([
+    getTranslations('onboarding.setup'),
+    getTranslations('common'),
+  ])
+
   return (
     <>
       {preview ? (
         <div className="flex flex-col gap-3 rounded-lg chalkboard p-5 text-chalk">
           <p className="font-mono text-[0.7rem] tracking-[0.12em] text-chalk-muted uppercase">
-            Invitation
+            {t('invitation')}
           </p>
           <p className="font-display text-2xl leading-tight font-bold">{preview.name}</p>
           <p className="text-sm text-chalk-muted">
-            {displayPseudo(preview.host_pseudo)} t’invite ·{' '}
-            {countLabel(preview.restaurant_count, 'resto')} ·{' '}
-            {countLabel(preview.participant_count, 'participant')}
+            {t('invitedBy', {
+              host: displayPseudo(preview.host_pseudo, tCommon('people.guest')),
+              restaurants: tCommon('counts.restaurants', { count: preview.restaurant_count }),
+              participants: tCommon('counts.participants', { count: preview.participant_count }),
+            })}
           </p>
           <RulesSummary rules={parseSessionRules(preview.rules)} tone="chalk" />
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          <p className="eyebrow">Première visite</p>
-          <h1 className="text-3xl font-extrabold">Un pseudo, et c’est tout.</h1>
-          <p className="text-sm text-ink-2">
-            Pas de compte à créer. Tu pourras en lier un plus tard pour retrouver tes listes
-            ailleurs.
-          </p>
+          <p className="eyebrow">{t('eyebrow')}</p>
+          <h1 className="text-3xl font-extrabold">{t('title')}</h1>
+          <p className="text-sm text-ink-2">{t('lead')}</p>
         </div>
       )}
 
-      {preview && <h1 className="text-2xl font-bold">Comment veux-tu qu’on t’appelle ?</h1>}
+      {preview && <h1 className="text-2xl font-bold">{t('askName')}</h1>}
 
-      <PseudoForm
-        next={next !== router.home() ? next : undefined}
-        submitLabel={preview ? 'Rejoindre' : undefined}
-      />
+      <PseudoForm next={next !== router.home() ? next : undefined} joining={Boolean(preview)} />
 
       <p className="text-center text-sm text-muted-foreground">
-        Déjà un compte ?{' '}
+        {t('hasAccount')}{' '}
         <Link href={router.login(next)} className="font-medium text-brand hover:underline">
-          Se connecter
+          {t('signIn')}
         </Link>
       </p>
     </>
@@ -81,6 +84,7 @@ export async function SetupPanel({ searchParams }: { searchParams: Promise<{ nex
  * monde — son intitulé et son aide s'affichent en clair.
  */
 export function SetupPanelFallback() {
+  const t = useTranslations('onboarding.pseudo')
   return (
     <div aria-busy="true" className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
@@ -91,11 +95,9 @@ export function SetupPanelFallback() {
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <p className="text-sm leading-none font-medium text-ink">Ton pseudo</p>
+          <p className="text-sm leading-none font-medium text-ink">{t('label')}</p>
           <Skeleton className="h-12 w-full rounded-md" />
-          <p className="text-xs text-muted-foreground">
-            C’est le nom que les autres verront. Modifiable à tout moment.
-          </p>
+          <p className="text-xs text-muted-foreground">{t('help')}</p>
         </div>
         <Skeleton className="h-12 w-full rounded-md" />
       </div>

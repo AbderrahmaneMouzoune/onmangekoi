@@ -1,0 +1,19 @@
+{
+  "actions": {
+    "retry": "Réessayer",
+    "cancel": "Annuler",
+    "seeAll": "Tout voir",
+    "join": "Rejoindre",
+    "decline": "Décliner",
+    "home": "Accueil",
+    "backHome": "Retour à l’accueil"
+  },
+  "people": {
+    "guest": "Invité",
+    "deletedParticipant": "Participant supprimé"
+  },
+  "counts": {
+    "restaurants": "{count, plural, one {# resto} other {# restos}}",
+    "participants": "{count, plural, one {# participant} other {# participants}}"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "offline": {
+    "eyebrow": "Hors ligne",
+    "title": "Pas de réseau, pas de vote.",
+    "lead": "Les sessions, les votes et le classement se jouent en direct avec le groupe. Dès que la connexion revient, la page se recharge d’elle-même."
+  }
+}

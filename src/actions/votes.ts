@@ -2,8 +2,8 @@
 
 import { getCurrentUser } from '@/data-access/auth'
 import { createServerClient } from '@/data-access/supabase/server'
-import { toUserMessage } from '@/domain/errors'
 import { SubmitVoteSchema } from '@/domain/schemas/vote'
+import { translateError } from '@/i18n/server'
 import { submitVoteUseCase } from '@/use-cases/submit-vote'
 
 import type { ActionResult } from './types'
@@ -20,6 +20,6 @@ export async function submitVoteAction(input: unknown): Promise<ActionResult<Sub
     const outcome = await submitVoteUseCase(supabase, user.id, parsed.data)
     return { ok: true, data: outcome }
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 }

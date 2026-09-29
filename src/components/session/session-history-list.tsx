@@ -1,5 +1,6 @@
 import { RiCheckboxCircleLine, RiTrophyLine } from '@remixicon/react'
 import Link from 'next/link'
+import { useLocale } from 'next-intl'
 
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
 import { router } from '@/config/router.config'
@@ -16,6 +17,7 @@ import type { SessionHistoryEntry } from '@/data-access/models'
  * c'est ce restaurant-là qui s'affiche, marqué comme décidé.
  */
 export function SessionHistoryList({ entries }: { entries: SessionHistoryEntry[] }) {
+  const locale = useLocale()
   return (
     <ul className="flex flex-col gap-2">
       {entries.map((entry) => (
@@ -27,7 +29,7 @@ export function SessionHistoryList({ entries }: { entries: SessionHistoryEntry[]
             <div className="flex min-w-0 flex-col gap-1">
               <span className="truncate font-semibold">{entry.name}</span>
               <span className="text-xs text-muted-foreground">
-                {relativeDate(entry.created_at)} ·{' '}
+                {relativeDate(entry.created_at, locale)} ·{' '}
                 {countLabel(entry.participant_count, 'participant')}
                 {entry.is_host && ' · organisée par toi'}
               </span>

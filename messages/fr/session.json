@@ -1,0 +1,10 @@
+{
+  "vote": {
+    "actions": {
+      "veto": "Veto",
+      "no": "Bof",
+      "yes": "Ça me va",
+      "fav": "Coup de cœur"
+    }
+  }
+}

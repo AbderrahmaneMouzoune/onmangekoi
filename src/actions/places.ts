@@ -5,19 +5,14 @@ import { revalidateTag } from 'next/cache'
 import { getCurrentUser } from '@/data-access/auth'
 import { RESTAURANTS_CACHE_PROFILE, RESTAURANTS_CACHE_TAG } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
-import { AppError, toUserMessage } from '@/domain/errors'
 import { ImportPlaceSchema, SeedNeighbourhoodSchema } from '@/domain/schemas/place'
+import { translateError } from '@/i18n/server'
 import { importPlaceUseCase } from '@/use-cases/import-place'
 import { seedNeighbourhoodUseCase } from '@/use-cases/seed-neighbourhood'
 
 import type { ActionResult } from './types'
 import type { Restaurant } from '@/data-access/models'
 import type { SeededNeighbourhood } from '@/use-cases/seed-neighbourhood'
-
-/** Une `AppError` porte déjà un message lisible ; le reste retombe sur le générique. */
-function userMessage(error: unknown): string {
-  return toUserMessage(error, error instanceof AppError ? error.message : undefined)
-}
 
 /**
  * Lit la fiche détaillée d'un lieu chez Google et l'écrit en base.
@@ -37,7 +32,7 @@ async function writePlace(placeId: string): Promise<ActionResult<Restaurant>> {
   try {
     return { ok: true, data: await importPlaceUseCase(supabase, parsed.data.placeId) }
   } catch (error) {
-    return { ok: false, error: userMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 }
 
@@ -91,6 +86,6 @@ export async function seedNeighbourhoodAction(input: {
     revalidateTag(RESTAURANTS_CACHE_TAG, RESTAURANTS_CACHE_PROFILE)
     return { ok: true, data: seeded }
   } catch (error) {
-    return { ok: false, error: userMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 }

@@ -1,7 +1,5 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
-
 import { ROUTE_PATTERNS, router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import {
@@ -13,9 +11,9 @@ import {
   renameGroup,
 } from '@/data-access/groups'
 import { createServerClient } from '@/data-access/supabase/server'
-import { toUserMessage } from '@/domain/errors'
 import { CreateGroupSchema, GroupIdSchema, RenameGroupSchema } from '@/domain/schemas/group'
 import { SessionIdSchema } from '@/domain/schemas/session'
+import { revalidateLocalizedPath, translateError } from '@/i18n/server'
 
 import type { ActionResult, FormState } from './types'
 import type { Group } from '@/data-access/models'
@@ -45,11 +43,11 @@ export async function createGroupFromSessionAction(
   try {
     group = await createGroupFromSession(supabase, parsed.data)
   } catch (error) {
-    return { error: toUserMessage(error) }
+    return { error: await translateError(error) }
   }
 
-  revalidatePath(router.groups())
-  revalidatePath(router.sessionNew())
+  revalidateLocalizedPath(router.groups())
+  revalidateLocalizedPath(router.sessionNew())
   return { success: `« ${group.name} » est sauvegardé.` }
 }
 
@@ -69,10 +67,10 @@ export async function inviteGroupToSessionAction(
 
   try {
     const invited = await inviteGroupToSession(supabase, parsedGroup.data, parsedSession.data)
-    revalidatePath(ROUTE_PATTERNS.session, 'page')
+    revalidateLocalizedPath(ROUTE_PATTERNS.session, 'page')
     return { ok: true, data: invited }
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 }
 
@@ -91,11 +89,11 @@ export async function renameGroupAction(_prev: FormState, formData: FormData): P
   try {
     await renameGroup(supabase, parsed.data.groupId, parsed.data.name)
   } catch (error) {
-    return { error: toUserMessage(error) }
+    return { error: await translateError(error) }
   }
 
-  revalidatePath(router.groups())
-  revalidatePath(router.account())
+  revalidateLocalizedPath(router.groups())
+  revalidateLocalizedPath(router.account())
   return { success: 'Groupe renommé.' }
 }
 
@@ -109,11 +107,11 @@ export async function leaveGroupAction(groupId: string): Promise<ActionResult> {
   try {
     await leaveGroup(supabase, parsed.data)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
-  revalidatePath(router.groups())
-  revalidatePath(router.account())
+  revalidateLocalizedPath(router.groups())
+  revalidateLocalizedPath(router.account())
   return { ok: true, data: undefined }
 }
 
@@ -127,11 +125,11 @@ export async function deleteGroupAction(groupId: string): Promise<ActionResult> 
   try {
     await deleteGroup(supabase, parsed.data)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
-  revalidatePath(router.groups())
-  revalidatePath(router.account())
+  revalidateLocalizedPath(router.groups())
+  revalidateLocalizedPath(router.account())
   return { ok: true, data: undefined }
 }
 
@@ -146,9 +144,9 @@ export async function declineInvitationAction(sessionId: string): Promise<Action
   try {
     await deleteSessionInvitation(supabase, parsed.data, user.id)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
-  revalidatePath(router.home())
+  revalidateLocalizedPath(router.home())
   return { ok: true, data: undefined }
 }

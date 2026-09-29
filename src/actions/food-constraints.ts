@@ -1,14 +1,12 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
-
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { saveMyFoodConstraints } from '@/data-access/food-constraints'
 import { createServerClient } from '@/data-access/supabase/server'
-import { toUserMessage } from '@/domain/errors'
 import { hasFoodConstraints } from '@/domain/food-constraints'
 import { FoodConstraintsSchema } from '@/domain/schemas/food-constraints'
+import { revalidateLocalizedPath, translateError } from '@/i18n/server'
 
 import type { FormState } from './types'
 
@@ -34,10 +32,10 @@ export async function saveFoodConstraintsAction(
   try {
     await saveMyFoodConstraints(supabase, parsed.data)
   } catch (error) {
-    return { error: toUserMessage(error, 'Impossible d’enregistrer tes contraintes. Réessaie.') }
+    return { error: await translateError(error, 'foodConstraintsSave') }
   }
 
-  revalidatePath(router.account())
+  revalidateLocalizedPath(router.account())
   return {
     success: hasFoodConstraints(parsed.data)
       ? 'C’est noté : tes sessions le signaleront.'

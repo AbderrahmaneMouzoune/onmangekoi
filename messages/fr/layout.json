@@ -1,0 +1,87 @@
+{
+  "brand": {
+    "homeLabel": "onmangekoi, accueil"
+  },
+  "skipLink": "Aller au contenu",
+  "header": {
+    "mainNav": "Principale",
+    "shortcutsNav": "Raccourcis",
+    "choosePseudo": "Choisir un pseudo"
+  },
+  "nav": {
+    "home": "Accueil",
+    "newSession": "Nouvelle session",
+    "join": "Rejoindre",
+    "lists": "Mes listes",
+    "shortcutTitle": "Raccourci : {sequence}"
+  },
+  "accountMenu": {
+    "account": "Mon compte",
+    "lists": "Mes listes",
+    "groups": "Mes groupes",
+    "signOut": "Se déconnecter",
+    "confirmTitle": "Se déconnecter ?",
+    "confirmAnonymous": "Ton pseudo n’est lié à aucun email : une fois déconnecté, tes listes et tes sessions seront perdues.",
+    "confirmLinked": "Tu pourras revenir avec ton email et ton mot de passe."
+  },
+  "theme": {
+    "toLight": "Passer en mode clair",
+    "toDark": "Passer en mode sombre"
+  },
+  "footer": {
+    "nav": "Liens de bas de page",
+    "changelog": "Nouveautés",
+    "privacy": "Confidentialité",
+    "source": "Code source"
+  },
+  "locale": {
+    "label": "Langue"
+  },
+  "shortcuts": {
+    "button": "Raccourcis clavier",
+    "buttonTitle": "Raccourcis clavier (?)",
+    "title": "Raccourcis clavier",
+    "description": "Deux touches à la suite pour créer ou naviguer, une seule pendant le vote.",
+    "close": "Fermer l’aide",
+    "sequence": "{first} puis {second}",
+    "then": "puis",
+    "or": "ou",
+    "groups": {
+      "create": "Créer",
+      "goTo": "Aller à",
+      "vote": "Pendant le vote",
+      "anywhere": "Partout"
+    },
+    "targets": {
+      "newSession": "Nouvelle session",
+      "newList": "Nouvelle liste",
+      "home": "Accueil",
+      "join": "Rejoindre une session",
+      "lists": "Mes listes",
+      "groups": "Mes groupes",
+      "account": "Mon compte"
+    },
+    "anywhere": {
+      "tab": "Passer d’un élément au suivant",
+      "arrows": "Se déplacer dans une liste",
+      "search": "Chercher un resto",
+      "escape": "Fermer, annuler",
+      "help": "Cette aide"
+    },
+    "keys": {
+      "Enter": "Entrée",
+      "Escape": "Échap"
+    }
+  },
+  "notFound": {
+    "title": "Cette page n’est pas au menu",
+    "description": "Le lien est peut-être périmé, ou la session a été supprimée."
+  },
+  "error": {
+    "title": "Quelque chose a cassé",
+    "description": "Ce n’est pas toi, c’est nous. Réessaie, et si ça persiste reviens à l’accueil.",
+    "reference": "Référence : {digest}",
+    "globalDescription": "Réessaie dans un instant.",
+    "retry": "Réessayer"
+  }
+}

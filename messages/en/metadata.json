@@ -1,0 +1,10 @@
+{
+  "tagline": "Decide where to eat together, without the debate.",
+  "description": "Create a session, share a link, everyone votes on the restaurants and the ranking settles it. No account, in two minutes.",
+  "ogDescription": "The group votes, the ranking settles it. No account, in two minutes.",
+  "titles": {
+    "setup": "Pick a nickname",
+    "login": "Sign in",
+    "offline": "Offline"
+  }
+}

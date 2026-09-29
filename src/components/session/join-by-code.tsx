@@ -9,8 +9,8 @@ import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
-import { toUserMessage } from '@/domain/errors'
 import { parseInviteIdentifier } from '@/domain/share'
+import { translateError } from '@/i18n/server'
 import { cn } from '@/lib/utils'
 import { joinSessionUseCase } from '@/use-cases/join-session'
 
@@ -36,7 +36,7 @@ export async function JoinByCode({ params }: { params: Promise<{ code: string }>
   try {
     session = await joinSessionUseCase(supabase, code)
   } catch (error) {
-    errorMessage = toUserMessage(error, 'Lien invalide ou session introuvable.')
+    errorMessage = await translateError(error, 'joinLink')
   }
 
   if (session) redirect(router.session(session))

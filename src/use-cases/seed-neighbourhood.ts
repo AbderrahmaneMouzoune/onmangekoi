@@ -45,7 +45,7 @@ export async function seedNeighbourhoodUseCase(
   // Une page Google en rend vingt : la coupe est une ceinture, pas un filtre.
   const places = page.places.slice(0, NEIGHBOURHOOD_IMPORT_MAX)
   if (places.length === 0) {
-    throw new AppError('Google ne trouve aucun resto autour de toi.')
+    throw new AppError('places_nothing_nearby')
   }
 
   const settled = await Promise.allSettled(
@@ -66,7 +66,7 @@ export async function seedNeighbourhoodUseCase(
   })
 
   if (restaurants.length === 0) {
-    throw new AppError('Aucun resto n’a pu être enregistré. Réessaie dans un instant.')
+    throw new AppError('seed_nothing_saved')
   }
 
   return { restaurants, failed, remaining }

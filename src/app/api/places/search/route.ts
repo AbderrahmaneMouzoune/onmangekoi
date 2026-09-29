@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server'
 
 import { getCurrentUser } from '@/data-access/auth'
 import { isPlacesSearchEnabled, searchNearbyPlaces, searchPlaces } from '@/data-access/places'
-import { AppError, GENERIC_ERROR } from '@/domain/errors'
+import { AppError } from '@/domain/errors'
 import { hasPosition, PLACES_QUERY_MIN, SearchPlacesSchema } from '@/domain/schemas/place'
+import { translateError } from '@/i18n/server'
 
 import type { PlacesPage } from '@/domain/places'
 
@@ -56,10 +57,12 @@ export async function POST(request: Request): Promise<NextResponse> {
           : { places: [], nextPageToken: null }
     return NextResponse.json({ results: page.places, nextPageToken: page.nextPageToken })
   } catch (error) {
+    // Hors du segment `[locale]` : la langue vient du cookie ou
+    // d'`Accept-Language`, que le `fetch` du navigateur envoie.
     if (error instanceof AppError) {
-      return NextResponse.json({ error: error.message }, { status: 502 })
+      return NextResponse.json({ error: await translateError(error) }, { status: 502 })
     }
     console.error('places: recherche impossible', error)
-    return NextResponse.json({ error: GENERIC_ERROR }, { status: 500 })
+    return NextResponse.json({ error: await translateError(error) }, { status: 500 })
   }
 }

@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, updateTag } from 'next/cache'
+import { updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
@@ -17,8 +17,8 @@ import {
 } from '@/data-access/lists'
 import { PUBLIC_LISTS_CACHE_TAG, publicListCacheTag } from '@/data-access/public-lists'
 import { createServerClient } from '@/data-access/supabase/server'
-import { AppError, toUserMessage } from '@/domain/errors'
 import { CreateListSchema, SharedListActionSchema, UpdateListSchema } from '@/domain/schemas/list'
+import { revalidateLocalizedPath, translateError } from '@/i18n/server'
 import { createListUseCase } from '@/use-cases/create-list'
 import { startSessionFromListUseCase } from '@/use-cases/start-session-from-list'
 
@@ -68,10 +68,10 @@ export async function createListAction(_prev: FormState, formData: FormData): Pr
   try {
     list = await createListUseCase(supabase, user.id, parsed.data)
   } catch (error) {
-    return { error: toUserMessage(error) }
+    return { error: await translateError(error) }
   }
 
-  revalidatePath(router.lists())
+  revalidateLocalizedPath(router.lists())
   redirect(router.list(list))
 }
 
@@ -91,13 +91,13 @@ export async function renameListAction(_prev: FormState, formData: FormData): Pr
   try {
     list = await updateList(supabase, parsed.data.listId, { name: parsed.data.name })
   } catch (error) {
-    return { error: toUserMessage(error) }
+    return { error: await translateError(error) }
   }
 
   revalidatePublicList(list.share_code)
-  revalidatePath(ROUTE_PATTERNS.list, 'page')
-  revalidatePath(ROUTE_PATTERNS.sharedList, 'page')
-  revalidatePath(router.lists())
+  revalidateLocalizedPath(ROUTE_PATTERNS.list, 'page')
+  revalidateLocalizedPath(ROUTE_PATTERNS.sharedList, 'page')
+  revalidateLocalizedPath(router.lists())
   return { success: 'Liste renommée.' }
 }
 
@@ -117,10 +117,10 @@ export async function setListCollaborativeAction(
       is_collaborative: parsed.data.isCollaborative,
     })
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
-  revalidatePath(router.list(list))
+  revalidateLocalizedPath(router.list(list))
   return { ok: true, data: undefined }
 }
 
@@ -146,12 +146,12 @@ export async function setListPublicAction(
   try {
     list = await updateList(supabase, parsed.data.listId, { is_public: parsed.data.isPublic })
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
   revalidatePublicList(list.share_code, { sitemap: true })
-  revalidatePath(router.list(list))
-  revalidatePath(router.sharedList(list))
+  revalidateLocalizedPath(router.list(list))
+  revalidateLocalizedPath(router.sharedList(list))
   return { ok: true, data: undefined }
 }
 
@@ -169,11 +169,11 @@ export async function deleteListAction(listId: string): Promise<ActionResult> {
     shareCode = await getListShareCode(supabase, parsed.data.listId)
     await deleteList(supabase, parsed.data.listId)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
   revalidatePublicList(shareCode, { sitemap: true })
-  revalidatePath(router.lists())
+  revalidateLocalizedPath(router.lists())
   redirect(router.lists())
 }
 
@@ -193,10 +193,10 @@ export async function addRestaurantsToListAction(
     await addRestaurantsToList(supabase, parsedId.data, parsedIds.data)
     revalidatePublicList(await getListShareCode(supabase, parsedId.data))
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
-  revalidatePath(ROUTE_PATTERNS.list, 'page')
+  revalidateLocalizedPath(ROUTE_PATTERNS.list, 'page')
   return { ok: true, data: undefined }
 }
 
@@ -217,10 +217,10 @@ export async function removeRestaurantFromListAction(
     await removeRestaurantFromList(supabase, parsed.data.listId, parsed.data.restaurantId)
     revalidatePublicList(await getListShareCode(supabase, parsed.data.listId))
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
-  revalidatePath(ROUTE_PATTERNS.list, 'page')
+  revalidateLocalizedPath(ROUTE_PATTERNS.list, 'page')
   return { ok: true, data: undefined }
 }
 
@@ -239,11 +239,11 @@ export async function addToSharedListAction(
   try {
     await addRestaurantsToSharedList(supabase, parsed.data.identifier, parsedIds.data)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
   revalidatePublicList(parsed.data.identifier)
-  revalidatePath(ROUTE_PATTERNS.sharedList, 'page')
+  revalidateLocalizedPath(ROUTE_PATTERNS.sharedList, 'page')
   return { ok: true, data: undefined }
 }
 
@@ -258,10 +258,10 @@ export async function copySharedListAction(identifier: string): Promise<ActionRe
   try {
     list = await copySharedList(supabase, parsed.data.identifier)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
-  revalidatePath(router.lists())
+  revalidateLocalizedPath(router.lists())
   redirect(router.list(list))
 }
 
@@ -281,11 +281,9 @@ export async function startSessionFromListAction(identifier: string): Promise<Ac
   try {
     session = await startSessionFromListUseCase(supabase, parsed.data.identifier)
   } catch (error) {
-    // Une `AppError` porte déjà un message lisible (lien mort, liste vide).
-    const fallback = error instanceof AppError ? error.message : undefined
-    return { ok: false, error: toUserMessage(error, fallback) }
+    return { ok: false, error: await translateError(error) }
   }
 
-  revalidatePath(router.home())
+  revalidateLocalizedPath(router.home())
   redirect(router.session(session))
 }

@@ -1,4 +1,5 @@
 import { RiArrowDownSLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { Suspense } from 'react'
 
 import { ChangelogNavLink } from '@/components/changelog/changelog-nav-link'
@@ -27,18 +28,19 @@ import { AccountNavLink, ChoosePseudoLink } from './account-nav-link'
  * la liste sans marquage sert de silhouette.
  */
 export function AppHeader() {
+  const t = useTranslations('layout.header')
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-background/85 backdrop-blur-md">
       <div className="container-app flex h-14 items-center justify-between gap-3 lg:h-16">
         <div className="flex min-w-0 items-center gap-6">
           <Brand />
-          <nav aria-label="Principale" className="hidden md:block">
+          <nav aria-label={t('mainNav')} className="hidden md:block">
             <Suspense fallback={<StaticNavLinks />}>
               <NavLinks />
             </Suspense>
           </nav>
         </div>
-        <nav aria-label="Raccourcis" className="flex items-center gap-1">
+        <nav aria-label={t('shortcutsNav')} className="flex items-center gap-1">
           <ShortcutsHelpButton />
           <ChangelogNavLink />
           <ThemeToggle />

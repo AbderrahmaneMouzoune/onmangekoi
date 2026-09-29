@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { StatsPanel } from './account-stats'
 
@@ -31,7 +33,7 @@ function stats(overrides: Partial<MyStats> = {}): MyStats {
 
 describe('StatsPanel', () => {
   it('should keep every definition-list group made of dt and dd only', () => {
-    const { container } = render(<StatsPanel stats={stats()} />)
+    const { container } = renderWithIntl(<StatsPanel stats={stats()} />)
 
     expect(screen.getByText('2 organisées')).toBeInTheDocument()
     // axe (definition-list) : un groupe <div> d'un <dl> ne porte que des dt/dd.
@@ -43,7 +45,7 @@ describe('StatsPanel', () => {
   })
 
   it('should invite to a first session when nothing is counted yet', () => {
-    render(<StatsPanel stats={stats({ sessions_total: 0 })} />)
+    renderWithIntl(<StatsPanel stats={stats({ sessions_total: 0 })} />)
 
     expect(screen.getByText(/rien à compter pour l’instant/i)).toBeInTheDocument()
   })

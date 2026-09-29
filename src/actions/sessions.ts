@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { ROUTE_PATTERNS, router } from '@/config/router.config'
@@ -20,7 +20,6 @@ import {
   setResultsPublic,
 } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
-import { toUserMessage } from '@/domain/errors'
 import {
   AddSessionRestaurantsSchema,
   CreateSessionSchema,
@@ -29,6 +28,7 @@ import {
   SessionRestaurantSchema,
 } from '@/domain/schemas/session'
 import { EXTEND_MINUTES } from '@/domain/session-deadline'
+import { revalidateLocalizedPath, translateError, translateIssue } from '@/i18n/server'
 import { createSessionUseCase } from '@/use-cases/create-session'
 import { joinSessionUseCase } from '@/use-cases/join-session'
 
@@ -59,7 +59,7 @@ export async function createSessionAction(
     excludeRecentWinners: formData.get('excludeRecentWinners'),
   })
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'Formulaire invalide' }
+    return { error: await translateIssue(parsed.error.issues[0], 'Formulaire invalide') }
   }
 
   const { supabase, user } = await requireUser()
@@ -69,10 +69,10 @@ export async function createSessionAction(
   try {
     session = await createSessionUseCase(supabase, parsed.data)
   } catch (error) {
-    return { error: toUserMessage(error) }
+    return { error: await translateError(error) }
   }
 
-  revalidatePath(router.home())
+  revalidateLocalizedPath(router.home())
   redirect(router.session(session))
 }
 
@@ -89,10 +89,10 @@ export async function joinSessionAction(_prev: FormState, formData: FormData): P
   try {
     session = await joinSessionUseCase(supabase, parsed.data.identifier)
   } catch (error) {
-    return { error: toUserMessage(error) }
+    return { error: await translateError(error) }
   }
 
-  revalidatePath(router.home())
+  revalidateLocalizedPath(router.home())
   redirect(router.session(session))
 }
 
@@ -115,10 +115,10 @@ export async function addSessionRestaurantsAction(
   try {
     await addSessionRestaurants(supabase, parsed.data.sessionId, parsed.data.restaurantIds)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
-  revalidatePath(ROUTE_PATTERNS.session, 'page')
+  revalidateLocalizedPath(ROUTE_PATTERNS.session, 'page')
   return { ok: true, data: undefined }
 }
 
@@ -136,10 +136,10 @@ export async function removeSessionRestaurantAction(
   try {
     await removeSessionRestaurant(supabase, parsed.data.sessionId, parsed.data.restaurantId)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
-  revalidatePath(ROUTE_PATTERNS.session, 'page')
+  revalidateLocalizedPath(ROUTE_PATTERNS.session, 'page')
   return { ok: true, data: undefined }
 }
 
@@ -152,10 +152,10 @@ export async function launchSessionAction(sessionId: string): Promise<ActionResu
 
   try {
     const session = await launchSession(supabase, id.data)
-    revalidatePath(router.session(session))
+    revalidateLocalizedPath(router.session(session))
     return { ok: true, data: session }
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 }
 
@@ -168,11 +168,11 @@ export async function closeSessionAction(sessionId: string): Promise<ActionResul
 
   try {
     const session = await closeSession(supabase, id.data)
-    revalidatePath(router.session(session))
-    revalidatePath(router.sessionResults(session))
+    revalidateLocalizedPath(router.session(session))
+    revalidateLocalizedPath(router.sessionResults(session))
     return { ok: true, data: session }
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 }
 
@@ -185,10 +185,10 @@ export async function extendSessionAction(sessionId: string): Promise<ActionResu
 
   try {
     const session = await extendSession(supabase, id.data, EXTEND_MINUTES)
-    revalidatePath(router.session(session))
+    revalidateLocalizedPath(router.session(session))
     return { ok: true, data: session }
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 }
 
@@ -207,11 +207,11 @@ export async function createRunoffSessionAction(sessionId: string): Promise<Acti
     const runoff = await createRunoffSession(supabase, id.data)
     // Le second tour est la seule chose qu'on récupère : le classement du
     // premier tour ne se connaît que par son id, d'où le motif de route.
-    revalidatePath(ROUTE_PATTERNS.sessionResults, 'page')
-    revalidatePath(router.home())
+    revalidateLocalizedPath(ROUTE_PATTERNS.sessionResults, 'page')
+    revalidateLocalizedPath(router.home())
     return { ok: true, data: runoff }
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 }
 
@@ -227,12 +227,12 @@ export async function drawWinnerAction(sessionId: string): Promise<ActionResult<
   try {
     session = await drawTiebreakWinner(supabase, id.data)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
   // Le podium public, s'il est ouvert, doit lui aussi montrer le gagnant tiré.
   revalidateTag(publicResultsCacheTag(session.results_code), PUBLIC_RESULTS_CACHE_PROFILE)
-  revalidatePath(router.sessionResults(session))
+  revalidateLocalizedPath(router.sessionResults(session))
   return { ok: true, data: session }
 }
 
@@ -256,14 +256,14 @@ export async function confirmDecisionAction(
   try {
     session = await confirmDecision(supabase, parsed.data.sessionId, parsed.data.restaurantId)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
   // Le lien public, s'il est ouvert, annonce désormais la décision ; et
   // l'historique la montre à la place du gagnant calculé.
   revalidateTag(publicResultsCacheTag(session.results_code), PUBLIC_RESULTS_CACHE_PROFILE)
-  revalidatePath(router.sessionResults(session))
-  revalidatePath(router.sessions())
+  revalidateLocalizedPath(router.sessionResults(session))
+  revalidateLocalizedPath(router.sessions())
   return { ok: true, data: session }
 }
 
@@ -286,11 +286,11 @@ export async function setResultsPublicAction(
   try {
     session = await setResultsPublic(supabase, id.data, isPublic)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
   revalidateTag(publicResultsCacheTag(session.results_code), PUBLIC_RESULTS_CACHE_PROFILE)
-  revalidatePath(router.sessionResults(session))
+  revalidateLocalizedPath(router.sessionResults(session))
   return { ok: true, data: session }
 }
 
@@ -304,10 +304,10 @@ export async function leaveSessionAction(sessionId: string): Promise<ActionResul
   try {
     await leaveSession(supabase, id.data, user.id)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
-  revalidatePath(router.home())
+  revalidateLocalizedPath(router.home())
   redirect(router.home())
 }
 
@@ -321,9 +321,9 @@ export async function deleteSessionAction(sessionId: string): Promise<ActionResu
   try {
     await deleteSession(supabase, id.data)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 
-  revalidatePath(router.home())
+  revalidateLocalizedPath(router.home())
   redirect(router.home())
 }

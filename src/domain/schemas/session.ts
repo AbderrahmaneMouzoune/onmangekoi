@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { OMK_MESSAGES } from '@/domain/errors'
+import { omkMessage } from '@/domain/errors'
 import { GROUPS_PER_SESSION_MAX } from '@/domain/schemas/group'
 import { DEADLINE_MAX_MINUTES, DEADLINE_MIN_MINUTES } from '@/domain/session-deadline'
 import { CLOSE_AT_RATIO_MIN, JOKERS_MAX } from '@/domain/session-rules'
@@ -90,9 +90,9 @@ export const CreateSessionSchema = z
   })
   // Sans échéance, une session ouverte ne se fermerait jamais. La base refuse
   // aussi (`omk:open_session_needs_deadline`) ; dire non ici épargne un
-  // aller-retour, avec le même message.
+  // aller-retour, avec le même message (le même code, traduit par l'action).
   .refine((data) => !data.open || data.closesInMinutes != null || data.closesAt != null, {
-    message: OMK_MESSAGES.open_session_needs_deadline,
+    message: omkMessage('open_session_needs_deadline'),
     path: ['closesInMinutes'],
   })
   // Deux places d'un côté, la porte ouverte jusqu'à l'échéance de l'autre. La

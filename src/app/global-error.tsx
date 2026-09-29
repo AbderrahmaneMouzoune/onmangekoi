@@ -1,8 +1,31 @@
 'use client'
 
+import { createTranslator } from 'next-intl'
+
+import { useIsClient } from '@/hooks/use-is-client'
+import { readClientLocale } from '@/i18n/client-locale'
+import { DEFAULT_LOCALE } from '@/i18n/config'
+
+import enLayout from '../../messages/en/layout.json'
+import frLayout from '../../messages/fr/layout.json'
+
+/**
+ * Dernier filet : remplace le layout racine, donc hors de
+ * `NextIntlClientProvider`. Seuls les textes du layout sont embarqués (quelques
+ * lignes par langue) ; la langue se lit dans le navigateur, une fois monté.
+ */
+const LAYOUT_MESSAGES = { fr: frLayout, en: enLayout }
+
 export default function GlobalError({ reset }: { error: Error; reset: () => void }) {
+  const locale = useIsClient() ? readClientLocale() : DEFAULT_LOCALE
+  const t = createTranslator({
+    locale,
+    messages: { layout: LAYOUT_MESSAGES[locale] },
+    namespace: 'layout.error',
+  })
+
   return (
-    <html lang="fr">
+    <html lang={locale}>
       <body
         style={{
           margin: 0,
@@ -15,8 +38,8 @@ export default function GlobalError({ reset }: { error: Error; reset: () => void
         }}
       >
         <div style={{ textAlign: 'center', padding: 24 }}>
-          <h1 style={{ fontSize: 24, marginBottom: 8 }}>Quelque chose a cassé</h1>
-          <p style={{ marginBottom: 16, opacity: 0.7 }}>Réessaie dans un instant.</p>
+          <h1 style={{ fontSize: 24, marginBottom: 8 }}>{t('title')}</h1>
+          <p style={{ marginBottom: 16, opacity: 0.7 }}>{t('globalDescription')}</p>
           <button
             type="button"
             onClick={reset}
@@ -30,7 +53,7 @@ export default function GlobalError({ reset }: { error: Error; reset: () => void
               cursor: 'pointer',
             }}
           >
-            Réessayer
+            {t('retry')}
           </button>
         </div>
       </body>

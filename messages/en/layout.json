@@ -1,0 +1,87 @@
+{
+  "brand": {
+    "homeLabel": "onmangekoi, home"
+  },
+  "skipLink": "Skip to content",
+  "header": {
+    "mainNav": "Main",
+    "shortcutsNav": "Shortcuts",
+    "choosePseudo": "Pick a nickname"
+  },
+  "nav": {
+    "home": "Home",
+    "newSession": "New session",
+    "join": "Join",
+    "lists": "My lists",
+    "shortcutTitle": "Shortcut: {sequence}"
+  },
+  "accountMenu": {
+    "account": "My account",
+    "lists": "My lists",
+    "groups": "My groups",
+    "signOut": "Sign out",
+    "confirmTitle": "Sign out?",
+    "confirmAnonymous": "Your nickname isn’t linked to an email: once you sign out, your lists and sessions will be lost.",
+    "confirmLinked": "You can come back with your email and password."
+  },
+  "theme": {
+    "toLight": "Switch to light mode",
+    "toDark": "Switch to dark mode"
+  },
+  "footer": {
+    "nav": "Footer links",
+    "changelog": "What’s new",
+    "privacy": "Privacy",
+    "source": "Source code"
+  },
+  "locale": {
+    "label": "Language"
+  },
+  "shortcuts": {
+    "button": "Keyboard shortcuts",
+    "buttonTitle": "Keyboard shortcuts (?)",
+    "title": "Keyboard shortcuts",
+    "description": "Two keys in a row to create or navigate, a single one while voting.",
+    "close": "Close help",
+    "sequence": "{first} then {second}",
+    "then": "then",
+    "or": "or",
+    "groups": {
+      "create": "Create",
+      "goTo": "Go to",
+      "vote": "While voting",
+      "anywhere": "Anywhere"
+    },
+    "targets": {
+      "newSession": "New session",
+      "newList": "New list",
+      "home": "Home",
+      "join": "Join a session",
+      "lists": "My lists",
+      "groups": "My groups",
+      "account": "My account"
+    },
+    "anywhere": {
+      "tab": "Move to the next element",
+      "arrows": "Move through a list",
+      "search": "Search for a restaurant",
+      "escape": "Close, cancel",
+      "help": "This help"
+    },
+    "keys": {
+      "Enter": "Enter",
+      "Escape": "Esc"
+    }
+  },
+  "notFound": {
+    "title": "This page isn’t on the menu",
+    "description": "The link may be out of date, or the session was deleted."
+  },
+  "error": {
+    "title": "Something broke",
+    "description": "It’s not you, it’s us. Try again, and if it keeps happening, head back home.",
+    "reference": "Reference: {digest}",
+    "globalDescription": "Try again in a moment.",
+    "retry": "Try again"
+  }
+}

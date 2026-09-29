@@ -14,12 +14,12 @@ import {
   type RestaurantPage,
 } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
-import { toUserMessage } from '@/domain/errors'
 import {
   CreateRestaurantSchema,
   RESTAURANT_TAGS,
   SimilarRestaurantsSchema,
 } from '@/domain/schemas/restaurant'
+import { translateError } from '@/i18n/server'
 
 import type { ActionResult } from './types'
 import type { Restaurant } from '@/data-access/models'
@@ -91,7 +91,7 @@ export async function createRestaurantAction(input: {
     revalidateTag(RESTAURANTS_CACHE_TAG, RESTAURANTS_CACHE_PROFILE)
     return { ok: true, data: restaurant }
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 }
 

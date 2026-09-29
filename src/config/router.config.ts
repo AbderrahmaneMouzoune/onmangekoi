@@ -41,7 +41,7 @@ export const INVITE_CODE_LENGTH = 6
 export const RESULTS_CODE_LENGTH = 10
 
 /**
- * Motifs de routes dynamiques, pour `revalidatePath(…, 'page')` quand on ne
+ * Motifs de routes dynamiques, pour `revalidateLocalizedPath(…, 'page')` quand on ne
  * connaît que l'id d'une ressource et pas son code.
  */
 export const ROUTE_PATTERNS = {
