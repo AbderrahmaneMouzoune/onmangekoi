@@ -25,6 +25,14 @@ export type TiebreakChoice = 'runoff' | 'draw'
 export type ResultsScope = 'public' | 'participants'
 
 /**
+ * Réponse à la proposition d'installer l'app : acceptée ou refusée dans la
+ * boîte du navigateur, ou écartée d'un « Plus tard » sur la bannière.
+ */
+export type InstallPromptOutcome = 'accepted' | 'dismissed' | 'later'
+/** D'où vient une installation : la bannière de l'app, ou le menu du navigateur. */
+export type InstallSource = 'banner' | 'browser'
+
+/**
  * Propriétés attendues pour chaque événement. Le typage empêche d'envoyer
  * une propriété non prévue — donc d'y glisser une donnée personnelle par
  * inadvertance.
@@ -132,6 +140,14 @@ export interface AnalyticsEventMap {
     method: ShareMethod
     /** Le lien diffusé : le podium public, ou la salle réservée aux votants */
     scope: ResultsScope
+  }
+  /** La bannière « Installer l'app » a reçu une réponse (issue #11). */
+  pwa_install_prompted: {
+    outcome: InstallPromptOutcome
+  }
+  /** L'app vient d'être installée sur l'appareil. */
+  pwa_installed: {
+    via: InstallSource
   }
 }
 

@@ -57,7 +57,7 @@ Les mêmes collègues votent chaque midi et retapaient le code à chaque session
 
 Un groupe ne se crée **que depuis une session vécue** : impossible d'y ajouter quelqu'un qu'on n'a pas croisé. Seuls ses membres le voient, seul son propriétaire le renomme ou le supprime, et c'est la RLS qui le dit. Le propriétaire ne peut pas le quitter — il le supprime, sinon le groupe survivrait sans personne pour le tenir.
 
-Faute de notifications push (issue #7, qui attend le service worker de #11), l'invité est prévenu **dans l'app** : la session apparaît sur son accueil sous « On t'attend », avec un bouton pour la rejoindre ou la décliner. Le host, lui, voit les invités encore attendus dans la salle d'attente et garde son lien à copier.
+Faute de notifications push (issue #7, qui s'appuiera sur le service worker de #11), l'invité est prévenu **dans l'app** : la session apparaît sur son accueil sous « On t'attend », avec un bouton pour la rejoindre ou la décliner. Le host, lui, voit les invités encore attendus dans la salle d'attente et garde son lien à copier.
 
 ## Vote chronométré
 
@@ -369,6 +369,29 @@ Tout se fait au clavier, et `?` affiche l'aide dans l'app :
 
 Les séquences (`src/lib/shortcuts.ts`) ne se déclenchent jamais dans un champ de saisie ni dans une modale, et une lettre tenue avec `Ctrl`, `Alt` ou `⌘` reste au navigateur. Le focus est toujours visible (contour tomate, `:focus-visible` global), il revient sur le bouton qui a ouvert un panneau quand celui-ci se ferme, et chaque changement d'état de la session — lancement du vote, clôture — est annoncé aux lecteurs d'écran et reçoit le focus.
 
+## App installable et hors ligne
+
+onmangekoi s'installe sur l'écran d'accueil comme une app (PWA) : fenêtre plein écran, icône « k » à la craie, et une page dédiée quand le réseau manque plutôt que le dinosaure du navigateur.
+
+| Pièce                  | Où                                                           | Rôle                                                                                         |
+| ---------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Manifest               | `src/app/manifest.ts`                                        | `id`, `start_url`, `scope`, `display: standalone`, icônes 192 et 512, classiques et maskable |
+| Icônes                 | `src/app/icon.tsx`, `src/app/icons/*/route.tsx`              | un seul dessin (`components/og/app-icon.tsx`) ; la maskable réduit le glyphe à 80 %          |
+| Service worker         | `/sw.js` ← `src/app/sw.js/route.ts`                          | script maison, généré au build par `src/lib/pwa/service-worker.ts`                           |
+| Page hors ligne        | `/offline`                                                   | précachée, style ardoise, se recharge seule au retour du réseau                              |
+| Enregistrement         | `PwaProvider` (layout racine), `src/lib/pwa/registration.ts` | build de production uniquement ; `getServiceWorkerRegistration()` pour les notifications     |
+| Bannière « Installer » | `InstallBanner` (accueil), `src/lib/pwa/install-offer.ts`    | après une première session réussie, « Plus tard » la fait taire 90 jours                     |
+
+**Ce que le service worker cache, et rien d'autre.** À l'installation : la page `/offline`, ses scripts, sa feuille de style et ses polices (lus dans son HTML), le manifest et les icônes. Au fil de l'eau : les fichiers immuables de `/_next/static/` (cache d'abord). Les pages ne sont **jamais** mises en cache, puisqu'elles portent pseudo, sessions et listes : une navigation va au réseau et reçoit la page hors ligne s'il ne répond pas. Supabase, `/api/`, `/auth/`, les Server Actions (en-tête `Next-Action`) et les charges RSC passent sans être touchés. Les règles sont des fonctions pures (`src/lib/pwa/sw-routing.ts`) dont la source est recopiée dans le script ; les tests exécutent le script réellement servi contre un faux environnement de service worker.
+
+**Une mise à jour invalide l'ancien cache.** `next.config.mjs` calcule un identifiant de build (déploiement Vercel, sinon commit, sinon aléatoire) qui sert à la fois de `generateBuildId` et de nom aux caches (`omk-<build>-precache`, `omk-<build>-static`). Chaque déploiement change donc `/sw.js` ; le navigateur, qui le revalide à chaque navigation (`updateViaCache: 'none'`), installe la nouvelle version, qui prend la main aussitôt et efface les caches `omk-*` des builds précédents.
+
+**Pas de service worker en `next dev`** : les fichiers de `/_next/static/` y changent sans changer de nom. Un service worker laissé par un `next start` sur le même port est désinscrit au premier chargement en dev. Pour tester : `bun run build && bun run start`, puis l'onglet _Application_ des outils de développement (mode hors ligne compris) ; `e2e/pwa.spec.ts` rejoue le scénario hors ligne.
+
+**La bannière d'installation** n'existe que là où le navigateur émet `beforeinstallprompt` (Chrome, Edge, Android). L'événement part souvent avant l'hydratation : un court script en tête de `<body>` le retient (`INSTALL_PROMPT_SCRIPT`), et c'est l'app qui choisit le moment — sur l'accueil, une fois qu'un classement final avec un gagnant s'est affiché dans ce navigateur, jamais par-dessus le deck ni le classement. Sur iOS et Firefox, l'installation passe par le menu du navigateur (« Sur l'écran d'accueil »). Les réponses sont mesurées (`pwa_install_prompted`, `pwa_installed`, voir [`docs/analytics.md`](docs/analytics.md)).
+
+**Pour les notifications push (#7).** Le script est découpé en sections numérotées ; les gestionnaires `push` et `notificationclick` s'ajoutent dans la dernière. Côté page, `getServiceWorkerRegistration()` rend la registration active (`registration.pushManager`), ou `null` sans service worker.
+
 ## Stack
 
 | Couche     | Choix                                                                                    |
@@ -412,8 +435,8 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 ```
 src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join/[code], sessions, sessions/[code], lists/[code], l/[code], groups, account, nouveautes, legal, auth, api/places)
-src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · groups/ · account/ · restaurants/ · onboarding/ · changelog/
+src/app/                 routes App Router (setup, login, join/[code], sessions, sessions/[code], lists/[code], l/[code], groups, account, nouveautes, legal, auth, api/places, offline, sw.js, icons)
+src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · groups/ · account/ · restaurants/ · onboarding/ · changelog/ · pwa/
 src/content/changelog/   notes de version produit (schéma Zod + entrées), lues par /nouveautes et son flux RSS
 src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + recent-winners.ts (anti-fatigue) + stats.ts + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
@@ -422,6 +445,7 @@ src/actions/             Server Actions (validation Zod, auth, revalidate/redire
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
                          images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache, version (semver), changelog-seen
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
+src/lib/pwa/             service worker (source générée, règles de routage), enregistrement, icônes, bannière d'installation
 src/hooks/               Realtime de session, compte à rebours, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/add|remove_session_restaurant/submit_vote/close/extend/
                          results/recent_winners/my_sessions/my_stats, départage, décision, groupes et invitations),
