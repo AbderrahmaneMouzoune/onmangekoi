@@ -60,6 +60,9 @@ export interface AnalyticsEventMap {
     close_at_ratio: number
     /** Session ouverte : pas de salle d'attente, on vote à son heure (issue #58) */
     open: boolean
+    /** Sélection proposée à la création (issue #59) : restos proposés, et gardés */
+    suggested_count: number
+    suggested_kept: number
   }
   invite_shared: {
     session_id: string

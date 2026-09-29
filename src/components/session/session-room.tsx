@@ -122,6 +122,8 @@ export function SessionRoom({
         vetos: rules.vetos,
         close_at_ratio: rules.close_at_ratio,
         open: isOpenSession(rules),
+        suggested_count: entry.suggestedCount ?? 0,
+        suggested_kept: entry.suggestedKept ?? 0,
       })
       return
     }

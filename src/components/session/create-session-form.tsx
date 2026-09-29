@@ -9,6 +9,7 @@ import { DeadlinePicker } from '@/components/session/deadline-picker'
 import { OpenSessionToggle } from '@/components/session/open-session-toggle'
 import { RulesPicker } from '@/components/session/rules-picker'
 import { SESSION_STEPS, SessionStep, StepTitle } from '@/components/session/session-step'
+import { SuggestionNotice } from '@/components/session/suggestion-notice'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
@@ -18,6 +19,12 @@ import { RECENT_WINNER_WINDOW_DAYS, recentWinnerCount } from '@/domain/recent-wi
 import { NO_FILTERS, restaurantFiltersToParams } from '@/domain/restaurant-filters'
 import { GROUPS_PER_SESSION_MAX } from '@/domain/schemas/group'
 import { SESSION_NAME_MAX } from '@/domain/schemas/session'
+import {
+  keptSuggestionCount,
+  suggestedIds,
+  suggestionSummary,
+  withoutSuggestion,
+} from '@/domain/suggestions'
 import { rememberSessionEntry } from '@/lib/analytics/handoff'
 import { countLabel, plural } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -27,6 +34,7 @@ import type { GroupWithMembers } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { RestaurantFilters } from '@/domain/restaurant-filters'
+import type { RestaurantSuggestion } from '@/domain/suggestions'
 
 interface CreateSessionFormProps {
   lists: ListWithRestaurantIds[]
@@ -38,6 +46,11 @@ interface CreateSessionFormProps {
   recentWinners: RecentWinnerDates
   /** Filtres lus dans l'URL, déjà appliqués à `initialPage` */
   initialFilters?: RestaurantFilters
+  /**
+   * Sélection proposée d'après l'historique (#59), cochée à l'ouverture.
+   * `null` sans historique : la page part alors d'un panier vide, comme avant.
+   */
+  suggestion?: RestaurantSuggestion | null
 }
 
 /**
@@ -64,6 +77,11 @@ function syncFiltersToUrl(filters: RestaurantFilters) {
  * silhouette prérendue — qui ne sait pas si on a des groupes — n'ait jamais à
  * renuméroter quoi que ce soit.
  *
+ * Qui a déjà un historique trouve les restos déjà cochés : ceux vus
+ * récemment, sans les derniers gagnants, plus un jamais proposé. Un bandeau
+ * dit d'où ils viennent et les retire d'un bloc — la proposition est un point
+ * de départ, jamais une contrainte.
+ *
  * « Session ouverte » se coche sous l'échéance, qu'elle rend obligatoire : pas
  * de salle d'attente, chacun vote à son heure jusqu'à la clôture.
  *
@@ -78,11 +96,18 @@ export function CreateSessionForm({
   defaultName,
   recentWinners,
   initialFilters = NO_FILTERS,
+  suggestion = null,
 }: CreateSessionFormProps) {
   const [state, formAction, isPending] = useActionState(createSessionAction, null)
   const [selectedListIds, setSelectedListIds] = useState<string[]>([])
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([])
-  const [selectedRestaurantIds, setSelectedRestaurantIds] = useState<string[]>([])
+  // La proposition ne sert que d'état initial : une fois la page ouverte, la
+  // sélection appartient à la personne, et rien ne la réécrit.
+  const [proposedIds] = useState(() => suggestedIds(suggestion))
+  const [selectedRestaurantIds, setSelectedRestaurantIds] = useState<string[]>(proposedIds)
+  // « Repartir de zéro » congédie le bandeau pour de bon : recocher ensuite un
+  // resto proposé est un choix, plus une suggestion à expliquer.
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false)
   const [excludeRecent, setExcludeRecent] = useState(false)
   // Session ouverte : elle rend l'échéance obligatoire et efface le seuil de
   // clôture. L'état vit ici, seul endroit qui voit les trois blocs.
@@ -103,6 +128,12 @@ export function CreateSessionForm({
   }, [lists, selectedListIds, selectedRestaurantIds, excludeRecent, recentWinners])
 
   const recentCount = recentWinnerCount(recentWinners)
+  const keptSuggested = keptSuggestionCount(proposedIds, selectedRestaurantIds)
+
+  function resetSuggestion() {
+    setSelectedRestaurantIds((previous) => withoutSuggestion(previous, proposedIds))
+    setSuggestionDismissed(true)
+  }
 
   function toggleGroup(id: string) {
     setSelectedGroupIds((previous) =>
@@ -118,7 +149,12 @@ export function CreateSessionForm({
   // la page de session la transforme en `session_created` — et seulement si la
   // création a bien abouti.
   function rememberCreation() {
-    rememberSessionEntry({ kind: 'created', listCount: selectedListIds.length })
+    rememberSessionEntry({
+      kind: 'created',
+      listCount: selectedListIds.length,
+      suggestedCount: proposedIds.length,
+      suggestedKept: keptSuggested,
+    })
   }
 
   return (
@@ -153,8 +189,13 @@ export function CreateSessionForm({
           title={<h2 className="text-base font-semibold">{SESSION_STEPS.restaurants}</h2>}
           hint={SESSION_STEPS.restaurantsHint}
         >
+          {suggestion && !suggestionDismissed && keptSuggested > 0 && (
+            <SuggestionNotice summary={suggestionSummary(suggestion)} onReset={resetSuggestion} />
+          )}
+
           <RestaurantPicker
             initialPage={initialPage}
+            knownRestaurants={suggestion?.restaurants}
             value={selectedRestaurantIds}
             onChange={setSelectedRestaurantIds}
             recentWinners={recentWinners}

@@ -1329,6 +1329,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      suggest_restaurants: {
+        Args: { p_limit?: number }
+        Returns: {
+          excluded_winners: number
+          reason: string
+          restaurant: Database['public']['Tables']['restaurants']['Row']
+          source: string
+        }[]
+      }
       tiebreak_candidates: { Args: { p_session_id: string }; Returns: string[] }
       upsert_restaurant_from_place: {
         Args: {

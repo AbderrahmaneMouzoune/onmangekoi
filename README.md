@@ -166,6 +166,21 @@ L'exclusion est appliquée **côté serveur**, dans le use-case de création : u
 
 La fenêtre de 30 jours est une constante : `recent_winners_window()` en base, `RECENT_WINNER_WINDOW_DAYS` côté application, les deux figées par `supabase/tests/recent-winners.test.sql`.
 
+### Une sélection proposée à la création
+
+Composer la sélection est l'étape la plus lourde de la création, et elle retombe sur le host à chaque midi. Corriger une proposition coûte bien moins que partir d'une page blanche : qui a déjà un historique ouvre « Nouvelle session » avec **jusqu'à cinq restos déjà cochés**.
+
+| Ce qui est proposé           | D'où ça vient                                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Jusqu'à quatre vus récemment | Les restos des sessions où la personne était, les plus récentes d'abord — **sans les gagnants des 30 derniers jours** (décisions comprises) |
+| Un jamais proposé            | Jamais vu dans une de ses sessions : le dernier qu'elle a mis dans une de ses listes ou ajouté elle-même, sinon le dernier arrivé au carnet |
+
+Un bandeau au-dessus du panier dit d'où vient la sélection — « Vus récemment, sans les 3 gagnants des 30 derniers jours — plus un jamais proposé, le dernier arrivé au carnet. » — et **« Repartir de zéro »** la décoche d'un bloc, sans toucher à ce qu'on a pris soi-même. Tout le reste est inchangé : chaque resto se décoche au panier, les listes et le carnet s'y ajoutent comme d'habitude. La proposition est un point de départ, jamais une contrainte.
+
+**Sans historique, rien n'est proposé** : ni bandeau vide, ni resto tiré au hasard du catalogue — la page est exactement celle d'avant. Le jamais proposé n'accompagne qu'une vraie suggestion.
+
+La source est la RPC `suggest_restaurants(p_limit)` : **une seule requête** au chargement, restaurants compris — le panier nomme les pré-cochés même hors de la première page du carnet. Comme `recent_winners()`, elle ne prend pas d'identifiant et répond pour `auth.uid()` ; elle ne lit que des participations et des gagnants, jamais un vote. Chaque ligne porte sa raison (`recent`, `never_proposed`), sa source (`history`, `mine`, `catalog`) et le nombre de gagnants écartés : de quoi écrire la phrase sans seconde requête. Le comportement est figé par `supabase/tests/suggest-restaurants.test.sql`.
+
 ## URLs, codes et liens de partage
 
 Aucune URL n'expose d'identifiant technique : chaque ressource s'adresse par **son code court**, celui qu'on se dit à voix haute.
@@ -438,9 +453,9 @@ src/config/              router.config.ts : préfixes protégés, longueurs de c
 src/app/                 routes App Router (setup, login, join/[code], sessions, sessions/[code], lists/[code], l/[code], groups, account, nouveautes, legal, auth, api/places, offline, sw.js, icons)
 src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · groups/ · account/ · restaurants/ · onboarding/ · changelog/ · pwa/
 src/content/changelog/   notes de version produit (schéma Zod + entrées), lues par /nouveautes et son flux RSS
-src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + recent-winners.ts (anti-fatigue) + stats.ts + models/ (types générés)
+src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + recent-winners.ts (anti-fatigue) + suggestions.ts (sélection proposée) + stats.ts + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
-src/domain/              règles et vocabulaire métier : votes, codes de partage, curseur d'historique, erreurs, horaires, places, anti-fatigue, schemas/ (Zod)
+src/domain/              règles et vocabulaire métier : votes, codes de partage, curseur d'historique, erreurs, horaires, places, anti-fatigue, sélection proposée, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
                          images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache, version (semver), changelog-seen
@@ -448,7 +463,7 @@ src/lib/analytics/       consentement, masquage des URL, catalogue d'événement
 src/lib/pwa/             service worker (source générée, règles de routage), enregistrement, icônes, bannière d'installation
 src/hooks/               Realtime de session, compte à rebours, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/add|remove_session_restaurant/submit_vote/close/extend/
-                         results/recent_winners/my_sessions/my_stats, départage, décision, groupes et invitations),
+                         results/recent_winners/suggest_restaurants/my_sessions/my_stats, départage, décision, groupes et invitations),
                          purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
@@ -507,6 +522,7 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - **Liste publique** (`public_list`, `public_list_restaurants`, `public_lists`) : les seules lectures de liste ouvertes à `anon`. Elles ne répondent que pour une liste dont le propriétaire a ouvert le partage (`lists.is_public`), et ne rendent que son nom, ses restaurants et des compteurs — jamais le propriétaire, jamais ses autres listes. Refermer le partage purge le cache (`revalidateTag`) : la page redevient privée sur-le-champ.
 - `my_sessions` et `my_stats` refont le contrôle d'accès en clair (`session_participants.profile_id = auth.uid()`) plutôt que de s'en remettre à la RLS, qui reste inchangée. Le helper `session_winner` n'est exécutable ni par `anon` ni par `authenticated` : sans ça, le gagnant de n'importe quelle session se lirait en devinant un uuid.
 - **Anti-fatigue** (`recent_winners`) : la fonction ne prend aucun identifiant et se borne à `auth.uid()` — impossible de demander ce qui fatigue quelqu'un d'autre. Elle ne rend que le restaurant gagnant et la date de clôture : le reste du classement et le détail des votes n'en sortent pas.
+- **Sélection proposée** (`suggest_restaurants`) : même règle, `auth.uid()` et rien d'autre. Elle ne lit que les participations de l'appelant et `recent_winners()` — aucun score, aucun vote ; un resto vétoé revient comme un autre. Elle ne rend que des restaurants, déjà en lecture publique.
 - Un **groupe** n'est visible que de ses membres et modifiable que par son propriétaire (RLS) ; la création, l'invitation et le départ passent par des RPC (`create_group_from_session`, `invite_group_to_session`, `leave_group`) qui revérifient tout en base. Une invitation en attente n'ouvre aucun accès à la session : l'invité n'en lit que le nécessaire, via `my_session_invitations`.
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.
 - La clé Google Places ne quitte jamais le serveur, et aucune policy RLS n'ouvre l'écriture en `source = 'google'` : `upsert_restaurant_from_place` est le seul chemin. Les corps d'erreur renvoyés par Google restent dans les logs serveur.
