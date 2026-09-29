@@ -132,6 +132,32 @@ describe('createSessionUseCase', () => {
     })
   })
 
+  it('should carry the open mode with its mandatory deadline', async () => {
+    const { client, rpc } = fakeClient([])
+    const now = new Date('2026-09-29T08:00:00.000Z')
+
+    await createSessionUseCase(
+      client,
+      {
+        name: 'Lunch',
+        listIds: [],
+        restaurantIds: [R1, R2],
+        groupIds: [],
+        closesInMinutes: 60,
+        closeAtRatio: 0.8,
+        open: true,
+      },
+      now
+    )
+
+    expect(rpc).toHaveBeenCalledWith('create_session', {
+      p_name: 'Lunch',
+      p_restaurant_ids: [R1, R2],
+      p_closes_at: '2026-09-29T09:00:00.000Z',
+      p_rules: { superlikes: 1, vetos: 1, close_at_ratio: 1, open: true },
+    })
+  })
+
   it('should say nothing about the rules when they are the usual ones', async () => {
     const { client, rpc } = fakeClient([])
 

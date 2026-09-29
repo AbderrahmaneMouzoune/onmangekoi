@@ -259,6 +259,33 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       restaurants: {
         Row: {
           address: string | null
@@ -1200,6 +1227,10 @@ export type Database = {
       restaurant_tag_values: { Args: never; Returns: string[] }
       rules_are_valid: { Args: { p_rules: Json }; Returns: boolean }
       run_maintenance: { Args: never; Returns: Json }
+      save_push_subscription: {
+        Args: { p_auth: string; p_endpoint: string; p_p256dh: string }
+        Returns: undefined
+      }
       search_restaurants: {
         Args: {
           p_lat?: number
@@ -1236,6 +1267,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      session_is_open: { Args: { p_rules: Json }; Returns: boolean }
       session_preview: {
         Args: { p_identifier: string }
         Returns: {
@@ -1327,6 +1359,15 @@ export type Database = {
           p_value: number
         }
         Returns: undefined
+      }
+      suggest_restaurants: {
+        Args: { p_limit?: number }
+        Returns: {
+          excluded_winners: number
+          reason: string
+          restaurant: Database['public']['Tables']['restaurants']['Row']
+          source: string
+        }[]
       }
       tiebreak_candidates: { Args: { p_session_id: string }; Returns: string[] }
       upsert_restaurant_from_place: {

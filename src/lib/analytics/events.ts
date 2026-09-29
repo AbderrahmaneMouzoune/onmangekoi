@@ -7,6 +7,7 @@
  * — UUID de session — et des compteurs sont transmis.
  */
 
+import type { PushOptInContext } from '@/domain/push'
 import type { SessionCloseReason } from '@/domain/session-deadline'
 import type { VoteKind, VoteValue } from '@/domain/vote'
 
@@ -23,6 +24,14 @@ export type CloseReason = SessionCloseReason
 export type TiebreakChoice = 'runoff' | 'draw'
 /** Portée d'un lien de classement partagé. */
 export type ResultsScope = 'public' | 'participants'
+
+/**
+ * Réponse à la proposition d'installer l'app : acceptée ou refusée dans la
+ * boîte du navigateur, ou écartée d'un « Plus tard » sur la bannière.
+ */
+export type InstallPromptOutcome = 'accepted' | 'dismissed' | 'later'
+/** D'où vient une installation : la bannière de l'app, ou le menu du navigateur. */
+export type InstallSource = 'banner' | 'browser'
 
 /**
  * Propriétés attendues pour chaque événement. Le typage empêche d'envoyer
@@ -50,6 +59,11 @@ export interface AnalyticsEventMap {
     superlikes: number
     vetos: number
     close_at_ratio: number
+    /** Session ouverte : pas de salle d'attente, on vote à son heure (issue #58) */
+    open: boolean
+    /** Sélection proposée à la création (issue #59) : restos proposés, et gardés */
+    suggested_count: number
+    suggested_kept: number
   }
   invite_shared: {
     session_id: string
@@ -130,6 +144,23 @@ export interface AnalyticsEventMap {
     method: ShareMethod
     /** Le lien diffusé : le podium public, ou la salle réservée aux votants */
     scope: ResultsScope
+  }
+  /** La bannière « Installer l'app » a reçu une réponse (issue #11). */
+  pwa_install_prompted: {
+    outcome: InstallPromptOutcome
+  }
+  /** L'app vient d'être installée sur l'appareil. */
+  pwa_installed: {
+    via: InstallSource
+  }
+  /**
+   * Ce navigateur s'abonne aux notifications push (issue #7), depuis la salle
+   * d'attente (« au lancement ») ou après ses votes (« du résultat »). Jamais
+   * l'endpoint : c'est l'adresse de l'appareil.
+   */
+  push_subscribed: {
+    session_id: string
+    context: PushOptInContext
   }
 }
 

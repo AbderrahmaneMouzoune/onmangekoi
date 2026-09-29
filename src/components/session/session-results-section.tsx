@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 
 import { SaveGroupForm } from '@/components/groups/save-group-form'
 import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
+import { SessionCompletedMarker } from '@/components/pwa/session-completed-marker'
 import { DecisionPanel } from '@/components/session/decision-panel'
 import { ResultsList } from '@/components/session/results-list'
 import { ResultsSharing } from '@/components/session/results-sharing'
@@ -77,6 +78,9 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
           actions={
             <>
               <ResultsWatch sessionId={session.id} />
+              {/* Un classement avec un gagnant : la session a servi, l'app
+                  pourra proposer de s'installer au prochain passage. */}
+              <SessionCompletedMarker />
               {/* Retenir l'un des ex æquo tranche aussi l'égalité : le panneau
                   de départage n'a alors plus rien à proposer. Un second tour
                   déjà lancé reste signalé, avec son lien. */}

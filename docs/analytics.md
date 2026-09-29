@@ -37,22 +37,25 @@ Le seul identifiant transmis est l'**UUID du profil Supabase**, opaque, passé �
 
 ## Événements
 
-| Événement                    | Émis quand                                                       | Propriétés                                                                                     |
-| ---------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `session_created`            | le host arrive sur sa session — donc création réellement aboutie | `session_id`, `restaurant_count`, `list_count`, `superlikes`, `vetos`, `close_at_ratio`        |
-| `invite_shared`              | copie du code, copie du lien, partage natif, ou affichage du QR  | `session_id`, `method`                                                                         |
-| `session_joined`             | un invité arrive dans une session qu'il vient de rejoindre       | `session_id`, `via` (`code` · `link` · `scan`)                                                 |
-| `session_restaurants_added`  | un participant apporte des restos en salle d'attente             | `session_id`, `added_count`, `restaurant_count`                                                |
-| `vote_submitted`             | un vote est enregistré en base (pas une carte déjà votée)        | `session_id`, `value`, `kind`, `position`, `restaurant_count`                                  |
-| `session_closed`             | la session passe à `closed` sous les yeux d'un participant       | `session_id`, `reason` (`auto` · `deadline` · `host`), `participant_count`, `restaurant_count` |
-| `session_tiebreak`           | le host tranche une égalité parfaite                             | `session_id`, `method` (`runoff` · `draw`), `tied_count`                                       |
-| `decision_confirmed`         | le host confirme où le groupe va (« On y va »), ou en change     | `session_id`, `rank`, `follows_vote`, `is_change`                                              |
-| `list_shared`                | copie du lien de partage d'une liste                             | `method`                                                                                       |
-| `group_saved`                | un groupe récurrent est sauvegardé depuis un classement          | `member_count`                                                                                 |
-| `group_invited`              | un groupe est pré-invité depuis la salle d'attente               | `session_id`, `invited_count`                                                                  |
-| `results_visibility_changed` | le host ouvre ou referme le lien public du classement            | `session_id`, `is_public`                                                                      |
-| `results_shared`             | partage ou copie d'un lien de classement                         | `session_id`, `method`, `scope` (`public` · `participants`)                                    |
-| `$pageview`                  | à chaque changement de route, sur la route **masquée**           | —                                                                                              |
+| Événement                    | Émis quand                                                       | Propriétés                                                                                                                           |
+| ---------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `session_created`            | le host arrive sur sa session — donc création réellement aboutie | `session_id`, `restaurant_count`, `list_count`, `superlikes`, `vetos`, `close_at_ratio`, `open`, `suggested_count`, `suggested_kept` |
+| `invite_shared`              | copie du code, copie du lien, partage natif, ou affichage du QR  | `session_id`, `method`                                                                                                               |
+| `session_joined`             | un invité arrive dans une session qu'il vient de rejoindre       | `session_id`, `via` (`code` · `link` · `scan`)                                                                                       |
+| `session_restaurants_added`  | un participant apporte des restos en salle d'attente             | `session_id`, `added_count`, `restaurant_count`                                                                                      |
+| `vote_submitted`             | un vote est enregistré en base (pas une carte déjà votée)        | `session_id`, `value`, `kind`, `position`, `restaurant_count`                                                                        |
+| `session_closed`             | la session passe à `closed` sous les yeux d'un participant       | `session_id`, `reason` (`auto` · `deadline` · `host`), `participant_count`, `restaurant_count`                                       |
+| `session_tiebreak`           | le host tranche une égalité parfaite                             | `session_id`, `method` (`runoff` · `draw`), `tied_count`                                                                             |
+| `decision_confirmed`         | le host confirme où le groupe va (« On y va »), ou en change     | `session_id`, `rank`, `follows_vote`, `is_change`                                                                                    |
+| `list_shared`                | copie du lien de partage d'une liste                             | `method`                                                                                                                             |
+| `group_saved`                | un groupe récurrent est sauvegardé depuis un classement          | `member_count`                                                                                                                       |
+| `group_invited`              | un groupe est pré-invité depuis la salle d'attente               | `session_id`, `invited_count`                                                                                                        |
+| `results_visibility_changed` | le host ouvre ou referme le lien public du classement            | `session_id`, `is_public`                                                                                                            |
+| `results_shared`             | partage ou copie d'un lien de classement                         | `session_id`, `method`, `scope` (`public` · `participants`)                                                                          |
+| `pwa_install_prompted`       | réponse à la bannière « Installer l'app »                        | `outcome` (`accepted` · `dismissed` · `later`)                                                                                       |
+| `pwa_installed`              | l'app vient d'être installée sur l'appareil                      | `via` (`banner` · `browser`)                                                                                                         |
+| `push_subscribed`            | ce navigateur s'abonne aux notifications push                    | `session_id`, `context` (`launch` · `results`)                                                                                       |
+| `$pageview`                  | à chaque changement de route, sur la route **masquée**           | —                                                                                                                                    |
 
 Le catalogue est typé (`src/lib/analytics/events.ts`) : une propriété non prévue ne compile pas. C'est le garde-fou qui empêche d'y glisser une donnée personnelle par inadvertance.
 
@@ -83,6 +86,8 @@ Ces objets se configurent côté PostHog, pas dans le dépôt.
 4. **Répartition de `session_closed` par `reason`** : `auto` (tout le monde a voté), `deadline` (l'échéance est tombée) ou `host` (clôture forcée). La somme des deux dernières mesure le vote qui n'aboutit pas de lui-même ; leur bascule dit si l'échéance sert à quelque chose.
 5. **Abandon en cours de vote** : `vote_submitted` moyen sur `position` rapporté à `restaurant_count`.
 6. **Usage des règles personnalisées** : répartition de `session_created` par `close_at_ratio`, `superlikes` et `vetos`. Les réglages par défaut (1, 1, 100 %) sont le témoin : ce qui s'en écarte dit quelles tablées les règles fixes ne servaient pas.
+7. **Sessions ouvertes** : part de `session_created` avec `open = true`, et pour elles le nombre de `session_joined` par session. Une session ouverte qui ne reçoit personne après sa création dit que le lien n'est pas parti dans la conversation.
+8. **Sélection proposée** : parmi les `session_created` avec `suggested_count > 0`, le rapport `suggested_kept / suggested_count`. Près de 1, la proposition fait gagner l'étape la plus lourde ; près de 0 (« Repartir de zéro »), elle est mal comprise ou mal visée. `suggested_count = 0` est le témoin : un host sans historique, ou une session lancée depuis une liste.
 
 ## Déploiement
 

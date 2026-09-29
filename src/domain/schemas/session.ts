@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { OMK_MESSAGES } from '@/domain/errors'
 import { GROUPS_PER_SESSION_MAX } from '@/domain/schemas/group'
 import { DEADLINE_MAX_MINUTES, DEADLINE_MIN_MINUTES } from '@/domain/session-deadline'
 import { CLOSE_AT_RATIO_MIN, JOKERS_MAX } from '@/domain/session-rules'
@@ -68,6 +69,11 @@ export const CreateSessionSchema = z
         .optional()
     ),
     /**
+     * Session ouverte (#58) : pas de salle d'attente, on rejoint pendant le
+     * vote. Case à cocher, comme l'anti-fatigue : absente, c'est non.
+     */
+    open: z.coerce.boolean().optional(),
+    /**
      * Anti-fatigue. Une case décochée n'envoie rien du tout : le `null` que
      * rend `formData.get` se lit comme un non, et l'absence du champ aussi.
      */
@@ -76,6 +82,13 @@ export const CreateSessionSchema = z
   .refine((data) => data.listIds.length + data.restaurantIds.length > 0, {
     message: 'Sélectionne au moins une liste ou un restaurant',
     path: ['restaurantIds'],
+  })
+  // Sans échéance, une session ouverte ne se fermerait jamais. La base refuse
+  // aussi (`omk:open_session_needs_deadline`) ; dire non ici épargne un
+  // aller-retour, avec le même message.
+  .refine((data) => !data.open || data.closesInMinutes != null || data.closesAt != null, {
+    message: OMK_MESSAGES.open_session_needs_deadline,
+    path: ['closesInMinutes'],
   })
 
 export const JoinSessionSchema = z.object({

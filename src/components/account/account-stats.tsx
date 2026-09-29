@@ -100,13 +100,17 @@ export function StatsPanel({ stats }: { stats: MyStats | null }) {
   )
 }
 
-/** Chiffre mis en avant : la valeur, ce qu'elle mesure, et sa précision. */
+/**
+ * Chiffre mis en avant : la valeur, ce qu'elle mesure, et sa précision. La
+ * précision est un second `<dd>` : dans un `<dl>`, un groupe ne contient que
+ * des `<dt>` et des `<dd>`, sinon les lecteurs d'écran perdent l'association.
+ */
 function Tile({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
   return (
     <div className="flex flex-col gap-0.5 rounded-md bg-surface-2 px-3 py-2.5">
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="font-mono text-xl font-bold tabular">{value}</dd>
-      {hint && <p className="text-[0.7rem] text-muted-foreground">{hint}</p>}
+      {hint && <dd className="text-[0.7rem] text-muted-foreground">{hint}</dd>}
     </div>
   )
 }

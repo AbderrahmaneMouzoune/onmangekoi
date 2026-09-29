@@ -18,7 +18,15 @@ const SEEN_PREFIX = 'omk.analytics.seen.'
 const ENTRY_TTL_MS = 5 * 60_000
 
 export type SessionEntry =
-  { kind: 'created'; listCount: number } | { kind: 'joined'; via: 'code' | 'scan' }
+  | {
+      kind: 'created'
+      listCount: number
+      /** Restos proposés à l'ouverture du formulaire (#59) — absent hors formulaire */
+      suggestedCount?: number
+      /** Combien de ces restos proposés sont partis avec la session */
+      suggestedKept?: number
+    }
+  | { kind: 'joined'; via: 'code' | 'scan' }
 
 interface StoredEntry {
   entry: SessionEntry

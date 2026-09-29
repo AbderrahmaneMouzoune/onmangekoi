@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { RestaurantPickerFallback } from '@/components/restaurants/restaurant-picker-fallback'
 import { CreateSessionForm } from '@/components/session/create-session-form'
 import { DeadlinePickerFallback } from '@/components/session/deadline-picker'
+import { OpenSessionToggleFallback } from '@/components/session/open-session-toggle'
 import { RulesPickerFallback } from '@/components/session/rules-picker'
 import { SESSION_STEPS, SessionStep, StepTitle } from '@/components/session/session-step'
 import { buttonVariants } from '@/components/ui/button'
@@ -13,9 +14,11 @@ import { getMyGroups } from '@/data-access/groups'
 import { getListsWithRestaurantIds } from '@/data-access/lists'
 import { getRecentWinners } from '@/data-access/recent-winners'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
+import { getRestaurantSuggestions } from '@/data-access/suggestions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { recentWinnerDates } from '@/domain/recent-winners'
 import { parseRestaurantFilters } from '@/domain/restaurant-filters'
+import { SUGGESTION_SIZE, toRestaurantSuggestion } from '@/domain/suggestions'
 import { cn } from '@/lib/utils'
 
 const DAY_NAMES = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
@@ -36,6 +39,10 @@ interface CreateSessionSectionProps {
  * pas être prérendu et vit donc dans son `<Suspense>`. Le catalogue de
  * restaurants, lui, sort du cache partagé — filtres compris, puisqu'ils font
  * partie de la clé de cache.
+ *
+ * La sélection proposée (#59) vient d'une seule RPC, restaurants compris :
+ * aucune requête de plus par resto coché. Personnelle, elle ne passe jamais
+ * par le cache partagé.
  */
 export async function CreateSessionSection({ searchParams }: CreateSessionSectionProps) {
   const [supabase, user, params] = await Promise.all([
@@ -47,7 +54,7 @@ export async function CreateSessionSection({ searchParams }: CreateSessionSectio
 
   const filters = parseRestaurantFilters(params)
 
-  const [lists, groups, initialPage, recentWinners] = await Promise.all([
+  const [lists, groups, initialPage, recentWinners, suggestions] = await Promise.all([
     getListsWithRestaurantIds(supabase, user.id),
     getMyGroups(supabase),
     // Le rayon reste au vestiaire : le serveur ne connaît pas la position de
@@ -55,6 +62,7 @@ export async function CreateSessionSection({ searchParams }: CreateSessionSectio
     // un lien partagé avec `?km=1` arrive simplement sans filtre distance.
     getRestaurantCatalogPage({ priceMax: filters.priceMax, tags: filters.tags }),
     getRecentWinners(supabase),
+    getRestaurantSuggestions(supabase, SUGGESTION_SIZE),
   ])
 
   return (
@@ -65,6 +73,7 @@ export async function CreateSessionSection({ searchParams }: CreateSessionSectio
       defaultName={defaultSessionName()}
       recentWinners={recentWinnerDates(recentWinners)}
       initialFilters={filters}
+      suggestion={toRestaurantSuggestion(suggestions)}
     />
   )
 }
@@ -100,13 +109,16 @@ export function CreateSessionSectionFallback() {
         </SessionStep>
       </div>
 
-      <DeadlinePickerFallback
-        legend={
-          <StepTitle number={3}>
-            <span className="text-base font-semibold">{SESSION_STEPS.deadline}</span>
-          </StepTitle>
-        }
-      />
+      <div className="flex flex-col gap-4">
+        <DeadlinePickerFallback
+          legend={
+            <StepTitle number={3}>
+              <span className="text-base font-semibold">{SESSION_STEPS.deadline}</span>
+            </StepTitle>
+          }
+        />
+        <OpenSessionToggleFallback />
+      </div>
 
       <RulesPickerFallback />
 

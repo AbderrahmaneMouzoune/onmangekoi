@@ -50,4 +50,26 @@ describe('DeadlinePicker', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'à une heure' }))
     expect(hidden('closesAt')).toBeNull()
   })
+
+  it('should drop « Sans limite » and fall back on a duration when the deadline is required', () => {
+    render(<DeadlinePicker required />)
+    expect(screen.queryByRole('radio', { name: 'Sans limite' })).toBeNull()
+    expect(screen.getByRole('radio', { name: 'dans 1 h' })).toBeChecked()
+    expect(hidden('closesInMinutes')).toHaveValue('60')
+    expect(screen.getByText(/l’échéance est obligatoire/)).toBeInTheDocument()
+  })
+
+  it('should keep a duration picked before the deadline became required', async () => {
+    const { rerender } = render(<DeadlinePicker />)
+    await userEvent.click(screen.getByRole('radio', { name: 'dans 20 min' }))
+    rerender(<DeadlinePicker required />)
+    expect(hidden('closesInMinutes')).toHaveValue('20')
+  })
+
+  it('should give « Sans limite » back once the deadline is optional again', () => {
+    const { rerender } = render(<DeadlinePicker required />)
+    rerender(<DeadlinePicker />)
+    expect(screen.getByRole('radio', { name: 'Sans limite' })).toBeChecked()
+    expect(hidden('closesInMinutes')).toBeNull()
+  })
 })

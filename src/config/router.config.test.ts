@@ -50,6 +50,15 @@ describe('router', () => {
     expect(router.publicResults('H4V2Q8ZX0M')).toBe('/r/H4V2Q8ZX0M')
   })
 
+  it('should keep the offline page and the service worker public', () => {
+    expect(router.offline()).toBe('/offline')
+    expect(router.serviceWorker()).toBe('/sw.js')
+    for (const prefix of PROTECTED_PREFIXES) {
+      expect(router.offline().startsWith(prefix)).toBe(false)
+      expect(router.serviceWorker().startsWith(prefix)).toBe(false)
+    }
+  })
+
   it('should keep the public ranking out of the protected prefixes', () => {
     expect(PROTECTED_PREFIXES).not.toContain('/r')
   })

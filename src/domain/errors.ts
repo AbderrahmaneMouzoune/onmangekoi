@@ -22,6 +22,8 @@ export const OMK_MESSAGES: Record<string, string> = {
   session_not_voting: 'Le vote n’est pas en cours.',
   no_tie: 'Il n’y a pas d’égalité à départager.',
   tiebreak_settled: 'Cette égalité a déjà été départagée.',
+  open_session_needs_deadline:
+    'Une session ouverte a besoin d’une échéance : sans elle, le vote ne se fermerait jamais.',
   deadline_too_soon: 'Choisis une échéance dans au moins une minute.',
   deadline_too_far: 'Une échéance ne peut pas dépasser 12 heures.',
   deadline_passed: 'L’échéance est dépassée : prolonge-la avant de lancer le vote.',
@@ -55,6 +57,8 @@ export const OMK_MESSAGES: Record<string, string> = {
   too_many_groups: 'Tu as atteint la limite de 20 groupes.',
   too_many_invitations: 'Cette session ne peut pas dépasser 50 invitations en attente.',
   group_owner_cannot_leave: 'Tu es le propriétaire de ce groupe : supprime-le pour t’en défaire.',
+  invalid_push_subscription:
+    'Ton navigateur a renvoyé un abonnement aux notifications illisible. Réessaie.',
 }
 
 export const GENERIC_ERROR = 'Une erreur est survenue. Réessaie dans un instant.'

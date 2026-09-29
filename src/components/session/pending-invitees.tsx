@@ -94,7 +94,8 @@ export function PendingInvitees({
             })}
           </ul>
           <p className="text-xs text-muted-foreground">
-            Envoie-leur le lien : ils ne comptent comme participants qu’une fois la session ouverte.
+            Envoie-leur le lien : ils ne comptent comme participants qu’une fois entrés dans la
+            session.
           </p>
         </>
       )}

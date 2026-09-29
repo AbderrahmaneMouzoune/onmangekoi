@@ -1,5 +1,6 @@
 /**
- * Règles de vote d'une session : quotas de jokers et seuil de clôture.
+ * Règles de vote d'une session : quotas de jokers, seuil de clôture et mode
+ * ouvert.
  * Tout est pur — la base rejoue les mêmes bornes (`public.rules_are_valid`) et
  * reste la source de vérité ; ces fonctions servent l'interface.
  */
@@ -24,6 +25,13 @@ export type SessionRules = {
   vetos: number
   /** Part des participants qui doit avoir terminé pour que le classement tombe */
   close_at_ratio: number
+  /**
+   * Session ouverte (#58) : pas de salle d'attente, on rejoint pendant le vote
+   * et seule l'échéance — obligatoire — ou le host ferment. Comme en base, la
+   * clé n'existe que lorsqu'elle vaut `true` : une session ordinaire garde les
+   * règles d'avant, à l'identique.
+   */
+  open?: true
 }
 
 /** Les règles d'avant #16, que reprend toute session qui ne dit rien. */
@@ -63,11 +71,18 @@ export function parseSessionRules(value: Json | null | undefined): SessionRules 
     superlikes: readJoker(raw.superlikes, DEFAULT_SESSION_RULES.superlikes),
     vetos: readJoker(raw.vetos, DEFAULT_SESSION_RULES.vetos),
     close_at_ratio: readRatio(raw.close_at_ratio, DEFAULT_SESSION_RULES.close_at_ratio),
+    ...(raw.open === true ? { open: true as const } : {}),
   }
+}
+
+/** Session ouverte : chacun vote à son heure, jusqu'à l'échéance. */
+export function isOpenSession(rules: SessionRules): boolean {
+  return rules.open === true
 }
 
 export function isDefaultRules(rules: SessionRules): boolean {
   return (
+    !isOpenSession(rules) &&
     rules.superlikes === DEFAULT_SESSION_RULES.superlikes &&
     rules.vetos === DEFAULT_SESSION_RULES.vetos &&
     rules.close_at_ratio === DEFAULT_SESSION_RULES.close_at_ratio
@@ -79,17 +94,24 @@ export interface RulesInput {
   superlikes?: number | null
   vetos?: number | null
   closeAtRatio?: number | null
+  open?: boolean | null
 }
 
 /**
  * Règles à envoyer à la base, ou `null` quand rien ne change : l'appel reste
  * alors celui d'avant et c'est la valeur par défaut de la RPC qui parle.
+ *
+ * En mode ouvert, le seuil n'a pas d'objet — le nombre de votants n'est pas
+ * connu d'avance — et repart à 100 %, comme la base le ferait : un seuil
+ * réglé avant de cocher « ouverte » ne doit pas voyager pour rien.
  */
 export function resolveRules(input: RulesInput): SessionRules | null {
+  const open = input.open === true
   const rules: SessionRules = {
     superlikes: input.superlikes ?? DEFAULT_SESSION_RULES.superlikes,
     vetos: input.vetos ?? DEFAULT_SESSION_RULES.vetos,
-    close_at_ratio: input.closeAtRatio ?? DEFAULT_SESSION_RULES.close_at_ratio,
+    close_at_ratio: open ? 1 : (input.closeAtRatio ?? DEFAULT_SESSION_RULES.close_at_ratio),
+    ...(open ? { open: true as const } : {}),
   }
   return isDefaultRules(rules) ? null : rules
 }
@@ -111,13 +133,23 @@ export function formatRatio(ratio: number): string {
   return percent.format(ratio)
 }
 
-/** Résumé des règles, une phrase courte par réglage. */
+/**
+ * Résumé des règles, une phrase courte par réglage. Une session ouverte
+ * s'annonce en premier — c'est ce qui change le plus la façon d'y entrer —
+ * et remplace le seuil, qui ne s'y applique pas, par l'échéance.
+ */
 export function describeRules(rules: SessionRules): string[] {
-  return [
+  const jokers = [
     rules.superlikes > 0
       ? countLabel(rules.superlikes, 'coup de cœur', 'coups de cœur')
       : 'Aucun coup de cœur',
     rules.vetos > 0 ? countLabel(rules.vetos, 'veto') : 'Aucun veto',
+  ]
+  if (isOpenSession(rules)) {
+    return ['Session ouverte : chacun vote à son heure', ...jokers, 'Clôture à l’échéance']
+  }
+  return [
+    ...jokers,
     rules.close_at_ratio >= 1
       ? 'Clôture quand tout le monde a voté'
       : `Clôture dès ${formatRatio(rules.close_at_ratio)} des votants`,

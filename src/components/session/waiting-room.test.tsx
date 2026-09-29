@@ -20,6 +20,7 @@ vi.mock('@/actions/sessions', () => ({
   launchSessionAction: vi.fn(),
   leaveSessionAction: vi.fn(),
 }))
+vi.mock('@/actions/push', () => ({ subscribePushAction: vi.fn(), unsubscribePushAction: vi.fn() }))
 
 // Le panneau des restos et les invités en attente ont leur propre couverture :
 // ici, seul le bouton de lancement est en jeu.

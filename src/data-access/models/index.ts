@@ -64,6 +64,23 @@ export type PublicListEntry = Functions['public_lists']['Returns'][number]
 export type RecentWinner = Functions['recent_winners']['Returns'][number]
 
 /**
+ * Une ligne de la sélection proposée à la création (`suggest_restaurants`,
+ * issue #59). La base n'écrit que ces valeurs-là dans `reason` et `source` ;
+ * le générateur, lui, n'y voit que du texte.
+ *  - `recent` / `history` : vu récemment dans une session, sans avoir gagné ;
+ *  - `never_proposed` / `mine` : jamais proposé, pris dans les listes ou les
+ *    ajouts de la personne ;
+ *  - `never_proposed` / `catalog` : jamais proposé, le dernier arrivé au carnet.
+ */
+export type SuggestedRestaurantRow = Omit<
+  Functions['suggest_restaurants']['Returns'][number],
+  'reason' | 'source'
+> & {
+  reason: 'recent' | 'never_proposed'
+  source: 'history' | 'mine' | 'catalog'
+}
+
+/**
  * Invitation en attente, vue par l'invité. Le pseudo du host est nul quand
  * il a supprimé son compte ; le nom du groupe l'est quand le groupe a été
  * supprimé depuis l'invitation — la session, elle, reste rejoignable.

@@ -43,6 +43,7 @@ import type { RestaurantFilters } from '@/domain/restaurant-filters'
 
 const NO_LISTS: ListWithRestaurantIds[] = []
 const NO_IDS: string[] = []
+const NO_RESTAURANTS: Restaurant[] = []
 
 const SEARCH_PLACEHOLDER: Record<RestaurantSource, string> = {
   lists: '',
@@ -56,6 +57,11 @@ interface RestaurantPickerProps {
   /** Ids sélectionnés à l'unité (contrôlé) */
   value: string[]
   onChange: (ids: string[]) => void
+  /**
+   * Restaurants cochés d'avance mais pas forcément dans la première page du
+   * carnet — une sélection proposée : le panier doit pouvoir les nommer.
+   */
+  knownRestaurants?: Restaurant[]
   /** Ids déjà présents ailleurs (ex. déjà dans la liste qu'on édite) : cochés, non modifiables */
   lockedIds?: string[]
   /** Anti-fatigue : date du dernier sacre, par restaurant — badgée sur la ligne */
@@ -97,6 +103,7 @@ export function RestaurantPicker({
   initialPage,
   value,
   onChange,
+  knownRestaurants = NO_RESTAURANTS,
   lockedIds = NO_IDS,
   recentWinners = NO_RECENT_WINNERS,
   excludeRecent = false,
@@ -150,7 +157,7 @@ export function RestaurantPicker({
   const idPrefix = useId()
   /** Cache des restaurants vus, pour afficher les sélectionnés même hors résultats */
   const [known, setKnown] = useState<Map<string, Restaurant>>(
-    () => new Map(initialPage.items.map((r) => [r.id, r]))
+    () => new Map([...knownRestaurants, ...initialPage.items].map((r) => [r.id, r]))
   )
   const addButtonRef = useRef<HTMLButtonElement>(null)
 

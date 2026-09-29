@@ -52,4 +52,12 @@ describe('RulesPicker', () => {
     expect(hidden('superlikes')).toBeInTheDocument()
     expect(hidden('closeAtRatio')).toBeInTheDocument()
   })
+
+  it('should drop the threshold of an open session, which has none', () => {
+    render(<RulesPicker open />)
+    expect(screen.queryByRole('radiogroup', { name: 'Seuil de clôture' })).toBeNull()
+    expect(hidden('closeAtRatio')).toBeNull()
+    expect(hidden('vetos')).toHaveValue('1')
+    expect(screen.getByText(/Session ouverte : chacun vote à son heure/)).toBeInTheDocument()
+  })
 })

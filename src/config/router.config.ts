@@ -112,6 +112,11 @@ export const router = {
 
   privacy: () => '/legal/privacy',
 
+  /** Page servie par le service worker quand une navigation échoue faute de réseau. */
+  offline: () => '/offline',
+  /** Script du service worker, servi par une Route Handler (`src/app/sw.js/route.ts`). */
+  serviceWorker: () => '/sw.js',
+
   /** Journal des versions, côté produit. */
   changelog: () => '/nouveautes',
   /** Flux RSS des nouveautés. */
