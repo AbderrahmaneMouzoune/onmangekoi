@@ -4,6 +4,7 @@ import {
   DEFAULT_SESSION_RULES,
   describeRules,
   isDefaultRules,
+  isOpenSession,
   jokerBadge,
   jokerQuotas,
   jokersSentence,
@@ -68,6 +69,47 @@ describe('resolveRules', () => {
       vetos: 1,
       close_at_ratio: 0.8,
     })
+  })
+})
+
+describe('open sessions', () => {
+  it('should read the open mode only when the base says `true`', () => {
+    const open = parseSessionRules({ superlikes: 1, vetos: 1, close_at_ratio: 1, open: true })
+    expect(isOpenSession(open)).toBe(true)
+    expect(open.open).toBe(true)
+
+    // Une session ordinaire garde la forme d'avant : pas de clé `open`.
+    expect(parseSessionRules({ superlikes: 1, vetos: 1, close_at_ratio: 1 })).not.toHaveProperty(
+      'open'
+    )
+    expect(isOpenSession(parseSessionRules({ open: 'oui' }))).toBe(false)
+  })
+
+  it('should never count an open session as the default rules', () => {
+    expect(isDefaultRules(rules({ open: true }))).toBe(false)
+  })
+
+  it('should send the mode and drop a threshold that no longer applies', () => {
+    expect(resolveRules({ open: true, closeAtRatio: 0.6 })).toEqual({
+      superlikes: 1,
+      vetos: 1,
+      close_at_ratio: 1,
+      open: true,
+    })
+  })
+
+  it('should say nothing about the mode when the session is an ordinary one', () => {
+    expect(resolveRules({ open: false })).toBeNull()
+    expect(resolveRules({ open: false, vetos: 2 })).not.toHaveProperty('open')
+  })
+
+  it('should announce the open mode first and replace the threshold by the deadline', () => {
+    expect(describeRules(rules({ open: true, close_at_ratio: 0.8 }))).toEqual([
+      'Session ouverte : chacun vote à son heure',
+      '1 coup de cœur',
+      '1 veto',
+      'Clôture à l’échéance',
+    ])
   })
 })
 

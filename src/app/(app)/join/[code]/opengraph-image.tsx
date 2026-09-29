@@ -3,6 +3,7 @@ import { ImageResponse } from 'next/og'
 import { OgCard } from '@/components/og/og-card'
 import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
+import { isOpenSession, parseSessionRules } from '@/domain/session-rules'
 import { parseInviteIdentifier } from '@/domain/share'
 import { countLabel, displayPseudo } from '@/lib/format'
 
@@ -27,7 +28,13 @@ export default async function InviteOpenGraphImage({
       <OgCard
         eyebrow={`${displayPseudo(preview.host_pseudo)} t’invite`}
         title={preview.name}
-        subtitle={`${countLabel(preview.restaurant_count, 'resto')} à départager. Vote en deux minutes.`}
+        subtitle={
+          // Une session ouverte se partage dans la conversation, et chacun la
+          // découvre à son heure : la carte dit qu'il n'y a pas de rendez-vous.
+          isOpenSession(parseSessionRules(preview.rules))
+            ? `${countLabel(preview.restaurant_count, 'resto')} à départager. Vote quand tu veux, avant la clôture.`
+            : `${countLabel(preview.restaurant_count, 'resto')} à départager. Vote en deux minutes.`
+        }
         footer="Sans compte"
       />
     ) : (

@@ -29,16 +29,16 @@ Les quotas de jokers et le seuil de clôture se règlent **à la création** —
 
 | Règle               | Comportement                                                                           |
 | ------------------- | -------------------------------------------------------------------------------------- |
-| Lancement           | Réservé au host, à partir de 2 participants et 2 restaurants                           |
+| Lancement           | Réservé au host, à partir de 2 participants et 2 restaurants — sauf session ouverte    |
 | Composition         | En attente, **chaque participant** ajoute ses restos et invite qui il veut             |
 | Retrait             | Chacun retire ce qu'il a apporté ; le host arbitre ; le dernier resto reste            |
 | Snapshot            | Les restaurants sont figés au lancement, pas à la création                             |
 | Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                         |
-| Clôture automatique | Déclenchée en base dès que le seuil de votants est atteint — 100 % par défaut          |
+| Clôture automatique | Déclenchée en base dès que le seuil de votants est atteint — jamais en session ouverte |
 | Clôture à l'heure   | Échéance optionnelle choisie à la création — le vote se ferme tout seul                |
 | Clôture forcée      | Le host peut clôturer à tout moment — les votes manquants comptent 0                   |
 | Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)                     |
-| Rejoindre           | Impossible une fois le vote lancé ; un participant existant retrouve sa session        |
+| Rejoindre           | Impossible une fois le vote lancé, sauf session ouverte jusqu'à son échéance           |
 | Départage           | À égalité parfaite, le host choisit : second tour entre les ex æquo, ou tirage au sort |
 | Décision            | « On y va » : le host confirme où le groupe va — le gagnant, ou un autre resto du vote |
 
@@ -75,6 +75,30 @@ La clôture par échéance emprunte **exactement** le chemin de la clôture manu
 Une durée (« dans 10 min ») est datée par l'horloge du serveur au moment de la création ; une heure précise (« à 12:00 ») est convertie en instant absolu par le navigateur, seul à connaître le fuseau de la personne. Le compte à rebours se relit sur l'horloge à chaque seconde plutôt que de se décrémenter : un onglet revenu au premier plan affiche le temps réellement restant, pas celui qu'il aurait compté s'il n'avait pas dormi.
 
 Une session **en attente** dont l'échéance tombe n'est jamais clôturée : sans un seul vote, le classement n'aurait aucun sens. `launch_session` refuse de la lancer et invite le host à prolonger — c'est la seule impasse possible, et elle a sa sortie.
+
+## Session ouverte
+
+Une session supposait tout le monde présent au même moment : le host lance à partir de deux participants, et plus personne n'entre ensuite. Un groupe se coordonne pourtant dans une conversation — le message part à 10 h, chacun le voit quand il le voit. La case **« Session ouverte »**, sous l'échéance du formulaire de création, supprime le rendez-vous.
+
+| Session ordinaire                                     | Session ouverte                                                         |
+| ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| Salle d'attente, puis « Lancer le vote »              | Le vote commence à la création : le host arrive directement sur le deck |
+| On rejoint tant que le vote n'est pas lancé           | On rejoint **pendant** le vote, jusqu'à l'échéance                      |
+| Échéance facultative                                  | Échéance **obligatoire** — « Sans limite » disparaît du formulaire      |
+| Clôture au seuil de votants (100 % par défaut)        | Pas de clôture au seuil : seules l'échéance et le host ferment          |
+| Chacun peut apporter un resto en salle d'attente      | Deux restos au moins dès la création, et le deck ne bouge plus          |
+| Code, QR et groupes à inviter dans la salle d'attente | Les mêmes, repliés au-dessus du deck — dépliés pour le host encore seul |
+
+Le mode vit dans les règles, sous la clé `rules.open` — pas dans une colonne à part. C'est une règle de session comme les jokers et le seuil : choisie à la création, annoncée sur l'écran d'invitation, recopiée dans l'export RGPD, et le paramètre `p_rules` de `create_session` suffit à la transmettre. Surtout, `open` et `close_at_ratio` se contraignent l'un l'autre : dans le même objet, une seule fonction (`rules_are_valid`) vérifie leur cohérence. La clé n'est écrite que lorsqu'elle vaut `true` — une session ordinaire garde exactement les règles d'avant.
+
+- **Pas de clôture à 100 %.** Le nombre de votants n'est pas connu d'avance : le premier qui termine « atteindrait 100 % » tout seul, au nez des suivants. Le seuil n'a pas d'objet et est ramené à 100 % dans les règles stockées, pour qu'elles ne racontent pas un seuil qui n'existe pas.
+- **L'échéance est obligatoire, et vérifiée à la création.** Sans elle, une session ouverte ne se fermerait jamais : `create_session` refuse avec `omk:open_session_needs_deadline`, et deux contraintes `check` interdisent qu'une autre route produise une session ouverte sans échéance ou en salle d'attente. Le compte à rebours et `extend_session()` restent ceux du vote chronométré.
+- **Le mode est figé à la création**, pas au lancement : c'est lui qui décide s'il y a une salle d'attente. Le trigger qui gèle les règles refuse tout changement de `open`, même sur une session encore en attente.
+- **Un arrivant tardif vote sur le même instantané** de restaurants : rien ne change au calcul, les votes manquants comptent déjà 0. Personne n'ajoute de resto en cours de route — il partirait avec des zéros qu'il n'a pas mérités.
+- **Rejoindre** : `join_session` accepte une arrivée pendant le vote d'une session ouverte, et la refuse dès l'échéance passée — même si le balayage à la minute ne l'a pas encore écrite. Une session ordinaire refuse toujours avec `omk:session_started`. L'aperçu d'invitation (`/join/<code>`, son image Open Graph, l'écran de pseudo) reste visible aux visiteurs anonymes jusqu'à l'échéance et annonce « Session ouverte ».
+- **Invitations** : un groupe s'invite pendant le vote, et l'invitation reste sous « On t'attend » jusqu'à l'échéance.
+- **Second tour** : il n'hérite pas du mode ouvert. Ses votants sont connus — ceux qui ont voté au premier tour, plus le host —, il n'a pas d'échéance et se clôt comme tout second tour, quand chacun a fini. Un participant entré sans jamais voter n'y est pas convié : il bloquerait un vote qui ne l'a pas attendu.
+- **Historique et purge** : rien de particulier. La session naît `voting` avec `launched_at` posé, se clôt à l'échéance, puis suit la rétention des sessions closes.
 
 ## Départager une égalité
 
@@ -118,7 +142,7 @@ Un coup de cœur, un veto, classement quand tout le monde a voté : ces règles 
 | Vetos            | 0 à 5 par personne       | 1          |
 | Seuil de clôture | 50 % à 100 % des votants | 100 %      |
 
-Tout tient dans `sessions.rules`, un objet jsonb à trois clés dont le défaut reproduit exactement les règles d'avant : une session qui ne dit rien vit comme avant. Une contrainte `check` en borne les valeurs, et `create_session` complète les clés absentes — le formulaire n'envoie que ce qu'il change.
+Tout tient dans `sessions.rules`, un objet jsonb à trois clés (plus `open`, voir « Session ouverte ») dont le défaut reproduit exactement les règles d'avant : une session qui ne dit rien vit comme avant. Une contrainte `check` en borne les valeurs, et `create_session` complète les clés absentes — le formulaire n'envoie que ce qu'il change.
 
 La base reste seule juge : `submit_vote` compte les jokers déjà posés au lieu de lire un booléen, et le trigger de clôture compare le nombre de votants arrivés au bout à `ceil(participants × seuil)`, jamais moins d'un. Sous 100 %, le classement tombe avant que tout le monde ait voté — les bulletins manquants comptent 0, comme lors d'une clôture forcée — et le deck de celui qui votait encore s'arrête proprement sur le classement.
 

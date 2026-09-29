@@ -1236,6 +1236,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      session_is_open: { Args: { p_rules: Json }; Returns: boolean }
       session_preview: {
         Args: { p_identifier: string }
         Returns: {

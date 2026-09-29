@@ -16,6 +16,7 @@ import {
 import { createServerClient } from '@/data-access/supabase/server'
 import { getMyVotes } from '@/data-access/votes'
 import { recentWinnerDates } from '@/domain/recent-winners'
+import { isOpenSession, parseSessionRules } from '@/domain/session-rules'
 import { qrCodeSvg } from '@/lib/qr'
 import { inviteUrl } from '@/lib/site'
 
@@ -62,18 +63,22 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
 
   const url = inviteUrl(session)
   const waiting = session.status === 'waiting'
+  // On entre encore : en salle d'attente, ou pendant le vote d'une session
+  // ouverte (#58), qui n'a pas de salle d'attente.
+  const joinable =
+    waiting || (session.status === 'voting' && isOpenSession(parseSessionRules(session.rules)))
   // Pré-inviter un groupe reste la main du host : c'est lui qui compose la
   // salle. Inviter par lien, lui, n'appartient à personne.
-  const waitingHost = waiting && session.host_id === user.id
+  const joinableHost = joinable && session.host_id === user.id
 
-  // Salle d'attente : chacun peut inviter et apporter un resto, donc le QR et
-  // le catalogue partent pour tout le monde — jamais pendant le vote, où ils
-  // ne serviraient qu'à alourdir la charge utile.
+  // Tant qu'on entre, chacun peut inviter : le QR part pour tout le monde. Le
+  // catalogue, lui, ne sert qu'en salle d'attente — pendant le vote, même
+  // ouvert, le deck est figé et personne n'apporte plus de resto.
   const [qrSvg, restaurantCatalog, invitations, groups] = await Promise.all([
-    waiting ? qrCodeSvg(url) : null,
+    joinable ? qrCodeSvg(url) : null,
     waiting ? getRestaurantCatalogPage() : null,
-    waitingHost ? getSessionInvitations(supabase, session.id) : [],
-    waitingHost ? getMyGroups(supabase) : [],
+    joinableHost ? getSessionInvitations(supabase, session.id) : [],
+    joinableHost ? getMyGroups(supabase) : [],
   ])
 
   return (

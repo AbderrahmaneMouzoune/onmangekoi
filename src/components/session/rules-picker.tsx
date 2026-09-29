@@ -16,6 +16,9 @@ const LEGEND = 'Règles du vote'
 const HINT =
   'Les règles sont figées au lancement. Sous 100 %, le classement tombe dès le seuil atteint : les bulletins manquants comptent 0, comme lors d’une clôture forcée.'
 
+const OPEN_HINT =
+  'Session ouverte : pas de seuil de clôture, le nombre de votants n’est pas connu d’avance. L’échéance clôt le vote — ou toi, à la main. Les bulletins manquants comptent 0.'
+
 function optionClassName(isSelected: boolean) {
   return cn(
     'rounded-full border px-3.5 py-1.5 text-sm transition-colors',
@@ -67,6 +70,14 @@ function ChoiceGroup<T extends number>({
 const jokerLabel = (count: number) => (count === 0 ? 'Aucun' : String(count))
 const ratioLabel = (ratio: number) => (ratio >= 1 ? 'Tout le monde' : formatRatio(ratio))
 
+interface RulesPickerProps {
+  /**
+   * Session ouverte, cochée plus haut dans le formulaire : le seuil n'y a pas
+   * d'objet, son réglage s'efface — et n'est plus envoyé.
+   */
+  open?: boolean
+}
+
 /**
  * Réglage des règles à la création : quotas de jokers et seuil de clôture.
  * Replié par défaut — la majorité des groupes s'accommode très bien d'un coup
@@ -76,12 +87,16 @@ const ratioLabel = (ratio: number) => (ratio >= 1 ? 'Tout le monde' : formatRati
  * Un `<details>` natif plutôt qu'un accordéon maison : il s'ouvre au clavier,
  * s'annonce tout seul et fonctionne avant même que le JavaScript arrive.
  */
-export function RulesPicker() {
+export function RulesPicker({ open = false }: RulesPickerProps = {}) {
   const [superlikes, setSuperlikes] = useState<number>(DEFAULT_SESSION_RULES.superlikes)
   const [vetos, setVetos] = useState<number>(DEFAULT_SESSION_RULES.vetos)
   const [closeAtRatio, setCloseAtRatio] = useState<number>(DEFAULT_SESSION_RULES.close_at_ratio)
 
-  const summary = describeRules({ superlikes, vetos, close_at_ratio: closeAtRatio }).join(' · ')
+  const summary = describeRules(
+    open
+      ? { superlikes, vetos, close_at_ratio: 1, open: true }
+      : { superlikes, vetos, close_at_ratio: closeAtRatio }
+  ).join(' · ')
 
   return (
     <details className="rounded-lg border border-line bg-surface">
@@ -109,15 +124,17 @@ export function RulesPicker() {
           label={jokerLabel}
           name="vetos"
         />
-        <ChoiceGroup
-          legend="Seuil de clôture"
-          options={CLOSE_AT_RATIO_CHOICES}
-          value={closeAtRatio}
-          onChange={setCloseAtRatio}
-          label={ratioLabel}
-          name="closeAtRatio"
-        />
-        <p className="text-xs text-muted-foreground">{HINT}</p>
+        {!open && (
+          <ChoiceGroup
+            legend="Seuil de clôture"
+            options={CLOSE_AT_RATIO_CHOICES}
+            value={closeAtRatio}
+            onChange={setCloseAtRatio}
+            label={ratioLabel}
+            name="closeAtRatio"
+          />
+        )}
+        <p className="text-xs text-muted-foreground">{open ? OPEN_HINT : HINT}</p>
       </div>
     </details>
   )

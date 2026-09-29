@@ -54,6 +54,7 @@ export async function createSessionAction(
     superlikes: formData.get('superlikes'),
     vetos: formData.get('vetos'),
     closeAtRatio: formData.get('closeAtRatio'),
+    open: formData.get('open'),
     excludeRecentWinners: formData.get('excludeRecentWinners'),
   })
   if (!parsed.success) {

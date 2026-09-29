@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { FinishedPanel } from '@/components/session/finished-panel'
+import { OpenSessionPanel } from '@/components/session/open-session-panel'
 import { SessionCountdown } from '@/components/session/session-countdown'
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
 import { VoteDeck } from '@/components/session/vote-deck'
 import { WaitingRoom } from '@/components/session/waiting-room'
 import { router } from '@/config/router.config'
 import { closeAttribution } from '@/domain/session-deadline'
-import { parseSessionRules } from '@/domain/session-rules'
+import { isOpenSession, parseSessionRules } from '@/domain/session-rules'
 import { useSessionRoom } from '@/hooks/use-session-room'
 import { captureEvent } from '@/lib/analytics/client'
 import { markOnce, takeSessionEntry } from '@/lib/analytics/handoff'
@@ -41,13 +42,13 @@ interface SessionRoomProps {
   recentWinners: RecentWinnerDates
   meId: string
   inviteUrl: string
-  /** QR code SVG du lien d'invitation, rendu côté serveur (salle d'attente) */
+  /** QR code SVG du lien d'invitation, rendu côté serveur (salle d'attente, session ouverte) */
   qrSvg: string | null
   /** Classement du premier tour, quand cette session en est le second */
   firstRoundUrl: string | null
   /** Invités pré-ajoutés en attente — vide pour qui n'est pas le host. */
   invitations: InvitationWithProfile[]
-  /** Groupes du host, à inviter depuis la salle d'attente. */
+  /** Groupes du host, à inviter depuis la salle d'attente ou pendant un vote ouvert. */
   groups: GroupWithMembers[]
 }
 
@@ -61,6 +62,10 @@ const STATUS_ANNOUNCEMENTS: Record<SessionStatus, string> = {
 /**
  * Orchestre l'écran de session selon son statut, en temps réel :
  *  waiting → salle d'attente · voting → deck (ou attente des autres) · closed → résultats.
+ *
+ * Une session ouverte n'a pas de salle d'attente : elle naît en `voting`, et
+ * ce que la salle offrait — les règles, l'invitation — se replie au-dessus du
+ * deck, pour qui arrive pendant que le vote tourne.
  *
  * Le changement d'état arrive par Realtime, sans geste de la personne : il est
  * annoncé aux lecteurs d'écran et le focus est posé sur la nouvelle étape,
@@ -94,6 +99,7 @@ export function SessionRoom({
   // Les règles sont figées au lancement : les relire une fois suffit, et le
   // deck s'appuie sur leur identité pour ne pas se réabonner au clavier.
   const rules = useMemo(() => parseSessionRules(session.rules), [session.rules])
+  const open = isOpenSession(rules)
 
   const [finishedLocally, setFinishedLocally] = useState(
     myVotedIds.length >= initialRestaurants.length && initialRestaurants.length > 0
@@ -115,6 +121,7 @@ export function SessionRoom({
         superlikes: rules.superlikes,
         vetos: rules.vetos,
         close_at_ratio: rules.close_at_ratio,
+        open: isOpenSession(rules),
       })
       return
     }
@@ -133,8 +140,10 @@ export function SessionRoom({
 
     // Personne n'annonce la clôture : elle vient de la base dès que tout le
     // monde a fini ou que l'échéance tombe, sinon c'est le host qui l'a forcée.
+    // En session ouverte, « tout le monde a fini » ne clôt rien : seule
+    // l'échéance ou le host ont pu le faire.
     const everyoneFinished =
-      participants.length > 0 && participants.every((p) => p.has_finished_voting)
+      !open && participants.length > 0 && participants.every((p) => p.has_finished_voting)
     captureEvent('session_closed', {
       session_id: session.id,
       reason: closeAttribution({
@@ -152,6 +161,7 @@ export function SessionRoom({
     session.closed_at,
     participants,
     restaurants.length,
+    open,
   ])
 
   useEffect(() => {
@@ -229,6 +239,19 @@ export function SessionRoom({
             groups={groups}
             onLaunched={setSession}
             onRestaurantsChanged={refresh}
+          />
+        )}
+
+        {session.status === 'voting' && open && (
+          <OpenSessionPanel
+            session={session}
+            rules={rules}
+            participants={participants}
+            isHost={isHost}
+            inviteUrl={inviteUrl}
+            qrSvg={qrSvg}
+            invitations={invitations}
+            groups={groups}
           />
         )}
 

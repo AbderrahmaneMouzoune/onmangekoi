@@ -10,7 +10,12 @@ import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
 import { TwoStepButton } from '@/components/ui/two-step-button'
-import { formatRatio, parseSessionRules, requiredFinishers } from '@/domain/session-rules'
+import {
+  formatRatio,
+  isOpenSession,
+  parseSessionRules,
+  requiredFinishers,
+} from '@/domain/session-rules'
 import { countLabel } from '@/lib/format'
 
 import type { ParticipantWithProfile, Session } from '@/data-access/models'
@@ -29,6 +34,10 @@ interface FinishedPanelProps {
 /**
  * Après ses votes : l'avancée du groupe. Sur grand écran, l'ardoise reste
  * à gauche et les participants défilent à droite, comme en salle d'attente.
+ *
+ * En session ouverte, il n'y a personne « à attendre » : le nombre de votants
+ * n'est pas connu d'avance, d'autres peuvent encore arriver, et seule
+ * l'échéance — ou le host — ferme le vote. L'ardoise le dit.
  */
 export function FinishedPanel({
   session,
@@ -46,6 +55,7 @@ export function FinishedPanel({
   // Sous 100 %, le classement tombe avant que tout le monde ait voté : annoncer
   // l'attente restante sur l'effectif complet mentirait sur ce qui reste.
   const rules = parseSessionRules(session.rules)
+  const open = isOpenSession(rules)
   const required = requiredFinishers(total, rules.close_at_ratio)
   const missing = Math.max(0, required - finished)
 
@@ -72,13 +82,15 @@ export function FinishedPanel({
             {meFinished ? 'Tu as tout voté.' : 'Le vote est en cours.'}
           </h2>
           <p className="text-sm text-chalk-muted">
-            {missing === 0
-              ? finished === total
-                ? 'Tout le monde a terminé, le classement arrive.'
-                : 'Le seuil de clôture est atteint, le classement arrive.'
-              : `On attend ${countLabel(missing, 'personne')}. Le classement s’affichera automatiquement.`}
+            {open
+              ? 'La session reste ouverte jusqu’à l’échéance : d’autres peuvent encore arriver et voter. Le classement s’affichera à la clôture.'
+              : missing === 0
+                ? finished === total
+                  ? 'Tout le monde a terminé, le classement arrive.'
+                  : 'Le seuil de clôture est atteint, le classement arrive.'
+                : `On attend ${countLabel(missing, 'personne')}. Le classement s’affichera automatiquement.`}
           </p>
-          {rules.close_at_ratio < 1 && (
+          {!open && rules.close_at_ratio < 1 && (
             <p className="text-xs text-chalk-muted">
               Clôture dès {formatRatio(rules.close_at_ratio)} des participants — soit {required} sur{' '}
               {total}.
@@ -115,9 +127,11 @@ export function FinishedPanel({
               disabled={isPending}
             />
             <p className="text-center text-xs text-muted-foreground">
-              {rules.close_at_ratio < 1
-                ? 'Sinon, la session se clôture toute seule au seuil choisi.'
-                : 'Sinon, la session se clôture toute seule quand tout le monde a voté.'}
+              {open
+                ? 'Sinon, la session se clôture toute seule à l’échéance.'
+                : rules.close_at_ratio < 1
+                  ? 'Sinon, la session se clôture toute seule au seuil choisi.'
+                  : 'Sinon, la session se clôture toute seule quand tout le monde a voté.'}
             </p>
           </div>
         )}

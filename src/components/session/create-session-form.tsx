@@ -6,6 +6,7 @@ import { useActionState, useId, useMemo, useState } from 'react'
 import { createSessionAction } from '@/actions/sessions'
 import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
 import { DeadlinePicker } from '@/components/session/deadline-picker'
+import { OpenSessionToggle } from '@/components/session/open-session-toggle'
 import { RulesPicker } from '@/components/session/rules-picker'
 import { SESSION_STEPS, SessionStep, StepTitle } from '@/components/session/session-step'
 import { Button } from '@/components/ui/button'
@@ -63,6 +64,9 @@ function syncFiltersToUrl(filters: RestaurantFilters) {
  * silhouette prérendue — qui ne sait pas si on a des groupes — n'ait jamais à
  * renuméroter quoi que ce soit.
  *
+ * « Session ouverte » se coche sous l'échéance, qu'elle rend obligatoire : pas
+ * de salle d'attente, chacun vote à son heure jusqu'à la clôture.
+ *
  * Sur grand écran, le nom, l'échéance, les groupes et le bouton d'envoi
  * tiennent dans la colonne de gauche ; le sélecteur de restos, le plus haut
  * des blocs, occupe la droite. L'ordre du document reste celui des étapes.
@@ -80,6 +84,9 @@ export function CreateSessionForm({
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([])
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState<string[]>([])
   const [excludeRecent, setExcludeRecent] = useState(false)
+  // Session ouverte : elle rend l'échéance obligatoire et efface le seuil de
+  // clôture. L'état vit ici, seul endroit qui voit les trois blocs.
+  const [open, setOpen] = useState(false)
 
   // `chosen` compte ce qu'on a pris, `total` ce qui partira vraiment : le
   // serveur refait ce tri, une liste apportant des restos que cet écran n'a
@@ -118,7 +125,7 @@ export function CreateSessionForm({
     <form
       action={formAction}
       onSubmit={rememberCreation}
-      className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-rows-[repeat(6,auto)_1fr] lg:items-start lg:gap-x-10"
+      className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-rows-[repeat(7,auto)_1fr] lg:items-start lg:gap-x-10"
     >
       <SessionStep
         number={1}
@@ -172,13 +179,17 @@ export function CreateSessionForm({
         </SessionStep>
       </div>
 
-      <DeadlinePicker
-        legend={
-          <StepTitle number={3}>
-            <span className="text-base font-semibold">{SESSION_STEPS.deadline}</span>
-          </StepTitle>
-        }
-      />
+      <div className="flex flex-col gap-4">
+        <DeadlinePicker
+          required={open}
+          legend={
+            <StepTitle number={3}>
+              <span className="text-base font-semibold">{SESSION_STEPS.deadline}</span>
+            </StepTitle>
+          }
+        />
+        <OpenSessionToggle checked={open} onChange={setOpen} />
+      </div>
 
       {groups.length > 0 && (
         <SessionStep
@@ -203,12 +214,12 @@ export function CreateSessionForm({
           </ul>
           <p className="text-xs text-muted-foreground">
             Les membres reçoivent une invitation en attente. Ils ne comptent comme participants
-            qu’une fois la session ouverte — personne ne bloque le vote sans être là.
+            qu’une fois entrés dans la session — personne ne bloque le vote sans être là.
           </p>
         </SessionStep>
       )}
 
-      <RulesPicker />
+      <RulesPicker open={open} />
 
       <FormMessage error={state?.error} className="lg:col-start-1" />
 

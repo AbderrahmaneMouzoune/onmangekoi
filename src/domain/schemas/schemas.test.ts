@@ -78,6 +78,28 @@ describe('CreateSessionSchema', () => {
     expect(CreateSessionSchema.safeParse({ name: 'Lunch', groupIds: [UUID] }).success).toBe(false)
   })
 
+  it('should refuse an open session without a deadline', () => {
+    const base = { name: 'Lunch', restaurantIds: [UUID], open: 'on' }
+    const refused = CreateSessionSchema.safeParse(base)
+    expect(refused.success).toBe(false)
+    expect(refused.error?.issues[0]?.message).toMatch(/échéance/)
+
+    expect(CreateSessionSchema.safeParse({ ...base, closesInMinutes: '60' }).data?.open).toBe(true)
+    expect(
+      CreateSessionSchema.safeParse({ ...base, closesAt: '2026-09-29T12:00:00.000Z' }).success
+    ).toBe(true)
+  })
+
+  it('should read an unchecked open box as an ordinary session', () => {
+    const parsed = CreateSessionSchema.safeParse({
+      name: 'Lunch',
+      restaurantIds: [UUID],
+      open: null,
+    })
+    expect(parsed.success).toBe(true)
+    expect(parsed.data?.open).toBe(false)
+  })
+
   it('should read the deadline fields a form leaves empty or absent', () => {
     const base = { name: 'Lunch', restaurantIds: [UUID] }
     const parsed = CreateSessionSchema.safeParse({

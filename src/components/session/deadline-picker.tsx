@@ -19,10 +19,22 @@ const OPTIONS: { value: Choice; label: string }[] = [
   { value: 'at', label: 'à une heure' },
 ]
 
+/** Sans « Sans limite » : une session ouverte ne se fermerait jamais. */
+const REQUIRED_OPTIONS = OPTIONS.filter((option) => option.value !== 'none')
+
+/**
+ * Ce que prend l'échéance quand elle devient obligatoire alors que rien
+ * n'était choisi : la plus longue des durées proposées. Une session ouverte
+ * vit au rythme d'une conversation, pas d'une tablée.
+ */
+const REQUIRED_DEFAULT: Choice = `in:${Math.max(...DEADLINE_PRESETS)}`
+
 const HINTS = {
   none: 'Sans échéance, la session se clôture quand tout le monde a voté — ou quand tu la clôtures.',
   timed:
     'À l’heure dite, le classement s’affiche : les votes manquants comptent 0. Tu pourras prolonger avant.',
+  required:
+    'Session ouverte : l’échéance est obligatoire, c’est elle qui clôt le vote. Chacun vote d’ici là, et tu pourras prolonger.',
 }
 
 const LEGEND = 'Clôture automatique'
@@ -49,16 +61,25 @@ function optionClassName(isSelected: boolean) {
 interface DeadlinePickerProps {
   /** Intitulé du bloc ; par défaut « Clôture automatique », en petit. */
   legend?: React.ReactNode
+  /**
+   * L'échéance est obligatoire (session ouverte) : « Sans limite » disparaît
+   * et, s'il était choisi, cède la place à une durée par défaut.
+   */
+  required?: boolean
 }
 
-export function DeadlinePicker({ legend }: DeadlinePickerProps = {}) {
-  const [choice, setChoice] = useState<Choice>('none')
+export function DeadlinePicker({ legend, required = false }: DeadlinePickerProps = {}) {
+  const [picked, setChoice] = useState<Choice>('none')
   const [time, setTime] = useState('')
+
+  // Dérivé plutôt que réécrit : décocher « ouverte » rend le choix d'avant.
+  const choice = required && picked === 'none' ? REQUIRED_DEFAULT : picked
+  const options = required ? REQUIRED_OPTIONS : OPTIONS
 
   const target = useMemo(() => (choice === 'at' ? nextOccurrence(time) : null), [choice, time])
   const minutes = choice.startsWith('in:') ? Number(choice.slice(3)) : null
   /** Les flèches passent d'une option à l'autre et la choisissent (radios). */
-  const onOptionsKeyDown = useRovingFocus((index) => setChoice(OPTIONS[index].value))
+  const onOptionsKeyDown = useRovingFocus((index) => setChoice(options[index].value))
 
   return (
     <fieldset className="flex flex-col gap-2">
@@ -70,7 +91,7 @@ export function DeadlinePicker({ legend }: DeadlinePickerProps = {}) {
         onKeyDown={onOptionsKeyDown}
         className="flex flex-wrap gap-2"
       >
-        {OPTIONS.map((option) => (
+        {options.map((option) => (
           <button
             key={option.value}
             type="button"
@@ -103,7 +124,7 @@ export function DeadlinePicker({ legend }: DeadlinePickerProps = {}) {
       {target && <input type="hidden" name="closesAt" value={target.toISOString()} />}
 
       <p className="text-xs text-muted-foreground">
-        {choice === 'none' ? HINTS.none : HINTS.timed}
+        {required ? HINTS.required : choice === 'none' ? HINTS.none : HINTS.timed}
       </p>
     </fieldset>
   )

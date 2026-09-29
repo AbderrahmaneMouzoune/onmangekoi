@@ -50,6 +50,8 @@ export interface AnalyticsEventMap {
     superlikes: number
     vetos: number
     close_at_ratio: number
+    /** Session ouverte : pas de salle d'attente, on vote à son heure (issue #58) */
+    open: boolean
   }
   invite_shared: {
     session_id: string

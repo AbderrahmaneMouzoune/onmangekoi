@@ -4,6 +4,7 @@ import { Shell } from '@/components/layout/shell'
 import { JoinByCode, JoinByCodeFallback } from '@/components/session/join-by-code'
 import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
+import { isOpenSession, parseSessionRules } from '@/domain/session-rules'
 import { parseInviteIdentifier } from '@/domain/share'
 import { displayPseudo } from '@/lib/format'
 
@@ -24,12 +25,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!preview) return { title: 'Invitation' }
 
   const host = displayPseudo(preview.host_pseudo)
+  const open = isOpenSession(parseSessionRules(preview.rules))
   return {
     title: `Rejoins « ${preview.name} »`,
-    description: `${host} t’invite à choisir où manger. Vote en deux minutes, sans compte.`,
+    description: open
+      ? `${host} t’invite à choisir où manger. Vote quand tu veux avant la clôture, sans compte.`
+      : `${host} t’invite à choisir où manger. Vote en deux minutes, sans compte.`,
     openGraph: {
       title: `${host} t’invite : ${preview.name}`,
-      description: 'Vote sur les restos, le classement tranche.',
+      description: open
+        ? 'Session ouverte : chacun vote à son heure, le classement tombe à la clôture.'
+        : 'Vote sur les restos, le classement tranche.',
     },
   }
 }

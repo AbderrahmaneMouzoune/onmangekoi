@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { RestaurantPickerFallback } from '@/components/restaurants/restaurant-picker-fallback'
 import { CreateSessionForm } from '@/components/session/create-session-form'
 import { DeadlinePickerFallback } from '@/components/session/deadline-picker'
+import { OpenSessionToggleFallback } from '@/components/session/open-session-toggle'
 import { RulesPickerFallback } from '@/components/session/rules-picker'
 import { SESSION_STEPS, SessionStep, StepTitle } from '@/components/session/session-step'
 import { buttonVariants } from '@/components/ui/button'
@@ -100,13 +101,16 @@ export function CreateSessionSectionFallback() {
         </SessionStep>
       </div>
 
-      <DeadlinePickerFallback
-        legend={
-          <StepTitle number={3}>
-            <span className="text-base font-semibold">{SESSION_STEPS.deadline}</span>
-          </StepTitle>
-        }
-      />
+      <div className="flex flex-col gap-4">
+        <DeadlinePickerFallback
+          legend={
+            <StepTitle number={3}>
+              <span className="text-base font-semibold">{SESSION_STEPS.deadline}</span>
+            </StepTitle>
+          }
+        />
+        <OpenSessionToggleFallback />
+      </div>
 
       <RulesPickerFallback />
 
