@@ -91,6 +91,15 @@ describe('CreateSessionSchema', () => {
     ).toBe(true)
   })
 
+  it('should read the duo flag and refuse a duo that is also open', () => {
+    const base = { name: 'À deux', restaurantIds: [UUID], duo: 'on' }
+    expect(CreateSessionSchema.safeParse(base).data?.duo).toBe(true)
+
+    const refused = CreateSessionSchema.safeParse({ ...base, open: 'on', closesInMinutes: '60' })
+    expect(refused.success).toBe(false)
+    expect(refused.error?.issues[0]?.message).toMatch(/deux/)
+  })
+
   it('should read an unchecked open box as an ordinary session', () => {
     const parsed = CreateSessionSchema.safeParse({
       name: 'Lunch',

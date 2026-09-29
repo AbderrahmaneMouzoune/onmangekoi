@@ -25,6 +25,13 @@ describe('pushMessageFor', () => {
     expect(message.url).toBe('/sessions/7K3M9P/results')
     expect(message.tag).toBe(pushMessageFor('voting', SESSION).tag)
   })
+
+  it('should announce an agreement, not a ranking, when a duo closes on one', () => {
+    const message = pushMessageFor('closed', { ...SESSION, agreed: true })
+    expect(message.title).toBe('C’est d’accord')
+    expect(message.body).toBe('Midi de mardi — vous avez trouvé où manger.')
+    expect(message.url).toBe('/sessions/7K3M9P/results')
+  })
 })
 
 describe('push delivery options', () => {

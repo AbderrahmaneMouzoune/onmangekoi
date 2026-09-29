@@ -27,6 +27,11 @@ interface ResultsListProps {
   participantCount: number
   /** Partage, nouvelle session… — rendus sous le classement. */
   actions?: React.ReactNode
+  /**
+   * Un duo tombé d'accord (#61) : un résultat, pas un classement. Seul le
+   * restaurant de l'accord s'affiche ; le reste du deck n'a pas été départagé.
+   */
+  agreement?: boolean
 }
 
 /**
@@ -36,14 +41,22 @@ interface ResultsListProps {
  * Le restaurant annoncé est le premier du vote, sauf quand le host a confirmé
  * où le groupe va (« On y va », issue #55) : la décision prend alors la carte,
  * et le premier du vote rejoint le reste du classement, à son rang.
+ *
+ * L'accord d'un duo ne se classe pas : la carte dit « C'est d'accord », et
+ * rien d'autre ne la suit.
  */
-export function ResultsList({ results, participantCount, actions }: ResultsListProps) {
+export function ResultsList({
+  results,
+  participantCount,
+  actions,
+  agreement = false,
+}: ResultsListProps) {
   const maxAbs = Math.max(1, ...results.map((r) => Math.abs(r.score)))
   const winner = headlineOf(results)
 
   if (!winner) return null
 
-  const rest = results.filter((row) => row !== winner)
+  const rest = agreement ? [] : results.filter((row) => row !== winner)
   const tiebreak = readTiebreak(results)
   const decision = readDecision(results)
 
@@ -77,7 +90,11 @@ export function ResultsList({ results, participantCount, actions }: ResultsListP
           )}
 
           <p className="relative font-mono text-[0.7rem] tracking-[0.12em] text-chalk-muted uppercase">
-            {decision ? 'C’est décidé · on mange chez' : 'On mange chez'}
+            {agreement
+              ? 'C’est d’accord · on mange chez'
+              : decision
+                ? 'C’est décidé · on mange chez'
+                : 'On mange chez'}
           </p>
           <h2
             id="winner-title"
@@ -131,7 +148,11 @@ export function ResultsList({ results, participantCount, actions }: ResultsListP
             </div>
           )}
 
-          {decision?.overridesVote ? (
+          {agreement ? (
+            <p className="relative text-sm text-chalk-muted">
+              Vous avez dit oui tous les deux : pas besoin d’aller plus loin dans le deck.
+            </p>
+          ) : decision?.overridesVote ? (
             <p className="relative text-sm text-chalk-muted">
               Choix du host : le vote plaçait {decision.leader.name} en tête.
             </p>

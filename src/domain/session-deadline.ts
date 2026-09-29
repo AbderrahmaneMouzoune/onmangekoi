@@ -17,8 +17,11 @@ export const DEADLINE_PRESETS = [10, 20, 30, 60] as const
 
 const MS_PER_MINUTE = 60_000
 
-/** Qui a mis fin à la session. */
-export type SessionCloseReason = 'host' | 'auto' | 'deadline'
+/**
+ * Qui a mis fin à la session. `agreement` : le premier « ça me va » commun
+ * d'un duo (#61).
+ */
+export type SessionCloseReason = 'host' | 'auto' | 'deadline' | 'agreement'
 
 /** Ce que le formulaire de création transmet : une durée ou un instant. */
 export interface DeadlineInput {
@@ -84,18 +87,23 @@ interface CloseAttribution {
   everyoneFinished: boolean
   closesAt: string | null
   closedAt: string | null
+  /** Un duo s'est fermé sur un accord — la décision posée avec la clôture. */
+  agreed?: boolean
 }
 
 /**
  * Qui a clôturé, du point de vue du client : personne ne l'annonce, il faut le
- * déduire. Le vote complet prime — c'est la seule cause certaine —, puis
- * l'échéance atteinte, et à défaut c'est le host qui a forcé.
+ * déduire. L'accord d'un duo et le vote complet priment — ce sont les seules
+ * causes certaines —, puis l'échéance atteinte, et à défaut c'est le host qui
+ * a forcé.
  */
 export function closeAttribution({
   everyoneFinished,
   closesAt,
   closedAt,
+  agreed = false,
 }: CloseAttribution): SessionCloseReason {
+  if (agreed) return 'agreement'
   if (everyoneFinished) return 'auto'
   if (closesAt && closedAt && new Date(closedAt).getTime() >= new Date(closesAt).getTime()) {
     return 'deadline'

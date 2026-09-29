@@ -41,6 +41,11 @@ interface VoteDeckProps {
    */
   conflicts?: ConstraintConflictCounts
   onFinished: () => void
+  /**
+   * Duo (#61) : ce vote vient de sceller l'accord — la session est close, la
+   * décision posée. Le deck s'arrête là, sans passer par « tu as tout voté ».
+   */
+  onAgreed?: () => void
 }
 
 const SWIPE_THRESHOLD = 90
@@ -69,6 +74,7 @@ export function VoteDeck({
   lastWins,
   conflicts = NO_CONFLICTS,
   onFinished,
+  onAgreed,
 }: VoteDeckProps) {
   const [votedIds, setVotedIds] = useState<Set<string>>(() => new Set(initialVotedIds))
   const [jokersUsed, setJokersUsed] = useState(initialJokersUsed)
@@ -138,7 +144,8 @@ export function VoteDeck({
         }
         lastVoteLabel.current = voteActionByValue(value)?.label ?? null
         setVotedIds((prev) => new Set(prev).add(current.id))
-        busy.current = false
+        // Un accord ferme le vote : le deck reste verrouillé jusqu'au résultat.
+        busy.current = result.data.agreed
 
         // `recorded` distingue un vote réellement enregistré d'une carte déjà
         // votée que la base fait simplement passer.
@@ -152,10 +159,22 @@ export function VoteDeck({
           })
         }
 
+        // Seul le bulletin qui scelle l'accord le sait : l'événement part
+        // donc une fois par duo, jamais des deux côtés.
+        if (result.data.agreed) {
+          captureEvent('duo_matched', {
+            session_id: sessionId,
+            position: done + 1,
+            restaurant_count: total,
+          })
+          onAgreed?.()
+          return
+        }
+
         if (result.data.finished) finish()
       }, EXIT_MS)
     },
-    [current, leaving, sessionId, finish, rules, jokersUsed, done, total]
+    [current, leaving, sessionId, finish, onAgreed, rules, jokersUsed, done, total]
   )
 
   /**

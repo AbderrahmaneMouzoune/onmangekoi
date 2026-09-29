@@ -1,4 +1,10 @@
-import { RiArrowRightLine, RiGroupLine, RiLinkM, RiRestaurant2Line } from '@remixicon/react'
+import {
+  RiArrowRightLine,
+  RiGroupLine,
+  RiHeartsLine,
+  RiLinkM,
+  RiRestaurant2Line,
+} from '@remixicon/react'
 import Link from 'next/link'
 import { Suspense } from 'react'
 
@@ -72,6 +78,16 @@ export default function HomePage() {
                 J’ai un code
               </Link>
             </div>
+            {/* Le mode duo (#61) : la porte d'entrée de qui ne déjeune pas en
+                équipe. Un lien discret, pas un troisième gros bouton. */}
+            <Link
+              href={router.duo()}
+              className="inline-flex items-center gap-2 self-start rounded-sm text-sm font-medium text-ink-2 hover:text-brand hover:underline"
+            >
+              <RiHeartsLine aria-hidden="true" className="size-4 text-brand" />
+              À deux ? Un lien, et le premier « ça me va » commun décide
+              <RiArrowRightLine aria-hidden="true" className="size-4" />
+            </Link>
           </section>
 
           <div className="empty:hidden lg:col-span-2 lg:row-start-2">

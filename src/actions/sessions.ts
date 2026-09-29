@@ -55,6 +55,7 @@ export async function createSessionAction(
     vetos: formData.get('vetos'),
     closeAtRatio: formData.get('closeAtRatio'),
     open: formData.get('open'),
+    duo: formData.get('duo'),
     excludeRecentWinners: formData.get('excludeRecentWinners'),
   })
   if (!parsed.success) {

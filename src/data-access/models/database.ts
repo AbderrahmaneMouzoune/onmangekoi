@@ -1339,6 +1339,7 @@ export type Database = {
           restaurant_id: string
         }[]
       }
+      session_is_duo: { Args: { p_rules: Json }; Returns: boolean }
       session_is_open: { Args: { p_rules: Json }; Returns: boolean }
       session_preview: {
         Args: { p_identifier: string }

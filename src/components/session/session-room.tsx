@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { DuoPanel } from '@/components/session/duo-panel'
 import { FinishedPanel } from '@/components/session/finished-panel'
 import { OpenSessionPanel } from '@/components/session/open-session-panel'
 import { SessionCountdown } from '@/components/session/session-countdown'
@@ -12,7 +13,7 @@ import { VoteDeck } from '@/components/session/vote-deck'
 import { WaitingRoom } from '@/components/session/waiting-room'
 import { router } from '@/config/router.config'
 import { closeAttribution } from '@/domain/session-deadline'
-import { isOpenSession, parseSessionRules } from '@/domain/session-rules'
+import { isDuoSession, isOpenSession, parseSessionRules } from '@/domain/session-rules'
 import { useSessionRoom } from '@/hooks/use-session-room'
 import { captureEvent } from '@/lib/analytics/client'
 import { markOnce, takeSessionEntry } from '@/lib/analytics/handoff'
@@ -73,7 +74,9 @@ const STATUS_ANNOUNCEMENTS: Record<SessionStatus, string> = {
  *
  * Une session ouverte n'a pas de salle d'attente : elle naît en `voting`, et
  * ce que la salle offrait — les règles, l'invitation — se replie au-dessus du
- * deck, pour qui arrive pendant que le vote tourne.
+ * deck, pour qui arrive pendant que le vote tourne. Un duo (#61) non plus : le
+ * lien à envoyer tient au-dessus du deck tant que l'autre n'est pas là, et le
+ * bulletin qui scelle l'accord mène droit au résultat.
  *
  * Le changement d'état arrive par Realtime, sans geste de la personne : il est
  * annoncé aux lecteurs d'écran et le focus est posé sur la nouvelle étape,
@@ -112,6 +115,10 @@ export function SessionRoom({
   // deck s'appuie sur leur identité pour ne pas se réabonner au clavier.
   const rules = useMemo(() => parseSessionRules(session.rules), [session.rules])
   const open = isOpenSession(rules)
+  const duo = isDuoSession(rules)
+  // Ce navigateur vient de poser le « ça me va » qui scelle l'accord : le
+  // résultat arrive, rien d'autre à montrer d'ici là.
+  const [agreed, setAgreed] = useState(false)
 
   const [finishedLocally, setFinishedLocally] = useState(
     myVotedIds.length >= initialRestaurants.length && initialRestaurants.length > 0
@@ -134,6 +141,7 @@ export function SessionRoom({
         vetos: rules.vetos,
         close_at_ratio: rules.close_at_ratio,
         open: isOpenSession(rules),
+        duo: isDuoSession(rules),
         suggested_count: entry.suggestedCount ?? 0,
         suggested_kept: entry.suggestedKept ?? 0,
       })
@@ -164,6 +172,9 @@ export function SessionRoom({
         everyoneFinished,
         closesAt: session.closes_at,
         closedAt: session.closed_at,
+        // Un duo clos avec sa décision l'a été par l'accord : la base pose
+        // les deux dans la même écriture.
+        agreed: duo && session.decided_restaurant_id !== null,
       }),
       participant_count: participants.length,
       restaurant_count: restaurants.length,
@@ -176,6 +187,8 @@ export function SessionRoom({
     participants,
     restaurants.length,
     open,
+    duo,
+    session.decided_restaurant_id,
   ])
 
   useEffect(() => {
@@ -192,12 +205,23 @@ export function SessionRoom({
   useEffect(() => {
     if (previousStatus.current === session.status) return
     previousStatus.current = session.status
-    setAnnouncement(STATUS_ANNOUNCEMENTS[session.status])
+    setAnnouncement(
+      duo && session.status === 'closed' && session.decided_restaurant_id !== null
+        ? 'C’est d’accord : ouverture du résultat.'
+        : STATUS_ANNOUNCEMENTS[session.status]
+    )
     stageRef.current?.focus({ preventScroll: true })
-  }, [session.status])
+  }, [session.status, session.decided_restaurant_id, duo])
 
   const handleFinished = useCallback(() => {
     setFinishedLocally(true)
+    void refresh()
+  }, [refresh])
+
+  // L'événement Realtime de la clôture arrive aussi ; relire tout de suite
+  // évite d'attendre le canal pour basculer sur le résultat.
+  const handleAgreed = useCallback(() => {
+    setAgreed(true)
     void refresh()
   }, [refresh])
 
@@ -205,7 +229,7 @@ export function SessionRoom({
     <div className="flex flex-col gap-6 lg:gap-8">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="eyebrow">{firstRoundUrl ? 'Second tour' : 'Session'}</p>
+          <p className="eyebrow">{firstRoundUrl ? 'Second tour' : duo ? 'À deux' : 'Session'}</p>
           <h1 className="truncate text-2xl font-bold sm:text-3xl lg:text-4xl">{session.name}</h1>
           {firstRoundUrl && (
             <p className="text-sm text-muted-foreground">
@@ -271,7 +295,23 @@ export function SessionRoom({
           />
         )}
 
-        {session.status === 'voting' && !meFinished && (
+        {session.status === 'voting' && duo && !agreed && (
+          <DuoPanel
+            sessionId={session.id}
+            sessionName={session.name}
+            participants={participants}
+            meId={meId}
+            inviteUrl={inviteUrl}
+          />
+        )}
+
+        {session.status === 'voting' && agreed && (
+          <p className="text-center text-sm text-muted-foreground">
+            C’est d’accord ! Ouverture du résultat…
+          </p>
+        )}
+
+        {session.status === 'voting' && !meFinished && !agreed && (
           <VoteDeck
             sessionId={session.id}
             restaurants={restaurants}
@@ -281,10 +321,11 @@ export function SessionRoom({
             lastWins={recentWinners}
             conflicts={conflicts}
             onFinished={handleFinished}
+            onAgreed={duo ? handleAgreed : undefined}
           />
         )}
 
-        {session.status === 'voting' && meFinished && (
+        {session.status === 'voting' && meFinished && !agreed && (
           <FinishedPanel
             session={session}
             participants={participants}
@@ -296,7 +337,11 @@ export function SessionRoom({
         )}
 
         {session.status === 'closed' && (
-          <p className="text-center text-sm text-muted-foreground">Ouverture du classement…</p>
+          <p className="text-center text-sm text-muted-foreground">
+            {duo && session.decided_restaurant_id !== null
+              ? 'C’est d’accord ! Ouverture du résultat…'
+              : 'Ouverture du classement…'}
+          </p>
         )}
       </div>
     </div>

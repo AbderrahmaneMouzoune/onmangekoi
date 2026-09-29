@@ -3,7 +3,7 @@ import { ImageResponse } from 'next/og'
 import { OgCard } from '@/components/og/og-card'
 import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
-import { isOpenSession, parseSessionRules } from '@/domain/session-rules'
+import { isDuoSession, isOpenSession, parseSessionRules } from '@/domain/session-rules'
 import { parseInviteIdentifier } from '@/domain/share'
 import { countLabel, displayPseudo } from '@/lib/format'
 
@@ -31,9 +31,12 @@ export default async function InviteOpenGraphImage({
         subtitle={
           // Une session ouverte se partage dans la conversation, et chacun la
           // découvre à son heure : la carte dit qu'il n'y a pas de rendez-vous.
-          isOpenSession(parseSessionRules(preview.rules))
-            ? `${countLabel(preview.restaurant_count, 'resto')} à départager. Vote quand tu veux, avant la clôture.`
-            : `${countLabel(preview.restaurant_count, 'resto')} à départager. Vote en deux minutes.`
+          // Un duo (#61) s'envoie à une seule personne : la carte dit la règle.
+          isDuoSession(parseSessionRules(preview.rules))
+            ? `${countLabel(preview.restaurant_count, 'resto')} à balayer à deux. Au premier « ça me va » commun, c’est décidé.`
+            : isOpenSession(parseSessionRules(preview.rules))
+              ? `${countLabel(preview.restaurant_count, 'resto')} à départager. Vote quand tu veux, avant la clôture.`
+              : `${countLabel(preview.restaurant_count, 'resto')} à départager. Vote en deux minutes.`
         }
         footer="Sans compte"
       />

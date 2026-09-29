@@ -3,8 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { isProtectedPath, sanitizeNextPath } from './routing'
 
 describe('isProtectedPath', () => {
-  it('should protect session, join, list and account routes', () => {
+  it('should protect session, duo, join, list and account routes', () => {
     expect(isProtectedPath('/sessions')).toBe(true)
+    expect(isProtectedPath('/duo')).toBe(true)
     expect(isProtectedPath('/sessions/abc')).toBe(true)
     expect(isProtectedPath('/join/abc')).toBe(true)
     expect(isProtectedPath('/lists/new')).toBe(true)
@@ -16,6 +17,7 @@ describe('isProtectedPath', () => {
     expect(isProtectedPath('/setup')).toBe(false)
     expect(isProtectedPath('/login')).toBe(false)
     expect(isProtectedPath('/listsomething')).toBe(false)
+    expect(isProtectedPath('/duos')).toBe(false)
   })
 
   it('should let a shared list through — the page decides, list by list', () => {

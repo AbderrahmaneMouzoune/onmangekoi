@@ -74,6 +74,11 @@ export const CreateSessionSchema = z
      */
     open: z.coerce.boolean().optional(),
     /**
+     * Mode duo (#61) : deux places, pas de salle d'attente, le premier accord
+     * décide. Posé par la page `/duo`, jamais par le formulaire complet.
+     */
+    duo: z.coerce.boolean().optional(),
+    /**
      * Anti-fatigue. Une case décochée n'envoie rien du tout : le `null` que
      * rend `formData.get` se lit comme un non, et l'absence du champ aussi.
      */
@@ -89,6 +94,12 @@ export const CreateSessionSchema = z
   .refine((data) => !data.open || data.closesInMinutes != null || data.closesAt != null, {
     message: OMK_MESSAGES.open_session_needs_deadline,
     path: ['closesInMinutes'],
+  })
+  // Deux places d'un côté, la porte ouverte jusqu'à l'échéance de l'autre. La
+  // base refuse aussi la combinaison (`omk:invalid_rules`).
+  .refine((data) => !(data.open && data.duo), {
+    message: 'Une session à deux ne peut pas être ouverte à tous.',
+    path: ['duo'],
   })
 
 export const JoinSessionSchema = z.object({

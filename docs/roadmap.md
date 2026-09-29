@@ -38,6 +38,7 @@ L'état de départ est le MVP livré : sessions, vote à quatre valeurs, jokers,
 | 19  | [#16 Règles de vote personnalisables](https://github.com/AbderrahmaneMouzoune/onmangekoi/issues/16)   | P3       | v2.0    | Les règles fixes conviennent à la majorité des groupes                          |
 | 20  | [#14 Internationalisation (anglais)](https://github.com/AbderrahmaneMouzoune/onmangekoi/issues/14)    | P3       | v2.0    | Élargit l'audience, mais fige d'abord les textes                                |
 | 21  | [#60 Contraintes alimentaires](https://github.com/AbderrahmaneMouzoune/onmangekoi/issues/60)          | P2       | v2.0    | Rend au veto son rôle ; s'appuie sur les régimes et budgets de #4               |
+| 22  | [#61 Mode duo](https://github.com/AbderrahmaneMouzoune/onmangekoi/issues/61)                          | P2       | v2.0    | Porte d'entrée hors équipe ; un mode de session dans les règles de #16          |
 
 ## Versions cibles
 
@@ -79,6 +80,7 @@ Confort et élargissement, une fois le cœur stable.
 
 - P2 — #4 Filtres budget, distance, régime alimentaire
 - P2 — #60 Contraintes alimentaires déclarées par chacun _(dépend de #4)_
+- P2 — #61 Mode duo : décider à deux, sans salle d'attente ni code _(dépend de #16)_
 - P3 — #16 Règles de vote personnalisables par session
 - P3 — #14 Internationalisation (anglais)
 
@@ -89,6 +91,7 @@ Confort et élargissement, une fois le cœur stable.
                                         └──▶ #4 Filtres ──▶ #60 Contraintes alimentaires
 #6 Historique ─────▶ #5 Anti-fatigue
 #11 PWA ───────────▶ #7 Notifications push
+#16 Règles ────────▶ #61 Mode duo
 ```
 
 Une issue n'entre jamais dans une version antérieure à celle dont elle dépend.

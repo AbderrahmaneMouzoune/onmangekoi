@@ -4,7 +4,7 @@ import { Shell } from '@/components/layout/shell'
 import { JoinByCode, JoinByCodeFallback } from '@/components/session/join-by-code'
 import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
-import { isOpenSession, parseSessionRules } from '@/domain/session-rules'
+import { isDuoSession, isOpenSession, parseSessionRules } from '@/domain/session-rules'
 import { parseInviteIdentifier } from '@/domain/share'
 import { displayPseudo } from '@/lib/format'
 
@@ -25,7 +25,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!preview) return { title: 'Invitation' }
 
   const host = displayPseudo(preview.host_pseudo)
-  const open = isOpenSession(parseSessionRules(preview.rules))
+  const rules = parseSessionRules(preview.rules)
+  const open = isOpenSession(rules)
+  if (isDuoSession(rules)) {
+    // Un duo (#61) : un lien envoyé à une seule personne, pas un groupe.
+    return {
+      title: `${host} te propose de décider à deux`,
+      description: `${host} t’invite à choisir où manger à deux : au premier « ça me va » commun, c’est décidé. Sans compte.`,
+      openGraph: {
+        title: `${host} te propose de décider à deux`,
+        description:
+          'Vous balayez les mêmes restos : au premier « ça me va » commun, c’est décidé.',
+      },
+    }
+  }
   return {
     title: `Rejoins « ${preview.name} »`,
     description: open

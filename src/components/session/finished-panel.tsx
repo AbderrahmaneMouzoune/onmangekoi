@@ -11,8 +11,10 @@ import { FormMessage } from '@/components/ui/form-message'
 import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
 import { TwoStepButton } from '@/components/ui/two-step-button'
+import { duoFinishedMessage, DUO_SEATS, partnerOf } from '@/domain/duo'
 import {
   formatRatio,
+  isDuoSession,
   isOpenSession,
   parseSessionRules,
   requiredFinishers,
@@ -39,6 +41,10 @@ interface FinishedPanelProps {
  * En session ouverte, il n'y a personne « à attendre » : le nombre de votants
  * n'est pas connu d'avance, d'autres peuvent encore arriver, et seule
  * l'échéance — ou le host — ferme le vote. L'ardoise le dit.
+ *
+ * En duo (#61), on n'attend qu'une personne, et pas forcément la fin de son
+ * deck : son premier « ça me va » à un resto qu'on a aimé suffit. Le compte
+ * se fait sur les deux places, même quand la seconde est encore vide.
  */
 export function FinishedPanel({
   session,
@@ -51,12 +57,13 @@ export function FinishedPanel({
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const finished = participants.filter((p) => p.has_finished_voting).length
-  const total = participants.length
-  // Sous 100 %, le classement tombe avant que tout le monde ait voté : annoncer
-  // l'attente restante sur l'effectif complet mentirait sur ce qui reste.
   const rules = parseSessionRules(session.rules)
   const open = isOpenSession(rules)
+  const duo = isDuoSession(rules)
+  const finished = participants.filter((p) => p.has_finished_voting).length
+  const total = duo ? DUO_SEATS : participants.length
+  // Sous 100 %, le classement tombe avant que tout le monde ait voté : annoncer
+  // l'attente restante sur l'effectif complet mentirait sur ce qui reste.
   const required = requiredFinishers(total, rules.close_at_ratio)
   const missing = Math.max(0, required - finished)
 
@@ -83,15 +90,17 @@ export function FinishedPanel({
             {meFinished ? 'Tu as tout voté.' : 'Le vote est en cours.'}
           </h2>
           <p className="text-sm text-chalk-muted">
-            {open
-              ? 'La session reste ouverte jusqu’à l’échéance : d’autres peuvent encore arriver et voter. Le classement s’affichera à la clôture.'
-              : missing === 0
-                ? finished === total
-                  ? 'Tout le monde a terminé, le classement arrive.'
-                  : 'Le seuil de clôture est atteint, le classement arrive.'
-                : `On attend ${countLabel(missing, 'personne')}. Le classement s’affichera automatiquement.`}
+            {duo
+              ? duoFinishedMessage(partnerOf(participants, meId))
+              : open
+                ? 'La session reste ouverte jusqu’à l’échéance : d’autres peuvent encore arriver et voter. Le classement s’affichera à la clôture.'
+                : missing === 0
+                  ? finished === total
+                    ? 'Tout le monde a terminé, le classement arrive.'
+                    : 'Le seuil de clôture est atteint, le classement arrive.'
+                  : `On attend ${countLabel(missing, 'personne')}. Le classement s’affichera automatiquement.`}
           </p>
-          {!open && rules.close_at_ratio < 1 && (
+          {!open && !duo && rules.close_at_ratio < 1 && (
             <p className="text-xs text-chalk-muted">
               Clôture dès {formatRatio(rules.close_at_ratio)} des participants — soit {required} sur{' '}
               {total}.
@@ -132,11 +141,13 @@ export function FinishedPanel({
               disabled={isPending}
             />
             <p className="text-center text-xs text-muted-foreground">
-              {open
-                ? 'Sinon, la session se clôture toute seule à l’échéance.'
-                : rules.close_at_ratio < 1
-                  ? 'Sinon, la session se clôture toute seule au seuil choisi.'
-                  : 'Sinon, la session se clôture toute seule quand tout le monde a voté.'}
+              {duo
+                ? 'Sinon, la session se clôture au premier accord, ou quand vous aurez fini tous les deux.'
+                : open
+                  ? 'Sinon, la session se clôture toute seule à l’échéance.'
+                  : rules.close_at_ratio < 1
+                    ? 'Sinon, la session se clôture toute seule au seuil choisi.'
+                    : 'Sinon, la session se clôture toute seule quand tout le monde a voté.'}
             </p>
           </div>
         )}

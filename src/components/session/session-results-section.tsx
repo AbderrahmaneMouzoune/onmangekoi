@@ -23,6 +23,8 @@ import {
 } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { decisionCandidates, headlineOf, readDecision } from '@/domain/decision'
+import { duoAgreement } from '@/domain/duo'
+import { isDuoSession, parseSessionRules } from '@/domain/session-rules'
 import { readTiebreak } from '@/domain/tiebreak'
 import { countLabel } from '@/lib/format'
 import { absoluteUrl, publicResultsUrl } from '@/lib/site'
@@ -57,6 +59,11 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
   const tiebreak = readTiebreak(results)
   const decision = readDecision(results)
   const isHost = session.host_id === user.id
+  // Un duo tombé d'accord (#61) : un résultat, pas un classement — ni
+  // départage ni « On y va », la décision est déjà posée par l'accord. Un
+  // duo sans accord retombe sur le classement habituel.
+  const duo = isDuoSession(parseSessionRules(session.rules))
+  const agreement = duo ? duoAgreement(results) : null
 
   // Le second tour ne se lit que s'il existe : une lecture de plus, seulement
   // pour les rares classements qui en sont là.
@@ -65,7 +72,7 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
   return (
     <>
       <PageHeader
-        eyebrow="Classement final"
+        eyebrow={agreement ? 'C’est d’accord' : 'Classement final'}
         title={session.name}
         description={`${countLabel(participants.length, 'participant')} · ${countLabel(results.length, 'resto')}`}
         back={{ href: router.home(), label: 'Accueil' }}
@@ -75,6 +82,7 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
         <ResultsList
           results={results}
           participantCount={participants.length}
+          agreement={agreement !== null}
           actions={
             <>
               <ResultsWatch sessionId={session.id} />
@@ -84,7 +92,8 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
               {/* Retenir l'un des ex æquo tranche aussi l'égalité : le panneau
                   de départage n'a alors plus rien à proposer. Un second tour
                   déjà lancé reste signalé, avec son lien. */}
-              {tiebreak &&
+              {!agreement &&
+                tiebreak &&
                 tiebreak.method !== 'draw' &&
                 !(decision && tiebreak.method === null) && (
                   <TiebreakPanel
@@ -107,7 +116,7 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
                 )}
               {/* Le parent d'un second tour n'a rien à confirmer : c'est la
                   session fille qui désigne où le groupe va. */}
-              {isHost && tiebreak?.method !== 'runoff' && (
+              {isHost && !agreement && tiebreak?.method !== 'runoff' && (
                 <DecisionPanel
                   sessionId={session.id}
                   candidates={decisionCandidates(results)}
@@ -124,10 +133,16 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
                 initialPublic={session.results_public}
               />
               <div className="flex flex-wrap gap-2">
-                <Link href={router.sessionNew()} className={cn(buttonVariants())}>
-                  Nouvelle session
-                </Link>
-                <SaveGroupForm sessionId={session.id} memberCount={participants.length} />
+                {duo ? (
+                  <Link href={router.duo()} className={cn(buttonVariants())}>
+                    Encore à deux
+                  </Link>
+                ) : (
+                  <Link href={router.sessionNew()} className={cn(buttonVariants())}>
+                    Nouvelle session
+                  </Link>
+                )}
+                {!duo && <SaveGroupForm sessionId={session.id} memberCount={participants.length} />}
               </div>
             </>
           }

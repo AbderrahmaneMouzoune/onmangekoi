@@ -22,6 +22,7 @@ export const OMK_MESSAGES: Record<string, string> = {
   session_not_voting: 'Le vote n’est pas en cours.',
   no_tie: 'Il n’y a pas d’égalité à départager.',
   tiebreak_settled: 'Cette égalité a déjà été départagée.',
+  duo_full: 'Cette session à deux est complète : vous êtes déjà deux à décider.',
   open_session_needs_deadline:
     'Une session ouverte a besoin d’une échéance : sans elle, le vote ne se fermerait jamais.',
   deadline_too_soon: 'Choisis une échéance dans au moins une minute.',

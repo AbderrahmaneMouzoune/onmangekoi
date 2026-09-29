@@ -1,6 +1,6 @@
 /**
- * Règles de vote d'une session : quotas de jokers, seuil de clôture et mode
- * ouvert.
+ * Règles de vote d'une session : quotas de jokers, seuil de clôture, mode
+ * ouvert et mode duo.
  * Tout est pur — la base rejoue les mêmes bornes (`public.rules_are_valid`) et
  * reste la source de vérité ; ces fonctions servent l'interface.
  */
@@ -32,6 +32,12 @@ export type SessionRules = {
    * règles d'avant, à l'identique.
    */
   open?: true
+  /**
+   * Mode duo (#61) : deux places, pas de salle d'attente, et le premier
+   * restaurant qui reçoit « ça me va » ou mieux des deux côtés ferme le vote.
+   * Exclusif du mode ouvert ; écrit seulement quand il vaut `true`.
+   */
+  duo?: true
 }
 
 /** Les règles d'avant #16, que reprend toute session qui ne dit rien. */
@@ -72,6 +78,7 @@ export function parseSessionRules(value: Json | null | undefined): SessionRules 
     vetos: readJoker(raw.vetos, DEFAULT_SESSION_RULES.vetos),
     close_at_ratio: readRatio(raw.close_at_ratio, DEFAULT_SESSION_RULES.close_at_ratio),
     ...(raw.open === true ? { open: true as const } : {}),
+    ...(raw.duo === true ? { duo: true as const } : {}),
   }
 }
 
@@ -80,9 +87,15 @@ export function isOpenSession(rules: SessionRules): boolean {
   return rules.open === true
 }
 
+/** Session à deux : le premier accord décide, sinon le classement habituel. */
+export function isDuoSession(rules: SessionRules): boolean {
+  return rules.duo === true
+}
+
 export function isDefaultRules(rules: SessionRules): boolean {
   return (
     !isOpenSession(rules) &&
+    !isDuoSession(rules) &&
     rules.superlikes === DEFAULT_SESSION_RULES.superlikes &&
     rules.vetos === DEFAULT_SESSION_RULES.vetos &&
     rules.close_at_ratio === DEFAULT_SESSION_RULES.close_at_ratio
@@ -95,6 +108,7 @@ export interface RulesInput {
   vetos?: number | null
   closeAtRatio?: number | null
   open?: boolean | null
+  duo?: boolean | null
 }
 
 /**
@@ -103,15 +117,22 @@ export interface RulesInput {
  *
  * En mode ouvert, le seuil n'a pas d'objet — le nombre de votants n'est pas
  * connu d'avance — et repart à 100 %, comme la base le ferait : un seuil
- * réglé avant de cocher « ouverte » ne doit pas voyager pour rien.
+ * réglé avant de cocher « ouverte » ne doit pas voyager pour rien. Même chose
+ * en duo : à deux, « tout le monde » ne se divise pas.
+ *
+ * Duo et session ouverte s'excluent — la base refuse les deux à la fois. Le
+ * duo l'emporte ici : il ne s'obtient que depuis sa propre page, qui ne
+ * propose pas l'autre mode.
  */
 export function resolveRules(input: RulesInput): SessionRules | null {
-  const open = input.open === true
+  const duo = input.duo === true
+  const open = input.open === true && !duo
   const rules: SessionRules = {
     superlikes: input.superlikes ?? DEFAULT_SESSION_RULES.superlikes,
     vetos: input.vetos ?? DEFAULT_SESSION_RULES.vetos,
-    close_at_ratio: open ? 1 : (input.closeAtRatio ?? DEFAULT_SESSION_RULES.close_at_ratio),
+    close_at_ratio: open || duo ? 1 : (input.closeAtRatio ?? DEFAULT_SESSION_RULES.close_at_ratio),
     ...(open ? { open: true as const } : {}),
+    ...(duo ? { duo: true as const } : {}),
   }
   return isDefaultRules(rules) ? null : rules
 }
@@ -147,6 +168,13 @@ export function describeRules(rules: SessionRules): string[] {
   ]
   if (isOpenSession(rules)) {
     return ['Session ouverte : chacun vote à son heure', ...jokers, 'Clôture à l’échéance']
+  }
+  if (isDuoSession(rules)) {
+    return [
+      'À deux : le premier « ça me va » commun décide',
+      ...jokers,
+      'Sans accord, classement quand vous avez fini tous les deux',
+    ]
   }
   return [
     ...jokers,

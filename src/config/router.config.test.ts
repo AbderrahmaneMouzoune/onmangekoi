@@ -15,6 +15,7 @@ describe('router', () => {
     expect(router.sessionResults('7K3M9P')).toBe('/sessions/7K3M9P/results')
     expect(router.list('7K3M9P2QWX')).toBe('/lists/7K3M9P2QWX')
     expect(router.groups()).toBe('/groups')
+    expect(router.duo()).toBe('/duo')
     expect(router.authConfirm()).toBe('/auth/confirm')
     expect(router.account({ auth: 'expired' })).toBe('/account?auth=expired')
     expect(router.changelog()).toBe('/nouveautes')
@@ -57,6 +58,11 @@ describe('router', () => {
       expect(router.offline().startsWith(prefix)).toBe(false)
       expect(router.serviceWorker().startsWith(prefix)).toBe(false)
     }
+  })
+
+  it('should protect the duo page: creating a session needs a pseudo first', () => {
+    expect(PROTECTED_PREFIXES).toContain('/duo')
+    expect(router.setup(router.duo())).toBe('/setup?next=%2Fduo')
   })
 
   it('should keep the public ranking out of the protected prefixes', () => {

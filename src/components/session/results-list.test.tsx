@@ -191,4 +191,31 @@ describe('ResultsList', () => {
     const { container } = render(<ResultsList participantCount={0} results={[]} />)
     expect(container).toBeEmptyDOMElement()
   })
+
+  it('should show a duo agreement as one result, not a ranking', () => {
+    render(
+      <ResultsList
+        participantCount={2}
+        agreement
+        results={[
+          row({ name: 'Le Comptoir', score: 3, superlikes: 1, votes_count: 2, rank: 1 }),
+          row({
+            name: 'Chez Marcel',
+            score: 2,
+            superlikes: 1,
+            likes: 1,
+            votes_count: 2,
+            rank: 2,
+            decided: true,
+          }),
+        ]}
+      />
+    )
+    expect(screen.getByRole('heading', { name: 'Chez Marcel' })).toBeInTheDocument()
+    expect(screen.getByText(/C’est d’accord · on mange chez/)).toBeInTheDocument()
+    expect(screen.getByText(/Vous avez dit oui tous les deux/)).toBeInTheDocument()
+    expect(screen.queryByText('Le reste du classement')).toBeNull()
+    expect(screen.queryByText('Le Comptoir')).toBeNull()
+    expect(screen.queryByText(/Choix du host/)).toBeNull()
+  })
 })

@@ -74,6 +74,7 @@ export const config = {
     '/account/:path*',
     '/join/:path*',
     '/sessions/:path*',
+    '/duo/:path*',
     '/lists/:path*',
     '/l/:path*',
     '/groups/:path*',

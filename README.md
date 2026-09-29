@@ -27,20 +27,20 @@ Les quotas de jokers et le seuil de clôture se règlent **à la création** —
 
 ## Règles de session
 
-| Règle               | Comportement                                                                           |
-| ------------------- | -------------------------------------------------------------------------------------- |
-| Lancement           | Réservé au host, à partir de 2 participants et 2 restaurants — sauf session ouverte    |
-| Composition         | En attente, **chaque participant** ajoute ses restos et invite qui il veut             |
-| Retrait             | Chacun retire ce qu'il a apporté ; le host arbitre ; le dernier resto reste            |
-| Snapshot            | Les restaurants sont figés au lancement, pas à la création                             |
-| Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                         |
-| Clôture automatique | Déclenchée en base dès que le seuil de votants est atteint — jamais en session ouverte |
-| Clôture à l'heure   | Échéance optionnelle choisie à la création — le vote se ferme tout seul                |
-| Clôture forcée      | Le host peut clôturer à tout moment — les votes manquants comptent 0                   |
-| Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)                     |
-| Rejoindre           | Impossible une fois le vote lancé, sauf session ouverte jusqu'à son échéance           |
-| Départage           | À égalité parfaite, le host choisit : second tour entre les ex æquo, ou tirage au sort |
-| Décision            | « On y va » : le host confirme où le groupe va — le gagnant, ou un autre resto du vote |
+| Règle               | Comportement                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Lancement           | Réservé au host, à partir de 2 participants et 2 restaurants — sauf session ouverte ou duo                         |
+| Composition         | En attente, **chaque participant** ajoute ses restos et invite qui il veut                                         |
+| Retrait             | Chacun retire ce qu'il a apporté ; le host arbitre ; le dernier resto reste                                        |
+| Snapshot            | Les restaurants sont figés au lancement, pas à la création                                                         |
+| Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                                                     |
+| Clôture automatique | Déclenchée en base dès que le seuil de votants est atteint — jamais en session ouverte ; en duo, au premier accord |
+| Clôture à l'heure   | Échéance optionnelle choisie à la création — le vote se ferme tout seul                                            |
+| Clôture forcée      | Le host peut clôturer à tout moment — les votes manquants comptent 0                                               |
+| Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)                                                 |
+| Rejoindre           | Impossible une fois le vote lancé, sauf session ouverte jusqu'à son échéance et duo (deux places)                  |
+| Départage           | À égalité parfaite, le host choisit : second tour entre les ex æquo, ou tirage au sort                             |
+| Décision            | « On y va » : le host confirme où le groupe va — le gagnant, ou un autre resto du vote                             |
 
 ## Groupes récurrents
 
@@ -100,6 +100,28 @@ Le mode vit dans les règles, sous la clé `rules.open` — pas dans une colonne
 - **Second tour** : il n'hérite pas du mode ouvert. Ses votants sont connus — ceux qui ont voté au premier tour, plus le host —, il n'a pas d'échéance et se clôt comme tout second tour, quand chacun a fini. Un participant entré sans jamais voter n'y est pas convié : il bloquerait un vote qui ne l'a pas attendu.
 - **Historique et purge** : rien de particulier. La session naît `voting` avec `launched_at` posé, se clôt à l'échéance, puis suit la rétention des sessions closes.
 
+## Mode duo
+
+À deux, tout le protocole de session — créer, inviter, attendre, lancer, classer — coûte plus cher que la décision qu'il sert. C'est aussi l'usage qui sort le plus naturellement du déjeuner d'équipe. `/duo` (`router.duo()`, lien « À deux » sur l'accueil et sur la création de session) le ramène à l'essentiel : choisir quelques restos, envoyer un lien, balayer.
+
+| Session ordinaire                              | Duo                                                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Nom, restos, échéance, règles, groupes         | Les restos seulement — sélection proposée d'après l'historique (#59), listes, carnet |
+| Code à dicter, QR, salle d'attente, « Lancer » | Un lien à envoyer (partage natif ou copie) ; le vote commence à la création          |
+| Autant de participants qu'on veut              | **Deux places** : un troisième est refusé (`omk:duo_full`)                           |
+| Clôture au seuil de votants                    | Clôture au **premier accord** : « ça me va » ou mieux des deux côtés sur un resto    |
+| Un classement, puis « On y va » du host        | « C'est d'accord : on mange chez X » — un résultat, la décision déjà posée           |
+
+- **Un mode de session, pas un second produit.** Aucune table nouvelle : le mode vit dans `sessions.rules` sous la clé `duo`, comme `open`, avec le même chemin — `rules_are_valid`, `normalize_rules`, le helper `session_is_duo`, le trigger qui gèle les règles dès la création, une contrainte `check` qui interdit un duo en salle d'attente. Duo et session ouverte s'excluent (`omk:invalid_rules`) ; l'échéance reste facultative. Les jokers restent ceux de toujours, le seuil vaut 100 %.
+- **Pas d'attente.** La session naît en `voting` ; le premier vote sans attendre, « Envoie ce lien » au-dessus du deck. Le second ouvre `/join/<code>` : sans pseudo, `/setup` reprend la destination et il arrive directement sur le deck. L'aperçu anonyme (écran de pseudo, image Open Graph) reste visible tant qu'une place est libre.
+- **Deux places, garanties par la table.** Un trigger `before insert` sur `session_participants` refuse une troisième ligne, quelle que soit la route ; les arrivées simultanées se sérialisent sur la ligne de session. `join_session` dit `omk:duo_full` avant d'essayer.
+- **Le premier accord ferme tout.** Un trigger sur `votes` (`handle_duo_agreement`), après chaque « ça me va » ou coup de cœur d'un duo : si l'autre a dit au moins « ça me va » au même resto, la session passe `closed` et la décision (#55) est posée dans le même UPDATE (`decided_restaurant_id`, `decided_at`). Il verrouille la ligne de session avant de relire le bulletin de l'autre : deux « oui » simultanés se sérialisent, le second voit le premier. « Bof » et veto ne font jamais accord. `submit_vote` reste celui de tout le monde.
+- **Pas d'impasse.** Sans accord, la clôture habituelle : quand les deux ont fini leur deck — les deux places occupées, le premier qui termine seul ne ferme rien —, le classement habituel s'affiche, avec départage et « On y va ». Le second tour d'un duo reste un duo. Le host peut aussi clôturer à la main, par exemple si l'autre n'ouvre jamais le lien.
+- **Pour les deux, sans recharger.** La clôture et la décision arrivent par l'événement Realtime qui sert déjà la clôture ; celui dont le vote scelle l'accord bascule sans l'attendre. La notification push (#7) part par le trigger existant et dit « C'est d'accord » à l'autre, jamais le nom du resto.
+- **Mesure** : `session_created` porte `duo`, `session_closed` la raison `agreement`, et `duo_matched` (rang de la carte qui a scellé l'accord) part une fois, du navigateur qui a voté en second.
+
+Scénario rejouable avec `bun run db:test` (`supabase/tests/duo.test.sql`).
+
 ## Départager une égalité
 
 Deux restaurants au même score **et** au même nombre de coups de cœur : le classement l'annonçait, et le groupe repartait en débat. Le host a maintenant deux sorties, depuis la page de classement.
@@ -142,7 +164,7 @@ Un coup de cœur, un veto, classement quand tout le monde a voté : ces règles 
 | Vetos            | 0 à 5 par personne       | 1          |
 | Seuil de clôture | 50 % à 100 % des votants | 100 %      |
 
-Tout tient dans `sessions.rules`, un objet jsonb à trois clés (plus `open`, voir « Session ouverte ») dont le défaut reproduit exactement les règles d'avant : une session qui ne dit rien vit comme avant. Une contrainte `check` en borne les valeurs, et `create_session` complète les clés absentes — le formulaire n'envoie que ce qu'il change.
+Tout tient dans `sessions.rules`, un objet jsonb à trois clés (plus `open` et `duo`, voir « Session ouverte » et « Mode duo ») dont le défaut reproduit exactement les règles d'avant : une session qui ne dit rien vit comme avant. Une contrainte `check` en borne les valeurs, et `create_session` complète les clés absentes — le formulaire n'envoie que ce qu'il change.
 
 La base reste seule juge : `submit_vote` compte les jokers déjà posés au lieu de lire un booléen, et le trigger de clôture compare le nombre de votants arrivés au bout à `ceil(participants × seuil)`, jamais moins d'un. Sous 100 %, le classement tombe avant que tout le monde ait voté — les bulletins manquants comptent 0, comme lors d'une clôture forcée — et le deck de celui qui votait encore s'arrête proprement sur le classement.
 
@@ -437,6 +459,7 @@ Le Realtime ne sert que l'onglet ouvert : un invité qui l'a fermé n'apprend ni
 | Le host lance le vote            | les participants, sauf le host             | « Le vote est lancé »      | la salle de vote, `router.session(code)`     |
 | La session se clôt (host, seuil) | les participants, sauf l'auteur de clôture | « Le classement est prêt » | le classement, `router.sessionResults(code)` |
 | La session se clôt à l'échéance  | tous les participants                      | « Le classement est prêt » | le classement                                |
+| Un duo tombe d'accord            | l'autre, pas l'auteur du « oui » décisif   | « C'est d'accord »         | le résultat                                  |
 
 **Opt-in, jamais de demande surprise.** Le bouton « Me prévenir au lancement » apparaît en salle d'attente (invités), « Me prévenir du résultat » une fois ses votes faits. La permission du navigateur n'est demandée qu'au clic. L'abonnement est celui du **navigateur** : il vaut ensuite pour toutes les sessions auxquelles on participe, et « Ne plus me prévenir » le retire. Refusé, le bouton laisse place à une explication ; sur iPhone hors app installée, le Web Push n'existe pas, le bouton explique comment installer l'app (iOS 16.4+).
 

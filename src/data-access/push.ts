@@ -1,3 +1,5 @@
+import { isDuoSession, parseSessionRules } from '@/domain/session-rules'
+
 import type { Database } from './models/database'
 import type { PushSessionInfo, PushStatus } from '@/domain/push'
 import type { PushSubscriptionInput } from '@/domain/schemas/push'
@@ -53,11 +55,18 @@ export async function getPushSession(
 ): Promise<(PushSessionInfo & { status: PushStatus | 'waiting' }) | null> {
   const { data, error } = await admin
     .from('sessions')
-    .select('id, name, invite_code, status')
+    .select('id, name, invite_code, status, rules, decided_restaurant_id')
     .eq('id', sessionId)
     .maybeSingle()
   if (error) throw error
-  return data
+  if (!data) return null
+  // Un duo se ferme avec sa décision quand il tombe d'accord (#61) : c'est ce
+  // que la notification annonce, à la place du classement.
+  const { rules, decided_restaurant_id, ...session } = data
+  return {
+    ...session,
+    agreed: isDuoSession(parseSessionRules(rules)) && decided_restaurant_id !== null,
+  }
 }
 
 /**

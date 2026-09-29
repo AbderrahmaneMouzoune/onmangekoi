@@ -4,6 +4,7 @@ import {
   DEFAULT_SESSION_RULES,
   describeRules,
   isDefaultRules,
+  isDuoSession,
   isOpenSession,
   jokerBadge,
   jokerQuotas,
@@ -109,6 +110,48 @@ describe('open sessions', () => {
       '1 coup de cœur',
       '1 veto',
       'Clôture à l’échéance',
+    ])
+  })
+})
+
+describe('duo sessions', () => {
+  it('should read the duo mode only when the base says `true`', () => {
+    const duo = parseSessionRules({ superlikes: 1, vetos: 1, close_at_ratio: 1, duo: true })
+    expect(isDuoSession(duo)).toBe(true)
+    expect(isOpenSession(duo)).toBe(false)
+    expect(parseSessionRules({ superlikes: 1, vetos: 1, close_at_ratio: 1 })).not.toHaveProperty(
+      'duo'
+    )
+    expect(isDuoSession(parseSessionRules({ duo: 1 }))).toBe(false)
+  })
+
+  it('should never count a duo as the default rules', () => {
+    expect(isDefaultRules(rules({ duo: true }))).toBe(false)
+  })
+
+  it('should send the mode, keep the jokers and drop the threshold', () => {
+    expect(resolveRules({ duo: true, closeAtRatio: 0.6, superlikes: 2 })).toEqual({
+      superlikes: 2,
+      vetos: 1,
+      close_at_ratio: 1,
+      duo: true,
+    })
+  })
+
+  it('should never send a duo that is also open — the base would refuse it', () => {
+    expect(resolveRules({ duo: true, open: true })).not.toHaveProperty('open')
+  })
+
+  it('should say nothing about the mode when it is off', () => {
+    expect(resolveRules({ duo: false })).toBeNull()
+  })
+
+  it('should announce the agreement rule first and the fallback ranking last', () => {
+    expect(describeRules(rules({ duo: true }))).toEqual([
+      'À deux : le premier « ça me va » commun décide',
+      '1 coup de cœur',
+      '1 veto',
+      'Sans accord, classement quand vous avez fini tous les deux',
     ])
   })
 })

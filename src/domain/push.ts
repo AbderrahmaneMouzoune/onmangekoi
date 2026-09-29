@@ -37,6 +37,11 @@ export interface PushSessionInfo {
   id: string
   name: string
   invite_code: string
+  /**
+   * Un duo clos sur un accord (#61) : on n'annonce pas un classement, mais
+   * que c'est décidé. Toujours sans nommer le restaurant.
+   */
+  agreed?: boolean
 }
 
 export function pushMessageFor(status: PushStatus, session: PushSessionInfo): PushMessage {
@@ -46,6 +51,14 @@ export function pushMessageFor(status: PushStatus, session: PushSessionInfo): Pu
       title: 'Le vote est lancé',
       body: `${session.name} — à toi de voter.`,
       url: router.session(session),
+      tag,
+    }
+  }
+  if (session.agreed) {
+    return {
+      title: 'C’est d’accord',
+      body: `${session.name} — vous avez trouvé où manger.`,
+      url: router.sessionResults(session),
       tag,
     }
   }
