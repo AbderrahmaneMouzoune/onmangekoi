@@ -5,9 +5,12 @@ import { expect, test } from '@playwright/test'
  * sélecteur du pied de page la change et la retient, et les URL restent sans
  * préfixe de langue — un lien d'invitation est le même pour tous.
  *
- * Les autres specs tournent en `fr-FR` ; celle-ci part d'un navigateur anglais.
- * Le parcours de session complet dans les deux langues viendra avec la
- * phase C ; ici, un aller simple jusqu'à la salle d'attente (phase B).
+ * Les autres specs tournent dans les deux langues, une par projet
+ * (`playwright.config.ts`, `support/i18n.ts`). Celle-ci est le passage de
+ * l'une à l'autre : elle part toujours d'un navigateur anglais, et ne tourne
+ * donc que dans les projets français — dans les projets anglais, elle ne ferait
+ * que se répéter. Ses textes sont écrits en clair, exprès : c'est la langue
+ * servie qu'elle vérifie, pas un libellé.
  */
 test.describe('Langues', () => {
   test.skip(process.env.E2E !== '1', 'Nécessite une stack Supabase locale (E2E=1).')

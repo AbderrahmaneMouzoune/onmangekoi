@@ -70,6 +70,8 @@ E2E=1 bun run test:e2e
 
 Le spec `e2e/full-flow.spec.ts` ouvre deux navigateurs (host et invité), crée une session, rejoint par code, vote avec les jokers et vérifie le classement. Sans `E2E=1`, il est ignoré.
 
+Chaque spec tourne en français et en anglais : quatre projets Playwright, `mobile` et `desktop` en `fr-FR`, `mobile-en` et `desktop-en` en `en-US`, dont les libellés viennent de `messages/` (`e2e/support/i18n.ts`, voir [`docs/i18n.md`](i18n.md)). Pour une seule langue : `E2E=1 bun run test:e2e --project=desktop-en`.
+
 ## Routes et codes
 
 Toutes les URL de l'app sont construites via `router.*()` dans `src/config/router.config.ts` (jamais de chaîne `'/sessions/...'` en dur). Le fichier expose aussi les préfixes protégés — `src/proxy.ts` doit les répéter dans son `matcher` littéral, ce que vérifie `router.config.test.ts`.

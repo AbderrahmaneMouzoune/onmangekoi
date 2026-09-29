@@ -26,12 +26,28 @@ export default defineConfig({
     baseURL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    locale: 'fr-FR',
     launchOptions: executablePath ? { executablePath } : undefined,
   },
+  /**
+   * Chaque parcours tourne en français et en anglais (issue #14) : la langue
+   * est celle du navigateur (`Accept-Language`), et les specs lisent leurs
+   * libellés dans `messages/<langue>/` (`e2e/support/i18n.ts`). `i18n.spec.ts`
+   * part toujours d'un navigateur anglais pour tester le passage d'une langue
+   * à l'autre : les projets anglais l'ignorent, il s'y répéterait.
+   */
   projects: [
-    { name: 'mobile', use: { ...devices['Pixel 7'] } },
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
+    { name: 'mobile', use: { ...devices['Pixel 7'], locale: 'fr-FR' } },
+    { name: 'desktop', use: { ...devices['Desktop Chrome'], locale: 'fr-FR' } },
+    {
+      name: 'mobile-en',
+      use: { ...devices['Pixel 7'], locale: 'en-US' },
+      testIgnore: 'i18n.spec.ts',
+    },
+    {
+      name: 'desktop-en',
+      use: { ...devices['Desktop Chrome'], locale: 'en-US' },
+      testIgnore: 'i18n.spec.ts',
+    },
   ],
   webServer: process.env.E2E_SKIP_WEBSERVER
     ? undefined
