@@ -40,6 +40,7 @@ Les quotas de jokers et le seuil de clôture se règlent **à la création** —
 | Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)                     |
 | Rejoindre           | Impossible une fois le vote lancé ; un participant existant retrouve sa session        |
 | Départage           | À égalité parfaite, le host choisit : second tour entre les ex æquo, ou tirage au sort |
+| Décision            | « On y va » : le host confirme où le groupe va — le gagnant, ou un autre resto du vote |
 
 ## Groupes récurrents
 
@@ -90,7 +91,22 @@ Le sort n'est **jamais** tiré côté client : un `Math.random()` par navigateur
 
 Le second tour retient d'où il vient (`sessions.parent_session_id`) : sa salle renvoie au classement du premier tour, et s'il finit lui-même à égalité, il se départage de la même façon. Une session n'a qu'un second tour, garanti par un index unique et pas seulement par la RPC.
 
-Tant que l'égalité n'est pas tranchée, la page de classement suit la session en direct : le choix du host s'affiche chez les autres sans qu'ils rechargent.
+La page de classement suit la session en direct : le choix du host s'affiche chez les autres sans qu'ils rechargent. Le host peut aussi trancher en retenant directement l'un des ex æquo (voir ci-dessous).
+
+## « On y va » : la décision
+
+Le classement dit ce que le groupe a voté ; il ne disait pas où il allait. Depuis la page de classement, le host **confirme** : le premier du vote est proposé par défaut, et « Choisir un autre resto » ouvre la liste complète — un ex æquo, ou le deuxième quand le premier a baissé le rideau.
+
+| Posé                               | Ce qui se passe                                                                                                |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `sessions.decided_restaurant_id`   | Le restaurant retenu, clé vers `restaurants` en `on delete set null` : un resto retiré plus tard ne casse rien |
+| `sessions.decided_at`              | La date de la dernière confirmation                                                                            |
+| `confirm_decision(session, resto)` | Host seul, session close seulement, et un restaurant **de la session** — tout le reste est refusé en base      |
+| `session_results.decided`          | Vrai sur la ligne retenue : tout le monde lit la même carte « C'est décidé · on mange chez Marcel »            |
+
+La décision est **facultative** : sans elle, le classement s'affiche exactement comme avant. Posée, elle prend la carte du haut ; le premier du vote rejoint le reste du classement, **à son rang** — la décision ne réécrit pas le dépouillement. Elle reste **modifiable** par le host (une session close ne rouvrant pas, c'est pour de bon) mais pas révocable : on en change, on ne revient pas au vote seul. Reconfirmer le même restaurant ne réécrit rien.
+
+Elle arrive chez les participants **par le même événement Realtime que la clôture** — un UPDATE de la ligne `sessions`, déjà publiée — : personne n'a à recharger. Et c'est elle que le reste de l'app raconte quand elle existe : l'historique montre le resto décidé, les statistiques le comptent, l'anti-fatigue le retient (même à score nul, et lui seul), et le lien public comme son image Open Graph annoncent « C'est décidé ».
 
 ## Règles personnalisables
 
@@ -120,7 +136,7 @@ Le même restaurant gagne trois vendredis de suite et le vote devient une formal
 
 La source est la RPC `recent_winners()` : les restaurants sortis **premiers** des sessions closes auxquelles la personne a participé dans les 30 derniers jours, avec la date du dernier sacre. Elle ne prend pas d'identifiant — elle répond pour `auth.uid()`, jamais pour quelqu'un d'autre — et ne renvoie que le gagnant : ni score, ni classement complet, ni qui a voté quoi.
 
-Un classement où personne n'a dit oui (score nul ou négatif en tête) ne sacre personne : cette session-là n'a fatigué personne, et écarter toute la liste à la suivante n'aurait aucun sens. Deux restaurants à égalité parfaite en tête sont deux gagnants, comme à l'écran de classement — sauf si le host a tiré au sort : seul le désigné compte alors.
+Un classement où personne n'a dit oui (score nul ou négatif en tête) ne sacre personne : cette session-là n'a fatigué personne, et écarter toute la liste à la suivante n'aurait aucun sens. Deux restaurants à égalité parfaite en tête sont deux gagnants, comme à l'écran de classement — sauf si le host a tiré au sort : seul le désigné compte alors. Et quand le host a confirmé où le groupe allait (« On y va »), c'est ce restaurant-là, et lui seul, qui compte : on y est allés, quel que soit son score.
 
 L'exclusion est appliquée **côté serveur**, dans le use-case de création : une liste apporte des restaurants que l'écran n'a jamais montrés un par un. Si elle ne laisse rien, la session n'est pas créée — le formulaire le dit plutôt que de partir avec zéro resto.
 
@@ -158,8 +174,8 @@ Le code d'invitation peut aussi être **scanné** : la page « Rejoindre » ouvr
 `/r/<code>` est la seule page de session ouverte sans pseudo. Elle porte **son propre code**, distinct de celui de l'invitation : un lien collé dans une conversation ne donne jamais accès à la salle de vote, et le refermer ne casse pas l'invitation.
 
 - **Opt-in du host** : `sessions.results_public` est faux par défaut, et seule la RPC `set_results_public` — host, session close — le change.
-- **Ce qui sort** : le nom de la session, le nombre de participants, et le podium (rangs 1 à 3). La RPC `public_results` ne renvoie rien d'autre : ni pseudo, ni détail des votes, ni le reste du classement.
-- **Aperçu** : l'`opengraph-image` de la route affiche le gagnant et son score sur l'ardoise, et se cache une heure — de quoi tenir un lien qui circule.
+- **Ce qui sort** : le nom de la session, le nombre de participants, le podium (rangs 1 à 3) et, quand le host l'a confirmé, le restaurant où le groupe va — même hors podium. La RPC `public_results` ne renvoie rien d'autre : ni pseudo, ni détail des votes, ni le reste du classement.
+- **Aperçu** : l'`opengraph-image` de la route affiche le gagnant — ou la décision, « C'est décidé » — et son score sur l'ardoise, et se cache une heure — de quoi tenir un lien qui circule. Confirmer une décision purge le cache du lien.
 - **Refermer** est immédiat : la bascule purge l'entrée de cache du lien, la page redevient introuvable.
 
 ### Une liste publique
@@ -174,14 +190,14 @@ Le pseudo du propriétaire n'apparaît nulle part sur cette page : la RPC `publi
 
 Une session clôturée ne sort plus de la navigation : `/sessions` la garde, hébergée ou rejointe, de la plus récente à la plus ancienne, et son classement s'ouvre en un clic. « Mon compte » y ajoute le résumé de ce que ces sessions racontent.
 
-| Lecture           | RPC                                                | Ce qu'elle rend                                                                         |
-| ----------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Historique paginé | `my_sessions(limit, cursor_created_at, cursor_id)` | statut, date, compteurs, hôte ou non, et le gagnant d'une session close                 |
-| Statistiques      | `my_stats()`                                       | sessions, votes, taux de coups de cœur, cuisine préférée, resto le plus souvent gagnant |
+| Lecture           | RPC                                                | Ce qu'elle rend                                                                                      |
+| ----------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Historique paginé | `my_sessions(limit, cursor_created_at, cursor_id)` | statut, date, compteurs, hôte ou non, et le resto décidé — à défaut le gagnant — d'une session close |
+| Statistiques      | `my_stats()`                                       | sessions, votes, taux de coups de cœur, cuisine préférée, resto le plus souvent choisi               |
 
 La pagination se fait **par curseur, jamais par offset** : le curseur désigne la dernière ligne rendue — sa date et son id, encodés en base64url dans `?cursor=` —, et la page suivante reprend strictement en dessous. Une session créée entre deux pages n'en décale donc aucune, ne fait sauter aucune ligne et n'en sert jamais deux fois la même. Un curseur illisible retombe sur la première page au lieu de lever.
 
-Les statistiques ne comptent **que mes votes** : `my_stats` n'agrège que les lignes attachées à mes participations. Le seul chiffre issu du groupe est le gagnant d'une session close, qui est déjà l'agrégat que ses participants lisent dans le classement. La règle de départage est partagée avec `session_results` (score, puis coups de cœur, puis le restaurant tiré au sort s'il y a eu tirage, puis ordre de présentation) via un helper `session_winner` qu'aucun rôle ne peut appeler : seules les deux RPC y accèdent, après avoir vérifié la participation.
+Les statistiques ne comptent **que mes votes** : `my_stats` n'agrège que les lignes attachées à mes participations. Le seul chiffre issu du groupe est le gagnant d'une session close, qui est déjà l'agrégat que ses participants lisent dans le classement. La règle est partagée avec `session_results` (la décision du host s'il y en a une, puis score, puis coups de cœur, puis le restaurant tiré au sort s'il y a eu tirage, puis ordre de présentation) via un helper `session_winner` qu'aucun rôle ne peut appeler : seules les deux RPC y accèdent, après avoir vérifié la participation.
 
 Le scénario est rejouable avec `bun run db:test` (`supabase/tests/history.test.sql`).
 
@@ -384,7 +400,8 @@ src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`)
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
 src/hooks/               Realtime de session, compte à rebours, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/add|remove_session_restaurant/submit_vote/close/extend/
-                         results/recent_winners/my_sessions/my_stats, départage, groupes et invitations), purge, RGPD
+                         results/recent_winners/my_sessions/my_stats, départage, décision, groupes et invitations),
+                         purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
 ```
@@ -446,6 +463,7 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.
 - La clé Google Places ne quitte jamais le serveur, et aucune policy RLS n'ouvre l'écriture en `source = 'google'` : `upsert_restaurant_from_place` est le seul chemin. Les corps d'erreur renvoyés par Google restent dans les logs serveur.
 - **Le départage d'une égalité est décidé en base.** `draw_winner` tire le gagnant et le conserve dans `sessions.tiebreak_winner_id` : le client n'a rien à choisir, et un second appel ne rejoue pas le sort. `create_runoff_session` recopie elle-même participants et restaurants ; les deux sont réservées au host d'une session close.
+- **La décision est posée en base, par le host seul.** `confirm_decision` revérifie le rôle, le statut `closed` et l'appartenance du restaurant à la session ; aucune policy n'ouvre l'UPDATE de `sessions`, c'est le seul chemin. Un host supprimé laisse une session que plus personne ne peut décider.
 - Les codes d'invitation font 6 caractères et les codes de partage de liste 10, sur l'alphabet Crockford base32 (32 symboles, ≈ 1 milliard et ≈ 10¹⁵ combinaisons), tirés uniformément avec `gen_random_bytes` et reprise sur collision. Un code court ne tient que si on ne peut pas l'essayer en boucle : voir [Anti-abus](#anti-abus).
 - Les pages sont rendues avec des chargements parallèles (`Promise.all`) et les lectures par requête sont dédupliquées via `React.cache` (`getCurrentUser`, `getProfile`, `getSessionById`…).
 - **Aucune donnée personnelle n'est mise en cache.** Seul le catalogue public de restaurants est mémorisé, via un client Supabase sans cookie ; voir [Rendu et cache](#rendu-et-cache).

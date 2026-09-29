@@ -34,6 +34,8 @@ function session(overrides: Partial<Session> = {}): Session {
     parent_session_id: null,
     tiebreak_method: null,
     tiebreak_winner_id: null,
+    decided_restaurant_id: null,
+    decided_at: null,
     rules: DEFAULT_SESSION_RULES,
     results_code: 'H4V2Q8ZX0M',
     results_public: false,

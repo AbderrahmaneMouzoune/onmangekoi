@@ -116,6 +116,24 @@ export async function drawTiebreakWinner(
 }
 
 /**
+ * « On y va » : le host confirme où le groupe va. La RPC vérifie en base qu'il
+ * est bien le host, que la session est close et que le restaurant en fait
+ * partie. Rappelée avec un autre restaurant, elle remplace la décision.
+ */
+export async function confirmDecision(
+  supabase: SupabaseClient<Database>,
+  sessionId: string,
+  restaurantId: string
+): Promise<Session> {
+  const { data, error } = await supabase.rpc('confirm_decision', {
+    p_session_id: sessionId,
+    p_restaurant_id: restaurantId,
+  })
+  if (error) throw error
+  return data
+}
+
+/**
  * Ajoute un restaurant à une session en attente. La RPC vérifie en base que
  * l'appelant en est participant, que le vote n'a pas démarré et pose
  * `added_by` elle-même.

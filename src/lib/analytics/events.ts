@@ -87,6 +87,20 @@ export interface AnalyticsEventMap {
     /** Nombre de restaurants à égalité en tête */
     tied_count: number
   }
+  /**
+   * « On y va » : le host confirme où le groupe va (issue #55). Le rang au
+   * vote du restaurant retenu dit si la décision suit le classement ; jamais
+   * son nom.
+   */
+  decision_confirmed: {
+    session_id: string
+    /** Rang au vote du restaurant retenu, à partir de 1 */
+    rank: number
+    /** Le restaurant retenu est-il en tête du vote (ex æquo compris) ? */
+    follows_vote: boolean
+    /** Le host revient-il sur une décision déjà posée ? */
+    is_change: boolean
+  }
   list_shared: {
     method: ShareMethod
   }

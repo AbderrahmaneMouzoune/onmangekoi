@@ -466,6 +466,8 @@ export type Database = {
           closed_at: string | null
           closes_at: string | null
           created_at: string
+          decided_at: string | null
+          decided_restaurant_id: string | null
           host_id: string | null
           id: string
           invite_code: string
@@ -484,6 +486,8 @@ export type Database = {
           closed_at?: string | null
           closes_at?: string | null
           created_at?: string
+          decided_at?: string | null
+          decided_restaurant_id?: string | null
           host_id?: string | null
           id?: string
           invite_code?: string
@@ -502,6 +506,8 @@ export type Database = {
           closed_at?: string | null
           closes_at?: string | null
           created_at?: string
+          decided_at?: string | null
+          decided_restaurant_id?: string | null
           host_id?: string | null
           id?: string
           invite_code?: string
@@ -517,6 +523,13 @@ export type Database = {
           tiebreak_winner_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: 'sessions_decided_restaurant_id_fkey'
+            columns: ['decided_restaurant_id']
+            isOneToOne: false
+            referencedRelation: 'restaurants'
+            referencedColumns: ['id']
+          },
           {
             foreignKeyName: 'sessions_host_id_fkey'
             columns: ['host_id']
@@ -627,6 +640,37 @@ export type Database = {
           closed_at: string | null
           closes_at: string | null
           created_at: string
+          decided_at: string | null
+          decided_restaurant_id: string | null
+          host_id: string | null
+          id: string
+          invite_code: string
+          invite_token: string
+          launched_at: string | null
+          name: string
+          parent_session_id: string | null
+          results_code: string
+          results_public: boolean
+          rules: Json
+          status: Database['public']['Enums']['session_status']
+          tiebreak_method: Database['public']['Enums']['tiebreak_method'] | null
+          tiebreak_winner_id: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'sessions'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      confirm_decision: {
+        Args: { p_restaurant_id: string; p_session_id: string }
+        Returns: {
+          closed_at: string | null
+          closes_at: string | null
+          created_at: string
+          decided_at: string | null
+          decided_restaurant_id: string | null
           host_id: string | null
           id: string
           invite_code: string
@@ -724,6 +768,8 @@ export type Database = {
           closed_at: string | null
           closes_at: string | null
           created_at: string
+          decided_at: string | null
+          decided_restaurant_id: string | null
           host_id: string | null
           id: string
           invite_code: string
@@ -756,6 +802,8 @@ export type Database = {
           closed_at: string | null
           closes_at: string | null
           created_at: string
+          decided_at: string | null
+          decided_restaurant_id: string | null
           host_id: string | null
           id: string
           invite_code: string
@@ -786,6 +834,8 @@ export type Database = {
           closed_at: string | null
           closes_at: string | null
           created_at: string
+          decided_at: string | null
+          decided_restaurant_id: string | null
           host_id: string | null
           id: string
           invite_code: string
@@ -814,6 +864,8 @@ export type Database = {
           closed_at: string | null
           closes_at: string | null
           created_at: string
+          decided_at: string | null
+          decided_restaurant_id: string | null
           host_id: string | null
           id: string
           invite_code: string
@@ -909,6 +961,8 @@ export type Database = {
           closed_at: string | null
           closes_at: string | null
           created_at: string
+          decided_at: string | null
+          decided_restaurant_id: string | null
           host_id: string | null
           id: string
           invite_code: string
@@ -936,6 +990,8 @@ export type Database = {
           closed_at: string | null
           closes_at: string | null
           created_at: string
+          decided_at: string | null
+          decided_restaurant_id: string | null
           host_id: string | null
           id: string
           invite_code: string
@@ -1025,6 +1081,7 @@ export type Database = {
           participant_count: number
           restaurant_count: number
           status: Database['public']['Enums']['session_status']
+          winner_decided: boolean
           winner_name: string
           winner_score: number
         }[]
@@ -1104,6 +1161,7 @@ export type Database = {
           city: string
           closed_at: string
           cuisine_type: string
+          decided: boolean
           participant_count: number
           photo_url: string
           rank: number
@@ -1196,6 +1254,7 @@ export type Database = {
           address: string
           city: string
           cuisine_type: string
+          decided: boolean
           description: string
           dislikes: number
           likes: number
@@ -1224,6 +1283,7 @@ export type Database = {
       session_winner: {
         Args: { p_session_id: string }
         Returns: {
+          decided: boolean
           name: string
           restaurant_id: string
           score: number
@@ -1235,6 +1295,8 @@ export type Database = {
           closed_at: string | null
           closes_at: string | null
           created_at: string
+          decided_at: string | null
+          decided_restaurant_id: string | null
           host_id: string | null
           id: string
           invite_code: string

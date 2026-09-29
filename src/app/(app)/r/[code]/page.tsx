@@ -16,13 +16,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params
   const parsed = parseResultsParam(code)
   const results = parsed ? await getPublicResults(parsed).catch(() => null) : null
-  const winner = results?.podium[0]
+  const winner = results?.decision ?? results?.podium[0]
 
   if (!results || !winner) return { title: 'Classement', robots: { index: false } }
 
   return {
     title: `On mange chez ${winner.restaurant_name}`,
-    description: `${results.sessionName} : ${countLabel(results.participantCount, 'participant')} ont voté, ${winner.restaurant_name} l’emporte.`,
+    // Une fois la décision posée, le lien annonce un déjeuner, plus un vote.
+    description: results.decision
+      ? `${results.sessionName} : c’est décidé, on mange chez ${winner.restaurant_name}.`
+      : `${results.sessionName} : ${countLabel(results.participantCount, 'participant')} ont voté, ${winner.restaurant_name} l’emporte.`,
     // Le lien se partage, il ne s'indexe pas : le nom d'une session est celui
     // d'un groupe, il n'a rien à faire dans un moteur de recherche.
     robots: { index: false },

@@ -11,6 +11,7 @@ import Image from 'next/image'
 
 import { StaticMap } from '@/components/restaurants/static-map'
 import { buttonVariants } from '@/components/ui/button'
+import { headlineOf, readDecision } from '@/domain/decision'
 import { joinNames, readTiebreak } from '@/domain/tiebreak'
 import { formatScore } from '@/domain/vote'
 import { remoteImageUrl } from '@/lib/images'
@@ -18,6 +19,7 @@ import { directionsUrl, parseGeoPoint } from '@/lib/maps'
 import { cn } from '@/lib/utils'
 
 import type { SessionResultRow } from '@/data-access/models'
+import type { Decision } from '@/domain/decision'
 import type { Tiebreak } from '@/domain/tiebreak'
 
 interface ResultsListProps {
@@ -28,16 +30,22 @@ interface ResultsListProps {
 }
 
 /**
- * Le classement. Sur grand écran, le gagnant et sa carte occupent la colonne
- * de gauche, le reste du classement et les actions celle de droite.
+ * Le classement. Sur grand écran, le restaurant annoncé et sa carte occupent
+ * la colonne de gauche, le reste du classement et les actions celle de droite.
+ *
+ * Le restaurant annoncé est le premier du vote, sauf quand le host a confirmé
+ * où le groupe va (« On y va », issue #55) : la décision prend alors la carte,
+ * et le premier du vote rejoint le reste du classement, à son rang.
  */
 export function ResultsList({ results, participantCount, actions }: ResultsListProps) {
   const maxAbs = Math.max(1, ...results.map((r) => Math.abs(r.score)))
-  const [winner, ...rest] = results
+  const winner = headlineOf(results)
 
   if (!winner) return null
 
+  const rest = results.filter((row) => row !== winner)
   const tiebreak = readTiebreak(results)
+  const decision = readDecision(results)
 
   const place = [winner.address, winner.city].filter(Boolean).join(', ')
   const photo = remoteImageUrl(winner.photo_url)
@@ -69,7 +77,7 @@ export function ResultsList({ results, participantCount, actions }: ResultsListP
           )}
 
           <p className="relative font-mono text-[0.7rem] tracking-[0.12em] text-chalk-muted uppercase">
-            On mange chez
+            {decision ? 'C’est décidé · on mange chez' : 'On mange chez'}
           </p>
           <h2
             id="winner-title"
@@ -123,7 +131,16 @@ export function ResultsList({ results, participantCount, actions }: ResultsListP
             </div>
           )}
 
-          {tiebreak && <TieNote tiebreak={tiebreak} winner={winner} />}
+          {decision?.overridesVote ? (
+            <p className="relative text-sm text-chalk-muted">
+              Choix du host : le vote plaçait {decision.leader.name} en tête.
+            </p>
+          ) : (
+            tiebreak &&
+            tiebreak.tied.includes(winner) && (
+              <TieNote tiebreak={tiebreak} winner={winner} decision={decision} />
+            )
+          )}
         </section>
 
         {point && (
@@ -178,17 +195,28 @@ export function ResultsList({ results, participantCount, actions }: ResultsListP
 
 /**
  * Ce que l'égalité de tête est devenue, dit en une phrase sur la carte du
- * gagnant. Le départage lui-même se pilote depuis le panneau dédié.
+ * gagnant. Le départage lui-même se pilote depuis le panneau dédié ; le host
+ * peut aussi trancher en retenant directement l'un des ex æquo.
  */
-function TieNote({ tiebreak, winner }: { tiebreak: Tiebreak; winner: SessionResultRow }) {
+function TieNote({
+  tiebreak,
+  winner,
+  decision,
+}: {
+  tiebreak: Tiebreak
+  winner: SessionResultRow
+  decision: Decision | null
+}) {
   const others = joinNames(tiebreak.tied.filter((row) => row !== winner).map((row) => row.name))
   return (
     <p className="relative text-sm text-chalk-muted">
-      {tiebreak.method === 'draw'
+      {tiebreak.method === 'draw' && winner.tiebreak === 'winner'
         ? `Désigné par tirage au sort, à égalité parfaite avec ${others}.`
         : tiebreak.method === 'runoff'
           ? `Égalité parfaite avec ${others} : le second tour est en cours.`
-          : `Égalité parfaite avec ${others}.`}
+          : decision
+            ? `Retenu par le host, à égalité parfaite avec ${others}.`
+            : `Égalité parfaite avec ${others}.`}
     </p>
   )
 }

@@ -11,7 +11,6 @@ import { FormMessage } from '@/components/ui/form-message'
 import { TwoStepButton } from '@/components/ui/two-step-button'
 import { router } from '@/config/router.config'
 import { joinNames } from '@/domain/tiebreak'
-import { useSessionWatch } from '@/hooks/use-session-watch'
 import { captureEvent } from '@/lib/analytics/client'
 import { cn } from '@/lib/utils'
 
@@ -33,8 +32,8 @@ interface TiebreakPanelProps {
  * le sort trancher. Les deux se décident en base — l'écran ne fait que
  * demander, puis relire.
  *
- * Tant que l'égalité tient, la ligne de session est suivie en direct : le
- * choix du host arrive sur l'écran des autres sans qu'ils rechargent.
+ * Le choix du host arrive sur l'écran des autres sans qu'ils rechargent : le
+ * classement suit la ligne de session en direct (`ResultsWatch`).
  */
 export function TiebreakPanel({
   sessionId,
@@ -46,8 +45,6 @@ export function TiebreakPanel({
   const navigation = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-
-  useSessionWatch(sessionId, method === null)
 
   const names = joinNames(tiedNames)
 

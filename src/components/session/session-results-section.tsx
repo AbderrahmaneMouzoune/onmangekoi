@@ -4,8 +4,10 @@ import { notFound, redirect } from 'next/navigation'
 
 import { SaveGroupForm } from '@/components/groups/save-group-form'
 import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
+import { DecisionPanel } from '@/components/session/decision-panel'
 import { ResultsList } from '@/components/session/results-list'
 import { ResultsSharing } from '@/components/session/results-sharing'
+import { ResultsWatch } from '@/components/session/results-watch'
 import { TiebreakPanel } from '@/components/session/tiebreak-panel'
 import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -19,6 +21,7 @@ import {
   getSessionResults,
 } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
+import { decisionCandidates, headlineOf, readDecision } from '@/domain/decision'
 import { readTiebreak } from '@/domain/tiebreak'
 import { countLabel } from '@/lib/format'
 import { absoluteUrl, publicResultsUrl } from '@/lib/site'
@@ -47,8 +50,12 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
     getSessionParticipants(supabase, session.id),
   ])
 
-  const winner = results[0]
+  // Le restaurant annoncé : la décision du host s'il l'a posée, le premier
+  // du vote sinon. C'est lui que le partage nomme.
+  const winner = headlineOf(results)
   const tiebreak = readTiebreak(results)
+  const decision = readDecision(results)
+  const isHost = session.host_id === user.id
 
   // Le second tour ne se lit que s'il existe : une lecture de plus, seulement
   // pour les rares classements qui en sont là.
@@ -69,23 +76,38 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
           participantCount={participants.length}
           actions={
             <>
-              {tiebreak && tiebreak.method !== 'draw' && (
-                <TiebreakPanel
+              <ResultsWatch sessionId={session.id} />
+              {/* Retenir l'un des ex æquo tranche aussi l'égalité : le panneau
+                  de départage n'a alors plus rien à proposer. Un second tour
+                  déjà lancé reste signalé, avec son lien. */}
+              {tiebreak &&
+                tiebreak.method !== 'draw' &&
+                !(decision && tiebreak.method === null) && (
+                  <TiebreakPanel
+                    sessionId={session.id}
+                    tiedNames={tiebreak.tied.map((row) => row.name)}
+                    method={tiebreak.method}
+                    isHost={isHost}
+                    runoff={
+                      runoff
+                        ? {
+                            url:
+                              runoff.status === 'closed'
+                                ? router.sessionResults(runoff)
+                                : router.session(runoff),
+                            status: runoff.status,
+                          }
+                        : null
+                    }
+                  />
+                )}
+              {/* Le parent d'un second tour n'a rien à confirmer : c'est la
+                  session fille qui désigne où le groupe va. */}
+              {isHost && tiebreak?.method !== 'runoff' && (
+                <DecisionPanel
                   sessionId={session.id}
-                  tiedNames={tiebreak.tied.map((row) => row.name)}
-                  method={tiebreak.method}
-                  isHost={session.host_id === user.id}
-                  runoff={
-                    runoff
-                      ? {
-                          url:
-                            runoff.status === 'closed'
-                              ? router.sessionResults(runoff)
-                              : router.session(runoff),
-                          status: runoff.status,
-                        }
-                      : null
-                  }
+                  candidates={decisionCandidates(results)}
+                  decidedId={decision?.decided.restaurant_id ?? null}
                 />
               )}
               <ResultsSharing
@@ -94,7 +116,7 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
                 winnerName={winner.name}
                 privateUrl={absoluteUrl(router.sessionResults(session))}
                 publicUrl={publicResultsUrl(session)}
-                isHost={session.host_id === user.id}
+                isHost={isHost}
                 initialPublic={session.results_public}
               />
               <div className="flex flex-wrap gap-2">

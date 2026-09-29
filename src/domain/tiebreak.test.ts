@@ -26,6 +26,7 @@ function row(name: string, tiebreak: TiebreakState | null, rank = 1): SessionRes
     votes_count: 0,
     rank,
     tiebreak,
+    decided: false,
   }
 }
 

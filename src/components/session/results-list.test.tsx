@@ -30,6 +30,7 @@ function row(overrides: Partial<SessionResultRow>): SessionResultRow {
     votes_count: 0,
     rank: 1,
     tiebreak: null,
+    decided: false,
     ...overrides,
   }
 }
@@ -135,6 +136,55 @@ describe('ResultsList', () => {
     expect(screen.queryByRole('link', { name: /Itinéraire/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Le site/ })).not.toBeInTheDocument()
     expect(document.querySelectorAll('img')).toHaveLength(0)
+  })
+
+  it('should put the host’s decision on the card and keep the vote below', () => {
+    render(
+      <ResultsList
+        participantCount={3}
+        results={[
+          row({ name: 'Burger & Co', score: 3, rank: 1 }),
+          row({ name: 'Chez Marcel', score: 1, rank: 2, decided: true }),
+        ]}
+      />
+    )
+    expect(screen.getByRole('heading', { name: 'Chez Marcel' })).toBeInTheDocument()
+    expect(screen.getByText(/C’est décidé · on mange chez/)).toBeInTheDocument()
+    expect(
+      screen.getByText('Choix du host : le vote plaçait Burger & Co en tête.')
+    ).toBeInTheDocument()
+    // Le premier du vote reste au classement, à son rang.
+    expect(screen.getByText('Burger & Co')).toBeInTheDocument()
+    expect(screen.getByText('1.')).toBeInTheDocument()
+  })
+
+  it('should not second-guess the vote when the host confirms the winner', () => {
+    render(
+      <ResultsList
+        participantCount={3}
+        results={[
+          row({ name: 'Burger & Co', score: 3, rank: 1, decided: true }),
+          row({ name: 'Curry House', score: 1, rank: 2 }),
+        ]}
+      />
+    )
+    expect(screen.getByRole('heading', { name: 'Burger & Co' })).toBeInTheDocument()
+    expect(screen.getByText(/C’est décidé/)).toBeInTheDocument()
+    expect(screen.queryByText(/Choix du host/)).not.toBeInTheDocument()
+  })
+
+  it('should say the host settled a tie by picking one of the tied', () => {
+    render(
+      <ResultsList
+        participantCount={2}
+        results={[
+          row({ name: 'A', score: 2, rank: 1, tiebreak: 'tied' }),
+          row({ name: 'B', score: 2, rank: 1, tiebreak: 'tied', decided: true }),
+        ]}
+      />
+    )
+    expect(screen.getByRole('heading', { name: 'B' })).toBeInTheDocument()
+    expect(screen.getByText('Retenu par le host, à égalité parfaite avec A.')).toBeInTheDocument()
   })
 
   it('should render nothing without results', () => {

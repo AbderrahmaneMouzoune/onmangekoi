@@ -1,4 +1,4 @@
-import { RiTrophyLine } from '@remixicon/react'
+import { RiCheckboxCircleLine, RiTrophyLine } from '@remixicon/react'
 import Link from 'next/link'
 
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
@@ -12,7 +12,8 @@ import type { SessionHistoryEntry } from '@/data-access/models'
  * Les lignes de l'historique, sans aucune lecture : une session close mène à
  * son classement — c'est tout l'intérêt de la garder —, une session vivante à
  * sa salle. Le gagnant n'apparaît qu'une fois la session close : avant, il
- * n'existe pas.
+ * n'existe pas. Quand le host a confirmé où le groupe allait (« On y va »),
+ * c'est ce restaurant-là qui s'affiche, marqué comme décidé.
  */
 export function SessionHistoryList({ entries }: { entries: SessionHistoryEntry[] }) {
   return (
@@ -32,7 +33,17 @@ export function SessionHistoryList({ entries }: { entries: SessionHistoryEntry[]
               </span>
               {entry.winner_name && (
                 <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium">
-                  <RiTrophyLine aria-hidden="true" className="size-3.5 shrink-0 text-brand" />
+                  {entry.winner_decided ? (
+                    <RiCheckboxCircleLine
+                      aria-hidden="true"
+                      className="size-3.5 shrink-0 text-yes"
+                    />
+                  ) : (
+                    <RiTrophyLine aria-hidden="true" className="size-3.5 shrink-0 text-brand" />
+                  )}
+                  <span className="sr-only">
+                    {entry.winner_decided ? 'On y est allés : ' : 'En tête du vote : '}
+                  </span>
                   <span className="truncate">{entry.winner_name}</span>
                   {entry.winner_score !== null && (
                     <span className="shrink-0 font-mono text-muted-foreground tabular">
