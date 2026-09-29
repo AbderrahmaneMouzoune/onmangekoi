@@ -1,6 +1,7 @@
 'use client'
 
 import { RiAddLine, RiBookmarkLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useRef, useState, useTransition } from 'react'
 
 import { addToSharedListAction, copySharedListAction } from '@/actions/lists'
@@ -27,6 +28,8 @@ export function SharedListActions({
   existingIds,
   initialPage,
 }: SharedListActionsProps) {
+  const t = useTranslations('lists.shared')
+  const tCommon = useTranslations('common')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [adding, setAdding] = useState(false)
@@ -71,7 +74,7 @@ export function SharedListActions({
       {isCollaborative && !adding && (
         <Button ref={addButtonRef} type="button" variant="outline" onClick={() => setAdding(true)}>
           <RiAddLine aria-hidden="true" />
-          Ajouter un resto à cette liste
+          {t('addOne')}
         </Button>
       )}
 
@@ -90,10 +93,10 @@ export function SharedListActions({
               disabled={isPending || pickerIds.length === 0}
               className="flex-1"
             >
-              {isPending ? <Spinner /> : 'Ajouter'}
+              {isPending ? <Spinner /> : t('add')}
             </Button>
             <Button type="button" variant="ghost" onClick={() => setAdding(false)}>
-              Annuler
+              {tCommon('actions.cancel')}
             </Button>
           </div>
         </div>
@@ -102,7 +105,7 @@ export function SharedListActions({
       {!isOwner && (
         <Button type="button" onClick={copy} disabled={isPending}>
           {isPending ? <Spinner /> : <RiBookmarkLine aria-hidden="true" />}
-          Enregistrer dans mes listes
+          {t('save')}
         </Button>
       )}
     </div>

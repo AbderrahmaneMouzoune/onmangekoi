@@ -46,10 +46,31 @@ const SESSION_ID = '3f1d2c4b-5a6e-4d7f-8a9b-0c1d2e3f4a5b'
 const HOST_ID = '11111111-1111-4111-8111-111111111111'
 
 const SESSION = { id: SESSION_ID, name: 'Midi de mardi', invite_code: '7K3M9P', status: 'voting' }
-const ALIVE = { endpoint: 'https://push.example.test/alive', keys: { p256dh: 'a', auth: 'b' } }
-const GONE = { endpoint: 'https://push.example.test/gone', keys: { p256dh: 'c', auth: 'd' } }
-const MISSING = { endpoint: 'https://push.example.test/missing', keys: { p256dh: 'e', auth: 'f' } }
-const BUSY = { endpoint: 'https://push.example.test/busy', keys: { p256dh: 'g', auth: 'h' } }
+const ALIVE = {
+  endpoint: 'https://push.example.test/alive',
+  keys: { p256dh: 'a', auth: 'b' },
+  locale: 'fr',
+}
+const GONE = {
+  endpoint: 'https://push.example.test/gone',
+  keys: { p256dh: 'c', auth: 'd' },
+  locale: 'fr',
+}
+const MISSING = {
+  endpoint: 'https://push.example.test/missing',
+  keys: { p256dh: 'e', auth: 'f' },
+  locale: 'fr',
+}
+const BUSY = {
+  endpoint: 'https://push.example.test/busy',
+  keys: { p256dh: 'g', auth: 'h' },
+  locale: 'fr',
+}
+const ENGLISH = {
+  endpoint: 'https://push.example.test/english',
+  keys: { p256dh: 'i', auth: 'j' },
+  locale: 'en',
+}
 
 const VAPID = {
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: 'BPublicKey',
@@ -148,12 +169,14 @@ describe('POST /api/push/dispatch', () => {
     expect(mocks.getPushRecipients).toHaveBeenCalledWith(mocks.admin, SESSION_ID, HOST_ID)
 
     const [subscription, payload, options] = mocks.sendNotification.mock.calls[0] ?? []
-    expect(subscription).toEqual(ALIVE)
+    // L'adresse et les clés, rien d'autre : la langue ne quitte pas le serveur.
+    expect(subscription).toEqual({ endpoint: ALIVE.endpoint, keys: ALIVE.keys })
     expect(JSON.parse(payload)).toEqual({
       title: 'Le vote est lancé',
       body: 'Midi de mardi — à toi de voter.',
       url: '/sessions/7K3M9P',
       tag: `session-${SESSION_ID}`,
+      lang: 'fr',
     })
     expect(options).toMatchObject({
       vapidDetails: {
@@ -164,6 +187,29 @@ describe('POST /api/push/dispatch', () => {
       TTL: 3600,
       urgency: 'high',
       topic: SESSION_ID.replace(/-/g, ''),
+    })
+  })
+
+  it('should write to each subscriber in the language they subscribed in', async () => {
+    mocks.getPushRecipients.mockResolvedValue([ALIVE, ENGLISH])
+    const { POST } = await importRoute()
+
+    const response = await POST(dispatch(LAUNCH))
+
+    expect(await response.json()).toEqual({ sent: 2, purged: 0, failed: 0 })
+    const payloads = Object.fromEntries(
+      mocks.sendNotification.mock.calls.map(([subscription, payload]) => [
+        subscription.endpoint,
+        JSON.parse(payload),
+      ])
+    )
+    expect(payloads[ALIVE.endpoint]).toMatchObject({ title: 'Le vote est lancé', lang: 'fr' })
+    expect(payloads[ENGLISH.endpoint]).toEqual({
+      title: 'Voting has started',
+      body: 'Midi de mardi — your turn to vote.',
+      url: '/sessions/7K3M9P',
+      tag: `session-${SESSION_ID}`,
+      lang: 'en',
     })
   })
 
@@ -183,10 +229,10 @@ describe('POST /api/push/dispatch', () => {
 
   it('should purge the subscriptions the push service has forgotten (404, 410), and only those', async () => {
     mocks.getPushRecipients.mockResolvedValue([ALIVE, GONE, MISSING, BUSY])
-    mocks.sendNotification.mockImplementation(async (subscription: typeof ALIVE) => {
-      if (subscription === GONE) throw new mocks.WebPushError('Gone', 410)
-      if (subscription === MISSING) throw new mocks.WebPushError('Not Found', 404)
-      if (subscription === BUSY) throw new mocks.WebPushError('Too Many Requests', 429)
+    mocks.sendNotification.mockImplementation(async ({ endpoint }: { endpoint: string }) => {
+      if (endpoint === GONE.endpoint) throw new mocks.WebPushError('Gone', 410)
+      if (endpoint === MISSING.endpoint) throw new mocks.WebPushError('Not Found', 404)
+      if (endpoint === BUSY.endpoint) throw new mocks.WebPushError('Too Many Requests', 429)
       return { statusCode: 201 }
     })
     const { POST } = await importRoute()

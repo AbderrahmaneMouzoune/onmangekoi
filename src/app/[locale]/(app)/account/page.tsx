@@ -1,3 +1,5 @@
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 import { Suspense } from 'react'
 
 import { AccountDataSection } from '@/components/account/account-data-section'
@@ -15,19 +17,24 @@ import { router } from '@/config/router.config'
 
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = { title: 'Mon compte' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('metadata.titles')
+  return { title: t('account') }
+}
 
 interface Props {
   searchParams: Promise<{ auth?: string }>
 }
 
 export default function AccountPage({ searchParams }: Props) {
+  const t = useTranslations('account.page')
+  const tCommon = useTranslations('common')
   return (
     <Shell size="app">
       <PageHeader
-        eyebrow="Compte"
-        title="Mon compte"
-        back={{ href: router.home(), label: 'Accueil' }}
+        eyebrow={t('eyebrow')}
+        title={t('title')}
+        back={{ href: router.home(), label: tCommon('actions.home') }}
       />
 
       {/* Sur grand écran : l'identité, le compte et les groupes à gauche, les

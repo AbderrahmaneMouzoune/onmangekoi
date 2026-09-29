@@ -14,6 +14,8 @@ export interface PushNotificationContent {
   /** Chemin interne, déjà vérifié : jamais une autre origine. */
   url: string
   tag: string
+  /** Langue du texte (`fr`, `en`…), pour la synthèse vocale. `fr` à défaut. */
+  lang: string
 }
 
 /**
@@ -24,7 +26,7 @@ export interface PushNotificationContent {
  */
 export function readPushMessage(data: unknown, origin: string): PushNotificationContent | null {
   if (typeof data !== 'object' || data === null) return null
-  const { title, body, url, tag } = data as Record<string, unknown>
+  const { title, body, url, tag, lang } = data as Record<string, unknown>
   if (typeof title !== 'string' || title.length === 0) return null
   if (typeof body !== 'string' || typeof tag !== 'string' || typeof url !== 'string') return null
 
@@ -41,6 +43,9 @@ export function readPushMessage(data: unknown, origin: string): PushNotification
     body: body.slice(0, 300),
     url: target.pathname + target.search + target.hash,
     tag: tag.slice(0, 120),
+    // Un code de langue court, ou le français : c'était la seule langue des
+    // notifications avant que la charge utile ne la porte.
+    lang: typeof lang === 'string' && /^[a-z]{2}$/.test(lang) ? lang : 'fr',
   }
 }
 

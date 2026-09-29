@@ -465,9 +465,9 @@ Le Realtime ne sert que l'onglet ouvert : un invité qui l'a fermé n'apprend ni
 
 **Le trajet.**
 
-1. `subscribePushAction` enregistre l'abonnement (`save_push_subscription`, un par navigateur, 10 appareils au plus par compte) dans `push_subscriptions`, en RLS propriétaire.
+1. `subscribePushAction` enregistre l'abonnement (`save_push_subscription`, un par navigateur, 10 appareils au plus par compte) dans `push_subscriptions`, en RLS propriétaire, avec la langue de l'interface (`locale`, `fr` ou `en`).
 2. Quand `sessions.status` passe à `voting` ou `closed`, le trigger `notify_session_status_change` appelle `POST /api/push/dispatch` par `pg_net`, après le commit, avec un secret partagé. Le corps ne porte que `{ session_id, status, actor_id }` ; `actor_id` (`auth.uid()`) est nul pour la clôture à l'échéance. Aucun appel si personne d'autre que l'auteur n'est abonné. Une erreur ne bloque jamais le changement de statut.
-3. La route vérifie le secret (comparaison à temps constant), relit la session avec la clé secrète Supabase — et se tait si son statut a bougé entre-temps —, chiffre et signe (`web-push`, VAPID), envoie, puis purge les abonnements auxquels le service push répond 404 ou 410.
+3. La route vérifie le secret (comparaison à temps constant), relit la session avec la clé secrète Supabase — et se tait si son statut a bougé entre-temps —, écrit le titre et le corps dans la langue de chaque abonné, chiffre et signe (`web-push`, VAPID), envoie, puis purge les abonnements auxquels le service push répond 404 ou 410.
 4. Le service worker affiche la notification (une par session : la clôture remplace le lancement) et, au clic, donne le focus à l'onglet déjà ouvert sur la bonne page, y emmène un onglet de la même session, ou en ouvre un. L'adresse est revérifiée : jamais une autre origine.
 
 La charge utile se limite au titre, au nom de la session et au chemin à ouvrir ; elle est chiffrée de bout en bout, le service push du navigateur ne la lit pas. Seules les **mises à jour** de statut préviennent : une session ouverte naît en `voting` sans personne d'autre que le host, rien à annoncer. Un second tour naît lui aussi en `voting` et n'est pas annoncé pour l'instant — ses participants le découvrent en rouvrant le classement.
@@ -481,9 +481,13 @@ L'interface existe en français et en anglais ([#14](https://github.com/Abderrah
 - **À la première visite**, la langue suit le navigateur (`Accept-Language`) ; le français reste la langue par défaut.
 - **Le pied de page** propose FR / EN. Le choix est retenu un an dans le cookie `NEXT_LOCALE` et l'emporte ensuite sur le navigateur.
 - **Les liens ne changent pas** : pas de `/en/` dans l'URL. Un lien d'invitation, une liste partagée ou un classement public s'ouvre dans la langue de qui le reçoit.
-- `<html lang>`, le titre, les métadonnées Open Graph, les images de partage (accueil, invitation, classement public, texte alternatif compris) et le manifest suivent la langue.
+- `<html lang>`, le titre, les métadonnées Open Graph, les images de partage (accueil, invitation, classement public, liste publique, texte alternatif compris) et le manifest suivent la langue.
+- **Les notifications push** partent dans la langue de l'interface au moment de l'abonnement, retenue par navigateur.
+- **La recherche Google** répond dans la langue de la page (adresses, types de lieux) ; la région reste la France.
 
-La traduction est en cours : l'accueil, l'onboarding, l'en-tête, le pied de page, les erreurs métier, les pages d'erreur, tout le parcours de session (création, duo, salle d'attente, vote, résultats, départage, décision, historique, invitation, podium public) et le sélecteur de restaurants sont traduits ; les écrans de listes, de groupes et de compte le seront ensuite. Le fonctionnement (`next-intl`, segment `[locale]` caché, messages par espace de noms, erreurs par code) et le guide pour traduire un écran sont dans [`docs/i18n.md`](docs/i18n.md).
+Toute l'interface est traduite : parcours de session, carnet de restaurants, listes, groupes, compte, confidentialité, messages d'erreur. Restent en français, volontairement : les notes de version de `/nouveautes` et leur flux RSS (contenu éditorial, la page le signale), les cuisines du carnet (des données partagées) et les noms de session proposés, écrits dans la langue de qui crée la session. Une règle ESLint (`i18next/no-literal-string`, en `error`) refuse tout texte en dur dans le JSX de `src/`, et les tests de bout en bout tournent dans les deux langues.
+
+Le fonctionnement (`next-intl`, segment `[locale]` caché, messages par espace de noms, erreurs par code), comment ajouter un texte et comment ajouter une langue : [`docs/i18n.md`](docs/i18n.md).
 
 ## Stack
 
@@ -514,15 +518,15 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 
 ## Scripts
 
-| Script                    | Rôle                                                          |
-| ------------------------- | ------------------------------------------------------------- |
-| `bun run dev`             | serveur de développement                                      |
-| `bun run build`           | build de production                                           |
-| `bun run check`           | typecheck + lint + format + tests unitaires                   |
-| `bun run test`            | Vitest (unitaires + composants)                               |
-| `bun run test:e2e`        | Playwright, flow complet host + invité et audit axe (`E2E=1`) |
-| `bun run test:lighthouse` | Lighthouse Accessibilité sur les pages publiques              |
-| `bun run db:types`        | régénère les types TypeScript depuis la base locale           |
+| Script                    | Rôle                                                                                     |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| `bun run dev`             | serveur de développement                                                                 |
+| `bun run build`           | build de production                                                                      |
+| `bun run check`           | typecheck + lint + format + tests unitaires                                              |
+| `bun run test`            | Vitest (unitaires + composants)                                                          |
+| `bun run test:e2e`        | Playwright, flow complet host + invité et audit axe, en français et en anglais (`E2E=1`) |
+| `bun run test:lighthouse` | Lighthouse Accessibilité sur les pages publiques                                         |
+| `bun run db:types`        | régénère les types TypeScript depuis la base locale                                      |
 
 ## Architecture
 

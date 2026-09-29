@@ -2,6 +2,7 @@
 
 import { updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { z } from 'zod'
 
 import { ROUTE_PATTERNS, router } from '@/config/router.config'
@@ -18,7 +19,12 @@ import {
 import { PUBLIC_LISTS_CACHE_TAG, publicListCacheTag } from '@/data-access/public-lists'
 import { createServerClient } from '@/data-access/supabase/server'
 import { CreateListSchema, SharedListActionSchema, UpdateListSchema } from '@/domain/schemas/list'
-import { revalidateLocalizedPath, translateError } from '@/i18n/server'
+import {
+  errorMessage,
+  revalidateLocalizedPath,
+  translateError,
+  translateIssue,
+} from '@/i18n/server'
 import { createListUseCase } from '@/use-cases/create-list'
 import { startSessionFromListUseCase } from '@/use-cases/start-session-from-list'
 
@@ -58,11 +64,13 @@ export async function createListAction(_prev: FormState, formData: FormData): Pr
     restaurantIds: formData.getAll('restaurantIds'),
   })
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'Formulaire invalide' }
+    return {
+      error: await translateIssue(parsed.error.issues[0], await errorMessage('invalid_form')),
+    }
   }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { error: 'Tu dois d’abord choisir un pseudo.' }
+  if (!user) return { error: await errorMessage('not_authenticated') }
 
   let list: List
   try {
@@ -81,11 +89,13 @@ export async function renameListAction(_prev: FormState, formData: FormData): Pr
     name: formData.get('name'),
   })
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'Nom invalide' }
+    return {
+      error: await translateIssue(parsed.error.issues[0], await errorMessage('invalid_form')),
+    }
   }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { error: 'Non authentifié' }
+  if (!user) return { error: await errorMessage('not_authenticated') }
 
   let list: List
   try {
@@ -98,7 +108,8 @@ export async function renameListAction(_prev: FormState, formData: FormData): Pr
   revalidateLocalizedPath(ROUTE_PATTERNS.list, 'page')
   revalidateLocalizedPath(ROUTE_PATTERNS.sharedList, 'page')
   revalidateLocalizedPath(router.lists())
-  return { success: 'Liste renommée.' }
+  const t = await getTranslations('lists.editor')
+  return { success: t('renamed') }
 }
 
 export async function setListCollaborativeAction(
@@ -106,10 +117,10 @@ export async function setListCollaborativeAction(
   isCollaborative: boolean
 ): Promise<ActionResult> {
   const parsed = UpdateListSchema.safeParse({ listId, isCollaborative })
-  if (!parsed.success) return { ok: false, error: 'Liste invalide' }
+  if (!parsed.success) return { ok: false, error: await errorMessage('invalid_list') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   let list: List
   try {
@@ -137,10 +148,10 @@ export async function setListPublicAction(
   isPublic: boolean
 ): Promise<ActionResult> {
   const parsed = UpdateListSchema.safeParse({ listId, isPublic })
-  if (!parsed.success) return { ok: false, error: 'Liste invalide' }
+  if (!parsed.success) return { ok: false, error: await errorMessage('invalid_list') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   let list: List
   try {
@@ -157,10 +168,10 @@ export async function setListPublicAction(
 
 export async function deleteListAction(listId: string): Promise<ActionResult> {
   const parsed = UpdateListSchema.safeParse({ listId })
-  if (!parsed.success) return { ok: false, error: 'Liste invalide' }
+  if (!parsed.success) return { ok: false, error: await errorMessage('invalid_list') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   let shareCode: string | null
   try {
@@ -184,10 +195,11 @@ export async function addRestaurantsToListAction(
 ): Promise<ActionResult> {
   const parsedId = z.uuid().safeParse(listId)
   const parsedIds = RestaurantIdsSchema.safeParse(restaurantIds)
-  if (!parsedId.success || !parsedIds.success) return { ok: false, error: 'Requête invalide' }
+  if (!parsedId.success || !parsedIds.success)
+    return { ok: false, error: await errorMessage('invalid_request') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     await addRestaurantsToList(supabase, parsedId.data, parsedIds.data)
@@ -208,10 +220,10 @@ export async function removeRestaurantFromListAction(
     listId,
     restaurantId,
   })
-  if (!parsed.success) return { ok: false, error: 'Requête invalide' }
+  if (!parsed.success) return { ok: false, error: await errorMessage('invalid_request') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     await removeRestaurantFromList(supabase, parsed.data.listId, parsed.data.restaurantId)
@@ -231,10 +243,11 @@ export async function addToSharedListAction(
 ): Promise<ActionResult> {
   const parsed = SharedListActionSchema.safeParse({ identifier })
   const parsedIds = RestaurantIdsSchema.safeParse(restaurantIds)
-  if (!parsed.success || !parsedIds.success) return { ok: false, error: 'Requête invalide' }
+  if (!parsed.success || !parsedIds.success)
+    return { ok: false, error: await errorMessage('invalid_request') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     await addRestaurantsToSharedList(supabase, parsed.data.identifier, parsedIds.data)
@@ -249,10 +262,10 @@ export async function addToSharedListAction(
 
 export async function copySharedListAction(identifier: string): Promise<ActionResult> {
   const parsed = SharedListActionSchema.safeParse({ identifier })
-  if (!parsed.success) return { ok: false, error: 'Lien invalide' }
+  if (!parsed.success) return { ok: false, error: await errorMessage('invalid_link') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   let list: List
   try {
@@ -272,10 +285,10 @@ export async function copySharedListAction(identifier: string): Promise<ActionRe
  */
 export async function startSessionFromListAction(identifier: string): Promise<ActionResult> {
   const parsed = SharedListActionSchema.safeParse({ identifier })
-  if (!parsed.success) return { ok: false, error: 'Lien invalide' }
+  if (!parsed.success) return { ok: false, error: await errorMessage('invalid_link') }
 
   const { supabase, user } = await requireUser()
-  if (!user) return { ok: false, error: 'Tu dois d’abord choisir un pseudo.' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   let session: Session
   try {

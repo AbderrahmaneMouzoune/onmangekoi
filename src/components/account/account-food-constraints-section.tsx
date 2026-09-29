@@ -1,12 +1,11 @@
 import { RiLeafLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 
 import { FoodConstraintsForm } from '@/components/account/food-constraints-form'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getCurrentUser } from '@/data-access/auth'
 import { getMyFoodConstraints } from '@/data-access/food-constraints'
 import { createServerClient } from '@/data-access/supabase/server'
-
-const TITLE = 'Ce que je ne peux pas manger'
 
 /**
  * Contraintes alimentaires (issue #60) : déclarées une fois, elles évitent de
@@ -28,17 +27,14 @@ export async function AccountFoodConstraintsSection() {
 }
 
 function Intro() {
+  const t = useTranslations('account.foodConstraints')
   return (
     <div className="flex flex-col gap-0.5">
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
         <RiLeafLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
-        {TITLE}
+        {t('title')}
       </h2>
-      <p className="text-sm text-muted-foreground">
-        Optionnel. Un resto qui ne te convient pas est signalé dans tes sessions, sans jamais dire
-        qui : « 1 participant ne peut pas y manger ». Tu gardes ton veto pour trancher entre deux
-        envies.
-      </p>
+      <p className="text-sm text-muted-foreground">{t('description')}</p>
     </div>
   )
 }

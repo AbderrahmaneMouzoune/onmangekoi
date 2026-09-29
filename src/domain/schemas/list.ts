@@ -1,12 +1,14 @@
 import { z } from 'zod'
 
+import { omkMessage } from '@/domain/errors'
+
 export const LIST_NAME_MAX = 60
 
 export const ListNameSchema = z
   .string()
   .trim()
-  .min(1, 'Donne un nom à la liste')
-  .max(LIST_NAME_MAX, `Le nom ne peut pas dépasser ${LIST_NAME_MAX} caractères`)
+  .min(1, omkMessage('list_name_required'))
+  .max(LIST_NAME_MAX, omkMessage('list_name_too_long'))
 
 export const CreateListSchema = z.object({
   name: ListNameSchema,
@@ -25,7 +27,7 @@ export const UpdateListSchema = z.object({
 export const ShareIdentifierSchema = z
   .string()
   .trim()
-  .regex(/^(?:[0-9A-HJKMNP-TV-Z]{10}|[a-f0-9]{32})$/, 'Lien invalide')
+  .regex(/^(?:[0-9A-HJKMNP-TV-Z]{10}|[a-f0-9]{32})$/, omkMessage('invalid_link'))
 
 export const SharedListActionSchema = z.object({
   identifier: ShareIdentifierSchema,

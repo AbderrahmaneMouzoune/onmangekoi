@@ -6,24 +6,10 @@ import { TIME_ZONE, type Locale } from '@/i18n/config'
  * Les nombres et les dates se formatent dans la langue de l'interface, qu'on
  * passe explicitement : `useLocale()` dans un composant (serveur synchrone ou
  * client), `await getLocale()` dans un composant serveur asynchrone. Les
- * pluriels, eux, ne se fabriquent plus ici : ce sont des messages ICU
+ * pluriels, eux, ne se fabriquent pas ici : ce sont des messages ICU
  * (`common.counts.restaurants` : `{count, plural, one {# resto} other {# restos}}`),
  * que `t('…', { count })` accorde selon les règles de chaque langue.
- *
- * `plural` et `countLabel` restent le temps que les phases B et C de l'issue
- * #14 extraient les derniers composants (voir `docs/i18n.md`) : ils ne savent
- * que le français.
  */
-
-/** @deprecated Français seulement : utiliser un message ICU `{count, plural, …}`. */
-export function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
-  return count > 1 ? pluralForm : singular
-}
-
-/** @deprecated Français seulement : utiliser un message ICU `{count, plural, …}` (`common.counts`). */
-export function countLabel(count: number, singular: string, pluralForm?: string): string {
-  return `${count} ${plural(count, singular, pluralForm)}`
-}
 
 export function initials(name: string | null | undefined, fallback = '?'): string {
   const clean = (name ?? '').trim()
@@ -35,27 +21,16 @@ export function initials(name: string | null | undefined, fallback = '?'): strin
 }
 
 /**
- * Libellés de repli des pseudos, traduits par l'appelant
- * (`t('common.people.guest')`, `t('common.people.deletedParticipant')`).
- * Le français par défaut disparaîtra avec la phase C de l'issue #14.
+ * Libellés de repli des pseudos, traduits par l'appelant : `usePeopleLabels()`
+ * dans un composant, `t('common.people.guest')` ailleurs.
  */
 export interface PeopleLabels {
   guest: string
   deletedParticipant: string
 }
 
-export const FRENCH_PEOPLE_LABELS: PeopleLabels = {
-  guest: 'Invité',
-  deletedParticipant: 'Participant supprimé',
-}
-
-/** Libellé d'un participant dont le compte a été supprimé (RGPD). */
-export const DELETED_PARTICIPANT = FRENCH_PEOPLE_LABELS.deletedParticipant
-
-export function displayPseudo(
-  pseudo: string | null | undefined,
-  guest: string = FRENCH_PEOPLE_LABELS.guest
-): string {
+/** Le pseudo, ou le libellé d'invité (`common.people.guest`) quand il est vide. */
+export function displayPseudo(pseudo: string | null | undefined, guest: string): string {
   const clean = (pseudo ?? '').trim()
   return clean || guest
 }
@@ -69,7 +44,7 @@ export function displayPseudo(
 export function participantLabel(
   profileId: string | null,
   pseudo: string | null | undefined,
-  labels: PeopleLabels = FRENCH_PEOPLE_LABELS
+  labels: PeopleLabels
 ): string {
   return profileId === null ? labels.deletedParticipant : displayPseudo(pseudo, labels.guest)
 }

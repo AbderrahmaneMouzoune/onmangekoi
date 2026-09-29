@@ -1,6 +1,6 @@
 import { RiBarChartLine } from '@remixicon/react'
 import Link from 'next/link'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
@@ -8,7 +8,7 @@ import { getCurrentUser } from '@/data-access/auth'
 import { getMyStats } from '@/data-access/stats'
 import { createServerClient } from '@/data-access/supabase/server'
 import { favoriteRate } from '@/domain/history'
-import { countLabel, percentLabel } from '@/lib/format'
+import { percentLabel } from '@/lib/format'
 
 import type { MyStats } from '@/data-access/models'
 
@@ -32,73 +32,80 @@ export async function AccountStats() {
 /** Le panneau lui-même, sans lecture : `null` ou zéro session donnent l'invite. */
 export function StatsPanel({ stats }: { stats: MyStats | null }) {
   const locale = useLocale()
+  const t = useTranslations('account.stats')
   const rate = stats ? favoriteRate(stats.fav_votes, stats.votes_total) : null
 
   return (
     <section className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-          <RiBarChartLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
-          Mes statistiques
-        </h2>
-        <Link href={router.sessions()} className="text-sm font-medium text-brand hover:underline">
-          Historique
-        </Link>
-      </div>
+      <StatsHeading />
 
       {!stats || stats.sessions_total === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Rien à compter pour l’instant. Après ta première session, tu retrouveras ici tes votes, ta
-          cuisine préférée et le resto qui gagne le plus souvent.
-        </p>
+        <p className="text-sm text-muted-foreground">{t('empty')}</p>
       ) : (
         <>
           <dl className="grid grid-cols-3 gap-2">
             <Tile
-              label="Sessions"
+              label={t('sessions')}
               value={stats.sessions_total}
-              hint={countLabel(stats.sessions_hosted, 'organisée')}
+              hint={t('sessionsHint', { count: stats.sessions_hosted })}
             />
             <Tile
-              label="Votes"
+              label={t('votes')}
               value={stats.votes_total}
-              hint={countLabel(stats.veto_votes, 'veto')}
+              hint={t('votesHint', { count: stats.veto_votes })}
             />
             <Tile
-              label="Coups de cœur"
-              value={rate === null ? '—' : percentLabel(rate, locale)}
-              hint={countLabel(stats.fav_votes, 'vote')}
+              label={t('favourites')}
+              value={rate === null ? NONE : percentLabel(rate, locale)}
+              hint={t('favouritesHint', { count: stats.fav_votes })}
             />
           </dl>
 
           <dl className="flex flex-col gap-2 text-sm">
             <Fact
-              term="Cuisine préférée"
+              term={t('favoriteCuisine')}
               value={stats.favorite_cuisine}
               hint={
                 stats.favorite_cuisine
-                  ? countLabel(stats.favorite_cuisine_votes, 'vote positif', 'votes positifs')
+                  ? t('favoriteCuisineHint', { count: stats.favorite_cuisine_votes })
                   : undefined
               }
             />
             <Fact
-              term="Resto le plus souvent choisi"
+              term={t('topRestaurant')}
               value={stats.top_restaurant_name}
               hint={
                 stats.top_restaurant_name
-                  ? countLabel(stats.top_restaurant_wins, 'victoire')
+                  ? t('topRestaurantHint', { count: stats.top_restaurant_wins })
                   : undefined
               }
             />
-            <Fact term="Sessions terminées" value={String(stats.sessions_closed)} />
+            <Fact term={t('sessionsClosed')} value={String(stats.sessions_closed)} />
           </dl>
 
-          <p className="text-xs text-muted-foreground">
-            Ces chiffres ne comptent que tes votes à toi — jamais ceux des autres participants.
-          </p>
+          <p className="text-xs text-muted-foreground">{t('privacy')}</p>
         </>
       )}
     </section>
+  )
+}
+
+/** Tiret des valeurs manquantes : un signe, pas un mot. */
+const NONE = '—'
+
+/** Le titre et le lien vers l'historique, les mêmes pour tout le monde (silhouette comprise). */
+function StatsHeading() {
+  const t = useTranslations('account.stats')
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+        <RiBarChartLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
+        {t('title')}
+      </h2>
+      <Link href={router.sessions()} className="text-sm font-medium text-brand hover:underline">
+        {t('history')}
+      </Link>
+    </div>
   )
 }
 
@@ -123,7 +130,7 @@ function Fact({ term, value, hint }: { term: string; value: string | null; hint?
     <div className="flex items-baseline justify-between gap-3">
       <dt className="text-muted-foreground">{term}</dt>
       <dd className="min-w-0 text-right">
-        <span className="truncate font-semibold">{value ?? '—'}</span>
+        <span className="truncate font-semibold">{value ?? NONE}</span>
         {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
       </dd>
     </div>
@@ -141,15 +148,7 @@ export function AccountStatsFallback() {
       aria-busy="true"
       className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line"
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-          <RiBarChartLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
-          Mes statistiques
-        </h2>
-        <Link href={router.sessions()} className="text-sm font-medium text-brand hover:underline">
-          Historique
-        </Link>
-      </div>
+      <StatsHeading />
       <div className="grid grid-cols-3 gap-2">
         <Skeleton className="h-[4.25rem] rounded-md" />
         <Skeleton className="h-[4.25rem] rounded-md" />

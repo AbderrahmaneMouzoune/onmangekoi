@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isGoneSubscription, pushMessageFor, pushTopic, PUSH_TTL_SECONDS } from './push'
+import { isGoneSubscription, pushNoticeFor, pushTopic, PUSH_TTL_SECONDS } from './push'
 import { PushDispatchSchema, PushSubscriptionSchema } from './schemas/push'
 
 const SESSION = {
@@ -9,28 +9,27 @@ const SESSION = {
   invite_code: '7K3M9P',
 }
 
-describe('pushMessageFor', () => {
+describe('pushNoticeFor', () => {
   it('should call to vote in the session room when the vote starts', () => {
-    expect(pushMessageFor('voting', SESSION)).toEqual({
-      title: 'Le vote est lancé',
-      body: 'Midi de mardi — à toi de voter.',
+    expect(pushNoticeFor('voting', SESSION)).toEqual({
+      kind: 'voting',
+      session: 'Midi de mardi',
       url: '/sessions/7K3M9P',
       tag: `session-${SESSION.id}`,
     })
   })
 
   it('should open the results when the session closes, under the same tag', () => {
-    const message = pushMessageFor('closed', SESSION)
-    expect(message.title).toBe('Le classement est prêt')
-    expect(message.url).toBe('/sessions/7K3M9P/results')
-    expect(message.tag).toBe(pushMessageFor('voting', SESSION).tag)
+    const notice = pushNoticeFor('closed', SESSION)
+    expect(notice.kind).toBe('closed')
+    expect(notice.url).toBe('/sessions/7K3M9P/results')
+    expect(notice.tag).toBe(pushNoticeFor('voting', SESSION).tag)
   })
 
   it('should announce an agreement, not a ranking, when a duo closes on one', () => {
-    const message = pushMessageFor('closed', { ...SESSION, agreed: true })
-    expect(message.title).toBe('C’est d’accord')
-    expect(message.body).toBe('Midi de mardi — vous avez trouvé où manger.')
-    expect(message.url).toBe('/sessions/7K3M9P/results')
+    const notice = pushNoticeFor('closed', { ...SESSION, agreed: true })
+    expect(notice.kind).toBe('agreed')
+    expect(notice.url).toBe('/sessions/7K3M9P/results')
   })
 })
 

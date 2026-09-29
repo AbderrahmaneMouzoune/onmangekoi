@@ -1,18 +1,23 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { DELETE_CONFIRMATION, DeleteAccountButton } from './delete-account-button'
+import { renderWithIntl } from '@/test/render'
+
+import { DeleteAccountButton } from './delete-account-button'
 
 const deleteAccountAction = vi.hoisted(() => vi.fn())
+
+/** Le mot à recopier, en français : `account.delete.word`. */
+const DELETE_CONFIRMATION = 'effacer'
 
 vi.mock('@/actions/account', () => ({ deleteAccountAction }))
 
 async function openDialog() {
-  render(<DeleteAccountButton />)
+  renderWithIntl(<DeleteAccountButton />)
   await userEvent.click(screen.getByRole('button', { name: /supprimer mon compte/i }))
   return {
     field: screen.getByLabelText(new RegExp(DELETE_CONFIRMATION, 'i')),
@@ -68,5 +73,18 @@ describe('DeleteAccountButton', () => {
     await userEvent.click(screen.getByRole('button', { name: /supprimer mon compte/i }))
     expect(screen.getByLabelText(new RegExp(DELETE_CONFIRMATION, 'i'))).toHaveValue('')
     expect(screen.getByRole('button', { name: /supprimer définitivement/i })).toBeDisabled()
+  })
+
+  it('should ask for the word of the page language, in English too', async () => {
+    renderWithIntl(<DeleteAccountButton />, { locale: 'en' })
+    await userEvent.click(screen.getByRole('button', { name: 'Delete my account' }))
+    const field = screen.getByLabelText(/type delete to confirm/i)
+    const confirm = screen.getByRole('button', { name: 'Delete for good' })
+
+    await userEvent.type(field, 'effacer')
+    expect(confirm).toBeDisabled()
+    await userEvent.clear(field)
+    await userEvent.type(field, 'Delete ')
+    expect(confirm).toBeEnabled()
   })
 })

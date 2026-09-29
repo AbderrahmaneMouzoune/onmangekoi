@@ -24,5 +24,16 @@
     "fallbackEyebrow": "Ranking",
     "fallbackTitle": "Where are we eating?",
     "fallbackSubtitle": "The group votes, the ranking settles it."
+  },
+  "list": {
+    "alt": "A restaurant list shared on onmangekoi",
+    "eyebrow": "The good spots",
+    "subtitle": "{count, plural, one {# restaurant} other {# restaurants}}",
+    "subtitleWithCuisines": "{count, plural, one {# restaurant} other {# restaurants}} · {cuisines}",
+    "top": "Most often picked: {restaurant}",
+    "footer": "No account needed",
+    "fallbackEyebrow": "Shared list",
+    "fallbackTitle": "Where are we eating?",
+    "fallbackSubtitle": "A list of restaurants to settle in two minutes."
   }
 }

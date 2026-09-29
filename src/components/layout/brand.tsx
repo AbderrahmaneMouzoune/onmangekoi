@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 
 import { router } from '@/config/router.config'
+import { WORDMARK } from '@/lib/brand'
 import { cn } from '@/lib/utils'
 
 interface BrandProps {
@@ -9,9 +10,6 @@ interface BrandProps {
   size?: 'sm' | 'lg'
   asLink?: boolean
 }
-
-/** La marque ne se traduit pas : « onmange » + « koi », dans toutes les langues. */
-const WORDMARK = ['onmange', 'koi'] as const
 
 /** Wordmark : « onmangekoi », le « koi » en tomate, comme la question qu'on se pose. */
 export function Brand({ className, size = 'sm', asLink = true }: BrandProps) {

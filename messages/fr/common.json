@@ -6,7 +6,8 @@
     "join": "Rejoindre",
     "decline": "Décliner",
     "home": "Accueil",
-    "backHome": "Retour à l’accueil"
+    "backHome": "Retour à l’accueil",
+    "copied": "Copié"
   },
   "people": {
     "guest": "Invité",
@@ -15,5 +16,6 @@
   "counts": {
     "restaurants": "{count, plural, one {# resto} other {# restos}}",
     "participants": "{count, plural, one {# participant} other {# participants}}"
-  }
+  },
+  "copyPrompt": "Copie ce lien :"
 }

@@ -2,6 +2,7 @@
 
 import { RiSparkling2Line } from '@remixicon/react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { useEffect, useSyncExternalStore } from 'react'
 
 import { buttonVariants } from '@/components/ui/button'
@@ -26,6 +27,7 @@ const unknown = () => null
  * nouveau — mais son repère est posé pour la prochaine version.
  */
 export function ChangelogNavLink() {
+  const t = useTranslations('changelog.navLink')
   const seen = useSyncExternalStore(subscribe, readSeenRelease, unknown)
   const unread = hasUnreadRelease(LATEST_RELEASE_VERSION, seen)
 
@@ -36,7 +38,7 @@ export function ChangelogNavLink() {
   return (
     <Link
       href={router.changelog()}
-      aria-label={unread ? 'Nouveautés — une version non lue' : 'Nouveautés'}
+      aria-label={unread ? t('unread') : t('label')}
       className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }), 'relative')}
     >
       <RiSparkling2Line aria-hidden="true" />

@@ -92,7 +92,7 @@ describe('data-access/places', () => {
     const { searchPlaces, isPlacesSearchEnabled } = await importPlaces()
 
     expect(isPlacesSearchEnabled()).toBe(true)
-    expect(await searchPlaces({ query: 'Sushi Sakura' })).toEqual({
+    expect(await searchPlaces({ locale: 'fr', query: 'Sushi Sakura' })).toEqual({
       places: [SUSHI_BAR],
       nextPageToken: null,
     })
@@ -127,10 +127,10 @@ describe('data-access/places', () => {
       })
     const { searchPlaces } = await importPlaces()
 
-    const first = await searchPlaces({ query: 'sushi' })
+    const first = await searchPlaces({ locale: 'fr', query: 'sushi' })
     expect(first.nextPageToken).toBe('page-2')
 
-    const second = await searchPlaces({ query: 'sushi', pageToken: 'page-2' })
+    const second = await searchPlaces({ locale: 'fr', query: 'sushi', pageToken: 'page-2' })
     expect(second).toEqual({
       places: [{ ...SUSHI_BAR, placeId: 'ChIJramen' }],
       nextPageToken: null,
@@ -141,8 +141,8 @@ describe('data-access/places', () => {
     })
 
     // Chaque page a sa propre entrée de cache.
-    await searchPlaces({ query: 'sushi' })
-    await searchPlaces({ query: 'sushi', pageToken: 'page-2' })
+    await searchPlaces({ locale: 'fr', query: 'sushi' })
+    await searchPlaces({ locale: 'fr', query: 'sushi', pageToken: 'page-2' })
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
@@ -150,19 +150,53 @@ describe('data-access/places', () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ places: [GOOGLE_PLACE] }) })
     const { searchPlaces } = await importPlaces()
 
-    await searchPlaces({ query: 'Sushi Sakura' })
-    await searchPlaces({ query: '  sushi   sakura ' })
+    await searchPlaces({ locale: 'fr', query: 'Sushi Sakura' })
+    await searchPlaces({ locale: 'fr', query: '  sushi   sakura ' })
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('should ask Google in the language of the page, and cache each language apart', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ places: [GOOGLE_PLACE] }) })
+    const { searchPlaces, searchNearbyPlaces, getPlaceDetails } = await importPlaces()
+
+    await searchPlaces({ locale: 'fr', query: 'sushi' })
+    await searchPlaces({ locale: 'en', query: 'sushi' })
+    await searchPlaces({ locale: 'en', query: 'sushi' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body)).toMatchObject({
+      languageCode: 'fr',
+      regionCode: 'FR',
+    })
+    // La région reste la France : seule la langue de la réponse change.
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body)).toMatchObject({
+      languageCode: 'en',
+      regionCode: 'FR',
+    })
+
+    await searchNearbyPlaces({ locale: 'fr', latitude: 45.76, longitude: 4.83 })
+    await searchNearbyPlaces({ locale: 'en', latitude: 45.76, longitude: 4.83 })
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(JSON.parse(fetchMock.mock.calls[3]![1].body).languageCode).toBe('en')
+
+    fetchMock.mockReset()
+    fetchMock.mockResolvedValue({ ok: true, json: async () => GOOGLE_PLACE })
+    await getPlaceDetails('ChIJsushi', 'fr')
+    await getPlaceDetails('ChIJsushi', 'en')
+    await getPlaceDetails('ChIJsushi', 'en')
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      'https://places.googleapis.com/v1/places/ChIJsushi?languageCode=fr',
+      'https://places.googleapis.com/v1/places/ChIJsushi?languageCode=en',
+    ])
   })
 
   it('should bias the search only when a position is given', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ places: [GOOGLE_PLACE] }) })
     const { searchPlaces } = await importPlaces()
 
-    await searchPlaces({ query: 'sushi' })
+    await searchPlaces({ locale: 'fr', query: 'sushi' })
     expect(JSON.parse(fetchMock.mock.calls[0]![1].body).locationBias).toBeUndefined()
 
-    await searchPlaces({ query: 'sushi', latitude: 45.76, longitude: 4.83 })
+    await searchPlaces({ locale: 'fr', query: 'sushi', latitude: 45.76, longitude: 4.83 })
     expect(JSON.parse(fetchMock.mock.calls[1]![1].body).locationBias.circle.center).toEqual({
       latitude: 45.76,
       longitude: 4.83,
@@ -176,7 +210,7 @@ describe('data-access/places', () => {
     })
     const { searchNearbyPlaces } = await importPlaces()
 
-    expect(await searchNearbyPlaces({ latitude: 45.76, longitude: 4.83 })).toEqual({
+    expect(await searchNearbyPlaces({ locale: 'fr', latitude: 45.76, longitude: 4.83 })).toEqual({
       places: [SUSHI_BAR],
       nextPageToken: 'more',
     })
@@ -196,7 +230,7 @@ describe('data-access/places', () => {
       locationBias: { circle: { center: { latitude: 45.76, longitude: 4.83 } } },
     })
 
-    await searchNearbyPlaces({ latitude: 45.76, longitude: 4.83, pageToken: 'more' })
+    await searchNearbyPlaces({ locale: 'fr', latitude: 45.76, longitude: 4.83, pageToken: 'more' })
     expect(JSON.parse(fetchMock.mock.calls[1]![1].body)).toMatchObject({ pageToken: 'more' })
   })
 
@@ -204,12 +238,12 @@ describe('data-access/places', () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ places: [GOOGLE_PLACE] }) })
     const { searchNearbyPlaces } = await importPlaces()
 
-    await searchNearbyPlaces({ latitude: 45.7601, longitude: 4.8302 })
-    await searchNearbyPlaces({ latitude: 45.7603, longitude: 4.8299 })
+    await searchNearbyPlaces({ locale: 'fr', latitude: 45.7601, longitude: 4.8302 })
+    await searchNearbyPlaces({ locale: 'fr', latitude: 45.7603, longitude: 4.8299 })
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
     // À un kilomètre de là, ce ne sont plus les mêmes « plus proches ».
-    await searchNearbyPlaces({ latitude: 45.77, longitude: 4.83 })
+    await searchNearbyPlaces({ locale: 'fr', latitude: 45.77, longitude: 4.83 })
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
@@ -220,8 +254,8 @@ describe('data-access/places', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ photoUri: PHOTO_URI }) })
     const { searchPlaces, getPlaceDetails } = await importPlaces()
 
-    await searchPlaces({ query: 'sushi' })
-    expect(await getPlaceDetails('ChIJsushi')).toEqual(SUSHI_BAR_DETAILS)
+    await searchPlaces({ locale: 'fr', query: 'sushi' })
+    expect(await getPlaceDetails('ChIJsushi', 'fr')).toEqual(SUSHI_BAR_DETAILS)
   })
 
   it('should serve a second import of the same place from the cache', async () => {
@@ -230,8 +264,8 @@ describe('data-access/places', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ photoUri: PHOTO_URI }) })
     const { getPlaceDetails } = await importPlaces()
 
-    await getPlaceDetails('ChIJsushi')
-    expect(await getPlaceDetails('ChIJsushi')).toEqual(SUSHI_BAR_DETAILS)
+    await getPlaceDetails('ChIJsushi', 'fr')
+    expect(await getPlaceDetails('ChIJsushi', 'fr')).toEqual(SUSHI_BAR_DETAILS)
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
@@ -241,8 +275,10 @@ describe('data-access/places', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ photoUri: PHOTO_URI }) })
     const { getPlaceDetails } = await importPlaces()
 
-    expect(await getPlaceDetails('ChIJsushi')).toEqual(SUSHI_BAR_DETAILS)
-    expect(fetchMock.mock.calls[0]![0]).toBe('https://places.googleapis.com/v1/places/ChIJsushi')
+    expect(await getPlaceDetails('ChIJsushi', 'fr')).toEqual(SUSHI_BAR_DETAILS)
+    expect(fetchMock.mock.calls[0]![0]).toBe(
+      'https://places.googleapis.com/v1/places/ChIJsushi?languageCode=fr'
+    )
     const mask = fetchMock.mock.calls[0]![1].headers['X-Goog-FieldMask']
     expect(mask).toContain('photos')
     expect(mask).toContain('regularOpeningHours')
@@ -254,7 +290,7 @@ describe('data-access/places', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ photoUri: PHOTO_URI }) })
     const { getPlaceDetails } = await importPlaces()
 
-    const place = await getPlaceDetails('ChIJsushi')
+    const place = await getPlaceDetails('ChIJsushi', 'fr')
     expect(place?.photoUrl).toBe(PHOTO_URI)
     expect(place?.photoUrl).not.toContain('test-google-key')
 
@@ -272,7 +308,10 @@ describe('data-access/places', () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { getPlaceDetails } = await importPlaces()
 
-    expect(await getPlaceDetails('ChIJsushi')).toEqual({ ...SUSHI_BAR_DETAILS, photoUrl: null })
+    expect(await getPlaceDetails('ChIJsushi', 'fr')).toEqual({
+      ...SUSHI_BAR_DETAILS,
+      photoUrl: null,
+    })
     expect(logged).toHaveBeenCalled()
   })
 
@@ -282,7 +321,7 @@ describe('data-access/places', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ photoUri: 'https://evil.test/x' }) })
     const { getPlaceDetails } = await importPlaces()
 
-    expect((await getPlaceDetails('ChIJsushi'))?.photoUrl).toBeNull()
+    expect((await getPlaceDetails('ChIJsushi', 'fr'))?.photoUrl).toBeNull()
   })
 
   it('should never leak the body Google returns on an error', async () => {
@@ -300,7 +339,9 @@ describe('data-access/places', () => {
     })
     const { searchPlaces } = await importPlaces()
 
-    const failure = await searchPlaces({ query: 'sushi' }).catch((error: Error) => error)
+    const failure = await searchPlaces({ locale: 'fr', query: 'sushi' }).catch(
+      (error: Error) => error
+    )
     expect(failure).toBeInstanceOf(Error)
     expect((failure as Error).message).not.toContain('test-google-key')
     expect((failure as Error).message).not.toContain('PERMISSION_DENIED')
@@ -313,7 +354,7 @@ describe('data-access/places', () => {
     fetchMock.mockResolvedValue({ ok: false, status: 403, text: async () => '{}' })
     const { searchPlaces } = await importPlaces()
 
-    await expect(searchPlaces({ query: 'sushi' })).rejects.toMatchObject({
+    await expect(searchPlaces({ locale: 'fr', query: 'sushi' })).rejects.toMatchObject({
       code: 'places_key_rejected',
     })
   })
@@ -323,7 +364,7 @@ describe('data-access/places', () => {
     fetchMock.mockResolvedValue({ ok: false, status: 429, text: async () => '{}' })
     const { searchPlaces } = await importPlaces()
 
-    await expect(searchPlaces({ query: 'sushi' })).rejects.toMatchObject({
+    await expect(searchPlaces({ locale: 'fr', query: 'sushi' })).rejects.toMatchObject({
       code: 'places_rate_limited',
     })
   })
@@ -333,7 +374,9 @@ describe('data-access/places', () => {
     fetchMock.mockResolvedValue({ ok: false, status: 503, text: async () => 'upstream down' })
     const { searchPlaces } = await importPlaces()
 
-    await expect(searchPlaces({ query: 'sushi' })).rejects.toMatchObject({ code: 'places_failed' })
+    await expect(searchPlaces({ locale: 'fr', query: 'sushi' })).rejects.toMatchObject({
+      code: 'places_failed',
+    })
   })
 
   it('should name the timeout rather than fall back on a technical error', async () => {
@@ -341,7 +384,9 @@ describe('data-access/places', () => {
     fetchMock.mockRejectedValue(new DOMException('The operation was aborted', 'TimeoutError'))
     const { searchPlaces } = await importPlaces()
 
-    await expect(searchPlaces({ query: 'sushi' })).rejects.toMatchObject({ code: 'places_timeout' })
+    await expect(searchPlaces({ locale: 'fr', query: 'sushi' })).rejects.toMatchObject({
+      code: 'places_timeout',
+    })
   })
 
   it('should not call Google at all when no key is configured', async () => {
@@ -349,7 +394,7 @@ describe('data-access/places', () => {
     const { searchPlaces, isPlacesSearchEnabled } = await importPlaces()
 
     expect(isPlacesSearchEnabled()).toBe(false)
-    await expect(searchPlaces({ query: 'sushi' })).rejects.toMatchObject({
+    await expect(searchPlaces({ locale: 'fr', query: 'sushi' })).rejects.toMatchObject({
       code: 'places_not_configured',
     })
     expect(fetchMock).not.toHaveBeenCalled()

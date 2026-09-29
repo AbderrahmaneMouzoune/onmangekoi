@@ -3,5 +3,25 @@
     "eyebrow": "Hors ligne",
     "title": "Pas de réseau, pas de vote.",
     "lead": "Les sessions, les votes et le classement se jouent en direct avec le groupe. Dès que la connexion revient, la page se recharge d’elle-même."
+  },
+  "install": {
+    "title": "Garder onmangekoi sous la main",
+    "description": "Installe l’app sur ton écran d’accueil : elle s’ouvre d’un geste, en plein écran, pour la prochaine pause déjeuner.",
+    "later": "Plus tard",
+    "install": "Installer"
+  },
+  "push": {
+    "voting": {
+      "title": "Le vote est lancé",
+      "body": "{session} — à toi de voter."
+    },
+    "agreed": {
+      "title": "C’est d’accord",
+      "body": "{session} — vous avez trouvé où manger."
+    },
+    "closed": {
+      "title": "Le classement est prêt",
+      "body": "{session} — découvre où vous allez manger."
+    }
   }
 }

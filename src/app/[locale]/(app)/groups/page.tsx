@@ -1,3 +1,5 @@
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 import { Suspense } from 'react'
 
 import { GroupsOverview, GroupsOverviewFallback } from '@/components/groups/groups-overview'
@@ -7,17 +9,22 @@ import { router } from '@/config/router.config'
 
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = { title: 'Mes groupes' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('metadata.titles')
+  return { title: t('groups') }
+}
 
 /** Groupes récurrents : `/groups`. */
 export default function GroupsPage() {
+  const t = useTranslations('groups.page')
+  const tCommon = useTranslations('common')
   return (
     <Shell size="app">
       <PageHeader
-        eyebrow="Groupes"
-        title="Mes groupes"
-        description="L’équipe du déjeuner, prête à réinviter d’un clic à la prochaine session."
-        back={{ href: router.home(), label: 'Accueil' }}
+        eyebrow={t('eyebrow')}
+        title={t('title')}
+        description={t('description')}
+        back={{ href: router.home(), label: tCommon('actions.home') }}
       />
 
       <Suspense fallback={<GroupsOverviewFallback />}>

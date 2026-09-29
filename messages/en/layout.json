@@ -83,5 +83,11 @@
     "reference": "Reference: {digest}",
     "globalDescription": "Try again in a moment.",
     "retry": "Try again"
+  },
+  "consent": {
+    "title": "Measuring to improve",
+    "description": "We’d like to know where groups drop off — creating, inviting, voting — so we can fix what gets stuck. Anonymous statistics hosted in Europe: no nickname, no email, no invitation code. You can change this from “My account”.",
+    "refuse": "Decline",
+    "accept": "Accept"
   }
 }

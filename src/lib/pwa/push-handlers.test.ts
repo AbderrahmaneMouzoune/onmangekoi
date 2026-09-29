@@ -9,11 +9,18 @@ const MESSAGE = {
   body: 'Midi de mardi — découvre où vous allez manger.',
   url: '/sessions/7K3M9P/results',
   tag: 'session-3f1d2c4b',
+  lang: 'fr',
 }
 
 describe('readPushMessage', () => {
   it('should read the payload sent by the dispatch route', () => {
     expect(readPushMessage(MESSAGE, ORIGIN)).toEqual(MESSAGE)
+  })
+
+  it('should carry the language of the text, French when an older payload has none', () => {
+    expect(readPushMessage({ ...MESSAGE, lang: 'en' }, ORIGIN)?.lang).toBe('en')
+    expect(readPushMessage({ ...MESSAGE, lang: undefined }, ORIGIN)?.lang).toBe('fr')
+    expect(readPushMessage({ ...MESSAGE, lang: '<script>' }, ORIGIN)?.lang).toBe('fr')
   })
 
   it('should reject a payload that is not ours', () => {

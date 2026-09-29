@@ -41,6 +41,7 @@ export function FoodConstraintsForm({ initial }: FoodConstraintsFormProps) {
   const [state, formAction, isPending] = useActionState(saveFoodConstraintsAction, null)
   /** Le compte envoyé à la mesure, relevé au moment de l'envoi. */
   const submittedCount = useRef(0)
+  const t = useTranslations('account.foodConstraints')
   const tTags = useTranslations('restaurants.tags')
 
   // Un compte, jamais le détail : un régime halal ou casher dit une religion.
@@ -58,9 +59,7 @@ export function FoodConstraintsForm({ initial }: FoodConstraintsFormProps) {
   return (
     <form action={formAction} onSubmit={rememberCount} className="flex flex-col gap-4">
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 text-sm leading-none font-medium text-ink">
-          Régime à respecter
-        </legend>
+        <legend className="mb-2 text-sm leading-none font-medium text-ink">{t('diets')}</legend>
         <div className="flex flex-wrap gap-1.5">
           {RESTAURANT_TAGS.map((tag) => (
             <label key={tag} className={CHIP}>
@@ -78,7 +77,7 @@ export function FoodConstraintsForm({ initial }: FoodConstraintsFormProps) {
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 text-sm leading-none font-medium text-ink">Budget maximum</legend>
+        <legend className="mb-2 text-sm leading-none font-medium text-ink">{t('budget')}</legend>
         <div className="flex flex-wrap gap-1.5">
           <label className={CHIP}>
             <input
@@ -88,7 +87,7 @@ export function FoodConstraintsForm({ initial }: FoodConstraintsFormProps) {
               defaultChecked={initial.maxPriceLevel === null}
               className={HIDDEN_INPUT}
             />
-            Pas de plafond
+            {t('noCap')}
           </label>
           {PRICE_LEVELS.map((level) => (
             <label key={level} className={CHIP}>
@@ -98,7 +97,7 @@ export function FoodConstraintsForm({ initial }: FoodConstraintsFormProps) {
                 value={level}
                 defaultChecked={initial.maxPriceLevel === level}
                 // « €€ » se lit mal à voix haute : le libellé dit la règle.
-                aria-label={`Au plus ${PRICE_LEVEL_LABELS[level]}`}
+                aria-label={t('atMost', { level: PRICE_LEVEL_LABELS[level] })}
                 className={HIDDEN_INPUT}
               />
               <span aria-hidden="true">{PRICE_LEVEL_LABELS[level]}</span>
@@ -109,7 +108,7 @@ export function FoodConstraintsForm({ initial }: FoodConstraintsFormProps) {
 
       <div className="flex flex-col gap-2">
         <Button type="submit" variant="secondary" disabled={isPending} className="self-start">
-          {isPending ? <Spinner /> : 'Enregistrer'}
+          {isPending ? <Spinner /> : t('save')}
         </Button>
         <FormMessage error={state?.error} success={state?.success} />
       </div>

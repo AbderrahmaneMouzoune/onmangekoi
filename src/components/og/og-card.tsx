@@ -1,6 +1,9 @@
+import { WORDMARK } from '@/lib/brand'
+
 /**
- * Gabarit partagé des images Open Graph (accueil et invitations).
- * Rendu par Satori : styles inline uniquement, flex explicite.
+ * Gabarit partagé des images Open Graph (accueil, invitations, classements,
+ * listes). Rendu par Satori : styles inline uniquement, flex explicite. Les
+ * textes arrivent traduits par l'appelant ; seule la marque est écrite ici.
  */
 interface OgCardProps {
   eyebrow: string
@@ -54,7 +57,8 @@ export function OgCard({ eyebrow, title, subtitle, footer }: OgCardProps) {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <span style={{ fontSize: 40, fontWeight: 800, letterSpacing: -2 }}>
-          onmange<span style={{ color: '#e8412c' }}>koi</span>
+          {WORDMARK[0]}
+          <span style={{ color: '#e8412c' }}>{WORDMARK[1]}</span>
         </span>
         {footer && <span style={{ fontSize: 28, opacity: 0.6 }}>{footer}</span>}
       </div>

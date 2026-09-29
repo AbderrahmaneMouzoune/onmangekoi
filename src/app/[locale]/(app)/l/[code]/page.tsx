@@ -1,3 +1,4 @@
+import { getLocale, getTranslations } from 'next-intl/server'
 import { Suspense } from 'react'
 
 import { Shell } from '@/components/layout/shell'
@@ -7,7 +8,8 @@ import { getSharedListPreview } from '@/data-access/lists'
 import { getPublicList } from '@/data-access/public-lists'
 import { createServerClient } from '@/data-access/supabase/server'
 import { parseSharedListParam } from '@/domain/share'
-import { countLabel, displayPseudo } from '@/lib/format'
+import { joinNames } from '@/domain/tiebreak'
+import { displayPseudo } from '@/lib/format'
 import { absoluteUrl } from '@/lib/site'
 
 import type { Metadata } from 'next'
@@ -17,20 +19,28 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { code } = await params
+  const [{ code }, t, tTitles, tCommon, locale] = await Promise.all([
+    params,
+    getTranslations('metadata.sharedList'),
+    getTranslations('metadata.titles'),
+    getTranslations('common'),
+    getLocale(),
+  ])
   const identifier = parseSharedListParam(code)
-  if (identifier.kind === 'invalid') return { title: 'Liste partagée' }
+  if (identifier.kind === 'invalid') return { title: tTitles('sharedList') }
 
   // Liste publique : la page est faite pour être trouvée et dépliée dans une
   // conversation. Rien du propriétaire n'entre dans ces métadonnées — la RPC
   // publique n'en rend rien.
   const publicPreview = await getPublicList(identifier.value).catch(() => null)
   if (publicPreview) {
-    const cuisines = publicPreview.cuisines.slice(0, 3).join(', ')
+    const cuisines = publicPreview.cuisines.slice(0, 3)
     const url = absoluteUrl(router.sharedList(publicPreview))
-    const description = `${countLabel(publicPreview.restaurant_count, 'resto')} à se partager${
-      cuisines ? ` — ${cuisines}` : ''
-    }. Lance un vote depuis cette liste, sans compte.`
+    const count = publicPreview.restaurant_count
+    const description =
+      cuisines.length > 0
+        ? t('publicDescriptionWithCuisines', { count, cuisines: joinNames(cuisines, locale) })
+        : t('publicDescription', { count })
 
     return {
       title: publicPreview.name,
@@ -44,10 +54,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // l'index — c'est le partage par lien d'avant, inchangé.
   const supabase = await createServerClient()
   const preview = await getSharedListPreview(supabase, identifier.value).catch(() => null)
-  if (!preview) return { title: 'Liste partagée' }
+  if (!preview) return { title: tTitles('sharedList') }
   return {
     title: preview.name,
-    description: `${countLabel(preview.restaurant_count, 'resto')} partagés par ${displayPseudo(preview.owner_pseudo)} sur onmangekoi.`,
+    description: t('privateDescription', {
+      count: preview.restaurant_count,
+      owner: displayPseudo(preview.owner_pseudo, tCommon('people.guest')),
+    }),
     robots: { index: false },
   }
 }

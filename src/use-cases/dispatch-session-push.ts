@@ -1,9 +1,14 @@
+import { createTranslator } from 'next-intl'
+
 import { deletePushSubscriptions, getPushRecipients, getPushSession } from '@/data-access/push'
 import { sendWebPush } from '@/data-access/web-push'
-import { isGoneSubscription, pushMessageFor, pushTopic, PUSH_TTL_SECONDS } from '@/domain/push'
+import { isGoneSubscription, pushNoticeFor, pushTopic, PUSH_TTL_SECONDS } from '@/domain/push'
+import { MESSAGES } from '@/i18n/messages'
 
 import type { Database } from '@/data-access/models/database'
+import type { PushMessage, PushNotice } from '@/domain/push'
 import type { PushDispatchInput } from '@/domain/schemas/push'
+import type { Locale } from '@/i18n/config'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface PushDispatchReport {
@@ -27,6 +32,10 @@ const NOTHING: PushDispatchReport = { sent: 0, purged: 0, failed: 0 }
  * arrivé après la clôture enverrait voter dans une session finie — si le
  * statut ne correspond plus, on se tait.
  *
+ * Chacun est prévenu dans sa langue — celle de l'interface au moment où il
+ * s'est abonné (`push_subscriptions.locale`) : le texte est fabriqué une fois
+ * par langue présente parmi les destinataires.
+ *
  * Les envois partent en parallèle ; ceux que le service push refuse en 404 ou
  * 410 désignent des abonnements morts (navigateur désinstallé, permission
  * retirée), purgés dans la foulée.
@@ -41,7 +50,16 @@ export async function dispatchSessionPushUseCase(
   const recipients = await getPushRecipients(admin, session.id, input.actor_id)
   if (recipients.length === 0) return NOTHING
 
-  const message = pushMessageFor(input.status, session)
+  const notice = pushNoticeFor(input.status, session)
+  const messages = new Map<Locale, PushMessage>()
+  const messageIn = (locale: Locale) => {
+    let message = messages.get(locale)
+    if (!message) {
+      message = translatePushNotice(notice, locale)
+      messages.set(locale, message)
+    }
+    return message
+  }
   const options = {
     ttl: PUSH_TTL_SECONDS[input.status],
     topic: pushTopic(session.id),
@@ -50,7 +68,9 @@ export async function dispatchSessionPushUseCase(
   }
 
   const results = await Promise.all(
-    recipients.map((subscription) => sendWebPush(subscription, message, options))
+    recipients.map((subscription) =>
+      sendWebPush(subscription, messageIn(subscription.locale), options)
+    )
   )
 
   const gone = recipients
@@ -63,4 +83,21 @@ export async function dispatchSessionPushUseCase(
 
   const sent = results.filter((result) => result.ok).length
   return { sent, purged: gone.length, failed: results.length - sent - gone.length }
+}
+
+/**
+ * Le texte d'une notification dans une langue donnée. Hors de toute requête
+ * — l'appel vient de la base, pas d'un navigateur —, la langue ne peut pas
+ * venir de la requête : c'est un traducteur explicite (`createTranslator`) sur
+ * les mêmes messages que l'interface (`pwa.push`).
+ */
+export function translatePushNotice(notice: PushNotice, locale: Locale): PushMessage {
+  const t = createTranslator({ locale, messages: MESSAGES[locale], namespace: 'pwa.push' })
+  return {
+    title: t(`${notice.kind}.title`),
+    body: t(`${notice.kind}.body`, { session: notice.session }),
+    url: notice.url,
+    tag: notice.tag,
+    lang: locale,
+  }
 }

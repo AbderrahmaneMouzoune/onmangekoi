@@ -1,5 +1,7 @@
 import { RiDownloadLine, RiEyeOffLine, RiUserSettingsLine } from '@remixicon/react'
 import Link from 'next/link'
+import { useFormatter, useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { PageHeader } from '@/components/layout/page-header'
 import { Shell } from '@/components/layout/shell'
@@ -10,132 +12,106 @@ import { cn } from '@/lib/utils'
 
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = {
-  title: 'Confidentialité',
-  description: `Les données que ${SITE_NAME} conserve, pourquoi, combien de temps, et comment les récupérer ou les supprimer.`,
+export async function generateMetadata(): Promise<Metadata> {
+  const [tTitles, t] = await Promise.all([
+    getTranslations('metadata.titles'),
+    getTranslations('metadata.privacy'),
+  ])
+  return { title: tTitles('privacy'), description: t('description', { site: SITE_NAME }) }
 }
 
 /** Dernière révision du texte — à remonter à chaque modification de fond. */
-const LAST_UPDATED = '29 septembre 2026'
+const LAST_UPDATED = '2026-09-29'
 
+/** Les lignes du tableau de conservation ; leurs textes vivent dans `legal.privacy.retention.rows`. */
 const RETENTION = [
-  {
-    data: 'Pseudo',
-    why: 'T’identifier auprès des autres participants d’une session',
-    kept: 'Jusqu’à la suppression du compte',
-  },
-  {
-    data: 'Email et mot de passe',
-    why: 'Optionnels — retrouver ses listes depuis un autre appareil',
-    kept: 'Jusqu’à la suppression du compte',
-  },
-  {
-    data: 'Listes de restaurants',
-    why: 'Rejouer une sélection d’une session à l’autre',
-    kept: 'Jusqu’à la suppression du compte ou de la liste',
-  },
-  {
-    data: 'Groupes récurrents',
-    why: 'Réinviter la même équipe sans retaper le code à chaque session',
-    kept: 'Jusqu’à la suppression du compte, du groupe, ou jusqu’à ce que tu le quittes',
-  },
-  {
-    data: 'Sessions et participations',
-    why: 'Faire fonctionner le vote et afficher le classement',
-    kept: 'Tant que la session existe',
-  },
-  {
-    data: 'Votes',
-    why: 'Calculer le classement — jamais affichés individuellement',
-    kept: 'Conservés en agrégat, détachés de leur auteur à la suppression du compte',
-  },
-  {
-    data: 'Contraintes alimentaires',
-    why: 'Optionnelles — signaler dans tes sessions un resto où tu ne peux pas manger, sans jamais dire qui',
-    kept: 'Jusqu’à ce que tu les retires, ou la suppression du compte',
-  },
-  {
-    data: 'Abonnement aux notifications',
-    why: 'Optionnel — te prévenir du lancement d’un vote ou d’un classement, onglet fermé',
-    kept: 'Jusqu’à « Ne plus me prévenir », la suppression du compte, ou l’abandon par le navigateur',
-  },
-  {
-    data: 'Compte invité sans email',
-    why: 'Permettre d’utiliser l’app sans inscription',
-    kept: 'Supprimé après 90 jours sans activité',
-  },
-  {
-    data: 'Essais de code ratés',
-    why: 'Empêcher qu’un script devine les codes d’invitation',
-    kept: 'Purgés dans les 24 h — aucune adresse IP n’est enregistrée',
-  },
+  'pseudo',
+  'credentials',
+  'lists',
+  'groups',
+  'sessions',
+  'votes',
+  'constraints',
+  'push',
+  'guests',
+  'attempts',
 ] as const
 
+const CONSTRAINT_POINTS = ['nobody', 'countOnly', 'noAnalytics', 'export'] as const
+
+const DELETION_POINTS = ['erased', 'groups', 'votes', 'sessions', 'pendingVotes'] as const
+
+function strong(chunks: React.ReactNode) {
+  return <strong className="font-semibold text-ink">{chunks}</strong>
+}
+
 export default function PrivacyPage() {
+  const t = useTranslations('legal.privacy')
+  const tCommon = useTranslations('common')
+  const format = useFormatter()
   return (
     <Shell size="reading">
       <PageHeader
-        eyebrow="Vie privée"
-        title="Confidentialité"
-        description={`Ce que ${SITE_NAME} sait de toi, pourquoi, et comment reprendre la main dessus.`}
-        back={{ href: router.home(), label: 'Accueil' }}
+        eyebrow={t('eyebrow')}
+        title={t('title')}
+        description={t('description', { site: SITE_NAME })}
+        back={{ href: router.home(), label: tCommon('actions.home') }}
       />
 
-      <p className="text-sm text-muted-foreground">Dernière mise à jour : {LAST_UPDATED}.</p>
+      <p className="text-sm text-muted-foreground">
+        {t('lastUpdated', {
+          date: format.dateTime(new Date(`${LAST_UPDATED}T12:00:00Z`), {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          }),
+        })}
+      </p>
 
       <section className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line">
-        <h2 className="font-display text-base font-semibold">En résumé</h2>
+        <h2 className="font-display text-base font-semibold">{t('summary.title')}</h2>
         <ul className="flex flex-col gap-2.5 text-sm text-ink-2">
           <li className="flex gap-2.5">
             <RiUserSettingsLine aria-hidden="true" className="mt-0.5 size-4.5 shrink-0" />
-            <span>
-              Un pseudo suffit pour tout faire. L’email et le mot de passe sont facultatifs et ne
-              servent qu’à retrouver ses listes ailleurs.
-            </span>
+            <span>{t('summary.pseudo')}</span>
           </li>
           <li className="flex gap-2.5">
             <RiEyeOffLine aria-hidden="true" className="mt-0.5 size-4.5 shrink-0" />
-            <span>
-              Aucune publicité, aucune revente, aucun traceur tiers. Les votes ne sont jamais
-              montrés individuellement : seul le classement agrégé est affiché.
-            </span>
+            <span>{t('summary.noTracking')}</span>
           </li>
           <li className="flex gap-2.5">
             <RiDownloadLine aria-hidden="true" className="mt-0.5 size-4.5 shrink-0" />
-            <span>
-              L’export et la suppression sont en libre-service depuis « Mon compte », sans avoir à
-              écrire à qui que ce soit.
-            </span>
+            <span>{t('summary.selfService')}</span>
           </li>
         </ul>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-display text-lg font-bold">Ce qu’on conserve</h2>
+        <h2 className="font-display text-lg font-bold">{t('retention.title')}</h2>
         {/* Le tableau déborde sur petit écran : la zone qui défile doit être
             atteignable au clavier, donc focalisable et nommée. */}
         <div
           tabIndex={0}
           role="group"
-          aria-label="Ce qu’on conserve"
+          aria-label={t('retention.title')}
           className="overflow-x-auto rounded-lg ring-1 ring-line outline-none focus-visible:ring-3 focus-visible:ring-ring"
         >
           <table className="w-full min-w-lg border-collapse text-left text-sm">
             <thead className="bg-surface-2 text-xs text-muted-foreground uppercase">
               <tr>
-                <th className="px-3 py-2.5 font-semibold">Donnée</th>
-                <th className="px-3 py-2.5 font-semibold">Pourquoi</th>
-                <th className="px-3 py-2.5 font-semibold">Combien de temps</th>
+                <th className="px-3 py-2.5 font-semibold">{t('retention.data')}</th>
+                <th className="px-3 py-2.5 font-semibold">{t('retention.why')}</th>
+                <th className="px-3 py-2.5 font-semibold">{t('retention.kept')}</th>
               </tr>
             </thead>
             <tbody>
               {RETENTION.map((row) => (
-                <tr key={row.data} className="border-t border-line bg-surface align-top">
+                <tr key={row} className="border-t border-line bg-surface align-top">
                   <th scope="row" className="px-3 py-3 font-medium">
-                    {row.data}
+                    {t(`retention.rows.${row}.data`)}
                   </th>
-                  <td className="px-3 py-3 text-ink-2">{row.why}</td>
-                  <td className="px-3 py-3 text-ink-2">{row.kept}</td>
+                  <td className="px-3 py-3 text-ink-2">{t(`retention.rows.${row}.why`)}</td>
+                  <td className="px-3 py-3 text-ink-2">{t(`retention.rows.${row}.kept`)}</td>
                 </tr>
               ))}
             </tbody>
@@ -144,83 +120,40 @@ export default function PrivacyPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-display text-lg font-bold">Ce que tu ne peux pas manger</h2>
-        <p className="text-sm text-ink-2">
-          Un régime halal ou casher peut dire une religion, un sans gluten une santé : ce sont des
-          données sensibles. Tu es seul à les déclarer, depuis «&nbsp;Mon compte&nbsp;», et
-          seulement si tu le souhaites — les déclarer vaut consentement à cet usage, et un clic les
-          retire.
-        </p>
+        <h2 className="font-display text-lg font-bold">{t('constraints.title')}</h2>
+        <p className="text-sm text-ink-2">{t('constraints.intro')}</p>
         <ul className="flex list-disc flex-col gap-2 pl-5 text-sm text-ink-2 marker:text-line-strong">
-          <li>Personne d’autre ne peut les lire, pas même le host de tes sessions.</li>
-          <li>
-            Une session n’en montre qu’un compte par restaurant — «&nbsp;2 participants ne peuvent
-            pas y manger&nbsp;» —, jamais qui ni pourquoi. À deux dans une session, ce compte peut
-            suffire à deviner : c’est le prix d’un signal utile.
-          </li>
-          <li>Elles ne partent jamais vers l’outil de mesure d’audience.</li>
-          <li>L’export les contient, la suppression du compte les efface.</li>
+          {CONSTRAINT_POINTS.map((point) => (
+            <li key={point}>{t(`constraints.${point}`)}</li>
+          ))}
         </ul>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-display text-lg font-bold">Ce qui se passe à la suppression</h2>
-        <p className="text-sm text-ink-2">
-          Supprimer un compte ne doit pas réécrire l’histoire des autres. Concrètement :
-        </p>
+        <h2 className="font-display text-lg font-bold">{t('deletion.title')}</h2>
+        <p className="text-sm text-ink-2">{t('deletion.intro')}</p>
         <ul className="flex list-disc flex-col gap-2 pl-5 text-sm text-ink-2 marker:text-line-strong">
-          <li>
-            Le profil, le pseudo, l’email, le mot de passe, les listes, les contraintes alimentaires
-            et les abonnements aux notifications sont supprimés définitivement.
-          </li>
-          <li>
-            Les groupes dont le compte est propriétaire disparaissent pour tous leurs membres, et le
-            compte sort de ceux qu’il avait rejoints.
-          </li>
-          <li>
-            Les votes déjà comptés dans une session terminée sont conservés dans le classement, mais
-            détachés de leur auteur : les autres participants voient «&nbsp;Participant
-            supprimé&nbsp;».
-          </li>
-          <li>
-            Les sessions en attente ou en cours de vote hébergées par le compte sont supprimées :
-            sans host, elles ne peuvent plus aboutir.
-          </li>
-          <li>Les votes d’une session non terminée sont supprimés avec la participation.</li>
+          {DELETION_POINTS.map((point) => (
+            <li key={point}>{t(`deletion.${point}`)}</li>
+          ))}
         </ul>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-display text-lg font-bold">Qui héberge ces données</h2>
-        <p className="text-sm text-ink-2">
-          La base de données et l’authentification sont opérées par{' '}
-          <strong className="font-semibold text-ink">Supabase</strong>, l’application est hébergée
-          par <strong className="font-semibold text-ink">Vercel</strong>, dans la région choisie
-          pour le projet. Ces deux prestataires n’utilisent les données que pour fournir leur
-          service. Aucun autre destinataire n’y a accès.
-        </p>
-        <p className="text-sm text-ink-2">
-          Si tu actives les notifications, elles transitent par le service push de ton navigateur
-          (Google pour Chrome et Android, Mozilla pour Firefox, Apple pour Safari). Leur contenu —
-          le nom de la session et le lien à ouvrir — est chiffré de bout en bout : ce service le
-          transporte sans pouvoir le lire.
-        </p>
+        <h2 className="font-display text-lg font-bold">{t('hosting.title')}</h2>
+        <p className="text-sm text-ink-2">{t.rich('hosting.providers', { strong })}</p>
+        <p className="text-sm text-ink-2">{t('hosting.push')}</p>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-display text-lg font-bold">Tes droits</h2>
-        <p className="text-sm text-ink-2">
-          Le RGPD te donne un droit d’accès, de rectification, de portabilité et d’effacement. Les
-          trois derniers sont directement dans l’app : le pseudo se change depuis «&nbsp;Mon
-          compte&nbsp;», l’export renvoie l’intégralité de tes données en JSON, et la suppression
-          est immédiate et définitive.
-        </p>
+        <h2 className="font-display text-lg font-bold">{t('rights.title')}</h2>
+        <p className="text-sm text-ink-2">{t('rights.text')}</p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
             href={router.account()}
             className={cn(buttonVariants({ variant: 'outline' }), 'sm:flex-1')}
           >
-            Aller à « Mon compte »
+            {t('rights.account')}
           </Link>
           <a
             href={CONTACT_URL}
@@ -228,7 +161,7 @@ export default function PrivacyPage() {
             rel="noreferrer noopener"
             className={cn(buttonVariants({ variant: 'ghost' }), 'sm:flex-1')}
           >
-            Poser une question
+            {t('rights.contact')}
           </a>
         </div>
       </section>

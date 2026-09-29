@@ -13,7 +13,15 @@
     "resultsOf": "Ranking · {name}",
     "duo": "For two",
     "join": "Join a session",
-    "invitation": "Invitation"
+    "invitation": "Invitation",
+    "lists": "My lists",
+    "newList": "New list",
+    "list": "List",
+    "sharedList": "Shared list",
+    "groups": "My groups",
+    "account": "My account",
+    "privacy": "Privacy",
+    "changelog": "What’s new"
   },
   "duo": {
     "description": "Decide where to eat, just the two of you: one link to send, the same restaurants to swipe, and the first shared “works for me” settles it."
@@ -33,5 +41,16 @@
     "title": "We’re eating at {restaurant}",
     "decided": "{session}: it’s decided, we’re eating at {restaurant}.",
     "voted": "{session}: {count, plural, one {# participant voted} other {# participants voted}}, {restaurant} wins."
+  },
+  "privacy": {
+    "description": "The data {site} keeps, why, for how long, and how to get it back or delete it."
+  },
+  "changelog": {
+    "description": "What changed in {site}, release after release: what you can do now, what got better, what got fixed."
+  },
+  "sharedList": {
+    "publicDescription": "{count, plural, one {# restaurant} other {# restaurants}} to choose from. Start a vote from this list, no account needed.",
+    "publicDescriptionWithCuisines": "{count, plural, one {# restaurant} other {# restaurants}} to choose from — {cuisines}. Start a vote from this list, no account needed.",
+    "privateDescription": "{count, plural, one {# restaurant} other {# restaurants}} shared by {owner} on onmangekoi."
   }
 }

@@ -1,1 +1,100 @@
-{}
+{
+  "privacy": {
+    "eyebrow": "Vie privée",
+    "title": "Confidentialité",
+    "description": "Ce que {site} sait de toi, pourquoi, et comment reprendre la main dessus.",
+    "lastUpdated": "Dernière mise à jour : {date}.",
+    "summary": {
+      "title": "En résumé",
+      "pseudo": "Un pseudo suffit pour tout faire. L’email et le mot de passe sont facultatifs et ne servent qu’à retrouver ses listes ailleurs.",
+      "noTracking": "Aucune publicité, aucune revente, aucun traceur tiers. Les votes ne sont jamais montrés individuellement : seul le classement agrégé est affiché.",
+      "selfService": "L’export et la suppression sont en libre-service depuis « Mon compte », sans avoir à écrire à qui que ce soit."
+    },
+    "retention": {
+      "title": "Ce qu’on conserve",
+      "data": "Donnée",
+      "why": "Pourquoi",
+      "kept": "Combien de temps",
+      "rows": {
+        "pseudo": {
+          "data": "Pseudo",
+          "why": "T’identifier auprès des autres participants d’une session",
+          "kept": "Jusqu’à la suppression du compte"
+        },
+        "credentials": {
+          "data": "Email et mot de passe",
+          "why": "Optionnels — retrouver ses listes depuis un autre appareil",
+          "kept": "Jusqu’à la suppression du compte"
+        },
+        "lists": {
+          "data": "Listes de restaurants",
+          "why": "Rejouer une sélection d’une session à l’autre",
+          "kept": "Jusqu’à la suppression du compte ou de la liste"
+        },
+        "groups": {
+          "data": "Groupes récurrents",
+          "why": "Réinviter la même équipe sans retaper le code à chaque session",
+          "kept": "Jusqu’à la suppression du compte, du groupe, ou jusqu’à ce que tu le quittes"
+        },
+        "sessions": {
+          "data": "Sessions et participations",
+          "why": "Faire fonctionner le vote et afficher le classement",
+          "kept": "Tant que la session existe"
+        },
+        "votes": {
+          "data": "Votes",
+          "why": "Calculer le classement — jamais affichés individuellement",
+          "kept": "Conservés en agrégat, détachés de leur auteur à la suppression du compte"
+        },
+        "constraints": {
+          "data": "Contraintes alimentaires",
+          "why": "Optionnelles — signaler dans tes sessions un resto où tu ne peux pas manger, sans jamais dire qui",
+          "kept": "Jusqu’à ce que tu les retires, ou la suppression du compte"
+        },
+        "push": {
+          "data": "Abonnement aux notifications",
+          "why": "Optionnel — te prévenir du lancement d’un vote ou d’un classement, onglet fermé, dans ta langue",
+          "kept": "Jusqu’à « Ne plus me prévenir », la suppression du compte, ou l’abandon par le navigateur"
+        },
+        "guests": {
+          "data": "Compte invité sans email",
+          "why": "Permettre d’utiliser l’app sans inscription",
+          "kept": "Supprimé après 90 jours sans activité"
+        },
+        "attempts": {
+          "data": "Essais de code ratés",
+          "why": "Empêcher qu’un script devine les codes d’invitation",
+          "kept": "Purgés dans les 24 h — aucune adresse IP n’est enregistrée"
+        }
+      }
+    },
+    "constraints": {
+      "title": "Ce que tu ne peux pas manger",
+      "intro": "Un régime halal ou casher peut dire une religion, un sans gluten une santé : ce sont des données sensibles. Tu es seul à les déclarer, depuis « Mon compte », et seulement si tu le souhaites — les déclarer vaut consentement à cet usage, et un clic les retire.",
+      "nobody": "Personne d’autre ne peut les lire, pas même le host de tes sessions.",
+      "countOnly": "Une session n’en montre qu’un compte par restaurant — « 2 participants ne peuvent pas y manger » —, jamais qui ni pourquoi. À deux dans une session, ce compte peut suffire à deviner : c’est le prix d’un signal utile.",
+      "noAnalytics": "Elles ne partent jamais vers l’outil de mesure d’audience.",
+      "export": "L’export les contient, la suppression du compte les efface."
+    },
+    "deletion": {
+      "title": "Ce qui se passe à la suppression",
+      "intro": "Supprimer un compte ne doit pas réécrire l’histoire des autres. Concrètement :",
+      "erased": "Le profil, le pseudo, l’email, le mot de passe, les listes, les contraintes alimentaires et les abonnements aux notifications sont supprimés définitivement.",
+      "groups": "Les groupes dont le compte est propriétaire disparaissent pour tous leurs membres, et le compte sort de ceux qu’il avait rejoints.",
+      "votes": "Les votes déjà comptés dans une session terminée sont conservés dans le classement, mais détachés de leur auteur : les autres participants voient « Participant supprimé ».",
+      "sessions": "Les sessions en attente ou en cours de vote hébergées par le compte sont supprimées : sans host, elles ne peuvent plus aboutir.",
+      "pendingVotes": "Les votes d’une session non terminée sont supprimés avec la participation."
+    },
+    "hosting": {
+      "title": "Qui héberge ces données",
+      "providers": "La base de données et l’authentification sont opérées par <strong>Supabase</strong>, l’application est hébergée par <strong>Vercel</strong>, dans la région choisie pour le projet. Ces deux prestataires n’utilisent les données que pour fournir leur service. Aucun autre destinataire n’y a accès.",
+      "push": "Si tu actives les notifications, elles transitent par le service push de ton navigateur (Google pour Chrome et Android, Mozilla pour Firefox, Apple pour Safari). Leur contenu — le nom de la session et le lien à ouvrir — est chiffré de bout en bout : ce service le transporte sans pouvoir le lire."
+    },
+    "rights": {
+      "title": "Tes droits",
+      "text": "Le RGPD te donne un droit d’accès, de rectification, de portabilité et d’effacement. Les trois derniers sont directement dans l’app : le pseudo se change depuis « Mon compte », l’export renvoie l’intégralité de tes données en JSON, et la suppression est immédiate et définitive.",
+      "account": "Aller à « Mon compte »",
+      "contact": "Poser une question"
+    }
+  }
+}

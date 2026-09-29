@@ -317,6 +317,7 @@ export type Database = {
           created_at: string
           endpoint: string
           id: string
+          locale: string
           p256dh: string
           user_id: string
         }
@@ -325,6 +326,7 @@ export type Database = {
           created_at?: string
           endpoint: string
           id?: string
+          locale?: string
           p256dh: string
           user_id: string
         }
@@ -333,6 +335,7 @@ export type Database = {
           created_at?: string
           endpoint?: string
           id?: string
+          locale?: string
           p256dh?: string
           user_id?: string
         }
@@ -1293,7 +1296,7 @@ export type Database = {
         Returns: undefined
       }
       save_push_subscription: {
-        Args: { p_auth: string; p_endpoint: string; p_p256dh: string }
+        Args: { p_auth: string; p_endpoint: string; p_locale?: string; p_p256dh: string }
         Returns: undefined
       }
       search_restaurants: {

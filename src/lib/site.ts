@@ -5,7 +5,7 @@ import { env } from '@/env'
 
 import type { ListTarget, ResultsTarget, SessionTarget } from '@/config/router.config'
 
-export { SITE_NAME, SITE_TAGLINE } from '@/lib/brand'
+export { SITE_NAME } from '@/lib/brand'
 
 /** URL publique du site, sans slash final (voir `resolveSiteUrl` dans `env.ts`). */
 export function siteUrl(): string {

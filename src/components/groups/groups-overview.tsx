@@ -1,6 +1,8 @@
 import { RiGroupLine } from '@remixicon/react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { GroupCard } from '@/components/groups/group-card'
 import { ArrowKeyList } from '@/components/ui/arrow-key-list'
@@ -18,14 +20,14 @@ export async function GroupsOverview() {
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
   if (!user) redirect(router.setup(router.groups()))
 
-  const groups = await getMyGroups(supabase)
+  const [groups, t] = await Promise.all([getMyGroups(supabase), getTranslations('groups.page')])
 
   if (groups.length === 0) return <NoGroups />
 
   return (
     <ArrowKeyList
       orientation="both"
-      aria-label="Mes groupes"
+      aria-label={t('title')}
       className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start"
     >
       {groups.map((group) => (
@@ -41,14 +43,15 @@ export async function GroupsOverview() {
  * qui en fait partie.
  */
 function NoGroups() {
+  const t = useTranslations('groups.empty')
   return (
     <EmptyState
       icon={<RiGroupLine />}
-      title="Aucun groupe pour l’instant"
-      description="À la fin d’une session, « Sauvegarder ce groupe » garde l’équipe du jour. La prochaine fois, tu l’invites d’un clic."
+      title={t('title')}
+      description={t('description')}
       action={
         <Link href={router.sessionNew()} className={cn(buttonVariants())}>
-          Lancer une session
+          {t('action')}
         </Link>
       }
     />

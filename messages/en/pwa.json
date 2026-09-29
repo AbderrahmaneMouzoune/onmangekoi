@@ -3,5 +3,25 @@
     "eyebrow": "Offline",
     "title": "No network, no vote.",
     "lead": "Sessions, votes and the ranking happen live with the group. As soon as the connection is back, the page reloads by itself."
+  },
+  "install": {
+    "title": "Keep onmangekoi close at hand",
+    "description": "Install the app on your home screen: it opens in one tap, full screen, ready for the next lunch break.",
+    "later": "Later",
+    "install": "Install"
+  },
+  "push": {
+    "voting": {
+      "title": "Voting has started",
+      "body": "{session} — your turn to vote."
+    },
+    "agreed": {
+      "title": "It’s a match",
+      "body": "{session} — you’ve found where to eat."
+    },
+    "closed": {
+      "title": "The ranking is ready",
+      "body": "{session} — see where you’re eating."
+    }
   }
 }

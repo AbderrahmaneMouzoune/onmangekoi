@@ -1,3 +1,5 @@
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 import { Suspense } from 'react'
 
 import { PageHeader } from '@/components/layout/page-header'
@@ -10,16 +12,20 @@ import { router } from '@/config/router.config'
 
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = { title: 'Nouvelle liste' }
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('metadata.titles')
+  return { title: t('newList') }
+}
 
 export default function NewListPage() {
+  const t = useTranslations('lists')
   return (
     <Shell size="app">
       <PageHeader
-        eyebrow="Favoris"
-        title="Nouvelle liste"
-        description="Nomme-la, remplis-la : tu la ressortiras dans tes sessions."
-        back={{ href: router.lists(), label: 'Mes listes' }}
+        eyebrow={t('page.eyebrow')}
+        title={t('newPage.title')}
+        description={t('newPage.description')}
+        back={{ href: router.lists(), label: t('page.title') }}
       />
       <Suspense fallback={<CreateListSectionFallback />}>
         <CreateListSection />

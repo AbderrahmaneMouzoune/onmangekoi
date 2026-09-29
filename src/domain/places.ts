@@ -4,6 +4,7 @@ import { RESTAURANT_NAME_MAX, RESTAURANT_NAME_MIN } from '@/domain/schemas/resta
 
 import type { OpeningHours } from '@/domain/opening-hours'
 import type { RestaurantTag } from '@/domain/schemas/restaurant'
+import type { Locale } from '@/i18n/config'
 import type { GeoPoint } from '@/lib/maps'
 
 /**
@@ -344,8 +345,14 @@ export function mapPlaceDetails(payload: unknown): PlaceResult | null {
   return parsed.success ? mapPlace(parsed.data) : null
 }
 
-/** Clé de cache d'une recherche : requête normalisée + biais arrondi (~1 km). */
+/**
+ * Clé de cache d'une recherche : langue + requête normalisée + biais arrondi
+ * (~1 km). La langue en fait partie : Google rend adresses et types de lieux
+ * dans celle qu'on lui demande, et une page anglaise ne doit pas servir une
+ * réponse française mise en cache par un collègue.
+ */
 export function placesCacheKey(input: {
+  locale: Locale
   query: string
   latitude?: number | null
   longitude?: number | null
@@ -353,7 +360,7 @@ export function placesCacheKey(input: {
   const query = input.query.trim().toLowerCase().replace(/\s+/g, ' ')
   const round = (value: number | null | undefined) =>
     typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) : ''
-  return `${query}|${round(input.latitude)}|${round(input.longitude)}`
+  return `${input.locale}|${query}|${round(input.latitude)}|${round(input.longitude)}`
 }
 
 /**
@@ -361,7 +368,17 @@ export function placesCacheKey(input: {
  * ~100 m. Plus fin que le biais d'une recherche textuelle, parce qu'ici la
  * position n'oriente pas les résultats, elle les définit — à un kilomètre
  * près, deux bureaux verraient les mêmes « plus proches » qui ne le sont pas.
+ * La langue en fait partie, pour la même raison que `placesCacheKey`.
  */
-export function nearbyCacheKey(input: { latitude: number; longitude: number }): string {
-  return `near|${input.latitude.toFixed(3)}|${input.longitude.toFixed(3)}`
+export function nearbyCacheKey(input: {
+  locale: Locale
+  latitude: number
+  longitude: number
+}): string {
+  return `near|${input.locale}|${input.latitude.toFixed(3)}|${input.longitude.toFixed(3)}`
+}
+
+/** Clé de cache du détail d'un lieu : le lieu, dans une langue. */
+export function placeDetailsCacheKey(placeId: string, locale: Locale): string {
+  return `${locale}|${placeId}`
 }

@@ -1,5 +1,5 @@
 import { router } from '@/config/router.config'
-import { getReleaseNotes } from '@/content/changelog'
+import { CHANGELOG_LOCALE, getReleaseNotes } from '@/content/changelog'
 import { SITE_NAME } from '@/lib/brand'
 import { absoluteUrl } from '@/lib/site'
 
@@ -11,6 +11,10 @@ import type { ReleaseNote } from '@/content/changelog'
  *
  * Le contenu vient du dépôt, pas de la base : rien à lire par requête, la
  * réponse est la même pour tout le monde et se met en cache.
+ *
+ * Il reste en français, comme les notes qu'il reprend (`CHANGELOG_LOCALE`) :
+ * un flux n'a qu'une langue, et celle des notes de version est le français
+ * (voir `docs/i18n.md`).
  */
 function escapeXml(value: string): string {
   return value
@@ -47,7 +51,7 @@ export async function GET() {
     `    <title>${escapeXml(`${SITE_NAME} — Nouveautés`)}</title>`,
     `    <link>${escapeXml(absoluteUrl(router.changelog()))}</link>`,
     `    <description>${escapeXml(`Les nouvelles versions de ${SITE_NAME}, racontées côté produit.`)}</description>`,
-    '    <language>fr</language>',
+    `    <language>${CHANGELOG_LOCALE}</language>`,
     ...notes.map(itemFor),
     '  </channel>',
     '</rss>',

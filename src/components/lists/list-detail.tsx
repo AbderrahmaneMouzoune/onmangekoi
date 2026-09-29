@@ -1,4 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
 import { ListEditor } from '@/components/lists/list-editor'
@@ -23,9 +25,10 @@ export async function ListDetail({ params }: { params: Promise<{ code: string }>
   ])
   if (!user) redirect(router.setup(router.list(code)))
 
-  const [list, initialPage] = await Promise.all([
+  const [list, initialPage, t] = await Promise.all([
     getListByParam(supabase, code),
     getRestaurantCatalogPage(),
+    getTranslations('lists'),
   ])
   if (!list) notFound()
 
@@ -35,9 +38,9 @@ export async function ListDetail({ params }: { params: Promise<{ code: string }>
   return (
     <>
       <PageHeader
-        eyebrow="Favoris"
+        eyebrow={t('page.eyebrow')}
         title={list.name}
-        back={{ href: router.lists(), label: 'Mes listes' }}
+        back={{ href: router.lists(), label: t('page.title') }}
       />
       <ListEditor
         key={list.updated_at}
@@ -56,9 +59,13 @@ export async function ListDetail({ params }: { params: Promise<{ code: string }>
  * code et ses restos attendent la base.
  */
 export function ListDetailFallback() {
+  const t = useTranslations('lists')
   return (
     <>
-      <PageHeaderFallback eyebrow="Favoris" back={{ href: router.lists(), label: 'Mes listes' }} />
+      <PageHeaderFallback
+        eyebrow={t('page.eyebrow')}
+        back={{ href: router.lists(), label: t('page.title') }}
+      />
 
       <div
         aria-busy="true"
@@ -66,7 +73,7 @@ export function ListDetailFallback() {
       >
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-2">
-            <p className="text-sm leading-none font-medium text-ink">Nom</p>
+            <p className="text-sm leading-none font-medium text-ink">{t('editor.name')}</p>
             <div className="flex gap-2">
               <Skeleton className="h-11 flex-1 rounded-md" />
               <Skeleton className="h-11 w-28 rounded-md" />
@@ -75,12 +82,12 @@ export function ListDetailFallback() {
 
           <section className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line">
             <div className="flex flex-col gap-0.5">
-              <h2 className="font-display text-base font-semibold">Partager</h2>
+              <h2 className="font-display text-base font-semibold">{t('editor.share.title')}</h2>
               <Skeleton className="h-5 w-full max-w-xs" />
             </div>
             <div className="flex items-center justify-between gap-3 rounded-md bg-surface-2 px-3 py-2">
               <span className="font-mono text-[0.68rem] tracking-wide text-muted-foreground uppercase">
-                Code
+                {t('editor.share.code')}
               </span>
               <Skeleton className="h-6 w-36 bg-line" />
             </div>

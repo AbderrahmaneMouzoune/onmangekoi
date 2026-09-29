@@ -13,7 +13,15 @@
     "resultsOf": "Classement · {name}",
     "duo": "À deux",
     "join": "Rejoindre une session",
-    "invitation": "Invitation"
+    "invitation": "Invitation",
+    "lists": "Mes listes",
+    "newList": "Nouvelle liste",
+    "list": "Liste",
+    "sharedList": "Liste partagée",
+    "groups": "Mes groupes",
+    "account": "Mon compte",
+    "privacy": "Confidentialité",
+    "changelog": "Nouveautés"
   },
   "duo": {
     "description": "Décider à deux où manger : un lien à envoyer, les mêmes restos à balayer, et le premier « ça me va » commun tranche."
@@ -33,5 +41,16 @@
     "title": "On mange chez {restaurant}",
     "decided": "{session} : c’est décidé, on mange chez {restaurant}.",
     "voted": "{session} : {count, plural, one {# participant a voté} other {# participants ont voté}}, {restaurant} l’emporte."
+  },
+  "privacy": {
+    "description": "Les données que {site} conserve, pourquoi, combien de temps, et comment les récupérer ou les supprimer."
+  },
+  "changelog": {
+    "description": "Ce qui a changé dans {site}, version après version : ce qu’on peut faire de plus, ce qui a été amélioré, ce qui a été corrigé."
+  },
+  "sharedList": {
+    "publicDescription": "{count, plural, one {# resto} other {# restos}} à se partager. Lance un vote depuis cette liste, sans compte.",
+    "publicDescriptionWithCuisines": "{count, plural, one {# resto} other {# restos}} à se partager — {cuisines}. Lance un vote depuis cette liste, sans compte.",
+    "privateDescription": "{count, plural, one {# resto partagé} other {# restos partagés}} par {owner} sur onmangekoi."
   }
 }

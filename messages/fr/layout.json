@@ -83,5 +83,11 @@
     "reference": "Référence : {digest}",
     "globalDescription": "Réessaie dans un instant.",
     "retry": "Réessayer"
+  },
+  "consent": {
+    "title": "Mesurer pour améliorer",
+    "description": "On aimerait savoir où les groupes décrochent — création, invitation, vote — pour corriger ce qui coince. Statistiques anonymes hébergées en Europe : ni pseudo, ni email, ni code d’invitation. Modifiable depuis « Mon compte ».",
+    "refuse": "Refuser",
+    "accept": "Accepter"
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getLocale } from 'next-intl/server'
 
 import { getCurrentUser } from '@/data-access/auth'
 import { isPlacesSearchEnabled, searchNearbyPlaces, searchPlaces } from '@/data-access/places'
@@ -18,6 +19,10 @@ import type { PlacesPage } from '@/domain/places'
  * réponses sont mises en cache 24 h dans `data-access/places.ts`.
  *
  * Réservé aux personnes connectées : une recherche coûte un appel facturé.
+ *
+ * Google répond dans la langue de l'interface. La route est hors du segment
+ * `[locale]` et hors du proxy : la langue vient du cookie `NEXT_LOCALE`, puis
+ * d'`Accept-Language`, que le `fetch` du navigateur envoie.
  */
 export async function POST(request: Request): Promise<NextResponse> {
   if (!isPlacesSearchEnabled()) {
@@ -50,7 +55,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   try {
-    const input = parsed.data
+    const input = { ...parsed.data, locale: await getLocale() }
     const page: PlacesPage =
       input.query.length >= PLACES_QUERY_MIN
         ? await searchPlaces(input)

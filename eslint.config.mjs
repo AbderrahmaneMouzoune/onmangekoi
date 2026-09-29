@@ -6,30 +6,6 @@ import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescrip
 import i18next from 'eslint-plugin-i18next'
 import importX from 'eslint-plugin-import-x'
 
-/** Dossiers et fichiers dont les textes sont déjà dans les messages (issue #14). */
-const I18N_EXTRACTED = [
-  'src/app/[[]locale]/layout.tsx',
-  'src/app/[[]locale]/page.tsx',
-  'src/app/[[]locale]/not-found.tsx',
-  'src/app/[[]locale]/error.tsx',
-  'src/app/[[]locale]/opengraph-image.tsx',
-  'src/app/[[]locale]/setup/**',
-  'src/app/[[]locale]/login/**',
-  'src/app/[[]locale]/offline/**',
-  'src/app/global-error.tsx',
-  'src/app/global-not-found.tsx',
-  'src/components/layout/**',
-  'src/components/onboarding/**',
-  'src/components/home/**',
-  // Phase B : sessions et carnet de restaurants.
-  'src/app/[[]locale]/(app)/sessions/**',
-  'src/app/[[]locale]/(app)/duo/**',
-  'src/app/[[]locale]/(app)/join/**',
-  'src/app/[[]locale]/(app)/r/**',
-  'src/components/session/**',
-  'src/components/restaurants/**',
-]
-
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -88,18 +64,20 @@ const eslintConfig = defineConfig([
    * Internationalisation (issue #14) : aucun texte affiché ne s'écrit en dur,
    * il vient des messages (`messages/<langue>/*.json`, voir `docs/i18n.md`).
    *
-   * La règle ne s'applique qu'aux dossiers déjà extraits (phase A) ; les
-   * phases B et C allongent `I18N_EXTRACTED`, puis la phase C l'étend à tout
-   * `src/` et la passe en `error`. En `warn`, elle reste bloquante :
-   * `bun run lint` tourne avec `--max-warnings 0`.
+   * Tout `src/` est concerné, en `error`. Restent dehors : les tests, qui
+   * cherchent justement des textes, et le contenu éditorial des notes de
+   * version (`src/content/`, rédigé en français — il n'a pas de JSX, mais
+   * l'exclusion le dit). Un littéral technique qui passerait pour du texte
+   * (le glyphe d'une icône, un identifiant de version) s'isole dans une
+   * constante nommée plutôt que d'être exempté ici.
    */
   {
-    files: I18N_EXTRACTED,
-    ignores: ['**/*.test.ts', '**/*.test.tsx'],
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx', 'src/test/**', 'src/content/**'],
     plugins: { i18next },
     rules: {
       'i18next/no-literal-string': [
-        'warn',
+        'error',
         {
           // Texte des balises *et* valeurs d'attributs (aria-label, title,
           // placeholder…) : les deux s'affichent ou se lisent à voix haute.
@@ -124,12 +102,17 @@ const eslintConfig = defineConfig([
               'orientation',
               'autoComplete',
               'autoCapitalize',
+              'autoCorrect',
+              'inputMode',
+              // Élément rendu par un composant polymorphe (`<Skeleton as="span">`).
+              'as',
               'aria-hidden',
+              'aria-busy',
               'aria-keyshortcuts',
               'aria-live',
               'aria-current',
               'action',
-              '.*Width$',
+              '.*Widths?$',
               // Attributs techniques : chargement d'image, valeur de champ
               // caché, nom d'input transmis, contexte passé à un composant.
               'loading',
@@ -140,6 +123,9 @@ const eslintConfig = defineConfig([
               'widths',
               'data-.*',
               'on[A-Z].*',
+              // Réglages de `next-themes` (`components/theme-provider.tsx`).
+              'attribute',
+              'defaultTheme',
             ],
           },
           // Les traducteurs s'appellent `t` ou `t<Espace>` (`tCommon`), voir

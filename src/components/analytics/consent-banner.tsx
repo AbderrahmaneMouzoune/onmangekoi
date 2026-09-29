@@ -1,5 +1,7 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
+
 import { Button } from '@/components/ui/button'
 import { useAnalyticsConsent } from '@/hooks/use-analytics-consent'
 import { useIsClient } from '@/hooks/use-is-client'
@@ -12,6 +14,7 @@ import { useIsClient } from '@/hooks/use-is-client'
  * accepter » : fermer sans choisir revient à refuser.
  */
 export function ConsentBanner() {
+  const t = useTranslations('layout.consent')
   const isClient = useIsClient()
   const { choice, available, accept, refuse } = useAnalyticsConsent()
 
@@ -27,20 +30,16 @@ export function ConsentBanner() {
       <div className="mx-auto flex max-w-2xl flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h2 id="consent-title" className="font-display text-base font-semibold">
-            Mesurer pour améliorer
+            {t('title')}
           </h2>
-          <p className="text-sm text-muted-foreground">
-            On aimerait savoir où les groupes décrochent — création, invitation, vote — pour
-            corriger ce qui coince. Statistiques anonymes hébergées en Europe : ni pseudo, ni email,
-            ni code d’invitation. Modifiable depuis « Mon compte ».
-          </p>
+          <p className="text-sm text-muted-foreground">{t('description')}</p>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" onClick={refuse}>
-            Refuser
+            {t('refuse')}
           </Button>
           <Button type="button" onClick={accept}>
-            Accepter
+            {t('accept')}
           </Button>
         </div>
       </div>

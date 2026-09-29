@@ -81,7 +81,31 @@
     "identifier_required": "Enter a code or paste a link.",
     "cuisine_too_long": "The cuisine can’t be longer than 40 characters.",
     "address_too_long": "The address can’t be longer than 200 characters.",
-    "city_too_long": "The city can’t be longer than 80 characters."
+    "city_too_long": "The city can’t be longer than 80 characters.",
+    "invalid_link": "This link isn’t valid.",
+    "invalid_list": "This list isn’t valid.",
+    "invalid_group": "This group isn’t valid.",
+    "list_name_required": "Give the list a name.",
+    "list_name_too_long": "The name can’t be longer than 60 characters.",
+    "group_name_required": "Give the group a name.",
+    "group_name_too_long": "The name can’t be longer than 60 characters.",
+    "pseudo_too_short": "Your nickname needs at least 2 characters.",
+    "pseudo_too_long": "Your nickname can’t be longer than 30 characters.",
+    "pseudo_invalid_chars": "Letters, numbers, spaces, dashes and underscores only.",
+    "invalid_pseudo": "This nickname isn’t valid.",
+    "invalid_email": "Invalid email address.",
+    "email_too_long": "That email address is too long.",
+    "password_required": "Password required.",
+    "password_too_short": "The password needs at least 8 characters.",
+    "password_too_long": "The password is too long.",
+    "password_mismatch": "The two passwords don’t match.",
+    "invalid_credentials": "Wrong email or password.",
+    "email_taken": "This address is already used by another account.",
+    "auth_rate_limited": "Too many attempts. Try again in a few minutes.",
+    "weak_password": "The password is too weak.",
+    "email_not_confirmed": "Confirm your email address first.",
+    "anonymous_sign_ins_disabled": "Anonymous sign-ins are turned off on this project.",
+    "invalid_food_constraints": "These constraints aren’t valid."
   },
   "fallback": {
     "profileSave": "Couldn’t save your nickname. Try again.",
@@ -89,6 +113,8 @@
     "accountDelete": "Couldn’t delete the account.",
     "foodConstraintsSave": "Couldn’t save your dietary preferences. Try again.",
     "joinLink": "Invalid link or session not found.",
-    "restaurantSearch": "The search failed. Try again."
+    "restaurantSearch": "The search failed. Try again.",
+    "emailLink": "Couldn’t send the confirmation email.",
+    "passwordSet": "Couldn’t set the password."
   }
 }

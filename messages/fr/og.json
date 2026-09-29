@@ -24,5 +24,16 @@
     "fallbackEyebrow": "Classement",
     "fallbackTitle": "Où est-ce qu’on mange ?",
     "fallbackSubtitle": "Le groupe vote, le classement tranche."
+  },
+  "list": {
+    "alt": "Une liste de restos partagée sur onmangekoi",
+    "eyebrow": "Les bonnes adresses",
+    "subtitle": "{count, plural, one {# resto} other {# restos}}",
+    "subtitleWithCuisines": "{count, plural, one {# resto} other {# restos}} · {cuisines}",
+    "top": "Le plus souvent choisi : {restaurant}",
+    "footer": "Sans compte",
+    "fallbackEyebrow": "Liste partagée",
+    "fallbackTitle": "Où est-ce qu’on mange ?",
+    "fallbackSubtitle": "Une liste de restos à départager en deux minutes."
   }
 }

@@ -6,6 +6,7 @@ import { NEIGHBOURHOOD_IMPORT_MAX } from '@/domain/schemas/place'
 
 import type { Restaurant } from '@/data-access/models'
 import type { Database } from '@/data-access/models/database'
+import type { Locale } from '@/i18n/config'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface SeededNeighbourhood {
@@ -37,11 +38,12 @@ export interface SeededNeighbourhood {
  */
 export async function seedNeighbourhoodUseCase(
   supabase: SupabaseClient<Database>,
-  position: { latitude: number; longitude: number }
+  position: { latitude: number; longitude: number },
+  locale: Locale
 ): Promise<SeededNeighbourhood> {
   const remaining = await claimNeighbourhoodImport(supabase)
 
-  const page = await searchNearbyPlaces(position)
+  const page = await searchNearbyPlaces({ ...position, locale })
   // Une page Google en rend vingt : la coupe est une ceinture, pas un filtre.
   const places = page.places.slice(0, NEIGHBOURHOOD_IMPORT_MAX)
   if (places.length === 0) {

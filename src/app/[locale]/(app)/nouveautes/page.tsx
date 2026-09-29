@@ -1,4 +1,6 @@
 import { RiGithubLine, RiRssLine } from '@remixicon/react'
+import { useLocale, useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { ChangelogSeenMarker } from '@/components/changelog/changelog-seen-marker'
 import { ReleaseNoteCard } from '@/components/changelog/release-note-card'
@@ -6,17 +8,23 @@ import { PageHeader } from '@/components/layout/page-header'
 import { Shell } from '@/components/layout/shell'
 import { EmptyState } from '@/components/ui/empty-state'
 import { router } from '@/config/router.config'
-import { getReleaseNotes } from '@/content/changelog'
+import { CHANGELOG_LOCALE, getReleaseNotes } from '@/content/changelog'
 import { REPO_URL, SITE_NAME } from '@/lib/brand'
 
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = {
-  title: 'Nouveautés',
-  description: `Ce qui a changé dans ${SITE_NAME}, version après version : ce qu'on peut faire de plus, ce qui a été amélioré, ce qui a été corrigé.`,
-  alternates: {
-    types: { 'application/rss+xml': router.changelogFeed() },
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const [tTitles, t] = await Promise.all([
+    getTranslations('metadata.titles'),
+    getTranslations('metadata.changelog'),
+  ])
+  return {
+    title: tTitles('changelog'),
+    description: t('description', { site: SITE_NAME }),
+    alternates: {
+      types: { 'application/rss+xml': router.changelogFeed() },
+    },
+  }
 }
 
 /**
@@ -25,8 +33,14 @@ export const metadata: Metadata = {
  * Rien ici ne dépend de qui regarde : la page est entièrement prérendue depuis
  * `src/content/changelog`. Seul le marqueur de lecture s'exécute dans le
  * navigateur, pour éteindre la pastille de l'en-tête.
+ *
+ * Le chrome de la page se traduit ; les notes, elles, restent en français
+ * (`CHANGELOG_LOCALE`) — une phrase le signale à qui lit dans une autre langue.
  */
 export default function ChangelogPage() {
+  const t = useTranslations('changelog')
+  const tCommon = useTranslations('common')
+  const locale = useLocale()
   const notes = getReleaseNotes()
   const latest = notes[0]
 
@@ -35,17 +49,18 @@ export default function ChangelogPage() {
       {latest && <ChangelogSeenMarker version={latest.version} />}
 
       <PageHeader
-        eyebrow="Journal des versions"
-        title="Nouveautés"
-        description={`Ce qui a changé dans ${SITE_NAME}, de la version la plus récente à la première.`}
-        back={{ href: router.home(), label: 'Accueil' }}
+        eyebrow={t('page.eyebrow')}
+        title={t('page.title')}
+        description={t('page.description', { site: SITE_NAME })}
+        back={{ href: router.home(), label: tCommon('actions.home') }}
       />
 
+      {locale !== CHANGELOG_LOCALE && notes.length > 0 && (
+        <p className="text-sm text-muted-foreground">{t('page.contentLanguage')}</p>
+      )}
+
       {notes.length === 0 ? (
-        <EmptyState
-          title="Rien à annoncer pour l’instant"
-          description="La première note de version arrivera ici dès la prochaine mise en ligne."
-        />
+        <EmptyState title={t('empty.title')} description={t('empty.description')} />
       ) : (
         <ol className="flex flex-col gap-4">
           {notes.map((note) => (
@@ -62,7 +77,7 @@ export default function ChangelogPage() {
           className="inline-flex items-center gap-1.5 font-medium hover:text-ink"
         >
           <RiRssLine aria-hidden="true" className="size-4" />
-          Suivre en RSS
+          {t('rss')}
         </a>
         <a
           href={`${REPO_URL}/releases`}
@@ -71,7 +86,7 @@ export default function ChangelogPage() {
           className="inline-flex items-center gap-1.5 font-medium hover:text-ink"
         >
           <RiGithubLine aria-hidden="true" className="size-4" />
-          Détail technique des releases
+          {t('releases')}
         </a>
       </footer>
     </Shell>

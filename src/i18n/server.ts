@@ -26,17 +26,17 @@ export async function errorMessage(code: ErrorCode): Promise<string> {
 }
 
 /**
- * Message d'une validation Zod refusée. Une règle dont le message est un code
- * (`omkMessage('…')`) se traduit comme une erreur de la base ; les autres
- * messages de schéma sont encore du texte français, rendu tel quel en
- * attendant leur extraction (voir `docs/i18n.md`).
+ * Message d'une validation Zod refusée. Chaque règle de nos schémas porte un
+ * code (`omkMessage('…')`) et se traduit comme une erreur de la base. Un
+ * refus sans code vient de Zod lui-même (« Invalid UUID », en anglais
+ * technique) : il n'atteint jamais l'écran, le repli de l'action le remplace.
  */
 export async function translateIssue(
   issue: { message: string } | undefined,
   fallback: string
 ): Promise<string> {
-  if (!issue) return fallback
-  return omkCode(issue) ? translateError(issue) : issue.message
+  if (!issue || !omkCode(issue)) return fallback
+  return translateError(issue)
 }
 
 /**

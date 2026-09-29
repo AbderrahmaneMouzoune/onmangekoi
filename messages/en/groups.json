@@ -1,1 +1,34 @@
-{}
+{
+  "page": {
+    "eyebrow": "Groups",
+    "title": "My groups",
+    "description": "The lunch crew, ready to invite back in one click next session."
+  },
+  "empty": {
+    "title": "No groups yet",
+    "description": "At the end of a session, “Save this group” keeps the day’s crew. Next time, you invite them in one click.",
+    "action": "Start a session"
+  },
+  "card": {
+    "members": "{count, plural, one {# member} other {# members}}",
+    "owner": "Owner",
+    "member": "Member",
+    "you": "(you)",
+    "nameLabel": "Group name",
+    "rename": "Rename",
+    "renamed": "Group renamed.",
+    "close": "Close",
+    "delete": "Delete the group",
+    "confirmDelete": "Confirm — the group disappears for everyone",
+    "leave": "Leave the group",
+    "confirmLeave": "Confirm — you won’t be invited any more"
+  },
+  "save": {
+    "open": "Save this group",
+    "nameLabel": "Group name",
+    "placeholder": "The lunch crew",
+    "submit": "Save",
+    "hint": "{count, plural, one {# participant} other {# participants}} from this session. You’ll be able to invite them back in one click next time.",
+    "saved": "“{name}” is saved."
+  }
+}

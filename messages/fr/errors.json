@@ -81,7 +81,31 @@
     "identifier_required": "Entre un code ou colle un lien.",
     "cuisine_too_long": "Le type de cuisine ne peut pas dépasser 40 caractères.",
     "address_too_long": "L’adresse ne peut pas dépasser 200 caractères.",
-    "city_too_long": "La ville ne peut pas dépasser 80 caractères."
+    "city_too_long": "La ville ne peut pas dépasser 80 caractères.",
+    "invalid_link": "Ce lien n’est pas valide.",
+    "invalid_list": "Cette liste n’est pas valide.",
+    "invalid_group": "Ce groupe n’est pas valide.",
+    "list_name_required": "Donne un nom à la liste.",
+    "list_name_too_long": "Le nom ne peut pas dépasser 60 caractères.",
+    "group_name_required": "Donne un nom au groupe.",
+    "group_name_too_long": "Le nom ne peut pas dépasser 60 caractères.",
+    "pseudo_too_short": "Le pseudo doit faire au moins 2 caractères.",
+    "pseudo_too_long": "Le pseudo ne peut pas dépasser 30 caractères.",
+    "pseudo_invalid_chars": "Lettres, chiffres, espaces, tirets et underscores uniquement.",
+    "invalid_pseudo": "Ce pseudo n’est pas valide.",
+    "invalid_email": "Adresse email invalide.",
+    "email_too_long": "Adresse email trop longue.",
+    "password_required": "Mot de passe requis.",
+    "password_too_short": "Le mot de passe doit faire au moins 8 caractères.",
+    "password_too_long": "Le mot de passe est trop long.",
+    "password_mismatch": "Les deux mots de passe ne correspondent pas.",
+    "invalid_credentials": "Email ou mot de passe incorrect.",
+    "email_taken": "Cette adresse est déjà utilisée par un autre compte.",
+    "auth_rate_limited": "Trop de tentatives. Réessaie dans quelques minutes.",
+    "weak_password": "Le mot de passe est trop faible.",
+    "email_not_confirmed": "Confirme d’abord ton adresse email.",
+    "anonymous_sign_ins_disabled": "Les connexions anonymes sont désactivées sur ce projet.",
+    "invalid_food_constraints": "Ces contraintes ne sont pas valides."
   },
   "fallback": {
     "profileSave": "Impossible d’enregistrer le pseudo. Réessaie.",
@@ -89,6 +113,8 @@
     "accountDelete": "Impossible de supprimer le compte.",
     "foodConstraintsSave": "Impossible d’enregistrer tes contraintes. Réessaie.",
     "joinLink": "Lien invalide ou session introuvable.",
-    "restaurantSearch": "La recherche a échoué. Réessaie."
+    "restaurantSearch": "La recherche a échoué. Réessaie.",
+    "emailLink": "Impossible d’envoyer l’email de confirmation.",
+    "passwordSet": "Impossible de définir le mot de passe."
   }
 }

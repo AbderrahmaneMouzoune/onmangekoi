@@ -1,12 +1,14 @@
 'use server'
 
+import { getTranslations } from 'next-intl/server'
+
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { saveMyFoodConstraints } from '@/data-access/food-constraints'
 import { createServerClient } from '@/data-access/supabase/server'
 import { hasFoodConstraints } from '@/domain/food-constraints'
 import { FoodConstraintsSchema } from '@/domain/schemas/food-constraints'
-import { revalidateLocalizedPath, translateError } from '@/i18n/server'
+import { errorMessage, revalidateLocalizedPath, translateError } from '@/i18n/server'
 
 import type { FormState } from './types'
 
@@ -24,10 +26,10 @@ export async function saveFoodConstraintsAction(
     tags: formData.getAll('tags'),
     maxPriceLevel: formData.get('maxPriceLevel'),
   })
-  if (!parsed.success) return { error: 'Ces contraintes ne sont pas valides.' }
+  if (!parsed.success) return { error: await errorMessage('invalid_food_constraints') }
 
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
-  if (!user) return { error: 'Tu dois d’abord choisir un pseudo.' }
+  if (!user) return { error: await errorMessage('not_authenticated') }
 
   try {
     await saveMyFoodConstraints(supabase, parsed.data)
@@ -36,9 +38,6 @@ export async function saveFoodConstraintsAction(
   }
 
   revalidateLocalizedPath(router.account())
-  return {
-    success: hasFoodConstraints(parsed.data)
-      ? 'C’est noté : tes sessions le signaleront.'
-      : 'Plus rien de déclaré.',
-  }
+  const t = await getTranslations('account.foodConstraints')
+  return { success: hasFoodConstraints(parsed.data) ? t('saved') : t('cleared') }
 }

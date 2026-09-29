@@ -49,4 +49,21 @@ describe('StatsPanel', () => {
 
     expect(screen.getByText(/rien à compter pour l’instant/i)).toBeInTheDocument()
   })
+
+  it('should agree every count with its number, in French as in English', () => {
+    renderWithIntl(<StatsPanel stats={stats({ veto_votes: 0, top_restaurant_wins: 1 })} />)
+    // Le français met zéro au singulier.
+    expect(screen.getByText('0 veto')).toBeInTheDocument()
+    expect(screen.getByText('1 victoire')).toBeInTheDocument()
+  })
+
+  it('should speak English on an English page, where zero takes the plural', () => {
+    renderWithIntl(<StatsPanel stats={stats({ veto_votes: 0, top_restaurant_wins: 1 })} />, {
+      locale: 'en',
+    })
+    expect(screen.getByRole('heading', { name: 'My stats' })).toBeInTheDocument()
+    expect(screen.getByText('0 vetoes')).toBeInTheDocument()
+    expect(screen.getByText('1 win')).toBeInTheDocument()
+    expect(screen.getByText('6 positive votes')).toBeInTheDocument()
+  })
 })

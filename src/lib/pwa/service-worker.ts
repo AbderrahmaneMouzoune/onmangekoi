@@ -176,7 +176,7 @@ self.addEventListener('push', (event) => {
       tag: message.tag,
       renotify: true,
       icon: NOTIFICATION_ICON,
-      lang: 'fr',
+      lang: message.lang,
       data: { url: message.url },
     })
   )

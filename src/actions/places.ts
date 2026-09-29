@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
+import { getLocale } from 'next-intl/server'
 
 import { getCurrentUser } from '@/data-access/auth'
 import { RESTAURANTS_CACHE_PROFILE, RESTAURANTS_CACHE_TAG } from '@/data-access/restaurants'
@@ -26,11 +27,15 @@ async function writePlace(placeId: string): Promise<ActionResult<Restaurant>> {
   const parsed = ImportPlaceSchema.safeParse({ placeId })
   if (!parsed.success) return { ok: false, error: await errorMessage('invalid_place') }
 
-  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  const [supabase, user, locale] = await Promise.all([
+    createServerClient(),
+    getCurrentUser(),
+    getLocale(),
+  ])
   if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
-    return { ok: true, data: await importPlaceUseCase(supabase, parsed.data.placeId) }
+    return { ok: true, data: await importPlaceUseCase(supabase, parsed.data.placeId, locale) }
   } catch (error) {
     return { ok: false, error: await translateError(error) }
   }
@@ -76,11 +81,15 @@ export async function seedNeighbourhoodAction(input: {
   const parsed = SeedNeighbourhoodSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: await errorMessage('invalid_position') }
 
-  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  const [supabase, user, locale] = await Promise.all([
+    createServerClient(),
+    getCurrentUser(),
+    getLocale(),
+  ])
   if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
-    const seeded = await seedNeighbourhoodUseCase(supabase, parsed.data)
+    const seeded = await seedNeighbourhoodUseCase(supabase, parsed.data, locale)
     // Une seule invalidation pour tout le lot : le catalogue est en cache
     // pour tout le monde, la revalider vingt fois ne le rendrait pas plus frais.
     revalidateTag(RESTAURANTS_CACHE_TAG, RESTAURANTS_CACHE_PROFILE)

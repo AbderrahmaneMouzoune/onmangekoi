@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server'
 import { Suspense } from 'react'
 
 import { Shell } from '@/components/layout/shell'
@@ -12,9 +13,13 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const [{ code }, supabase] = await Promise.all([params, createServerClient()])
+  const [{ code }, supabase, t] = await Promise.all([
+    params,
+    createServerClient(),
+    getTranslations('metadata.titles'),
+  ])
   const list = await getListByParam(supabase, code).catch(() => null)
-  return { title: list?.name ?? 'Liste', robots: { index: false } }
+  return { title: list?.name ?? t('list'), robots: { index: false } }
 }
 
 /**

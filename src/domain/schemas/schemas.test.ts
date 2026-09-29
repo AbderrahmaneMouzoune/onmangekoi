@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { LoginSchema, SetPasswordSchema } from './auth'
 import { FoodConstraintsSchema } from './food-constraints'
 import { CreateGroupSchema, RenameGroupSchema } from './group'
-import { CreateListSchema } from './list'
+import { CreateListSchema, SharedListActionSchema } from './list'
 import { ImportPlaceSchema, SearchPlacesSchema } from './place'
 import { PseudoSchema, SetupProfileSchema } from './profile'
 import { CreateRestaurantSchema, PriceLevelSchema, RestaurantTagsSchema } from './restaurant'
@@ -212,6 +212,41 @@ describe('auth schemas', () => {
     expect(
       SetPasswordSchema.safeParse({ password: 'longenough', confirm: 'longenough' }).success
     ).toBe(true)
+  })
+})
+
+describe('account, list and group refusals', () => {
+  /** Le message du premier refus : un code d'erreur (`omk:…`), traduit par l'action. */
+  function refusal(result: { error?: { issues: { message: string }[] } }) {
+    return result.error?.issues[0]?.message
+  }
+
+  it('should refuse with an error code, never a sentence', () => {
+    expect(refusal(PseudoSchema.safeParse('A'))).toBe('omk:pseudo_too_short')
+    expect(refusal(PseudoSchema.safeParse('a'.repeat(31)))).toBe('omk:pseudo_too_long')
+    expect(refusal(PseudoSchema.safeParse('<script>'))).toBe('omk:pseudo_invalid_chars')
+    expect(refusal(LoginSchema.safeParse({ email: 'pas-un-email', password: 'x' }))).toBe(
+      'omk:invalid_email'
+    )
+    expect(refusal(LoginSchema.safeParse({ email: 'a@b.fr', password: '' }))).toBe(
+      'omk:password_required'
+    )
+    expect(refusal(SetPasswordSchema.safeParse({ password: 'short', confirm: 'short' }))).toBe(
+      'omk:password_too_short'
+    )
+    expect(
+      refusal(SetPasswordSchema.safeParse({ password: 'longenough', confirm: 'different' }))
+    ).toBe('omk:password_mismatch')
+    expect(refusal(CreateListSchema.safeParse({ name: ' ' }))).toBe('omk:list_name_required')
+    expect(refusal(CreateListSchema.safeParse({ name: 'a'.repeat(61) }))).toBe(
+      'omk:list_name_too_long'
+    )
+    expect(refusal(RenameGroupSchema.safeParse({ groupId: UUID, name: '' }))).toBe(
+      'omk:group_name_required'
+    )
+    expect(refusal(SharedListActionSchema.safeParse({ identifier: 'nope' }))).toBe(
+      'omk:invalid_link'
+    )
   })
 })
 

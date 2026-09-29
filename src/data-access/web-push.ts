@@ -43,7 +43,10 @@ export async function sendWebPush(
   if (!publicKey || !privateKey || !subject) return { ok: false }
 
   try {
-    await webpush.sendNotification(subscription, JSON.stringify(message), {
+    // Seuls l'adresse et les clés partent chez `web-push` : rien d'autre de
+    // l'abonnement (sa langue, par exemple) n'a à quitter le serveur.
+    const { endpoint, keys } = subscription
+    await webpush.sendNotification({ endpoint, keys }, JSON.stringify(message), {
       vapidDetails: { subject, publicKey, privateKey },
       TTL: options.ttl,
       topic: options.topic,

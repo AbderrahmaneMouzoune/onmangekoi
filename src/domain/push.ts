@@ -6,6 +6,8 @@
 
 import { router } from '@/config/router.config'
 
+import type { Locale } from '@/i18n/config'
+
 /** Les changements de statut qui préviennent : le lancement, la clôture. */
 export const PUSH_STATUSES = ['voting', 'closed'] as const
 export type PushStatus = (typeof PUSH_STATUSES)[number]
@@ -22,6 +24,10 @@ export type PushOptInContext = 'launch' | 'results'
  * que chaque destinataire connaît déjà, et l'adresse à ouvrir. Jamais un
  * pseudo, jamais un restaurant. La charge utile est chiffrée de bout en bout
  * (aes128gcm) : le service push du navigateur ne la lit pas.
+ *
+ * Le titre et le corps sont déjà dans la langue de l'abonné, retenue à
+ * l'abonnement (`push_subscriptions.locale`) ; `lang` la redit à la
+ * notification, pour la synthèse vocale.
  */
 export interface PushMessage {
   title: string
@@ -30,6 +36,7 @@ export interface PushMessage {
   url: string
   /** Une notification par session : la clôture remplace le lancement au lieu de s'empiler. */
   tag: string
+  lang: Locale
 }
 
 /** La part de la session dont le message a besoin. */
@@ -44,27 +51,31 @@ export interface PushSessionInfo {
   agreed?: boolean
 }
 
-export function pushMessageFor(status: PushStatus, session: PushSessionInfo): PushMessage {
+/** Ce qu'annonce la notification — la clé de son texte dans `pwa.push`. */
+export type PushMessageKind = 'voting' | 'agreed' | 'closed'
+
+/**
+ * La notification d'un changement de statut, avant traduction : de quoi
+ * parler, où mener, sous quel sujet. Le texte, lui, dépend de chaque abonné
+ * — c'est `use-cases/dispatch-session-push.ts` qui le fabrique, une fois par
+ * langue.
+ */
+export interface PushNotice {
+  kind: PushMessageKind
+  /** Nom de la session, tel que ses participants le connaissent. */
+  session: string
+  url: string
+  tag: string
+}
+
+export function pushNoticeFor(status: PushStatus, session: PushSessionInfo): PushNotice {
   const tag = `session-${session.id}`
   if (status === 'voting') {
-    return {
-      title: 'Le vote est lancé',
-      body: `${session.name} — à toi de voter.`,
-      url: router.session(session),
-      tag,
-    }
-  }
-  if (session.agreed) {
-    return {
-      title: 'C’est d’accord',
-      body: `${session.name} — vous avez trouvé où manger.`,
-      url: router.sessionResults(session),
-      tag,
-    }
+    return { kind: 'voting', session: session.name, url: router.session(session), tag }
   }
   return {
-    title: 'Le classement est prêt',
-    body: `${session.name} — découvre où vous allez manger.`,
+    kind: session.agreed ? 'agreed' : 'closed',
+    session: session.name,
     url: router.sessionResults(session),
     tag,
   }
