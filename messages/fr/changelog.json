@@ -1,0 +1,24 @@
+{
+  "page": {
+    "eyebrow": "Journal des versions",
+    "title": "Nouveautés",
+    "description": "Ce qui a changé dans {site}, de la version la plus récente à la première.",
+    "contentLanguage": "Les notes de version sont rédigées en français."
+  },
+  "empty": {
+    "title": "Rien à annoncer pour l’instant",
+    "description": "La première note de version arrivera ici dès la prochaine mise en ligne."
+  },
+  "kinds": {
+    "new": "Nouveau",
+    "improved": "Amélioré",
+    "fixed": "Corrigé"
+  },
+  "kindPrefix": "{kind} : ",
+  "rss": "Suivre en RSS",
+  "releases": "Détail technique des releases",
+  "navLink": {
+    "label": "Nouveautés",
+    "unread": "Nouveautés — une version non lue"
+  }
+}

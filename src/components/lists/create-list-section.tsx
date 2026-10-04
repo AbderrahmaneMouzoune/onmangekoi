@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 import { CreateListForm } from '@/components/lists/create-list-form'
-import { LIST_FORM, ListIdentityCard } from '@/components/lists/list-identity-card'
+import { ListIdentityCard } from '@/components/lists/list-identity-card'
 import { RestaurantPickerFallback } from '@/components/restaurants/restaurant-picker-fallback'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -31,6 +32,7 @@ export async function CreateListSection() {
  * de restos est en attente.
  */
 export function CreateListSectionFallback() {
+  const t = useTranslations('lists.form')
   return (
     <div
       aria-busy="true"
@@ -38,22 +40,22 @@ export function CreateListSectionFallback() {
     >
       <ListIdentityCard>
         <div className="flex flex-col gap-2">
-          <p className="text-sm leading-none font-medium text-ink">{LIST_FORM.name}</p>
+          <p className="text-sm leading-none font-medium text-ink">{t('name')}</p>
           <Skeleton className="h-12 w-full rounded-md bg-surface" />
         </div>
       </ListIdentityCard>
 
       <div className="flex flex-col gap-3 lg:col-start-2 lg:row-span-3 lg:row-start-1">
         <div className="flex flex-col gap-1">
-          <p className="text-base font-semibold">{LIST_FORM.restaurants}</p>
-          <p className="text-sm text-muted-foreground">{LIST_FORM.restaurantsHint}</p>
+          <p className="text-base font-semibold">{t('restaurants')}</p>
+          <p className="text-sm text-muted-foreground">{t('restaurantsHint')}</p>
         </div>
         <RestaurantPickerFallback />
       </div>
 
       <div className="sticky bottom-0 -mx-4 border-t border-line bg-background/90 px-4 pt-3 pb-3 safe-bottom backdrop-blur-md sm:-mx-6 sm:px-6 lg:static lg:col-start-1 lg:m-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
         <button type="button" disabled className={cn(buttonVariants({ size: 'lg' }), 'w-full')}>
-          {LIST_FORM.submitEmpty}
+          {t('submitEmpty')}
         </button>
       </div>
     </div>

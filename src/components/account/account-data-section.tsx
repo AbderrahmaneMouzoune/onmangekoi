@@ -1,5 +1,6 @@
 import { RiDownloadLine, RiShieldUserLine } from '@remixicon/react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 import { DeleteAccountButton } from '@/components/account/delete-account-button'
 import { buttonVariants } from '@/components/ui/button'
@@ -14,20 +15,22 @@ import { cn } from '@/lib/utils'
  * prérendue avec la coquille de la page plutôt que diffusée avec le reste.
  */
 export function AccountDataSection() {
+  const t = useTranslations('account.data')
   return (
     <section className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line">
       <div className="flex flex-col gap-0.5">
         <h2 className="flex items-center gap-2 font-display text-base font-semibold">
           <RiShieldUserLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
-          Mes données
+          {t('title')}
         </h2>
         <p className="text-sm text-muted-foreground">
-          Récupère une copie de tout ce que l’app sait de toi, ou supprime ton compte. Le détail de
-          ce qui est conservé est sur la{' '}
-          <Link href={router.privacy()} className="font-medium text-brand hover:underline">
-            page confidentialité
-          </Link>
-          .
+          {t.rich('description', {
+            link: (chunks) => (
+              <Link href={router.privacy()} className="font-medium text-brand hover:underline">
+                {chunks}
+              </Link>
+            ),
+          })}
         </p>
       </div>
 
@@ -37,15 +40,12 @@ export function AccountDataSection() {
         className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}
       >
         <RiDownloadLine aria-hidden="true" />
-        Exporter mes données (JSON)
+        {t('export')}
       </a>
 
       <Separator className="my-1" />
 
-      <p className="text-sm text-muted-foreground">
-        La suppression est immédiate et définitive. Une confirmation à recopier détaille ce qui
-        disparaît avant de lancer quoi que ce soit.
-      </p>
+      <p className="text-sm text-muted-foreground">{t('deleteNote')}</p>
       <DeleteAccountButton />
     </section>
   )

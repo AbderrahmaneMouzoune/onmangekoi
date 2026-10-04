@@ -1,6 +1,7 @@
 'use client'
 
 import { RiRefreshLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useEffect } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ import { Button } from '@/components/ui/button'
  * exactement la navigation qui a échoué. Le retour du réseau la retente seul.
  */
 export function RetryButton() {
+  const t = useTranslations('common.actions')
   useEffect(() => {
     const reload = () => window.location.reload()
     window.addEventListener('online', reload)
@@ -20,7 +22,7 @@ export function RetryButton() {
   return (
     <Button type="button" variant="chalk" onClick={() => window.location.reload()}>
       <RiRefreshLine aria-hidden="true" />
-      Réessayer
+      {t('retry')}
     </Button>
   )
 }

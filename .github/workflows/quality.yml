@@ -51,7 +51,10 @@ jobs:
   e2e:
     name: End-to-end · Axe · Lighthouse (Supabase local)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Les parcours tournent en français et en anglais (quatre projets
+    # Playwright, issue #14) : environ six minutes en local, le double de
+    # l'unilingue. La marge couvre une CI plus lente et les relances.
+    timeout-minutes: 40
     needs: quality
     steps:
       - name: Checkout
@@ -101,7 +104,7 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Run e2e (parcours + audit axe)
+      - name: Run e2e (parcours + audit axe, en français et en anglais)
         run: bun run test:e2e
         env:
           E2E: '1'

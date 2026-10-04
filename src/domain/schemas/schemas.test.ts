@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import { LoginSchema, SetPasswordSchema } from './auth'
+import { FoodConstraintsSchema } from './food-constraints'
 import { CreateGroupSchema, RenameGroupSchema } from './group'
-import { CreateListSchema } from './list'
+import { CreateListSchema, SharedListActionSchema } from './list'
 import { ImportPlaceSchema, SearchPlacesSchema } from './place'
 import { PseudoSchema, SetupProfileSchema } from './profile'
 import { CreateRestaurantSchema, PriceLevelSchema, RestaurantTagsSchema } from './restaurant'
@@ -82,12 +83,22 @@ describe('CreateSessionSchema', () => {
     const base = { name: 'Lunch', restaurantIds: [UUID], open: 'on' }
     const refused = CreateSessionSchema.safeParse(base)
     expect(refused.success).toBe(false)
-    expect(refused.error?.issues[0]?.message).toMatch(/échéance/)
+    // Même code que le refus de la base : l'action le traduit comme lui.
+    expect(refused.error?.issues[0]?.message).toBe('omk:open_session_needs_deadline')
 
     expect(CreateSessionSchema.safeParse({ ...base, closesInMinutes: '60' }).data?.open).toBe(true)
     expect(
       CreateSessionSchema.safeParse({ ...base, closesAt: '2026-09-29T12:00:00.000Z' }).success
     ).toBe(true)
+  })
+
+  it('should read the duo flag and refuse a duo that is also open', () => {
+    const base = { name: 'À deux', restaurantIds: [UUID], duo: 'on' }
+    expect(CreateSessionSchema.safeParse(base).data?.duo).toBe(true)
+
+    const refused = CreateSessionSchema.safeParse({ ...base, open: 'on', closesInMinutes: '60' })
+    expect(refused.success).toBe(false)
+    expect(refused.error?.issues[0]?.message).toBe('omk:duo_cannot_be_open')
   })
 
   it('should read an unchecked open box as an ordinary session', () => {
@@ -201,6 +212,41 @@ describe('auth schemas', () => {
     expect(
       SetPasswordSchema.safeParse({ password: 'longenough', confirm: 'longenough' }).success
     ).toBe(true)
+  })
+})
+
+describe('account, list and group refusals', () => {
+  /** Le message du premier refus : un code d'erreur (`omk:…`), traduit par l'action. */
+  function refusal(result: { error?: { issues: { message: string }[] } }) {
+    return result.error?.issues[0]?.message
+  }
+
+  it('should refuse with an error code, never a sentence', () => {
+    expect(refusal(PseudoSchema.safeParse('A'))).toBe('omk:pseudo_too_short')
+    expect(refusal(PseudoSchema.safeParse('a'.repeat(31)))).toBe('omk:pseudo_too_long')
+    expect(refusal(PseudoSchema.safeParse('<script>'))).toBe('omk:pseudo_invalid_chars')
+    expect(refusal(LoginSchema.safeParse({ email: 'pas-un-email', password: 'x' }))).toBe(
+      'omk:invalid_email'
+    )
+    expect(refusal(LoginSchema.safeParse({ email: 'a@b.fr', password: '' }))).toBe(
+      'omk:password_required'
+    )
+    expect(refusal(SetPasswordSchema.safeParse({ password: 'short', confirm: 'short' }))).toBe(
+      'omk:password_too_short'
+    )
+    expect(
+      refusal(SetPasswordSchema.safeParse({ password: 'longenough', confirm: 'different' }))
+    ).toBe('omk:password_mismatch')
+    expect(refusal(CreateListSchema.safeParse({ name: ' ' }))).toBe('omk:list_name_required')
+    expect(refusal(CreateListSchema.safeParse({ name: 'a'.repeat(61) }))).toBe(
+      'omk:list_name_too_long'
+    )
+    expect(refusal(RenameGroupSchema.safeParse({ groupId: UUID, name: '' }))).toBe(
+      'omk:group_name_required'
+    )
+    expect(refusal(SharedListActionSchema.safeParse({ identifier: 'nope' }))).toBe(
+      'omk:invalid_link'
+    )
   })
 })
 
@@ -325,7 +371,7 @@ describe('SearchPlacesSchema', () => {
   it('should refuse a search with neither text nor position', () => {
     const empty = SearchPlacesSchema.safeParse({ query: '' })
     expect(empty.success).toBe(false)
-    expect(empty.error?.issues[0]?.message).toMatch(/autorise ta position/)
+    expect(empty.error?.issues[0]?.message).toBe('omk:search_too_short')
     expect(SearchPlacesSchema.safeParse({ query: 'a', latitude: 45.76 }).success).toBe(false)
   })
 })
@@ -339,5 +385,26 @@ describe('ImportPlaceSchema', () => {
     expect(ImportPlaceSchema.safeParse({ placeId: '../etc/passwd' }).success).toBe(false)
     expect(ImportPlaceSchema.safeParse({ placeId: 'a b' }).success).toBe(false)
     expect(ImportPlaceSchema.safeParse({ placeId: 'a'.repeat(256) }).success).toBe(false)
+  })
+})
+
+describe('FoodConstraintsSchema', () => {
+  it('should read checked diets and a budget from a form, in catalogue order', () => {
+    expect(
+      FoodConstraintsSchema.parse({ tags: ['halal', 'vegetarian', 'halal'], maxPriceLevel: '2' })
+    ).toEqual({ tags: ['vegetarian', 'halal'], maxPriceLevel: 2 })
+  })
+
+  it('should accept declaring nothing at all — reverting is the same gesture', () => {
+    expect(FoodConstraintsSchema.parse({ tags: [], maxPriceLevel: '' })).toEqual({
+      tags: [],
+      maxPriceLevel: null,
+    })
+    expect(FoodConstraintsSchema.parse({})).toEqual({ tags: [], maxPriceLevel: null })
+  })
+
+  it('should reject an unknown diet or a budget out of bounds', () => {
+    expect(FoodConstraintsSchema.safeParse({ tags: ['carnivore'] }).success).toBe(false)
+    expect(FoodConstraintsSchema.safeParse({ tags: [], maxPriceLevel: '5' }).success).toBe(false)
   })
 })

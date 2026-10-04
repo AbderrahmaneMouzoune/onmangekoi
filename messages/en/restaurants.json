@@ -1,0 +1,126 @@
+{
+  "tags": {
+    "vegetarian": "Vegetarian",
+    "vegan": "Vegan",
+    "halal": "Halal",
+    "kosher": "Kosher",
+    "gluten_free": "Gluten-free"
+  },
+  "notForMe": {
+    "several": "Not for you",
+    "budget": "Over budget",
+    "tags": {
+      "vegetarian": "Not vegetarian",
+      "vegan": "Not vegan",
+      "halal": "Not halal",
+      "kosher": "Not kosher",
+      "gluten_free": "Not gluten-free"
+    }
+  },
+  "openNow": {
+    "open": "Open",
+    "closed": "Closed"
+  },
+  "geo": {
+    "aroundMe": "Near me",
+    "aroundYou": "Near you",
+    "unsupported": "Your browser can’t share your location.",
+    "denied": "Location denied: no restaurants near you, but searching by name still works.",
+    "failed": "Can’t find where you are right now."
+  },
+  "recentWinner": {
+    "won": "Won {when}",
+    "excluded": "Skipped"
+  },
+  "sources": {
+    "label": "Restaurant source",
+    "lists": "My lists",
+    "base": "Database",
+    "google": "Google"
+  },
+  "picker": {
+    "searchBase": "Search for a restaurant or a cuisine",
+    "searchGoogle": "Search for a restaurant on Google",
+    "searchLabel": "Search for a restaurant",
+    "empty": "No restaurant in the database matches.",
+    "nowhere": "Can’t find it anywhere?",
+    "addManually": "Add a restaurant by hand"
+  },
+  "basket": {
+    "title": "Your selection",
+    "label": "Selection",
+    "clear": "Remove all",
+    "removeList": "Remove the list {name}",
+    "remove": "Remove {name}",
+    "importing": "{name}, importing"
+  },
+  "lists": {
+    "label": "My lists",
+    "empty": "empty",
+    "hint": "Tick as many lists as you like, then top up from the database or Google."
+  },
+  "filters": {
+    "budget": "Budget",
+    "budgetMax": "Maximum budget",
+    "budgetMaxLevel": "Maximum budget {level}",
+    "diet": "Diet",
+    "dietLabel": "Dietary requirements",
+    "distance": "Distance",
+    "radius": "Radius around me",
+    "within": "Less than {radius} away",
+    "clear": "Clear all",
+    "hidden": {
+      "sentence": "Restaurants {reasons} don’t show up.",
+      "budget": "with no budget listed",
+      "tags": "{count, plural, one {that don’t list this diet} other {that don’t list these diets}}",
+      "distance": "with no located address"
+    }
+  },
+  "catalog": {
+    "caption": "The database",
+    "captionNearby": "The database, with distances from you",
+    "label": "Results",
+    "noMatchFilters": "No restaurant in the database passes the filters.",
+    "clearFilters": "Clear the filters",
+    "addIt": "Add it",
+    "more": "Show more"
+  },
+  "google": {
+    "networkFailure": "The Google search failed. Try again.",
+    "outOfFive": "out of 5",
+    "nearest": "Closest to you",
+    "resultsNearby": "Google results, near you",
+    "results": "Google results",
+    "locating": "Looking at what’s around you…",
+    "searchingNearby": "Looking for restaurants near you…",
+    "allowPosition": "Allow your location to see restaurants near you, or search by name.",
+    "noResults": "Google finds nothing for “{query}”.",
+    "nothingNearby": "Nothing within two kilometres. Search for a restaurant by name.",
+    "more": "See more",
+    "hint": "Ticking a restaurant adds it to your selection and imports its details — photo, address, opening hours. A place that’s already been imported joins the selection without creating a duplicate."
+  },
+  "seed": {
+    "title": "Fill in my neighbourhood",
+    "description": "Up to {max} restaurants around you go into the database in one go. Then you tick the ones you want.",
+    "action": "Fill in",
+    "outcome": "{added, plural, one {# restaurant was added} other {# restaurants were added}} to the database{failed, plural, =0 {} one {, # couldn’t be saved} other {, # couldn’t be saved}}. {remaining, plural, =0 {That was your last one for today.} one {You have # left today.} other {You have # left today.}}"
+  },
+  "add": {
+    "label": "Add a restaurant",
+    "name": "Restaurant name",
+    "namePlaceholder": "The little Lebanese place",
+    "similar": "A restaurant with a similar name already exists. It might be the same one:",
+    "cuisine": "Cuisine <optional>(optional)</optional>",
+    "cuisinePlaceholder": "Lebanese",
+    "address": "Address <optional>(optional)</optional>",
+    "addressPlaceholder": "3 Baker Street",
+    "budget": "Budget <optional>(optional)</optional>",
+    "budgetLabel": "Budget",
+    "diet": "Diet <optional>(optional)</optional>",
+    "dietLabel": "Dietary requirements",
+    "submit": "Add this restaurant"
+  },
+  "map": {
+    "attribution": "© OpenStreetMap"
+  }
+}

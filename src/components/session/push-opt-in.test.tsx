@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { PushOptIn } from './push-opt-in'
 
@@ -54,7 +56,7 @@ describe('PushOptIn', () => {
   })
 
   it('should not ask for permission before the user clicks', async () => {
-    render(<PushOptIn sessionId={SESSION_ID} context="launch" />)
+    renderWithIntl(<PushOptIn sessionId={SESSION_ID} context="launch" />)
 
     expect(
       await screen.findByRole('button', { name: 'Me prévenir au lancement' })
@@ -65,7 +67,7 @@ describe('PushOptIn', () => {
 
   it('should subscribe this browser on click, then say so', async () => {
     mocks.subscribeToPush.mockResolvedValue({ status: 'subscribed', subscription: SUBSCRIPTION })
-    render(<PushOptIn sessionId={SESSION_ID} context="results" />)
+    renderWithIntl(<PushOptIn sessionId={SESSION_ID} context="results" />)
 
     await userEvent.click(await screen.findByRole('button', { name: 'Me prévenir du résultat' }))
 
@@ -82,7 +84,7 @@ describe('PushOptIn', () => {
 
   it('should keep the button when the permission box is closed without an answer', async () => {
     mocks.subscribeToPush.mockResolvedValue({ status: 'dismissed' })
-    render(<PushOptIn sessionId={SESSION_ID} context="launch" />)
+    renderWithIntl(<PushOptIn sessionId={SESSION_ID} context="launch" />)
 
     await userEvent.click(await screen.findByRole('button', { name: 'Me prévenir au lancement' }))
 
@@ -92,7 +94,7 @@ describe('PushOptIn', () => {
 
   it('should explain a refusal instead of asking again', async () => {
     mocks.subscribeToPush.mockResolvedValue({ status: 'denied' })
-    render(<PushOptIn sessionId={SESSION_ID} context="launch" />)
+    renderWithIntl(<PushOptIn sessionId={SESSION_ID} context="launch" />)
 
     await userEvent.click(await screen.findByRole('button', { name: 'Me prévenir au lancement' }))
 
@@ -102,7 +104,7 @@ describe('PushOptIn', () => {
 
   it('should show the blocked state straight away when permission was already refused', async () => {
     mocks.pushPermission.mockReturnValue('denied')
-    render(<PushOptIn sessionId={SESSION_ID} context="launch" />)
+    renderWithIntl(<PushOptIn sessionId={SESSION_ID} context="launch" />)
 
     expect(await screen.findByText(/Les notifications sont bloquées/)).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
@@ -113,7 +115,7 @@ describe('PushOptIn', () => {
     mocks.pushPermission.mockReturnValue('granted')
     mocks.currentPushSubscription.mockResolvedValue(existing)
     mocks.unsubscribeFromPush.mockResolvedValue(SUBSCRIPTION.endpoint)
-    render(<PushOptIn sessionId={SESSION_ID} context="launch" />)
+    renderWithIntl(<PushOptIn sessionId={SESSION_ID} context="launch" />)
 
     expect(await screen.findByRole('status')).toHaveTextContent('au lancement du vote')
     expect(mocks.subscribePushAction).toHaveBeenCalledWith(SUBSCRIPTION)
@@ -129,21 +131,23 @@ describe('PushOptIn', () => {
   it('should tell iPhone users to install the app first', async () => {
     mocks.pushPermission.mockReturnValue('unsupported')
     mocks.isAppleMobile.mockReturnValue(true)
-    render(<PushOptIn sessionId={SESSION_ID} context="launch" />)
+    renderWithIntl(<PushOptIn sessionId={SESSION_ID} context="launch" />)
 
     expect(await screen.findByText(/ajoute onmangekoi à l’écran d’accueil/)).toBeInTheDocument()
   })
 
   it('should render nothing when push is not configured or not supported', async () => {
     mocks.pushPermission.mockReturnValue('unsupported')
-    const { container, unmount } = render(<PushOptIn sessionId={SESSION_ID} context="launch" />)
+    const { container, unmount } = renderWithIntl(
+      <PushOptIn sessionId={SESSION_ID} context="launch" />
+    )
     await vi.waitFor(() => expect(mocks.pushPermission).toHaveBeenCalled())
     expect(container).toBeEmptyDOMElement()
     unmount()
 
     mocks.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = undefined
     mocks.pushPermission.mockClear()
-    const second = render(<PushOptIn sessionId={SESSION_ID} context="launch" />)
+    const second = renderWithIntl(<PushOptIn sessionId={SESSION_ID} context="launch" />)
     expect(second.container).toBeEmptyDOMElement()
     expect(mocks.pushPermission).not.toHaveBeenCalled()
   })

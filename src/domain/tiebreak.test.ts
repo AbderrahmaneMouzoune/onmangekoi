@@ -57,9 +57,14 @@ describe('readTiebreak', () => {
 
 describe('joinNames', () => {
   it('should read like it is said out loud', () => {
-    expect(joinNames([])).toBe('')
-    expect(joinNames(['A'])).toBe('A')
-    expect(joinNames(['A', 'B'])).toBe('A et B')
-    expect(joinNames(['A', 'B', 'C'])).toBe('A, B et C')
+    expect(joinNames([], 'fr')).toBe('')
+    expect(joinNames(['A'], 'fr')).toBe('A')
+    expect(joinNames(['A', 'B'], 'fr')).toBe('A et B')
+    expect(joinNames(['A', 'B', 'C'], 'fr')).toBe('A, B et C')
+  })
+
+  it('should follow the language', () => {
+    expect(joinNames(['A', 'B'], 'en')).toBe('A and B')
+    expect(joinNames(['A', 'B', 'C'], 'en')).toMatch(/^A, B,? and C$/)
   })
 })

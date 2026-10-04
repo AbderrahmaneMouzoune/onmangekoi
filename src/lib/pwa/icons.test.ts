@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import manifest from '@/app/manifest'
-
 import { MASKABLE_GLYPH, MASKABLE_SAFE_RADIUS, outermostReach, PWA_ICONS } from './icons'
+import { buildManifest } from './manifest'
 
 describe('PWA icons', () => {
   it('should keep the tomato dot inside the maskable safe zone', () => {
@@ -23,7 +22,7 @@ describe('PWA icons', () => {
 
 describe('manifest', () => {
   it('should describe an installable standalone app', () => {
-    const result = manifest()
+    const result = buildManifest({ locale: 'fr', description: 'Décidez où manger ensemble.' })
     expect(result).toMatchObject({
       id: '/',
       start_url: '/',
@@ -37,5 +36,15 @@ describe('manifest', () => {
       type: 'image/png',
       purpose: 'maskable',
     })
+  })
+
+  it('should keep the same app identity in every language', () => {
+    // Un `id` qui suivrait la langue ferait d'un changement de langue une
+    // seconde application installée.
+    const french = buildManifest({ locale: 'fr', description: 'fr' })
+    const english = buildManifest({ locale: 'en', description: 'en' })
+    expect(english.id).toBe(french.id)
+    expect(english.start_url).toBe(french.start_url)
+    expect(english.lang).toBe('en')
   })
 })

@@ -1,6 +1,8 @@
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 import { router } from '@/config/router.config'
+import { WORDMARK } from '@/lib/brand'
 import { cn } from '@/lib/utils'
 
 interface BrandProps {
@@ -11,6 +13,7 @@ interface BrandProps {
 
 /** Wordmark : « onmangekoi », le « koi » en tomate, comme la question qu'on se pose. */
 export function Brand({ className, size = 'sm', asLink = true }: BrandProps) {
+  const t = useTranslations('layout.brand')
   const content = (
     <span
       className={cn(
@@ -19,7 +22,8 @@ export function Brand({ className, size = 'sm', asLink = true }: BrandProps) {
         className
       )}
     >
-      onmange<span className="text-brand">koi</span>
+      {WORDMARK[0]}
+      <span className="text-brand">{WORDMARK[1]}</span>
     </span>
   )
 
@@ -27,7 +31,7 @@ export function Brand({ className, size = 'sm', asLink = true }: BrandProps) {
   return (
     <Link
       href={router.home()}
-      aria-label="onmangekoi, accueil"
+      aria-label={t('homeLabel')}
       className="rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring"
     >
       {content}

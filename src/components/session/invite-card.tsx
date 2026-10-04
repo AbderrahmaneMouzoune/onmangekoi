@@ -1,6 +1,7 @@
 'use client'
 
 import { RiCloseLine, RiShareForwardLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useEffect } from 'react'
 
 import { InviteCode } from '@/components/session/invite-code'
@@ -38,6 +39,7 @@ export function InviteCard({
   qrSvg,
 }: InviteCardProps) {
   const canShare = useCanShare()
+  const t = useTranslations('session.invite')
 
   function trackShare(method: ShareMethod) {
     captureEvent('invite_shared', { session_id: sessionId, method })
@@ -54,8 +56,8 @@ export function InviteCard({
   async function share() {
     try {
       await navigator.share({
-        title: `Rejoins « ${sessionName} » sur onmangekoi`,
-        text: 'On vote pour choisir où manger, ça prend deux minutes.',
+        title: t('shareTitle', { name: sessionName }),
+        text: t('shareText'),
         url: inviteUrl,
       })
       trackShare('native_share')
@@ -74,13 +76,10 @@ export function InviteCard({
           id="invite-title"
           className="font-mono text-[0.7rem] tracking-[0.12em] text-chalk-muted uppercase"
         >
-          Code d’invitation
+          {t('title')}
         </p>
         <InviteCode code={inviteCode} />
-        <p className="text-sm text-chalk-muted">
-          À dire à voix haute (majuscules et tirets sans importance), à faire scanner, ou à envoyer
-          en lien.
-        </p>
+        <p className="text-sm text-chalk-muted">{t('howTo')}</p>
       </div>
 
       {qrSvg && (
@@ -89,7 +88,7 @@ export function InviteCard({
             {/* Un QR de 7 cm de large se scanne mal à bout de bras : le sortir
                 en plein écran est le seul geste utile qu'il porte. */}
             <DialogTrigger
-              aria-label="Agrandir le QR code d’invitation"
+              aria-label={t('enlarge')}
               className="size-28 shrink-0 cursor-zoom-in rounded-sm transition-transform outline-none hover:scale-[1.03] focus-visible:ring-3 focus-visible:ring-chalk/40 lg:size-36"
             >
               <span
@@ -98,20 +97,17 @@ export function InviteCard({
                 dangerouslySetInnerHTML={{ __html: qrSvg }}
               />
             </DialogTrigger>
-            <p className="text-sm text-chalk-muted">
-              Les autres scannent ce QR code avec l’appareil photo de leur téléphone. Touche-le pour
-              l’afficher en grand.
-            </p>
+            <p className="text-sm text-chalk-muted">{t('qrHint')}</p>
           </div>
 
           <DialogPopup className="items-center chalkboard bg-slate ring-chalk/15">
-            <DialogTitle className="text-chalk">Scanner pour rejoindre</DialogTitle>
+            <DialogTitle className="text-chalk">{t('dialogTitle')}</DialogTitle>
             <DialogDescription className="text-center text-chalk-muted">
-              Vise ce code avec l’appareil photo, ou depuis « J’ai un code » dans l’app.
+              {t('dialogDescription')}
             </DialogDescription>
             <div
               role="img"
-              aria-label="QR code du lien d’invitation"
+              aria-label={t('qrLabel')}
               className="w-full max-w-72 [&>svg]:size-full"
               dangerouslySetInnerHTML={{ __html: qrSvg }}
             />
@@ -120,7 +116,7 @@ export function InviteCard({
               render={
                 <Button type="button" variant="chalk" className="w-full max-w-72">
                   <RiCloseLine aria-hidden="true" />
-                  Fermer
+                  {t('close')}
                 </Button>
               }
             />
@@ -131,20 +127,20 @@ export function InviteCard({
       <div className="grid grid-cols-2 gap-2">
         <CopyButton
           value={inviteCode}
-          label="Copier le code"
+          label={t('copyCode')}
           variant="chalk"
           onCopied={() => trackShare('code_copy')}
         />
         <CopyButton
           value={inviteUrl}
-          label="Copier le lien"
+          label={t('copyLink')}
           variant="chalk"
           onCopied={() => trackShare('link_copy')}
         />
         {canShare && (
           <Button type="button" variant="default" className="col-span-2" onClick={share}>
             <RiShareForwardLine aria-hidden="true" />
-            Envoyer l’invitation
+            {t('send')}
           </Button>
         )}
       </div>

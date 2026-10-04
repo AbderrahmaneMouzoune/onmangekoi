@@ -1,6 +1,7 @@
 'use client'
 
 import { RiAlertLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useEffect, useId, useRef, useState, useTransition } from 'react'
 
 import { createRestaurantAction, findSimilarRestaurantsAction } from '@/actions/restaurants'
@@ -16,7 +17,6 @@ import {
   RESTAURANT_CUISINE_MAX,
   RESTAURANT_NAME_MAX,
   RESTAURANT_NAME_MIN,
-  RESTAURANT_TAG_LABELS,
   RESTAURANT_TAGS,
 } from '@/domain/schemas/restaurant'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
@@ -56,6 +56,11 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
     items: [],
   })
   const [isSubmitting, startSubmit] = useTransition()
+  const t = useTranslations('restaurants')
+  const tCommon = useTranslations('common')
+  const optional = (chunks: React.ReactNode) => (
+    <span className="text-muted-foreground">{chunks}</span>
+  )
 
   const debouncedName = useDebouncedValue(name, 400)
   const candidate = debouncedName.trim()
@@ -112,18 +117,18 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
   return (
     <div
       role="group"
-      aria-label="Ajouter un resto"
+      aria-label={t('add.label')}
       onKeyDown={cancelOnEscape}
       className="flex flex-col gap-3 rounded-lg bg-surface p-3 ring-1 ring-line"
     >
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${fieldId}-name`}>Nom du resto</Label>
+        <Label htmlFor={`${fieldId}-name`}>{t('add.name')}</Label>
         <Input
           id={`${fieldId}-name`}
           value={name}
           onChange={(event) => setName(event.target.value)}
           onKeyDown={submitOnEnter}
-          placeholder="Le petit libanais"
+          placeholder={t('add.namePlaceholder')}
           maxLength={RESTAURANT_NAME_MAX}
           autoComplete="off"
           autoFocus
@@ -138,7 +143,7 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
               aria-hidden="true"
               className="mt-0.5 size-4 shrink-0 text-muted-foreground"
             />
-            <span>Un resto au nom proche existe déjà. C’est peut-être le même :</span>
+            <span>{t('add.similar')}</span>
           </p>
           <ul className="flex flex-wrap gap-1.5">
             {similarItems.map((restaurant) => (
@@ -158,29 +163,25 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`${fieldId}-cuisine`}>
-            Cuisine <span className="text-muted-foreground">(optionnel)</span>
-          </Label>
+          <Label htmlFor={`${fieldId}-cuisine`}>{t.rich('add.cuisine', { optional })}</Label>
           <Input
             id={`${fieldId}-cuisine`}
             value={cuisineType}
             onChange={(event) => setCuisineType(event.target.value)}
             onKeyDown={submitOnEnter}
-            placeholder="Libanais"
+            placeholder={t('add.cuisinePlaceholder')}
             maxLength={RESTAURANT_CUISINE_MAX}
             autoComplete="off"
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`${fieldId}-address`}>
-            Adresse <span className="text-muted-foreground">(optionnel)</span>
-          </Label>
+          <Label htmlFor={`${fieldId}-address`}>{t.rich('add.address', { optional })}</Label>
           <Input
             id={`${fieldId}-address`}
             value={address}
             onChange={(event) => setAddress(event.target.value)}
             onKeyDown={submitOnEnter}
-            placeholder="3 rue du Four"
+            placeholder={t('add.addressPlaceholder')}
             maxLength={RESTAURANT_ADDRESS_MAX}
             autoComplete="off"
           />
@@ -189,11 +190,11 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
 
       <fieldset className="flex flex-col gap-1.5">
         <legend className="mb-1.5 text-sm leading-none font-medium text-ink">
-          Budget <span className="text-muted-foreground">(optionnel)</span>
+          {t.rich('add.budget', { optional })}
         </legend>
         <div
           role="radiogroup"
-          aria-label="Budget"
+          aria-label={t('add.budgetLabel')}
           onKeyDown={onBudgetKeyDown}
           className="flex gap-1.5"
         >
@@ -227,11 +228,11 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
 
       <fieldset className="flex flex-col gap-1.5">
         <legend className="mb-1.5 text-sm leading-none font-medium text-ink">
-          Régime <span className="text-muted-foreground">(optionnel)</span>
+          {t.rich('add.diet', { optional })}
         </legend>
         {/* Ce qu'on déclare ici alimente les filtres de la création de
             session : un resto tagué évite un veto prévisible. */}
-        <div role="group" aria-label="Régime alimentaire" className="flex flex-wrap gap-1.5">
+        <div role="group" aria-label={t('add.dietLabel')} className="flex flex-wrap gap-1.5">
           {RESTAURANT_TAGS.map((tag) => {
             const isSelected = tags.includes(tag)
             return (
@@ -248,7 +249,7 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
                     : 'border-line-strong bg-surface text-ink-2 hover:bg-surface-2'
                 )}
               >
-                {RESTAURANT_TAG_LABELS[tag]}
+                {t(`tags.${tag}`)}
               </button>
             )
           })}
@@ -264,10 +265,10 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
           disabled={isSubmitting || name.trim().length < RESTAURANT_NAME_MIN}
           className="flex-1"
         >
-          {isSubmitting ? <Spinner /> : 'Ajouter ce resto'}
+          {isSubmitting ? <Spinner /> : t('add.submit')}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
-          Annuler
+          {tCommon('actions.cancel')}
         </Button>
       </div>
     </div>

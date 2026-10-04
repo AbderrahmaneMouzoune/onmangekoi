@@ -1,6 +1,7 @@
 'use client'
 
 import { RiTimerLine } from '@remixicon/react'
+import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useRef, useState, useTransition } from 'react'
 
 import { extendSessionAction } from '@/actions/sessions'
@@ -39,6 +40,8 @@ export function SessionCountdown({
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const expiredFor = useRef<string | null>(null)
+  const t = useTranslations('session.countdown')
+  const locale = useLocale()
 
   const expired = remaining === 0
 
@@ -53,7 +56,7 @@ export function SessionCountdown({
   if (!session.closes_at || remaining === null) return null
 
   const voting = session.status === 'voting'
-  const label = voting ? 'Clôture automatique' : 'Vote à lancer avant'
+  const time = formatDeadlineTime(session.closes_at, locale)
 
   function extend() {
     setError(null)
@@ -80,17 +83,17 @@ export function SessionCountdown({
         <span className="flex min-w-0 items-center gap-2 text-sm">
           <RiTimerLine aria-hidden="true" className="size-4 shrink-0" />
           <span className="truncate">
-            {label} {formatDeadlineTime(session.closes_at)}
+            {voting ? t('closesAt', { time }) : t('launchBefore', { time })}
           </span>
         </span>
 
         <span className="flex shrink-0 items-center gap-2">
           <span role="timer" aria-live="off" className="font-mono text-sm font-semibold tabular">
-            {expired ? (voting ? 'Clôture…' : 'Dépassée') : formatCountdown(remaining)}
+            {expired ? (voting ? t('closing') : t('passed')) : formatCountdown(remaining)}
           </span>
           {isHost && (
             <Button type="button" variant="outline" size="sm" onClick={extend} disabled={isPending}>
-              +{EXTEND_MINUTES} min
+              {t('extend', { minutes: EXTEND_MINUTES })}
             </Button>
           )}
         </span>

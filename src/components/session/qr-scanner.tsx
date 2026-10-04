@@ -1,6 +1,7 @@
 'use client'
 
 import { RiCameraLine, RiCloseLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -31,6 +32,7 @@ export function QrScanner({ onDetected, onClose }: QrScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const [state, setState] = useState<State>('starting')
+  const t = useTranslations('session.scanner')
 
   // Le bouton qui a ouvert le scanner a disparu : le focus doit atterrir ici,
   // et Échap referme comme pour n'importe quel panneau qui prend l'écran.
@@ -126,7 +128,7 @@ export function QrScanner({ onDetected, onClose }: QrScannerProps) {
         ref={videoRef}
         muted
         playsInline
-        aria-label="Aperçu de la caméra"
+        aria-label={t('preview')}
         className="aspect-square w-full object-cover"
       />
       <div
@@ -139,16 +141,16 @@ export function QrScanner({ onDetected, onClose }: QrScannerProps) {
         <p role="status" className="flex items-center gap-2 text-sm">
           {state === 'starting' && (
             <>
-              <Spinner className="size-4" /> Ouverture de la caméra…
+              <Spinner className="size-4" /> {t('starting')}
             </>
           )}
           {state === 'scanning' && (
             <>
-              <RiCameraLine aria-hidden="true" className="size-4" /> Vise le QR code
+              <RiCameraLine aria-hidden="true" className="size-4" /> {t('scanning')}
             </>
           )}
-          {state === 'denied' && 'Accès à la caméra refusé. Saisis le code à la main.'}
-          {state === 'unsupported' && 'Pas de caméra disponible ici. Saisis le code à la main.'}
+          {state === 'denied' && t('denied')}
+          {state === 'unsupported' && t('unsupported')}
         </p>
         <Button
           ref={closeRef}
@@ -156,7 +158,7 @@ export function QrScanner({ onDetected, onClose }: QrScannerProps) {
           variant="chalk"
           size="icon-sm"
           onClick={onClose}
-          aria-label="Fermer le scanner"
+          aria-label={t('close')}
         >
           <RiCloseLine aria-hidden="true" />
         </Button>

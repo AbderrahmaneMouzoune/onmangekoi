@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { omkMessage } from '@/domain/errors'
+
 export const PLACES_QUERY_MIN = 2
 export const PLACES_QUERY_MAX = 120
 
@@ -7,9 +9,9 @@ export const PLACES_QUERY_MAX = 120
 export const PlaceIdSchema = z
   .string()
   .trim()
-  .min(1, 'Lieu invalide')
-  .max(255, 'Lieu invalide')
-  .regex(/^[\w-]+$/, 'Lieu invalide')
+  .min(1, omkMessage('invalid_place'))
+  .max(255, omkMessage('invalid_place'))
+  .regex(/^[\w-]+$/, omkMessage('invalid_place'))
 
 const LatitudeSchema = z.number().min(-90).max(90)
 const LongitudeSchema = z.number().min(-180).max(180)
@@ -32,20 +34,20 @@ export function hasPosition(input: {
  */
 export const SearchPlacesSchema = z
   .object({
-    query: z.string().trim().max(PLACES_QUERY_MAX, 'Recherche trop longue').default(''),
+    query: z.string().trim().max(PLACES_QUERY_MAX, omkMessage('search_too_long')).default(''),
     latitude: LatitudeSchema.nullish(),
     longitude: LongitudeSchema.nullish(),
     /** Jeton opaque rendu par Google avec la page précédente : « voir plus ». */
     pageToken: z
       .string()
       .trim()
-      .min(1, 'Page invalide')
-      .max(4096, 'Page invalide')
-      .regex(/^\S+$/, 'Page invalide')
+      .min(1, omkMessage('invalid_request'))
+      .max(4096, omkMessage('invalid_request'))
+      .regex(/^\S+$/, omkMessage('invalid_request'))
       .nullish(),
   })
   .refine((data) => data.query.length >= PLACES_QUERY_MIN || hasPosition(data), {
-    message: 'Entre au moins deux caractères, ou autorise ta position.',
+    message: omkMessage('search_too_short'),
     path: ['query'],
   })
 

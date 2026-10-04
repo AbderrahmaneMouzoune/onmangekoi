@@ -1,0 +1,19 @@
+{
+  "pseudo": {
+    "label": "Ton pseudo",
+    "placeholder": "Ex. Alex",
+    "help": "C’est le nom que les autres verront. Modifiable à tout moment.",
+    "submit": "C’est parti",
+    "submitJoin": "Rejoindre"
+  },
+  "setup": {
+    "invitation": "Invitation",
+    "invitedBy": "{host} t’invite · {restaurants} · {participants}",
+    "askName": "Comment veux-tu qu’on t’appelle ?",
+    "eyebrow": "Première visite",
+    "title": "Un pseudo, et c’est tout.",
+    "lead": "Pas de compte à créer. Tu pourras en lier un plus tard pour retrouver tes listes ailleurs.",
+    "hasAccount": "Déjà un compte ?",
+    "signIn": "Se connecter"
+  }
+}

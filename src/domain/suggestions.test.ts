@@ -74,20 +74,26 @@ describe('suggestionSummary', () => {
       row('fresh', 'never_proposed', 'catalog', 3),
     ])
 
-    expect(suggestionSummary(suggestion!)).toBe(
-      'Vus récemment, sans les 3 gagnants des 30 derniers jours — plus un jamais proposé, le dernier arrivé au carnet.'
-    )
+    expect(suggestionSummary(suggestion!)).toEqual({
+      recent: 2,
+      winners: 3,
+      days: 30,
+      fresh: 'catalog',
+    })
   })
 
-  it('should speak in the singular for a single winner and a single restaurant', () => {
+  it('should count a single winner and a single restaurant', () => {
     const suggestion = toRestaurantSuggestion([
       row('a', 'recent', 'history', 1),
       row('fresh', 'never_proposed', 'mine', 1),
     ])
 
-    expect(suggestionSummary(suggestion!)).toBe(
-      'Vu récemment, sans le gagnant des 30 derniers jours — plus un jamais proposé, le dernier que tu as ajouté.'
-    )
+    expect(suggestionSummary(suggestion!)).toEqual({
+      recent: 1,
+      winners: 1,
+      days: 30,
+      fresh: 'mine',
+    })
   })
 
   it('should not mention winners when none were excluded', () => {
@@ -96,7 +102,12 @@ describe('suggestionSummary', () => {
       row('b', 'recent', 'history'),
     ])
 
-    expect(suggestionSummary(suggestion!)).toBe('Vus récemment.')
+    expect(suggestionSummary(suggestion!)).toEqual({
+      recent: 2,
+      winners: 0,
+      days: 30,
+      fresh: 'none',
+    })
   })
 })
 

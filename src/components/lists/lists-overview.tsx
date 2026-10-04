@@ -1,6 +1,8 @@
 import { RiBookmarkLine, RiGroupLine } from '@remixicon/react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { getLocale, getTranslations } from 'next-intl/server'
 
 import { VisitMemo } from '@/components/layout/visit-memo'
 import { ArrowKeyList } from '@/components/ui/arrow-key-list'
@@ -12,7 +14,7 @@ import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { getListsByOwner } from '@/data-access/lists'
 import { createServerClient } from '@/data-access/supabase/server'
-import { countLabel, relativeDate } from '@/lib/format'
+import { relativeDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 /** Listes de la personne connectée : partie personnalisée de `/lists`. */
@@ -20,7 +22,11 @@ export async function ListsOverview() {
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
   if (!user) redirect(router.setup(router.lists()))
 
-  const lists = await getListsByOwner(supabase, user.id)
+  const [lists, locale, t] = await Promise.all([
+    getListsByOwner(supabase, user.id),
+    getLocale(),
+    getTranslations('lists'),
+  ])
 
   if (lists.length === 0) {
     return (
@@ -36,7 +42,7 @@ export async function ListsOverview() {
       <VisitMemo account lists />
       <ArrowKeyList
         orientation="both"
-        aria-label="Mes listes"
+        aria-label={t('page.title')}
         className="grid gap-2 sm:grid-cols-2 lg:gap-3"
       >
         {lists.map((list) => (
@@ -48,14 +54,16 @@ export async function ListsOverview() {
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="truncate font-semibold">{list.name}</span>
                 <span className="text-xs text-muted-foreground">
-                  {countLabel(list.restaurant_count, 'resto')} · modifiée{' '}
-                  {relativeDate(list.updated_at)}
+                  {t('overview.meta', {
+                    count: list.restaurant_count,
+                    updated: relativeDate(list.updated_at, locale),
+                  })}
                 </span>
               </div>
               {list.is_collaborative && (
                 <Badge variant="brand">
                   <RiGroupLine aria-hidden="true" />
-                  Collaborative
+                  {t('overview.collaborative')}
                 </Badge>
               )}
             </Link>
@@ -68,14 +76,15 @@ export async function ListsOverview() {
 
 /** Écran vide des listes — partagé avec la silhouette, qui sait déjà le rendre. */
 function NoLists() {
+  const t = useTranslations('lists.overview.empty')
   return (
     <EmptyState
       icon={<RiBookmarkLine />}
-      title="Aucune liste pour l’instant"
-      description="Regroupe les restos du bureau, du quartier, du vendredi soir… et importe-les en un clic."
+      title={t('title')}
+      description={t('description')}
       action={
         <Link href={router.listNew()} className={cn(buttonVariants())}>
-          Créer ma première liste
+          {t('action')}
         </Link>
       }
     />

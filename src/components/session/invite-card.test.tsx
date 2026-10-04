@@ -1,16 +1,18 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { InviteCard } from './invite-card'
 
 const QR_SVG = '<svg viewBox="0 0 8 8" role="presentation"><rect width="8" height="8" /></svg>'
 
 function renderCard(qrSvg: string | null = QR_SVG) {
-  return render(
+  return renderWithIntl(
     <InviteCard
       sessionId="33333333-3333-4333-8333-333333333333"
       inviteCode="ABC123"

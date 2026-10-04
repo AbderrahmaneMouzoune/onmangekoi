@@ -10,6 +10,7 @@ import {
   mapPlacesResponse,
   nearbyCacheKey,
   openingHoursFromPlace,
+  placeDetailsCacheKey,
   placesCacheKey,
   priceLevelFromPlace,
   ratingCountFromPlace,
@@ -242,35 +243,59 @@ describe('mapPlaceDetails', () => {
 
 describe('placesCacheKey', () => {
   it('should ignore case and extra spaces so the cache actually hits', () => {
-    expect(placesCacheKey({ query: '  Sushi   Sakura ' })).toBe(
-      placesCacheKey({ query: 'sushi sakura' })
+    expect(placesCacheKey({ locale: 'fr', query: '  Sushi   Sakura ' })).toBe(
+      placesCacheKey({ locale: 'fr', query: 'sushi sakura' })
     )
   })
 
   it('should round coordinates so a step of a few metres reuses the cache', () => {
-    const a = placesCacheKey({ query: 'sushi', latitude: 45.764043, longitude: 4.835659 })
-    const b = placesCacheKey({ query: 'sushi', latitude: 45.764901, longitude: 4.835002 })
+    const a = placesCacheKey({
+      locale: 'fr',
+      query: 'sushi',
+      latitude: 45.764043,
+      longitude: 4.835659,
+    })
+    const b = placesCacheKey({
+      locale: 'fr',
+      query: 'sushi',
+      latitude: 45.764901,
+      longitude: 4.835002,
+    })
     expect(a).toBe(b)
   })
 
-  it('should tell a biased search apart from an unbiased one', () => {
-    expect(placesCacheKey({ query: 'sushi', latitude: 45.76, longitude: 4.83 })).not.toBe(
-      placesCacheKey({ query: 'sushi' })
+  it('should keep each language apart: Google answers in the one it is asked', () => {
+    expect(placesCacheKey({ locale: 'en', query: 'sushi' })).not.toBe(
+      placesCacheKey({ locale: 'fr', query: 'sushi' })
     )
+    expect(nearbyCacheKey({ locale: 'en', latitude: 45.76, longitude: 4.83 })).not.toBe(
+      nearbyCacheKey({ locale: 'fr', latitude: 45.76, longitude: 4.83 })
+    )
+    expect(placeDetailsCacheKey('ChIJsushi', 'en')).not.toBe(
+      placeDetailsCacheKey('ChIJsushi', 'fr')
+    )
+  })
+
+  it('should tell a biased search apart from an unbiased one', () => {
+    expect(
+      placesCacheKey({ locale: 'fr', query: 'sushi', latitude: 45.76, longitude: 4.83 })
+    ).not.toBe(placesCacheKey({ locale: 'fr', query: 'sushi' }))
   })
 })
 
 describe('nearbyCacheKey', () => {
   it('should round the position to about a hundred metres', () => {
-    expect(nearbyCacheKey({ latitude: 45.76012, longitude: 4.83049 })).toBe('near|45.760|4.830')
-    expect(nearbyCacheKey({ latitude: 45.76049, longitude: 4.83012 })).toBe(
-      nearbyCacheKey({ latitude: 45.76012, longitude: 4.83049 })
+    expect(nearbyCacheKey({ locale: 'fr', latitude: 45.76012, longitude: 4.83049 })).toBe(
+      'near|fr|45.760|4.830'
+    )
+    expect(nearbyCacheKey({ locale: 'fr', latitude: 45.76049, longitude: 4.83012 })).toBe(
+      nearbyCacheKey({ locale: 'fr', latitude: 45.76012, longitude: 4.83049 })
     )
   })
 
   it('should never collide with a text search key', () => {
-    expect(nearbyCacheKey({ latitude: 45.76, longitude: 4.83 })).not.toBe(
-      placesCacheKey({ query: '', latitude: 45.76, longitude: 4.83 })
+    expect(nearbyCacheKey({ locale: 'fr', latitude: 45.76, longitude: 4.83 })).not.toBe(
+      placesCacheKey({ locale: 'fr', query: '', latitude: 45.76, longitude: 4.83 })
     )
   })
 })

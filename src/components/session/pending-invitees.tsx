@@ -2,6 +2,7 @@
 
 import { RiGroupLine, RiTimeLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useState, useTransition } from 'react'
 
 import { inviteGroupToSessionAction } from '@/actions/groups'
@@ -9,8 +10,9 @@ import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
+import { usePeopleLabels } from '@/i18n/use-people-labels'
 import { captureEvent } from '@/lib/analytics/client'
-import { countLabel, participantLabel } from '@/lib/format'
+import { participantLabel } from '@/lib/format'
 
 import type { GroupWithMembers, InvitationWithProfile } from '@/data-access/models'
 
@@ -41,6 +43,8 @@ export function PendingInvitees({
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const t = useTranslations('session.invitees')
+  const people = usePeopleLabels()
 
   const waiting = invitations.filter((invitation) => !arrivedIds.includes(invitation.profile_id))
   const invitedIds = new Set(invitations.map((invitation) => invitation.profile_id))
@@ -64,8 +68,8 @@ export function PendingInvitees({
       captureEvent('group_invited', { session_id: sessionId, invited_count: result.data })
       setNotice(
         result.data > 0
-          ? `${countLabel(result.data, 'personne')} de « ${group.name} » ${result.data > 1 ? 'sont attendues' : 'est attendue'}.`
-          : `Tout « ${group.name} » est déjà là.`
+          ? t('invited', { count: result.data, group: group.name })
+          : t('allHere', { group: group.name })
       )
       navigation.refresh()
     })
@@ -77,11 +81,15 @@ export function PendingInvitees({
         <>
           <h2 className="flex items-center gap-2 font-display text-base font-semibold">
             <RiTimeLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
-            {countLabel(waiting.length, 'invité')} en attente
+            {t('waiting', { count: waiting.length })}
           </h2>
           <ul className="flex flex-wrap gap-2">
             {waiting.map((invitation) => {
-              const pseudo = participantLabel(invitation.profile_id, invitation.profiles?.pseudo)
+              const pseudo = participantLabel(
+                invitation.profile_id,
+                invitation.profiles?.pseudo,
+                people
+              )
               return (
                 <li
                   key={invitation.profile_id}
@@ -93,10 +101,7 @@ export function PendingInvitees({
               )
             })}
           </ul>
-          <p className="text-xs text-muted-foreground">
-            Envoie-leur le lien : ils ne comptent comme participants qu’une fois entrés dans la
-            session.
-          </p>
+          <p className="text-xs text-muted-foreground">{t('note')}</p>
         </>
       )}
 
@@ -112,7 +117,7 @@ export function PendingInvitees({
               disabled={isPending}
             >
               {isPending ? <Spinner /> : <RiGroupLine aria-hidden="true" />}
-              Inviter « {group.name} »
+              {t('invite', { group: group.name })}
             </Button>
           ))}
         </div>

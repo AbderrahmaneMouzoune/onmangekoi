@@ -20,6 +20,9 @@ import { ICON_BASE, ICON_GEOMETRY, MASKABLE_GLYPH } from '@/lib/pwa/icons'
 
 import type { PwaIconPurpose } from '@/lib/pwa/icons'
 
+/** Le « k » de « koi » : un dessin, pas un mot — il ne se traduit pas. */
+const GLYPH = 'k'
+
 interface AppIconProps {
   /** Côté de l'image, en pixels. */
   size: number
@@ -66,7 +69,7 @@ export function AppIcon({ size, rounded = false, glyph = 1 }: AppIconProps) {
             marginTop: marginTop * unit,
           }}
         >
-          k
+          {GLYPH}
         </span>
         <span
           style={{

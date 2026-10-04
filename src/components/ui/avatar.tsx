@@ -29,8 +29,13 @@ const SIZES = {
   lg: 'size-14 text-lg',
 } as const
 
+/**
+ * Pastille décorative (`aria-hidden`) : le nom lisible est toujours écrit à
+ * côté. Sans pseudo, elle affiche « ? » — l'appelant passe de toute façon le
+ * libellé de repli traduit (`common.people.guest`) quand il en a un.
+ */
 export function Avatar({ name, size = 'md', className }: AvatarProps) {
-  const label = name?.trim() || 'Invité'
+  const label = name?.trim() ?? ''
   return (
     <span
       aria-hidden="true"

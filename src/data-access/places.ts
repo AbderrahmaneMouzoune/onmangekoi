@@ -1,10 +1,11 @@
 import 'server-only'
 
-import { AppError } from '@/domain/errors'
+import { AppError, type ErrorCode } from '@/domain/errors'
 import {
   mapPlaceDetails,
   mapPlacesPage,
   nearbyCacheKey,
+  placeDetailsCacheKey,
   placesCacheKey,
   type PlaceResult,
   type PlacesPage,
@@ -12,6 +13,8 @@ import {
 import { env } from '@/env'
 import { remoteImageUrl } from '@/lib/images'
 import { TtlCache } from '@/lib/ttl-cache'
+
+import type { Locale } from '@/i18n/config'
 
 /**
  * Passerelle vers la Places API (New).
@@ -23,6 +26,14 @@ import { TtlCache } from '@/lib/ttl-cache'
  *
  * La recherche et le détail ne demandent pas les mêmes champs : voir les deux
  * masques plus bas.
+ *
+ * Google répond dans la langue de la personne qui cherche (`languageCode`,
+ * celle de l'interface) : adresses, types de lieux et, parfois, noms. La
+ * région, elle, reste la France — c'est là que le produit déjeune. Chaque
+ * cache est donc tenu par langue. Un lieu importé est écrit dans la langue de
+ * qui l'importe ; les noms et adresses sont des noms propres, qui changent
+ * rarement d'une langue à l'autre, et la cuisine se ramène au vocabulaire du
+ * carnet (`CUISINE_BY_PRIMARY_TYPE`), en français.
  */
 
 const SEARCH_ENDPOINT = 'https://places.googleapis.com/v1/places:searchText'
@@ -93,10 +104,10 @@ const BIAS_RADIUS_M = 5000
 const NEARBY_RADIUS_M = 2000
 const REQUEST_TIMEOUT_MS = 8000
 
-/** Pages de recherche, par requête + biais + jeton de page. */
+/** Pages de recherche, par langue + requête + biais + jeton de page. */
 const searchCache = new TtlCache<PlacesPage>({ ttlMs: CACHE_TTL_MS, maxEntries: 400 })
 /**
- * Fiches détaillées uniquement. Une recherche ne les alimente plus : ses
+ * Fiches détaillées uniquement, par langue. Une recherche ne les alimente plus : ses
  * résultats n'ont pas les champs enrichis, et les servir ici ferait importer
  * un resto sans photo ni horaires.
  */
@@ -108,7 +119,7 @@ export function isPlacesSearchEnabled(): boolean {
 
 function requireApiKey(): string {
   const key = env.GOOGLE_PLACES_API_KEY
-  if (!key) throw new AppError('La recherche Google n’est pas configurée sur ce déploiement.')
+  if (!key) throw new AppError('places_not_configured')
   return key
 }
 
@@ -119,11 +130,10 @@ function requireApiKey(): string {
  * s'il faut réessayer ou aller regarder la configuration — sans jamais citer
  * ce que Google a répondu.
  */
-function failureMessage(status: number): string {
-  if (status === 401 || status === 403)
-    return 'Google refuse la clé de ce déploiement : la recherche est indisponible.'
-  if (status === 429) return 'Trop de recherches Google d’un coup. Réessaie dans une minute.'
-  return 'La recherche Google a échoué. Réessaie dans un instant.'
+function failureCode(status: number): ErrorCode {
+  if (status === 401 || status === 403) return 'places_key_rejected'
+  if (status === 429) return 'places_rate_limited'
+  return 'places_failed'
 }
 
 /**
@@ -166,7 +176,7 @@ async function callGoogle(
     // statut à interpréter. Sans ce filet, l'appel remonterait en erreur
     // technique et l'interface afficherait un message générique.
     console.error('places: %s injoignable', label, error)
-    throw new AppError('Google n’a pas répondu à temps. Réessaie dans un instant.')
+    throw new AppError('places_timeout')
   }
 
   if (!response.ok) {
@@ -174,7 +184,7 @@ async function callGoogle(
     // il reste dans les logs serveur, jamais dans la réponse à l'utilisateur.
     const body = await response.text()
     console.error('places: %s → %d %s', label, response.status, errorReason(body), body)
-    throw new AppError(failureMessage(response.status))
+    throw new AppError(failureCode(response.status))
   }
 
   return response.json()
@@ -216,6 +226,7 @@ async function searchTextPage(
 }
 
 export async function searchPlaces(input: {
+  locale: Locale
   query: string
   latitude?: number | null
   longitude?: number | null
@@ -235,7 +246,7 @@ export async function searchPlaces(input: {
     {
       textQuery: input.query,
       includedType: 'restaurant',
-      languageCode: 'fr',
+      languageCode: input.locale,
       regionCode: 'FR',
       pageSize: PAGE_SIZE,
       ...(hasBias
@@ -264,6 +275,7 @@ export async function searchPlaces(input: {
  * plus » donne les vingt suivants —, la seconde s'arrête à vingt.
  */
 export async function searchNearbyPlaces(input: {
+  locale: Locale
   latitude: number
   longitude: number
   pageToken?: string | null
@@ -276,7 +288,7 @@ export async function searchNearbyPlaces(input: {
     {
       textQuery: 'restaurant',
       includedType: 'restaurant',
-      languageCode: 'fr',
+      languageCode: input.locale,
       regionCode: 'FR',
       pageSize: PAGE_SIZE,
       rankPreference: 'DISTANCE',
@@ -325,14 +337,18 @@ async function resolvePhotoUrl(photoName: string, apiKey: string): Promise<strin
  * L'import ne fait donc confiance qu'à des données venues de Google, jamais
  * à ce que le navigateur lui envoie : il n'envoie qu'un `placeId`.
  */
-export async function getPlaceDetails(placeId: string): Promise<PlaceResult | null> {
+export async function getPlaceDetails(
+  placeId: string,
+  locale: Locale
+): Promise<PlaceResult | null> {
   const apiKey = requireApiKey()
-  const cached = placeCache.get(placeId)
+  const key = placeDetailsCacheKey(placeId, locale)
+  const cached = placeCache.get(key)
   if (cached) return cached
 
   const payload = await callGoogle(
     'détail',
-    `${DETAILS_ENDPOINT}/${encodeURIComponent(placeId)}`,
+    `${DETAILS_ENDPOINT}/${encodeURIComponent(placeId)}?languageCode=${locale}`,
     { method: 'GET', headers: { 'X-Goog-FieldMask': DETAILS_FIELD_MASK } },
     apiKey
   )
@@ -344,6 +360,6 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceResult | nu
     ...mapped,
     photoUrl: mapped.photoName ? await resolvePhotoUrl(mapped.photoName, apiKey) : null,
   }
-  placeCache.set(place.placeId, place)
+  placeCache.set(key, place)
   return place
 }

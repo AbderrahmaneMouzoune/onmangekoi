@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { DeadlinePicker } from './deadline-picker'
 
@@ -23,21 +25,21 @@ describe('DeadlinePicker', () => {
   })
 
   it('should send nothing at all without a deadline', () => {
-    render(<DeadlinePicker />)
+    renderWithIntl(<DeadlinePicker />)
     expect(screen.getByRole('radio', { name: 'Sans limite' })).toBeChecked()
     expect(hidden('closesInMinutes')).toBeNull()
     expect(hidden('closesAt')).toBeNull()
   })
 
   it('should send a duration, resolved later on the server clock', async () => {
-    render(<DeadlinePicker />)
+    renderWithIntl(<DeadlinePicker />)
     await userEvent.click(screen.getByRole('radio', { name: 'dans 10 min' }))
     expect(hidden('closesInMinutes')).toHaveValue('10')
     expect(hidden('closesAt')).toBeNull()
   })
 
   it('should turn a chosen time into an absolute instant', async () => {
-    render(<DeadlinePicker />)
+    renderWithIntl(<DeadlinePicker />)
     await userEvent.click(screen.getByRole('radio', { name: 'à une heure' }))
     await userEvent.type(screen.getByLabelText(/heure de clôture/i), '12:00')
 
@@ -46,13 +48,13 @@ describe('DeadlinePicker', () => {
   })
 
   it('should send nothing while the chosen time is incomplete', async () => {
-    render(<DeadlinePicker />)
+    renderWithIntl(<DeadlinePicker />)
     await userEvent.click(screen.getByRole('radio', { name: 'à une heure' }))
     expect(hidden('closesAt')).toBeNull()
   })
 
   it('should drop « Sans limite » and fall back on a duration when the deadline is required', () => {
-    render(<DeadlinePicker required />)
+    renderWithIntl(<DeadlinePicker required />)
     expect(screen.queryByRole('radio', { name: 'Sans limite' })).toBeNull()
     expect(screen.getByRole('radio', { name: 'dans 1 h' })).toBeChecked()
     expect(hidden('closesInMinutes')).toHaveValue('60')
@@ -60,14 +62,14 @@ describe('DeadlinePicker', () => {
   })
 
   it('should keep a duration picked before the deadline became required', async () => {
-    const { rerender } = render(<DeadlinePicker />)
+    const { rerender } = renderWithIntl(<DeadlinePicker />)
     await userEvent.click(screen.getByRole('radio', { name: 'dans 20 min' }))
     rerender(<DeadlinePicker required />)
     expect(hidden('closesInMinutes')).toHaveValue('20')
   })
 
   it('should give « Sans limite » back once the deadline is optional again', () => {
-    const { rerender } = render(<DeadlinePicker required />)
+    const { rerender } = renderWithIntl(<DeadlinePicker required />)
     rerender(<DeadlinePicker />)
     expect(screen.getByRole('radio', { name: 'Sans limite' })).toBeChecked()
     expect(hidden('closesInMinutes')).toBeNull()

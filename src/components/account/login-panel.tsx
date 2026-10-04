@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { LoginForm } from '@/components/account/login-form'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -9,28 +11,28 @@ import { sanitizeNextPath } from '@/lib/routing'
 
 /** Formulaire de connexion : dépend de `?next=` et de la session en cours. */
 export async function LoginPanel({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const [{ next: rawNext }, user] = await Promise.all([searchParams, getCurrentUser()])
+  const [{ next: rawNext }, user, t] = await Promise.all([
+    searchParams,
+    getCurrentUser(),
+    getTranslations('account.login'),
+  ])
   const next = sanitizeNextPath(rawNext, router.home())
   if (user && !user.is_anonymous) redirect(next)
 
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <p className="eyebrow">Compte</p>
-        <h1 className="text-3xl font-extrabold">Retrouver mes listes</h1>
-        <p className="text-sm text-ink-2">
-          Connecte-toi avec l’email et le mot de passe définis depuis ton autre appareil.
-        </p>
-      </div>
+      <LoginIntro />
 
       <LoginForm next={next !== router.home() ? next : undefined} />
 
       <p className="text-center text-sm text-muted-foreground">
-        Pas de compte ? Il n’en faut pas :{' '}
-        <Link href={router.setup(next)} className="font-medium text-brand hover:underline">
-          choisis juste un pseudo
-        </Link>
-        .
+        {t.rich('noAccount', {
+          link: (chunks) => (
+            <Link href={router.setup(next)} className="font-medium text-brand hover:underline">
+              {chunks}
+            </Link>
+          ),
+        })}
       </p>
     </>
   )
@@ -43,29 +45,36 @@ export async function LoginPanel({ searchParams }: { searchParams: Promise<{ nex
  * restent en attente.
  */
 export function LoginPanelFallback() {
+  const t = useTranslations('account.login')
   return (
     <div aria-busy="true" className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <p className="eyebrow">Compte</p>
-        <h1 className="text-3xl font-extrabold">Retrouver mes listes</h1>
-        <p className="text-sm text-ink-2">
-          Connecte-toi avec l’email et le mot de passe définis depuis ton autre appareil.
-        </p>
-      </div>
+      <LoginIntro />
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <p className="text-sm leading-none font-medium text-ink">Email</p>
+          <p className="text-sm leading-none font-medium text-ink">{t('email')}</p>
           <Skeleton className="h-11 w-full rounded-md" />
         </div>
         <div className="flex flex-col gap-2">
-          <p className="text-sm leading-none font-medium text-ink">Mot de passe</p>
+          <p className="text-sm leading-none font-medium text-ink">{t('password')}</p>
           <Skeleton className="h-11 w-full rounded-md" />
         </div>
         <Skeleton className="h-12 w-full rounded-md" />
       </div>
 
       <Skeleton className="h-5 w-64 max-w-full self-center" />
+    </div>
+  )
+}
+
+/** Titre et accroche : les mêmes au prérendu et une fois la page prête. */
+function LoginIntro() {
+  const t = useTranslations('account.login')
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="eyebrow">{t('eyebrow')}</p>
+      <h1 className="text-3xl font-extrabold">{t('title')}</h1>
+      <p className="text-sm text-ink-2">{t('description')}</p>
     </div>
   )
 }

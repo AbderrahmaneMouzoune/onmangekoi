@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
+import createNextIntlPlugin from 'next-intl/plugin'
+
 /**
  * Identifiant du build, partagé par Next (`generateBuildId`) et le service
  * worker (`/sw.js`), qui en fait le nom de ses caches : chaque déploiement
@@ -38,6 +40,14 @@ const nextConfig = {
    * `data-access/restaurants.ts`).
    */
   cacheComponents: true,
+  experimental: {
+    /**
+     * Les pages vivent sous `app/[locale]` (issue #14) : il n'y a plus de
+     * layout racine commun pour habiller la 404 des adresses inconnues.
+     * `app/global-not-found.tsx` s'en charge, avec son propre `<html>`.
+     */
+    globalNotFound: true,
+  },
   images: {
     // Doit rester synchronisé avec `ALLOWED_IMAGE_HOSTS` (src/lib/images.ts),
     // d'où les URL sont filtrées avant d'atteindre `next/image`.
@@ -50,4 +60,11 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+/**
+ * next-intl (issue #14) : le plugin branche `src/i18n/request.ts` comme
+ * configuration de chaque rendu serveur. Il ne touche ni à `generateBuildId`
+ * ni à Turbopack — il ajoute seulement un alias vers ce fichier.
+ */
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
+
+export default withNextIntl(nextConfig)

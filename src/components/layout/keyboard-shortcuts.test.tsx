@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setShortcutsHelpOpen } from '@/lib/shortcuts-help-store'
+import { renderWithIntl } from '@/test/render'
 
 import { KeyboardShortcuts } from './keyboard-shortcuts'
 
@@ -23,7 +24,7 @@ describe('KeyboardShortcuts', () => {
 
   it('should open the new session page on n then s', async () => {
     const user = userEvent.setup()
-    render(<KeyboardShortcuts />)
+    renderWithIntl(<KeyboardShortcuts />)
 
     await user.keyboard('ns')
     expect(push).toHaveBeenCalledWith('/sessions/new')
@@ -31,7 +32,7 @@ describe('KeyboardShortcuts', () => {
 
   it('should open the new list page on n then l, and lists on g then l', async () => {
     const user = userEvent.setup()
-    render(<KeyboardShortcuts />)
+    renderWithIntl(<KeyboardShortcuts />)
 
     await user.keyboard('nl')
     await user.keyboard('gl')
@@ -40,7 +41,7 @@ describe('KeyboardShortcuts', () => {
 
   it('should let a stray key start a new sequence', async () => {
     const user = userEvent.setup()
-    render(<KeyboardShortcuts />)
+    renderWithIntl(<KeyboardShortcuts />)
 
     // « g » puis « n » : le « n » ne complète pas « g », il ouvre « n… ».
     await user.keyboard('gns')
@@ -50,7 +51,7 @@ describe('KeyboardShortcuts', () => {
 
   it('should ignore keys typed in a field', async () => {
     const user = userEvent.setup()
-    render(
+    renderWithIntl(
       <>
         <input aria-label="Nom" />
         <KeyboardShortcuts />
@@ -65,7 +66,7 @@ describe('KeyboardShortcuts', () => {
 
   it('should ignore a letter held with a modifier', async () => {
     const user = userEvent.setup()
-    render(<KeyboardShortcuts />)
+    renderWithIntl(<KeyboardShortcuts />)
 
     await user.keyboard('{Control>}n{/Control}s')
     expect(push).not.toHaveBeenCalled()
@@ -73,7 +74,7 @@ describe('KeyboardShortcuts', () => {
 
   it('should open the help on ? and close it on Escape', async () => {
     const user = userEvent.setup()
-    render(<KeyboardShortcuts />)
+    renderWithIntl(<KeyboardShortcuts />)
 
     await user.keyboard('?')
     const dialog = await screen.findByRole('dialog', { name: 'Raccourcis clavier' })
@@ -86,7 +87,7 @@ describe('KeyboardShortcuts', () => {
 
   it('should focus the search field on /', async () => {
     const user = userEvent.setup()
-    render(
+    renderWithIntl(
       <>
         <button type="button">Ailleurs</button>
         <input type="search" aria-label="Chercher un restaurant" />

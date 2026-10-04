@@ -20,7 +20,14 @@
  * pouvoir ouvrir. La première l'est toujours ; la seconde tranche elle-même,
  * liste par liste, et renvoie vers l'onboarding quand la liste est privée.
  */
-export const PROTECTED_PREFIXES = ['/sessions', '/join', '/lists', '/groups', '/account'] as const
+export const PROTECTED_PREFIXES = [
+  '/sessions',
+  '/duo',
+  '/join',
+  '/lists',
+  '/groups',
+  '/account',
+] as const
 
 /** Longueur d'un code de partage de liste (Crockford base32). */
 export const SHARE_CODE_LENGTH = 10
@@ -34,7 +41,7 @@ export const INVITE_CODE_LENGTH = 6
 export const RESULTS_CODE_LENGTH = 10
 
 /**
- * Motifs de routes dynamiques, pour `revalidatePath(…, 'page')` quand on ne
+ * Motifs de routes dynamiques, pour `revalidateLocalizedPath(…, 'page')` quand on ne
  * connaît que l'id d'une ressource et pas son code.
  */
 export const ROUTE_PATTERNS = {
@@ -87,6 +94,11 @@ export const router = {
   sessions: (params?: { cursor?: string | null }) =>
     params?.cursor ? `/sessions?cursor=${encodeURIComponent(params.cursor)}` : '/sessions',
   sessionNew: () => '/sessions/new',
+  /**
+   * Mode duo : décider à deux, sans salle d'attente ni code — un lien à
+   * envoyer, et le premier accord décide.
+   */
+  duo: () => '/duo',
   /** Salle de session : `/sessions/7K3M9P`. */
   session: (target: SessionTarget) => `/sessions/${sessionSegment(target)}`,
   sessionResults: (target: SessionTarget) => `/sessions/${sessionSegment(target)}/results`,

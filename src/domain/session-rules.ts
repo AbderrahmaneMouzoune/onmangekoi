@@ -1,11 +1,9 @@
 /**
- * Règles de vote d'une session : quotas de jokers, seuil de clôture et mode
- * ouvert.
+ * Règles de vote d'une session : quotas de jokers, seuil de clôture, mode
+ * ouvert et mode duo.
  * Tout est pur — la base rejoue les mêmes bornes (`public.rules_are_valid`) et
  * reste la source de vérité ; ces fonctions servent l'interface.
  */
-
-import { countLabel } from '@/lib/format'
 
 import type { Json } from '@/data-access/models'
 
@@ -32,6 +30,12 @@ export type SessionRules = {
    * règles d'avant, à l'identique.
    */
   open?: true
+  /**
+   * Mode duo (#61) : deux places, pas de salle d'attente, et le premier
+   * restaurant qui reçoit « ça me va » ou mieux des deux côtés ferme le vote.
+   * Exclusif du mode ouvert ; écrit seulement quand il vaut `true`.
+   */
+  duo?: true
 }
 
 /** Les règles d'avant #16, que reprend toute session qui ne dit rien. */
@@ -45,8 +49,6 @@ export const DEFAULT_SESSION_RULES: SessionRules = {
 export const JOKER_CHOICES = [0, 1, 2, 3] as const
 /** Seuils de clôture proposés au formulaire de création. */
 export const CLOSE_AT_RATIO_CHOICES = [1, 0.8, 0.6, 0.5] as const
-
-const percent = new Intl.NumberFormat('fr', { style: 'percent', maximumFractionDigits: 0 })
 
 function readJoker(value: unknown, fallback: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
@@ -72,6 +74,7 @@ export function parseSessionRules(value: Json | null | undefined): SessionRules 
     vetos: readJoker(raw.vetos, DEFAULT_SESSION_RULES.vetos),
     close_at_ratio: readRatio(raw.close_at_ratio, DEFAULT_SESSION_RULES.close_at_ratio),
     ...(raw.open === true ? { open: true as const } : {}),
+    ...(raw.duo === true ? { duo: true as const } : {}),
   }
 }
 
@@ -80,9 +83,15 @@ export function isOpenSession(rules: SessionRules): boolean {
   return rules.open === true
 }
 
+/** Session à deux : le premier accord décide, sinon le classement habituel. */
+export function isDuoSession(rules: SessionRules): boolean {
+  return rules.duo === true
+}
+
 export function isDefaultRules(rules: SessionRules): boolean {
   return (
     !isOpenSession(rules) &&
+    !isDuoSession(rules) &&
     rules.superlikes === DEFAULT_SESSION_RULES.superlikes &&
     rules.vetos === DEFAULT_SESSION_RULES.vetos &&
     rules.close_at_ratio === DEFAULT_SESSION_RULES.close_at_ratio
@@ -95,6 +104,7 @@ export interface RulesInput {
   vetos?: number | null
   closeAtRatio?: number | null
   open?: boolean | null
+  duo?: boolean | null
 }
 
 /**
@@ -103,15 +113,22 @@ export interface RulesInput {
  *
  * En mode ouvert, le seuil n'a pas d'objet — le nombre de votants n'est pas
  * connu d'avance — et repart à 100 %, comme la base le ferait : un seuil
- * réglé avant de cocher « ouverte » ne doit pas voyager pour rien.
+ * réglé avant de cocher « ouverte » ne doit pas voyager pour rien. Même chose
+ * en duo : à deux, « tout le monde » ne se divise pas.
+ *
+ * Duo et session ouverte s'excluent — la base refuse les deux à la fois. Le
+ * duo l'emporte ici : il ne s'obtient que depuis sa propre page, qui ne
+ * propose pas l'autre mode.
  */
 export function resolveRules(input: RulesInput): SessionRules | null {
-  const open = input.open === true
+  const duo = input.duo === true
+  const open = input.open === true && !duo
   const rules: SessionRules = {
     superlikes: input.superlikes ?? DEFAULT_SESSION_RULES.superlikes,
     vetos: input.vetos ?? DEFAULT_SESSION_RULES.vetos,
-    close_at_ratio: open ? 1 : (input.closeAtRatio ?? DEFAULT_SESSION_RULES.close_at_ratio),
+    close_at_ratio: open || duo ? 1 : (input.closeAtRatio ?? DEFAULT_SESSION_RULES.close_at_ratio),
     ...(open ? { open: true as const } : {}),
+    ...(duo ? { duo: true as const } : {}),
   }
   return isDefaultRules(rules) ? null : rules
 }
@@ -129,30 +146,37 @@ export function requiredFinishers(participantCount: number, ratio: number): numb
   return Math.min(participantCount, Math.max(1, Math.ceil(participantCount * ratio - 1e-9)))
 }
 
-export function formatRatio(ratio: number): string {
-  return percent.format(ratio)
-}
+/**
+ * Une ligne du résumé des règles, sous forme de description : l'interface la
+ * traduit (`session.rules.lines.<kind>`). Le seuil reste un ratio, que le
+ * composant formate dans la langue de la personne.
+ */
+export type RuleLine =
+  | { kind: 'open' | 'duo' | 'closeAtDeadline' | 'closeDuo' | 'closeAll' }
+  | { kind: 'superlikes' | 'vetos'; count: number }
+  | { kind: 'closeAtRatio'; ratio: number }
 
 /**
- * Résumé des règles, une phrase courte par réglage. Une session ouverte
+ * Résumé des règles, une ligne courte par réglage. Une session ouverte
  * s'annonce en premier — c'est ce qui change le plus la façon d'y entrer —
  * et remplace le seuil, qui ne s'y applique pas, par l'échéance.
  */
-export function describeRules(rules: SessionRules): string[] {
-  const jokers = [
-    rules.superlikes > 0
-      ? countLabel(rules.superlikes, 'coup de cœur', 'coups de cœur')
-      : 'Aucun coup de cœur',
-    rules.vetos > 0 ? countLabel(rules.vetos, 'veto') : 'Aucun veto',
+export function describeRules(rules: SessionRules): RuleLine[] {
+  const jokers: RuleLine[] = [
+    { kind: 'superlikes', count: rules.superlikes },
+    { kind: 'vetos', count: rules.vetos },
   ]
   if (isOpenSession(rules)) {
-    return ['Session ouverte : chacun vote à son heure', ...jokers, 'Clôture à l’échéance']
+    return [{ kind: 'open' }, ...jokers, { kind: 'closeAtDeadline' }]
+  }
+  if (isDuoSession(rules)) {
+    return [{ kind: 'duo' }, ...jokers, { kind: 'closeDuo' }]
   }
   return [
     ...jokers,
     rules.close_at_ratio >= 1
-      ? 'Clôture quand tout le monde a voté'
-      : `Clôture dès ${formatRatio(rules.close_at_ratio)} des votants`,
+      ? { kind: 'closeAll' }
+      : { kind: 'closeAtRatio', ratio: rules.close_at_ratio },
   ]
 }
 
@@ -175,25 +199,33 @@ export function jokerQuotas(rules: SessionRules, used: Record<JokerKind, number>
   }
 }
 
-/** Pastille affichée sous un bouton joker : son état en deux mots. */
-export function jokerBadge(quota: JokerQuota): string {
-  if (quota.limit === 0) return 'hors jeu'
-  if (quota.remaining === 0) return 'épuisé'
-  return countLabel(quota.remaining, 'restant')
+/**
+ * Pastille affichée sous un bouton joker : son état en deux mots
+ * (`session.vote.jokerBadge.<kind>`).
+ */
+export type JokerBadge = { kind: 'off' } | { kind: 'spent' } | { kind: 'remaining'; count: number }
+
+export function jokerBadge(quota: JokerQuota): JokerBadge {
+  if (quota.limit === 0) return { kind: 'off' }
+  if (quota.remaining === 0) return { kind: 'spent' }
+  return { kind: 'remaining', count: quota.remaining }
 }
 
 /**
- * Ce que le deck annonce sous les boutons. Les quotas étant réglables, la
- * phrase ne peut plus dire « une seule fois par session ».
+ * Ce que le deck annonce sous les boutons (`session.deck.jokers.<kind>`).
+ * Les quotas étant réglables, la phrase ne peut plus dire « une seule fois
+ * par session » : elle nomme les jokers en jeu, et eux seuls.
  */
-export function jokersSentence(rules: SessionRules): string {
-  const parts: string[] = []
-  if (rules.superlikes > 0) {
-    parts.push(countLabel(rules.superlikes, 'coup de cœur', 'coups de cœur'))
-  }
-  if (rules.vetos > 0) parts.push(countLabel(rules.vetos, 'veto'))
-  if (parts.length === 0) {
-    return 'Pas de joker dans cette session : seuls « bof » et « ça me va » comptent.'
-  }
-  return `Les jokers comptent double : ${parts.join(' et ')} pour toute la session.`
+export type JokersSentence =
+  | { kind: 'none' }
+  | { kind: 'superlikes'; superlikes: number }
+  | { kind: 'vetos'; vetos: number }
+  | { kind: 'both'; superlikes: number; vetos: number }
+
+export function jokersSentence(rules: SessionRules): JokersSentence {
+  const { superlikes, vetos } = rules
+  if (superlikes > 0 && vetos > 0) return { kind: 'both', superlikes, vetos }
+  if (superlikes > 0) return { kind: 'superlikes', superlikes }
+  if (vetos > 0) return { kind: 'vetos', vetos }
+  return { kind: 'none' }
 }

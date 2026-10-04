@@ -6,10 +6,35 @@ import { PROTECTED_PREFIXES } from '@/config/router.config'
  * vivent dans `config/router.config.ts`.
  */
 
+function matchesPrefix(pathname: string, prefixes: readonly string[]): boolean {
+  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+}
+
 export function isProtectedPath(pathname: string): boolean {
-  return PROTECTED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-  )
+  return matchesPrefix(pathname, PROTECTED_PREFIXES)
+}
+
+/**
+ * Routes sur lesquelles le proxy rafraîchit la session Supabase : les routes
+ * protégées, plus celles qui lisent l'utilisateur sans l'exiger — l'onboarding
+ * et la connexion (qui redirigent qui est déjà là), la liste partagée (une
+ * liste publique ouverte par quelqu'un de connecté doit le rester) et le
+ * retour des emails d'authentification.
+ *
+ * Les autres pages (accueil, classement public, nouveautés…) passent aussi
+ * par le proxy, mais seulement pour la langue : pas d'aller-retour vers
+ * Supabase Auth à chaque visite.
+ */
+export const SESSION_REFRESH_PREFIXES = [
+  ...PROTECTED_PREFIXES,
+  '/setup',
+  '/login',
+  '/l',
+  '/auth',
+] as const
+
+export function needsSessionRefresh(pathname: string): boolean {
+  return matchesPrefix(pathname, SESSION_REFRESH_PREFIXES)
 }
 
 /**

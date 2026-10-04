@@ -158,6 +158,24 @@ describe('createSessionUseCase', () => {
     })
   })
 
+  it('should carry the duo mode without any deadline', async () => {
+    const { client, rpc } = fakeClient([])
+
+    await createSessionUseCase(client, {
+      name: 'À deux · déj du mardi',
+      listIds: [],
+      restaurantIds: [R1, R2],
+      groupIds: [],
+      duo: true,
+    })
+
+    expect(rpc).toHaveBeenCalledWith('create_session', {
+      p_name: 'À deux · déj du mardi',
+      p_restaurant_ids: [R1, R2],
+      p_rules: { superlikes: 1, vetos: 1, close_at_ratio: 1, duo: true },
+    })
+  })
+
   it('should say nothing about the rules when they are the usual ones', async () => {
     const { client, rpc } = fakeClient([])
 

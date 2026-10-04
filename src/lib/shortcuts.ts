@@ -10,21 +10,25 @@ import { router } from '@/config/router.config'
 export interface SequenceShortcut {
   /** Touches à enchaîner, telles que `KeyboardEvent.key` les nomme, en minuscules. */
   keys: readonly [string, string]
-  label: string
+  /** Clé du libellé dans `layout.shortcuts.targets` (messages). */
+  id: ShortcutTarget
   href: string
 }
 
+export type ShortcutTarget =
+  'newSession' | 'newList' | 'home' | 'join' | 'lists' | 'groups' | 'account'
+
 export const CREATE_SHORTCUTS: readonly SequenceShortcut[] = [
-  { keys: ['n', 's'], label: 'Nouvelle session', href: router.sessionNew() },
-  { keys: ['n', 'l'], label: 'Nouvelle liste', href: router.listNew() },
+  { keys: ['n', 's'], id: 'newSession', href: router.sessionNew() },
+  { keys: ['n', 'l'], id: 'newList', href: router.listNew() },
 ]
 
 export const GO_SHORTCUTS: readonly SequenceShortcut[] = [
-  { keys: ['g', 'h'], label: 'Accueil', href: router.home() },
-  { keys: ['g', 'j'], label: 'Rejoindre une session', href: router.join() },
-  { keys: ['g', 'l'], label: 'Mes listes', href: router.lists() },
-  { keys: ['g', 'g'], label: 'Mes groupes', href: router.groups() },
-  { keys: ['g', 'a'], label: 'Mon compte', href: router.account() },
+  { keys: ['g', 'h'], id: 'home', href: router.home() },
+  { keys: ['g', 'j'], id: 'join', href: router.join() },
+  { keys: ['g', 'l'], id: 'lists', href: router.lists() },
+  { keys: ['g', 'g'], id: 'groups', href: router.groups() },
+  { keys: ['g', 'a'], id: 'account', href: router.account() },
 ]
 
 export const SEQUENCE_SHORTCUTS: readonly SequenceShortcut[] = [
@@ -43,11 +47,6 @@ export const SEQUENCE_TIMEOUT_MS = 1500
 /** Le raccourci d'une destination, pour l'afficher à côté d'un lien. */
 export function shortcutFor(href: string): SequenceShortcut | undefined {
   return SEQUENCE_SHORTCUTS.find((shortcut) => shortcut.href === href)
-}
-
-/** « g puis l » — la forme parlée d'une séquence, pour un `title` ou une aide. */
-export function describeSequence(shortcut: SequenceShortcut): string {
-  return `${shortcut.keys[0]} puis ${shortcut.keys[1]}`
 }
 
 export type SequenceMatch =

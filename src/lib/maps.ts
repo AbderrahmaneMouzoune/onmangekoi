@@ -8,6 +8,7 @@
 import { z } from 'zod'
 
 import type { Json } from '@/data-access/models'
+import type { Locale } from '@/i18n/config'
 
 const GeoPointSchema = z.object({
   lat: z.number().min(-90).max(90),
@@ -39,16 +40,27 @@ export function distanceMeters(from: GeoPoint, to: GeoPoint): number {
   return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(a))
 }
 
-const kmFormatter = new Intl.NumberFormat('fr', { maximumFractionDigits: 1 })
+/** Un formateur par langue : leur construction coûte, et la liste s'affiche vite. */
+const kmFormatters = new Map<Locale, Intl.NumberFormat>()
+
+function kmFormatter(locale: Locale): Intl.NumberFormat {
+  let formatter = kmFormatters.get(locale)
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
+    kmFormatters.set(locale, formatter)
+  }
+  return formatter
+}
 
 /**
- * « 350 m » ou « 1,2 km » : la précision d'un pas de marche, pas d'un GPS.
- * En dessous du kilomètre, on arrondit à la dizaine de mètres.
+ * « 350 m » ou « 1,2 km » (« 1.2 km » en anglais) : la précision d'un pas de
+ * marche, pas d'un GPS. En dessous du kilomètre, on arrondit à la dizaine de
+ * mètres.
  */
-export function formatDistance(meters: number): string {
+export function formatDistance(meters: number, locale: Locale): string {
   if (!Number.isFinite(meters) || meters < 0) return ''
   if (meters < 1000) return `${Math.max(10, Math.round(meters / 10) * 10)} m`
-  return `${kmFormatter.format(meters / 1000)} km`
+  return `${kmFormatter(locale).format(meters / 1000)} km`
 }
 
 /**
@@ -68,12 +80,13 @@ export function geoPoint(
  */
 export function distanceLabel(
   from: GeoPoint | null | undefined,
-  to: GeoPoint | Json | null | undefined
+  to: GeoPoint | Json | null | undefined,
+  locale: Locale
 ): string | null {
   if (!from) return null
   const point = parseGeoPoint(to as Json)
   if (!point) return null
-  return formatDistance(distanceMeters(from, point))
+  return formatDistance(distanceMeters(from, point), locale)
 }
 
 export interface PlaceLike {

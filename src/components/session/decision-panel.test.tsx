@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { DecisionPanel } from './decision-panel'
 
@@ -25,7 +27,7 @@ const CANDIDATES = [
 ]
 
 function renderPanel(props: Partial<React.ComponentProps<typeof DecisionPanel>> = {}) {
-  return render(
+  return renderWithIntl(
     <DecisionPanel sessionId={SESSION_ID} candidates={CANDIDATES} decidedId={null} {...props} />
   )
 }

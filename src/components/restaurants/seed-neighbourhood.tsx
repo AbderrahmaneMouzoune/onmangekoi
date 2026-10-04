@@ -1,6 +1,7 @@
 'use client'
 
 import { RiMapPinAddLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useState, useTransition } from 'react'
 
 import { seedNeighbourhoodAction } from '@/actions/places'
@@ -9,7 +10,6 @@ import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
 import { NEIGHBOURHOOD_IMPORT_MAX } from '@/domain/schemas/place'
 import { captureEvent } from '@/lib/analytics/client'
-import { countLabel, plural } from '@/lib/format'
 
 import type { Restaurant } from '@/data-access/models'
 import type { Position } from '@/hooks/use-geolocation'
@@ -20,21 +20,6 @@ interface SeedNeighbourhoodProps {
   position: Position
   /** Restos entrés en base : le carnet les adopte sans rien recharger. */
   onSeeded: (restaurants: Restaurant[]) => void
-}
-
-/** Ce que le lot a donné, dit à qui vient de le lancer. */
-function outcomeLabel({ restaurants, failed, remaining }: SeededNeighbourhood): string {
-  const added = restaurants.length
-  const entered = `${countLabel(added, 'resto')} ${plural(added, 'est entré', 'sont entrés')} dans le carnet`
-  const missed =
-    failed > 0
-      ? `, ${failed} ${plural(failed, 'n’a pas pu être enregistré', 'n’ont pas pu être enregistrés')}`
-      : ''
-  const left =
-    remaining > 0
-      ? `Il te reste ${countLabel(remaining, 'amorçage')} aujourd’hui.`
-      : 'C’était ton dernier amorçage du jour.'
-  return `${entered}${missed}. ${left}`
 }
 
 /**
@@ -55,6 +40,16 @@ export function SeedNeighbourhood({ position, onSeeded }: SeedNeighbourhoodProps
   const [outcome, setOutcome] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [exhausted, setExhausted] = useState(false)
+  const t = useTranslations('restaurants.seed')
+
+  /** Ce que le lot a donné, dit à qui vient de le lancer. */
+  function outcomeLabel({ restaurants, failed, remaining }: SeededNeighbourhood): string {
+    return t('outcome', {
+      added: restaurants.length,
+      failed,
+      remaining: Math.max(0, remaining),
+    })
+  }
 
   function seed() {
     setError(null)
@@ -79,10 +74,9 @@ export function SeedNeighbourhood({ position, onSeeded }: SeedNeighbourhoodProps
     <div className="flex flex-col gap-2 rounded-lg bg-surface-2 p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <p className="text-sm font-semibold text-ink">Amorcer mon quartier</p>
+          <p className="text-sm font-semibold text-ink">{t('title')}</p>
           <p className="text-xs text-muted-foreground">
-            Jusqu’à {NEIGHBOURHOOD_IMPORT_MAX} restos autour de toi entrent dans le carnet d’un
-            coup. Tu coches ensuite ceux que tu veux.
+            {t('description', { max: NEIGHBOURHOOD_IMPORT_MAX })}
           </p>
         </div>
         <Button
@@ -93,7 +87,7 @@ export function SeedNeighbourhood({ position, onSeeded }: SeedNeighbourhoodProps
           disabled={isSeeding || exhausted}
         >
           {isSeeding ? <Spinner /> : <RiMapPinAddLine aria-hidden="true" />}
-          Amorcer
+          {t('action')}
         </Button>
       </div>
 

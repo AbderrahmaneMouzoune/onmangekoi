@@ -1,0 +1,34 @@
+{
+  "page": {
+    "eyebrow": "Groupes",
+    "title": "Mes groupes",
+    "description": "L’équipe du déjeuner, prête à réinviter d’un clic à la prochaine session."
+  },
+  "empty": {
+    "title": "Aucun groupe pour l’instant",
+    "description": "À la fin d’une session, « Sauvegarder ce groupe » garde l’équipe du jour. La prochaine fois, tu l’invites d’un clic.",
+    "action": "Lancer une session"
+  },
+  "card": {
+    "members": "{count, plural, one {# membre} other {# membres}}",
+    "owner": "Propriétaire",
+    "member": "Membre",
+    "you": "(toi)",
+    "nameLabel": "Nom du groupe",
+    "rename": "Renommer",
+    "renamed": "Groupe renommé.",
+    "close": "Fermer",
+    "delete": "Supprimer le groupe",
+    "confirmDelete": "Confirmer — le groupe disparaît pour tout le monde",
+    "leave": "Quitter le groupe",
+    "confirmLeave": "Confirmer — tu ne seras plus invité"
+  },
+  "save": {
+    "open": "Sauvegarder ce groupe",
+    "nameLabel": "Nom du groupe",
+    "placeholder": "L’équipe du déjeuner",
+    "submit": "Sauvegarder",
+    "hint": "{count, plural, one {# participant} other {# participants}} de cette session. Tu pourras les réinviter d’un clic à la prochaine.",
+    "saved": "« {name} » est sauvegardé."
+  }
+}

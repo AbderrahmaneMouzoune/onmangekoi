@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
+import { getLocale } from 'next-intl/server'
 
 import { getCurrentUser } from '@/data-access/auth'
 import { isPlacesSearchEnabled, searchNearbyPlaces, searchPlaces } from '@/data-access/places'
-import { AppError, GENERIC_ERROR } from '@/domain/errors'
+import { AppError } from '@/domain/errors'
 import { hasPosition, PLACES_QUERY_MIN, SearchPlacesSchema } from '@/domain/schemas/place'
+import { errorMessage, translateError, translateIssue } from '@/i18n/server'
 
 import type { PlacesPage } from '@/domain/places'
 
@@ -17,37 +19,43 @@ import type { PlacesPage } from '@/domain/places'
  * réponses sont mises en cache 24 h dans `data-access/places.ts`.
  *
  * Réservé aux personnes connectées : une recherche coûte un appel facturé.
+ *
+ * Google répond dans la langue de l'interface. La route est hors du segment
+ * `[locale]` et hors du proxy : la langue vient du cookie `NEXT_LOCALE`, puis
+ * d'`Accept-Language`, que le `fetch` du navigateur envoie.
  */
 export async function POST(request: Request): Promise<NextResponse> {
   if (!isPlacesSearchEnabled()) {
     return NextResponse.json(
-      { error: 'La recherche Google n’est pas configurée sur ce déploiement.' },
+      { error: await errorMessage('places_not_configured') },
       { status: 503 }
     )
   }
 
   const user = await getCurrentUser()
   if (!user) {
-    return NextResponse.json({ error: 'Tu dois d’abord choisir un pseudo.' }, { status: 401 })
+    return NextResponse.json({ error: await errorMessage('not_authenticated') }, { status: 401 })
   }
 
   let body: unknown
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Requête invalide' }, { status: 400 })
+    return NextResponse.json({ error: await errorMessage('invalid_request') }, { status: 400 })
   }
 
   const parsed = SearchPlacesSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? 'Recherche invalide' },
+      {
+        error: await translateIssue(parsed.error.issues[0], await errorMessage('invalid_search')),
+      },
       { status: 400 }
     )
   }
 
   try {
-    const input = parsed.data
+    const input = { ...parsed.data, locale: await getLocale() }
     const page: PlacesPage =
       input.query.length >= PLACES_QUERY_MIN
         ? await searchPlaces(input)
@@ -56,10 +64,12 @@ export async function POST(request: Request): Promise<NextResponse> {
           : { places: [], nextPageToken: null }
     return NextResponse.json({ results: page.places, nextPageToken: page.nextPageToken })
   } catch (error) {
+    // Hors du segment `[locale]` : la langue vient du cookie ou
+    // d'`Accept-Language`, que le `fetch` du navigateur envoie.
     if (error instanceof AppError) {
-      return NextResponse.json({ error: error.message }, { status: 502 })
+      return NextResponse.json({ error: await translateError(error) }, { status: 502 })
     }
     console.error('places: recherche impossible', error)
-    return NextResponse.json({ error: GENERIC_ERROR }, { status: 500 })
+    return NextResponse.json({ error: await translateError(error) }, { status: 500 })
   }
 }

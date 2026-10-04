@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { takeSessionEntry } from '@/lib/analytics/handoff'
+import { renderWithIntl } from '@/test/render'
 
 import { StartSessionButton } from './start-session-button'
 
@@ -23,7 +24,9 @@ describe('StartSessionButton', () => {
   })
 
   it('should send someone without a pseudo through onboarding, and back to the list', async () => {
-    render(<StartSessionButton identifier={CODE} setupHref="/setup?next=%2Fl%2FH4V2Q8ZX0M" />)
+    renderWithIntl(
+      <StartSessionButton identifier={CODE} setupHref="/setup?next=%2Fl%2FH4V2Q8ZX0M" />
+    )
 
     const link = screen.getByRole('link', { name: /lancer une session/i })
     expect(link).toHaveAttribute('href', '/setup?next=%2Fl%2FH4V2Q8ZX0M')
@@ -31,7 +34,7 @@ describe('StartSessionButton', () => {
   })
 
   it('should open the session straight away for someone who has one', async () => {
-    render(<StartSessionButton identifier={CODE} />)
+    renderWithIntl(<StartSessionButton identifier={CODE} />)
 
     await userEvent.click(screen.getByRole('button', { name: /lancer une session/i }))
 
@@ -43,7 +46,7 @@ describe('StartSessionButton', () => {
 
   it('should say why nothing happened when the list leads nowhere', async () => {
     startSessionFromListAction.mockResolvedValue({ ok: false, error: 'Cette liste est vide.' })
-    render(<StartSessionButton identifier={CODE} />)
+    renderWithIntl(<StartSessionButton identifier={CODE} />)
 
     await userEvent.click(screen.getByRole('button', { name: /lancer une session/i }))
 
