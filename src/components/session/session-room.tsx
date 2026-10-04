@@ -2,16 +2,19 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { DuoPanel } from '@/components/session/duo-panel'
 import { FinishedPanel } from '@/components/session/finished-panel'
+import { OpenSessionPanel } from '@/components/session/open-session-panel'
 import { SessionCountdown } from '@/components/session/session-countdown'
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
 import { VoteDeck } from '@/components/session/vote-deck'
 import { WaitingRoom } from '@/components/session/waiting-room'
 import { router } from '@/config/router.config'
 import { closeAttribution } from '@/domain/session-deadline'
-import { parseSessionRules } from '@/domain/session-rules'
+import { isDuoSession, isOpenSession, parseSessionRules } from '@/domain/session-rules'
 import { useSessionRoom } from '@/hooks/use-session-room'
 import { captureEvent } from '@/lib/analytics/client'
 import { markOnce, takeSessionEntry } from '@/lib/analytics/handoff'
@@ -22,9 +25,9 @@ import type {
   ParticipantWithProfile,
   Session,
   SessionRestaurantWithRestaurant,
-  SessionStatus,
 } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { ConstraintConflictCounts, FoodConstraints } from '@/domain/food-constraints'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { JokerKind } from '@/domain/session-rules'
 
@@ -41,26 +44,32 @@ interface SessionRoomProps {
   recentWinners: RecentWinnerDates
   meId: string
   inviteUrl: string
-  /** QR code SVG du lien d'invitation, rendu côté serveur (salle d'attente) */
+  /** QR code SVG du lien d'invitation, rendu côté serveur (salle d'attente, session ouverte) */
   qrSvg: string | null
   /** Classement du premier tour, quand cette session en est le second */
   firstRoundUrl: string | null
   /** Invités pré-ajoutés en attente — vide pour qui n'est pas le host. */
   invitations: InvitationWithProfile[]
-  /** Groupes du host, à inviter depuis la salle d'attente. */
+  /** Groupes du host, à inviter depuis la salle d'attente ou pendant un vote ouvert. */
   groups: GroupWithMembers[]
-}
-
-/** Ce qu'un lecteur d'écran entend quand la session change d'état sous ses yeux. */
-const STATUS_ANNOUNCEMENTS: Record<SessionStatus, string> = {
-  waiting: 'Retour en salle d’attente.',
-  voting: 'Le vote est lancé : à toi de voter.',
-  closed: 'Le vote est terminé, ouverture du classement.',
+  /**
+   * Contraintes alimentaires (#60) : par resto, combien de participants ne
+   * peuvent pas y manger. Un compte, jamais qui.
+   */
+  constraintConflicts: ConstraintConflictCounts
+  /** Ses propres contraintes, pour le sélecteur de la salle d'attente. */
+  myConstraints: FoodConstraints | null
 }
 
 /**
  * Orchestre l'écran de session selon son statut, en temps réel :
  *  waiting → salle d'attente · voting → deck (ou attente des autres) · closed → résultats.
+ *
+ * Une session ouverte n'a pas de salle d'attente : elle naît en `voting`, et
+ * ce que la salle offrait — les règles, l'invitation — se replie au-dessus du
+ * deck, pour qui arrive pendant que le vote tourne. Un duo (#61) non plus : le
+ * lien à envoyer tient au-dessus du deck tant que l'autre n'est pas là, et le
+ * bulletin qui scelle l'accord mène droit au résultat.
  *
  * Le changement d'état arrive par Realtime, sans geste de la personne : il est
  * annoncé aux lecteurs d'écran et le focus est posé sur la nouvelle étape,
@@ -80,20 +89,30 @@ export function SessionRoom({
   firstRoundUrl,
   invitations,
   groups,
+  constraintConflicts,
+  myConstraints,
 }: SessionRoomProps) {
   const navigation = useRouter()
-  const { session, participants, restaurants, connection, refresh, setSession } = useSessionRoom({
-    sessionId: initialSession.id,
-    initialSession,
-    initialParticipants,
-    initialRestaurants,
-  })
+  const t = useTranslations('session.room')
+  const { session, participants, restaurants, conflicts, connection, refresh, setSession } =
+    useSessionRoom({
+      sessionId: initialSession.id,
+      initialSession,
+      initialParticipants,
+      initialRestaurants,
+      initialConflicts: constraintConflicts,
+    })
 
   const me = participants.find((p) => p.profile_id === meId)
   const isHost = session.host_id === meId
   // Les règles sont figées au lancement : les relire une fois suffit, et le
   // deck s'appuie sur leur identité pour ne pas se réabonner au clavier.
   const rules = useMemo(() => parseSessionRules(session.rules), [session.rules])
+  const open = isOpenSession(rules)
+  const duo = isDuoSession(rules)
+  // Ce navigateur vient de poser le « ça me va » qui scelle l'accord : le
+  // résultat arrive, rien d'autre à montrer d'ici là.
+  const [agreed, setAgreed] = useState(false)
 
   const [finishedLocally, setFinishedLocally] = useState(
     myVotedIds.length >= initialRestaurants.length && initialRestaurants.length > 0
@@ -115,6 +134,10 @@ export function SessionRoom({
         superlikes: rules.superlikes,
         vetos: rules.vetos,
         close_at_ratio: rules.close_at_ratio,
+        open: isOpenSession(rules),
+        duo: isDuoSession(rules),
+        suggested_count: entry.suggestedCount ?? 0,
+        suggested_kept: entry.suggestedKept ?? 0,
       })
       return
     }
@@ -133,14 +156,19 @@ export function SessionRoom({
 
     // Personne n'annonce la clôture : elle vient de la base dès que tout le
     // monde a fini ou que l'échéance tombe, sinon c'est le host qui l'a forcée.
+    // En session ouverte, « tout le monde a fini » ne clôt rien : seule
+    // l'échéance ou le host ont pu le faire.
     const everyoneFinished =
-      participants.length > 0 && participants.every((p) => p.has_finished_voting)
+      !open && participants.length > 0 && participants.every((p) => p.has_finished_voting)
     captureEvent('session_closed', {
       session_id: session.id,
       reason: closeAttribution({
         everyoneFinished,
         closesAt: session.closes_at,
         closedAt: session.closed_at,
+        // Un duo clos avec sa décision l'a été par l'accord : la base pose
+        // les deux dans la même écriture.
+        agreed: duo && session.decided_restaurant_id !== null,
       }),
       participant_count: participants.length,
       restaurant_count: restaurants.length,
@@ -152,6 +180,9 @@ export function SessionRoom({
     session.closed_at,
     participants,
     restaurants.length,
+    open,
+    duo,
+    session.decided_restaurant_id,
   ])
 
   useEffect(() => {
@@ -161,19 +192,31 @@ export function SessionRoom({
   }, [session, navigation])
 
   // Annonce et focus à chaque changement d'état — pas au premier rendu, où la
-  // page elle-même dit déjà tout.
+  // page elle-même dit déjà tout. C'est ce qu'un lecteur d'écran entend quand
+  // la session change d'état sous ses yeux.
   const stageRef = useRef<HTMLDivElement>(null)
   const [announcement, setAnnouncement] = useState('')
   const previousStatus = useRef(session.status)
   useEffect(() => {
     if (previousStatus.current === session.status) return
     previousStatus.current = session.status
-    setAnnouncement(STATUS_ANNOUNCEMENTS[session.status])
+    setAnnouncement(
+      duo && session.status === 'closed' && session.decided_restaurant_id !== null
+        ? t('announcements.agreed')
+        : t(`announcements.${session.status}`)
+    )
     stageRef.current?.focus({ preventScroll: true })
-  }, [session.status])
+  }, [session.status, session.decided_restaurant_id, duo, t])
 
   const handleFinished = useCallback(() => {
     setFinishedLocally(true)
+    void refresh()
+  }, [refresh])
+
+  // L'événement Realtime de la clôture arrive aussi ; relire tout de suite
+  // évite d'attendre le canal pour basculer sur le résultat.
+  const handleAgreed = useCallback(() => {
+    setAgreed(true)
     void refresh()
   }, [refresh])
 
@@ -181,18 +224,22 @@ export function SessionRoom({
     <div className="flex flex-col gap-6 lg:gap-8">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="eyebrow">{firstRoundUrl ? 'Second tour' : 'Session'}</p>
+          <p className="eyebrow">
+            {firstRoundUrl ? t('eyebrow.runoff') : duo ? t('eyebrow.duo') : t('eyebrow.session')}
+          </p>
           <h1 className="truncate text-2xl font-bold sm:text-3xl lg:text-4xl">{session.name}</h1>
           {firstRoundUrl && (
             <p className="text-sm text-muted-foreground">
-              On départage l’égalité du{' '}
-              <Link
-                href={firstRoundUrl}
-                className="underline underline-offset-2 hover:text-foreground"
-              >
-                premier tour
-              </Link>
-              .
+              {t.rich('firstRound', {
+                link: (chunks) => (
+                  <Link
+                    href={firstRoundUrl}
+                    className="underline underline-offset-2 hover:text-foreground"
+                  >
+                    {chunks}
+                  </Link>
+                ),
+              })}
             </p>
           )}
         </div>
@@ -227,12 +274,41 @@ export function SessionRoom({
             connection={connection}
             invitations={invitations}
             groups={groups}
+            conflicts={conflicts}
+            myConstraints={myConstraints}
             onLaunched={setSession}
             onRestaurantsChanged={refresh}
           />
         )}
 
-        {session.status === 'voting' && !meFinished && (
+        {session.status === 'voting' && open && (
+          <OpenSessionPanel
+            session={session}
+            rules={rules}
+            participants={participants}
+            isHost={isHost}
+            inviteUrl={inviteUrl}
+            qrSvg={qrSvg}
+            invitations={invitations}
+            groups={groups}
+          />
+        )}
+
+        {session.status === 'voting' && duo && !agreed && (
+          <DuoPanel
+            sessionId={session.id}
+            sessionName={session.name}
+            participants={participants}
+            meId={meId}
+            inviteUrl={inviteUrl}
+          />
+        )}
+
+        {session.status === 'voting' && agreed && (
+          <p className="text-center text-sm text-muted-foreground">{t('agreedOpening')}</p>
+        )}
+
+        {session.status === 'voting' && !meFinished && !agreed && (
           <VoteDeck
             sessionId={session.id}
             restaurants={restaurants}
@@ -240,11 +316,13 @@ export function SessionRoom({
             rules={rules}
             initialJokersUsed={myJokersUsed}
             lastWins={recentWinners}
+            conflicts={conflicts}
             onFinished={handleFinished}
+            onAgreed={duo ? handleAgreed : undefined}
           />
         )}
 
-        {session.status === 'voting' && meFinished && (
+        {session.status === 'voting' && meFinished && !agreed && (
           <FinishedPanel
             session={session}
             participants={participants}
@@ -256,7 +334,9 @@ export function SessionRoom({
         )}
 
         {session.status === 'closed' && (
-          <p className="text-center text-sm text-muted-foreground">Ouverture du classement…</p>
+          <p className="text-center text-sm text-muted-foreground">
+            {duo && session.decided_restaurant_id !== null ? t('agreedOpening') : t('opening')}
+          </p>
         )}
       </div>
     </div>

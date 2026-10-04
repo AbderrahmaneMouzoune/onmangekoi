@@ -64,6 +64,23 @@ export type PublicListEntry = Functions['public_lists']['Returns'][number]
 export type RecentWinner = Functions['recent_winners']['Returns'][number]
 
 /**
+ * Une ligne de la sélection proposée à la création (`suggest_restaurants`,
+ * issue #59). La base n'écrit que ces valeurs-là dans `reason` et `source` ;
+ * le générateur, lui, n'y voit que du texte.
+ *  - `recent` / `history` : vu récemment dans une session, sans avoir gagné ;
+ *  - `never_proposed` / `mine` : jamais proposé, pris dans les listes ou les
+ *    ajouts de la personne ;
+ *  - `never_proposed` / `catalog` : jamais proposé, le dernier arrivé au carnet.
+ */
+export type SuggestedRestaurantRow = Omit<
+  Functions['suggest_restaurants']['Returns'][number],
+  'reason' | 'source'
+> & {
+  reason: 'recent' | 'never_proposed'
+  source: 'history' | 'mine' | 'catalog'
+}
+
+/**
  * Invitation en attente, vue par l'invité. Le pseudo du host est nul quand
  * il a supprimé son compte ; le nom du groupe l'est quand le groupe a été
  * supprimé depuis l'invitation — la session, elle, reste rejoignable.
@@ -118,14 +135,19 @@ export type PublicResultRow = Omit<
 
 /**
  * Le classement tel qu'il sort du lien public : le nom de la session, le
- * nombre de participants, et le podium. Aucun pseudo, aucun détail de vote —
- * la RPC ne les renvoie pas, et c'est le seul endroit où ça se joue.
+ * nombre de participants, le podium, et le restaurant où le groupe va quand
+ * le host l'a confirmé (`decision`, issue #55) — qui peut être hors podium.
+ * Aucun pseudo, aucun détail de vote — la RPC ne les renvoie pas, et c'est le
+ * seul endroit où ça se joue.
  */
 export interface PublicResults {
   sessionName: string
   closedAt: string | null
   participantCount: number
+  /** Les rangs 1 à 3 du vote. */
   podium: PublicResultRow[]
+  /** Le restaurant retenu par le host, ou `null` tant qu'il n'a rien confirmé. */
+  decision: PublicResultRow | null
 }
 
 /** Participant avec le profil joint (pseudo) */
@@ -150,12 +172,13 @@ export type ListWithRestaurants = List & {
 export type SessionSummary = Session & { participant_count: number }
 
 /**
- * Ligne d'historique (`my_sessions`). Trois colonnes n'existent qu'une fois la
- * session close : sa date de clôture et le gagnant que le classement a
- * désigné. Comme pour `session_results`, le générateur ne peut pas le déduire
- * d'un `returns table (...)`.
+ * Ligne d'historique (`my_sessions`). Quatre colonnes n'existent qu'une fois
+ * la session close : sa date de clôture et le restaurant qu'elle a désigné —
+ * celui que le host a confirmé (`winner_decided`, issue #55), à défaut celui
+ * que le classement place en tête. Comme pour `session_results`, le
+ * générateur ne peut pas le déduire d'un `returns table (...)`.
  */
-type NullableHistoryColumns = 'closed_at' | 'winner_name' | 'winner_score'
+type NullableHistoryColumns = 'closed_at' | 'winner_name' | 'winner_score' | 'winner_decided'
 
 export type SessionHistoryEntry = Omit<
   Functions['my_sessions']['Returns'][number],
@@ -164,6 +187,7 @@ export type SessionHistoryEntry = Omit<
   closed_at: string | null
   winner_name: string | null
   winner_score: number | null
+  winner_decided: boolean | null
 }
 
 /**

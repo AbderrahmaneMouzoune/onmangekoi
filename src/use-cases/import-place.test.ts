@@ -39,11 +39,11 @@ describe('importPlaceUseCase', () => {
     getPlaceDetails.mockResolvedValue(PLACE)
     upsertRestaurantFromPlace.mockResolvedValue({ id: 'uuid', name: PLACE.name })
 
-    await expect(importPlaceUseCase(CLIENT, 'ChIJsushi')).resolves.toEqual({
+    await expect(importPlaceUseCase(CLIENT, 'ChIJsushi', 'fr')).resolves.toEqual({
       id: 'uuid',
       name: PLACE.name,
     })
-    expect(getPlaceDetails).toHaveBeenCalledWith('ChIJsushi')
+    expect(getPlaceDetails).toHaveBeenCalledWith('ChIJsushi', 'fr')
     expect(upsertRestaurantFromPlace).toHaveBeenCalledWith(CLIENT, PLACE)
   })
 
@@ -51,7 +51,7 @@ describe('importPlaceUseCase', () => {
     getPlaceDetails.mockResolvedValue(null)
     upsertRestaurantFromPlace.mockClear()
 
-    await expect(importPlaceUseCase(CLIENT, 'ChIJgone')).rejects.toBeInstanceOf(AppError)
+    await expect(importPlaceUseCase(CLIENT, 'ChIJgone', 'fr')).rejects.toBeInstanceOf(AppError)
     expect(upsertRestaurantFromPlace).not.toHaveBeenCalled()
   })
 })

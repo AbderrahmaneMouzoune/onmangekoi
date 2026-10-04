@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { act, render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { DEFAULT_SESSION_RULES } from '@/domain/session-rules'
+import { renderWithIntl } from '@/test/render'
 
 import { SessionCountdown } from './session-countdown'
 
@@ -34,6 +35,8 @@ function session(overrides: Partial<Session> = {}): Session {
     parent_session_id: null,
     tiebreak_method: null,
     tiebreak_winner_id: null,
+    decided_restaurant_id: null,
+    decided_at: null,
     rules: DEFAULT_SESSION_RULES,
     results_code: 'H4V2Q8ZX0M',
     results_public: false,
@@ -55,7 +58,7 @@ function clockTo(iso: string) {
 function renderCountdown(props: Partial<Parameters<typeof SessionCountdown>[0]> = {}) {
   const onExpired = vi.fn()
   const onExtended = vi.fn()
-  render(
+  renderWithIntl(
     <SessionCountdown
       session={session()}
       isHost={false}
@@ -84,7 +87,7 @@ describe('SessionCountdown', () => {
   })
 
   it('should render nothing for a session without a deadline', () => {
-    const { container } = render(
+    const { container } = renderWithIntl(
       <SessionCountdown
         session={session({ closes_at: null })}
         isHost

@@ -48,14 +48,19 @@ export async function getPublicResults(code: string): Promise<PublicResults | nu
   const [first] = data
   if (!first) return null
 
+  // Les colonnes de session se répètent sur chaque ligne du podium : on ne
+  // les recopie pas dans les lignes.
+  const rows = data.map(
+    ({ session_name: _name, closed_at: _closed, participant_count: _count, ...row }) => row
+  )
+
   return {
     sessionName: first.session_name,
     closedAt: first.closed_at,
     participantCount: first.participant_count,
-    // Les colonnes de session se répètent sur chaque ligne du podium : on ne
-    // les recopie pas dans les lignes.
-    podium: data.map(
-      ({ session_name: _name, closed_at: _closed, participant_count: _count, ...row }) => row
-    ),
+    // La RPC ajoute au podium le restaurant décidé quand il n'y figure pas :
+    // on le sépare, pour que `podium` reste les trois premiers du vote.
+    podium: rows.filter((row) => row.rank <= 3),
+    decision: rows.find((row) => row.decided) ?? null,
   }
 }

@@ -1,0 +1,39 @@
+{
+  "home": {
+    "eyebrow": "Group vote",
+    "title": "Where are we eating?",
+    "subtitle": "The group votes, the ranking settles it. No account.",
+    "footer": "2 minutes, promise"
+  },
+  "invite": {
+    "alt": "Invitation to vote on onmangekoi",
+    "eyebrow": "{host} invites you",
+    "duo": "{count, plural, one {# restaurant} other {# restaurants}} to swipe, just the two of you. The first shared “works for me” settles it.",
+    "open": "{count, plural, one {# restaurant} other {# restaurants}} to choose from. Vote whenever you like, before it closes.",
+    "default": "{count, plural, one {# restaurant} other {# restaurants}} to choose from. Vote in two minutes.",
+    "footer": "No account needed",
+    "fallbackEyebrow": "Invitation",
+    "fallbackTitle": "Where are we eating?",
+    "fallbackSubtitle": "Join the session and vote on the restaurants."
+  },
+  "results": {
+    "alt": "The ranking of an onmangekoi vote",
+    "decided": "It’s decided · we’re eating at",
+    "winner": "We’re eating at",
+    "subtitle": "Score {score} · {count, plural, one {# participant} other {# participants}}",
+    "fallbackEyebrow": "Ranking",
+    "fallbackTitle": "Where are we eating?",
+    "fallbackSubtitle": "The group votes, the ranking settles it."
+  },
+  "list": {
+    "alt": "A restaurant list shared on onmangekoi",
+    "eyebrow": "The good spots",
+    "subtitle": "{count, plural, one {# restaurant} other {# restaurants}}",
+    "subtitleWithCuisines": "{count, plural, one {# restaurant} other {# restaurants}} · {cuisines}",
+    "top": "Most often picked: {restaurant}",
+    "footer": "No account needed",
+    "fallbackEyebrow": "Shared list",
+    "fallbackTitle": "Where are we eating?",
+    "fallbackSubtitle": "A list of restaurants to settle in two minutes."
+  }
+}

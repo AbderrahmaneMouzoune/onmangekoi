@@ -1,0 +1,56 @@
+{
+  "tagline": "Decide where to eat together, without the debate.",
+  "description": "Create a session, share a link, everyone votes on the restaurants and the ranking settles it. No account, in two minutes.",
+  "ogDescription": "The group votes, the ranking settles it. No account, in two minutes.",
+  "titles": {
+    "setup": "Pick a nickname",
+    "login": "Sign in",
+    "offline": "Offline",
+    "sessions": "My sessions",
+    "newSession": "New session",
+    "session": "Session",
+    "results": "Ranking",
+    "resultsOf": "Ranking · {name}",
+    "duo": "For two",
+    "join": "Join a session",
+    "invitation": "Invitation",
+    "lists": "My lists",
+    "newList": "New list",
+    "list": "List",
+    "sharedList": "Shared list",
+    "groups": "My groups",
+    "account": "My account",
+    "privacy": "Privacy",
+    "changelog": "What’s new"
+  },
+  "duo": {
+    "description": "Decide where to eat, just the two of you: one link to send, the same restaurants to swipe, and the first shared “works for me” settles it."
+  },
+  "invite": {
+    "duoTitle": "{host} wants to decide with you",
+    "duoDescription": "{host} is inviting you to pick where to eat, just the two of you: the first shared “works for me” settles it. No account needed.",
+    "duoOgDescription": "You both swipe the same restaurants: the first shared “works for me” settles it.",
+    "title": "Join “{name}”",
+    "openDescription": "{host} is inviting you to pick where to eat. Vote whenever you like before it closes, no account needed.",
+    "description": "{host} is inviting you to pick where to eat. Vote in two minutes, no account needed.",
+    "ogTitle": "{host} invites you: {name}",
+    "openOgDescription": "Open session: everyone votes when it suits them, the ranking lands when it closes.",
+    "ogDescription": "Vote on the restaurants, the ranking settles it."
+  },
+  "publicResults": {
+    "title": "We’re eating at {restaurant}",
+    "decided": "{session}: it’s decided, we’re eating at {restaurant}.",
+    "voted": "{session}: {count, plural, one {# participant voted} other {# participants voted}}, {restaurant} wins."
+  },
+  "privacy": {
+    "description": "The data {site} keeps, why, for how long, and how to get it back or delete it."
+  },
+  "changelog": {
+    "description": "What changed in {site}, release after release: what you can do now, what got better, what got fixed."
+  },
+  "sharedList": {
+    "publicDescription": "{count, plural, one {# restaurant} other {# restaurants}} to choose from. Start a vote from this list, no account needed.",
+    "publicDescriptionWithCuisines": "{count, plural, one {# restaurant} other {# restaurants}} to choose from — {cuisines}. Start a vote from this list, no account needed.",
+    "privateDescription": "{count, plural, one {# restaurant} other {# restaurants}} shared by {owner} on onmangekoi."
+  }
+}

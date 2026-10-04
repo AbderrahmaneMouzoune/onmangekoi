@@ -1,0 +1,84 @@
+{
+  "page": {
+    "eyebrow": "Favourites",
+    "title": "My lists",
+    "description": "Restaurants ready to drop into a session.",
+    "new": "New"
+  },
+  "newPage": {
+    "title": "New list",
+    "description": "Name it, fill it: you’ll bring it back out in your sessions."
+  },
+  "overview": {
+    "meta": "{count, plural, one {# restaurant} other {# restaurants}} · updated {updated}",
+    "collaborative": "Collaborative",
+    "empty": {
+      "title": "No lists yet",
+      "description": "Group the office spots, the neighbourhood ones, the Friday-night ones… and import them in one click.",
+      "action": "Create my first list"
+    }
+  },
+  "identity": {
+    "eyebrow": "Favourites list",
+    "description": "A stash of restaurants to bring out in your sessions. No voting happens here."
+  },
+  "form": {
+    "name": "List name",
+    "namePlaceholder": "Office spots",
+    "restaurants": "The restaurants on this list",
+    "restaurantsHint": "You can add or remove some later.",
+    "submitEmpty": "Save the empty list",
+    "submit": "Save the list · {count, plural, one {# restaurant} other {# restaurants}}"
+  },
+  "editor": {
+    "name": "Name",
+    "rename": "Rename",
+    "renamed": "List renamed.",
+    "share": {
+      "title": "Share",
+      "code": "Code",
+      "copyLink": "Copy the link",
+      "audience": {
+        "public": "Anyone can see the list.",
+        "link": "Anyone with the link can see the list.",
+        "publicCollaborative": "Anyone can see the list and add restaurants to it.",
+        "linkCollaborative": "Anyone with the link can see the list and add restaurants to it."
+      },
+      "collaborative": "Collaborative",
+      "readOnly": "Read-only",
+      "public": "Public",
+      "private": "Private",
+      "publicNote": "This list has its own public page: its name, its places and its cuisines — never your nickname. It can be found on the web.",
+      "privateNote": "Made public, the list gets a proper page, a preview when it’s shared, and can be found on the web. Your nickname never appears on it."
+    },
+    "delete": "Delete the list",
+    "confirmDelete": "Confirm deletion",
+    "count": "{count, plural, one {# restaurant} other {# restaurants}}",
+    "add": "Add",
+    "addSelected": "{count, plural, =0 {Add} other {Add #}}",
+    "empty": "Empty list. Add some restaurants so you can import it into a session.",
+    "remove": "Remove {name}"
+  },
+  "rows": {
+    "empty": "This list is still empty."
+  },
+  "public": {
+    "eyebrow": "Public list",
+    "description": "{count, plural, one {# restaurant} other {# restaurants}} to choose from.",
+    "empty": "This list doesn’t have any places yet.",
+    "pitch": "onmangekoi settles where a group eats in two minutes, no account needed.",
+    "top": "Most often picked: <strong>{restaurant}</strong>",
+    "topWithWins": "Most often picked: <strong>{restaurant}</strong> — {count, plural, one {once} other {# times}}"
+  },
+  "shared": {
+    "ownerEyebrow": "{owner}’s list",
+    "count": "{count, plural, one {# restaurant} other {# restaurants}}",
+    "public": "Public",
+    "collaborative": "Collaborative",
+    "yours": "It’s your list — edit it",
+    "addOne": "Add a restaurant to this list",
+    "add": "Add",
+    "save": "Save to my lists"
+  },
+  "start": "Start a session from this list"
+}

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { VoteCard } from './vote-card'
 
@@ -42,8 +44,18 @@ describe('VoteCard', () => {
     vi.useRealTimers()
   })
 
+  it('should say how many participants cannot eat there, never who', () => {
+    renderWithIntl(<VoteCard restaurant={restaurant()} index={1} total={3} blockedCount={1} />)
+    expect(screen.getByText('1 participant ne peut pas y manger')).toBeInTheDocument()
+  })
+
+  it('should stay silent when nobody is blocked', () => {
+    renderWithIntl(<VoteCard restaurant={restaurant()} index={1} total={3} blockedCount={0} />)
+    expect(screen.queryByText(/y manger/)).not.toBeInTheDocument()
+  })
+
   it('should show the address when it is known', () => {
-    render(
+    renderWithIntl(
       <VoteCard
         restaurant={restaurant({ address: '12 rue de la Paix', city: 'Paris' })}
         index={1}
@@ -56,7 +68,7 @@ describe('VoteCard', () => {
   it('should show the distance when the visitor gave their position', () => {
     /** Opéra Garnier → Notre-Dame : environ 2,4 km */
     const notreDame = restaurant({ location: { lat: 48.853, lng: 2.3499 } })
-    render(
+    renderWithIntl(
       <VoteCard
         restaurant={notreDame}
         index={1}
@@ -68,7 +80,7 @@ describe('VoteCard', () => {
   })
 
   it('should say nothing about distance without a position or coordinates', () => {
-    const { rerender } = render(<VoteCard restaurant={restaurant()} index={1} total={3} />)
+    const { rerender } = renderWithIntl(<VoteCard restaurant={restaurant()} index={1} total={3} />)
     expect(screen.queryByText(/km/)).not.toBeInTheDocument()
 
     rerender(
@@ -83,29 +95,33 @@ describe('VoteCard', () => {
   })
 
   it('should badge the budget when it is known', () => {
-    render(<VoteCard restaurant={restaurant({ price_level: 3 })} index={1} total={3} />)
+    renderWithIntl(<VoteCard restaurant={restaurant({ price_level: 3 })} index={1} total={3} />)
     expect(screen.getByLabelText('Budget €€€')).toHaveTextContent('€€€')
   })
 
   it('should badge a restaurant open right now', () => {
-    render(<VoteCard restaurant={restaurant({ opening_hours: LUNCH })} index={1} total={3} />)
+    renderWithIntl(
+      <VoteCard restaurant={restaurant({ opening_hours: LUNCH })} index={1} total={3} />
+    )
     expect(screen.getByText('Ouvert')).toBeInTheDocument()
   })
 
   it('should badge a restaurant closed right now', () => {
     vi.setSystemTime(new Date(2026, 8, 7, 17, 0))
-    render(<VoteCard restaurant={restaurant({ opening_hours: LUNCH })} index={1} total={3} />)
+    renderWithIntl(
+      <VoteCard restaurant={restaurant({ opening_hours: LUNCH })} index={1} total={3} />
+    )
     expect(screen.getByText('Fermé')).toBeInTheDocument()
   })
 
   it('should say nothing about hours it does not have', () => {
-    render(<VoteCard restaurant={restaurant()} index={1} total={3} />)
+    renderWithIntl(<VoteCard restaurant={restaurant()} index={1} total={3} />)
     expect(screen.queryByText('Ouvert')).not.toBeInTheDocument()
     expect(screen.queryByText('Fermé')).not.toBeInTheDocument()
   })
 
   it('should list the diets a restaurant serves', () => {
-    render(
+    renderWithIntl(
       <VoteCard restaurant={restaurant({ tags: ['gluten_free', 'vegan'] })} index={1} total={3} />
     )
     const list = screen.getByRole('list', { name: 'Régimes servis' })
@@ -114,24 +130,43 @@ describe('VoteCard', () => {
   })
 
   it('should say nothing about diets it does not know', () => {
-    render(<VoteCard restaurant={restaurant()} index={1} total={3} />)
+    renderWithIntl(<VoteCard restaurant={restaurant()} index={1} total={3} />)
     expect(screen.queryByRole('list', { name: 'Régimes servis' })).not.toBeInTheDocument()
   })
 
   it('should recall a recent win, discreetly', () => {
-    render(
+    renderWithIntl(
       <VoteCard restaurant={restaurant()} index={1} total={3} lastWonAt="2026-08-28T12:00:00Z" />
     )
     expect(screen.getByText('Déjà gagnant le 28 août')).toBeInTheDocument()
   })
 
+  it('should speak English, plurals and dates included', () => {
+    renderWithIntl(
+      <VoteCard
+        restaurant={restaurant({ tags: ['gluten_free'] })}
+        index={1}
+        total={3}
+        blockedCount={2}
+        lastWonAt="2026-08-28T12:00:00Z"
+      />,
+      { locale: 'en' }
+    )
+    expect(screen.getByText('2 participants can’t eat here')).toBeInTheDocument()
+    expect(screen.getByText('Already won on August 28')).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Dietary options' })).toHaveTextContent('Gluten-free')
+    expect(
+      screen.getByRole('article', { name: 'Sushi Bar Sakura, restaurant 1 of 3' })
+    ).toBeVisible()
+  })
+
   it('should say nothing about a restaurant that has won nothing lately', () => {
-    render(<VoteCard restaurant={restaurant()} index={1} total={3} />)
+    renderWithIntl(<VoteCard restaurant={restaurant()} index={1} total={3} />)
     expect(screen.queryByText(/Déjà gagnant/)).not.toBeInTheDocument()
   })
 
   it('should render the photo of an allowed host as a decorative background', () => {
-    render(
+    renderWithIntl(
       <VoteCard
         restaurant={restaurant({ photo_url: 'https://lh3.googleusercontent.com/a/photo.jpg' })}
         index={1}
@@ -145,7 +180,7 @@ describe('VoteCard', () => {
   })
 
   it('should fall back to the chalkboard rather than render a foreign host', () => {
-    render(
+    renderWithIntl(
       <VoteCard
         restaurant={restaurant({ photo_url: 'https://evil.test/photo.jpg' })}
         index={1}

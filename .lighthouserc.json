@@ -9,7 +9,8 @@
         "http://localhost:3000/",
         "http://localhost:3000/login",
         "http://localhost:3000/setup",
-        "http://localhost:3000/legal/privacy"
+        "http://localhost:3000/legal/privacy",
+        "http://localhost:3000/offline"
       ],
       "settings": {
         "onlyCategories": ["accessibility"],

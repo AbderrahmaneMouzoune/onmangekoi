@@ -2,6 +2,7 @@
 
 import { RiArrowRightLine, RiMailOpenLine } from '@remixicon/react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { useState, useTransition } from 'react'
 
 import { declineInvitationAction } from '@/actions/groups'
@@ -9,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { router } from '@/config/router.config'
 import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
-import { countLabel, displayPseudo } from '@/lib/format'
+import { displayPseudo } from '@/lib/format'
 
 import type { PendingInvitation } from '@/data-access/models'
 
@@ -23,6 +24,8 @@ export function PendingInvitations({ invitations }: { invitations: PendingInvita
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const onKeyDown = useArrowNavigation()
+  const t = useTranslations('home.invitations')
+  const tCommon = useTranslations('common')
 
   const visible = invitations.filter((invitation) => !declined.includes(invitation.session_id))
   if (visible.length === 0) return null
@@ -44,7 +47,7 @@ export function PendingInvitations({ invitations }: { invitations: PendingInvita
     <section className="flex flex-col gap-3 lg:col-span-2">
       <h2 className="flex items-center gap-2 text-lg font-bold">
         <RiMailOpenLine aria-hidden="true" className="size-5 text-brand" />
-        On t’attend
+        {t('title')}
       </h2>
       <ul onKeyDown={onKeyDown} className="flex flex-col gap-2 lg:grid lg:grid-cols-2">
         {visible.map((invitation) => (
@@ -56,16 +59,20 @@ export function PendingInvitations({ invitations }: { invitations: PendingInvita
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="truncate font-semibold">{invitation.name}</span>
                 <span className="text-xs text-muted-foreground">
-                  {displayPseudo(invitation.host_pseudo)}
-                  {invitation.group_name ? ` · ${invitation.group_name}` : ''} ·{' '}
-                  {countLabel(invitation.participant_count, 'participant')}
+                  {[
+                    displayPseudo(invitation.host_pseudo, tCommon('people.guest')),
+                    invitation.group_name,
+                    tCommon('counts.participants', { count: invitation.participant_count }),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </span>
               </div>
               <Link
                 href={router.joinInvite(invitation.invite_code)}
                 className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-brand hover:underline"
               >
-                Rejoindre
+                {tCommon('actions.join')}
                 <RiArrowRightLine aria-hidden="true" className="size-4" />
               </Link>
             </div>
@@ -77,7 +84,7 @@ export function PendingInvitations({ invitations }: { invitations: PendingInvita
               onClick={() => decline(invitation.session_id)}
               disabled={isPending}
             >
-              Décliner
+              {tCommon('actions.decline')}
             </Button>
           </li>
         ))}

@@ -1,14 +1,16 @@
 import { z } from 'zod'
 
+import { omkMessage } from '@/domain/errors'
+
 export const PSEUDO_MIN = 2
 export const PSEUDO_MAX = 30
 
 export const PseudoSchema = z
   .string()
   .trim()
-  .min(PSEUDO_MIN, `Le pseudo doit faire au moins ${PSEUDO_MIN} caractères`)
-  .max(PSEUDO_MAX, `Le pseudo ne peut pas dépasser ${PSEUDO_MAX} caractères`)
-  .regex(/^[\p{L}\p{N}_\- ]+$/u, 'Lettres, chiffres, espaces, tirets et underscores uniquement')
+  .min(PSEUDO_MIN, omkMessage('pseudo_too_short'))
+  .max(PSEUDO_MAX, omkMessage('pseudo_too_long'))
+  .regex(/^[\p{L}\p{N}_\- ]+$/u, omkMessage('pseudo_invalid_chars'))
 
 export const SetupProfileSchema = z.object({
   pseudo: PseudoSchema,

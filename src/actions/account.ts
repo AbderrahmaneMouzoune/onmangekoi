@@ -1,12 +1,11 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
 import { createServerClient } from '@/data-access/supabase/server'
-import { toUserMessage } from '@/domain/errors'
+import { errorMessage, revalidateLocalizedPath, translateError } from '@/i18n/server'
 import { deleteAccountUseCase } from '@/use-cases/delete-account'
 
 import type { ActionResult } from './types'
@@ -17,14 +16,14 @@ import type { ActionResult } from './types'
  */
 export async function deleteAccountAction(): Promise<ActionResult> {
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
-  if (!user) return { ok: false, error: 'Non authentifié' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     await deleteAccountUseCase(supabase)
   } catch (error) {
-    return { ok: false, error: toUserMessage(error, 'Impossible de supprimer le compte.') }
+    return { ok: false, error: await translateError(error, 'accountDelete') }
   }
 
-  revalidatePath(router.home(), 'layout')
+  revalidateLocalizedPath(router.home(), 'layout')
   redirect(router.home())
 }

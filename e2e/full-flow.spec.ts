@@ -1,4 +1,6 @@
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import { expect, test } from './support/i18n'
+
+import type { Browser, Page } from '@playwright/test'
 
 /**
  * Flow complet du MVP : deux navigateurs isolés (host + invité).
@@ -10,26 +12,33 @@ import { expect, test, type Browser, type Page } from '@playwright/test'
  *  5. Les deux voient le classement, avec le coup de cœur en tête.
  *  6. Le host ouvre le lien public : un inconnu, sans pseudo ni cookie, lit
  *     le podium — et n'y trouve le pseudo de personne.
+ *
+ * Il tourne dans chaque langue du projet (`support/i18n.ts`) : les libellés
+ * viennent des messages, les pseudos et les noms restent des données.
  */
 test.describe('Session de vote complète', () => {
   test.skip(process.env.E2E !== '1', 'Nécessite une stack Supabase locale (E2E=1).')
 
-  test('du pseudo au classement', async ({ browser }) => {
+  test('du pseudo au classement', async ({ browser, i18n: { locale, t, match } }) => {
     const host = await newPage(browser)
     const guest = await newPage(browser)
+
+    // La langue du navigateur est celle de la page, jusque dans `<html lang>`.
+    await host.goto('/')
+    await expect(host.locator('html')).toHaveAttribute('lang', locale)
 
     // 1. Host : onboarding + création
     await host.goto('/sessions/new')
     await expect(host).toHaveURL(/\/setup\?next=/)
-    await host.getByLabel('Ton pseudo').fill('Alex')
-    await host.getByRole('button', { name: /c’est parti/i }).click()
+    await host.getByLabel(t('onboarding.pseudo.label')).fill('Alex')
+    await host.getByRole('button', { name: t('onboarding.pseudo.submit') }).click()
     await expect(host).toHaveURL(/\/sessions\/new$/)
 
-    await host.getByLabel('Nom de la session').fill('E2E lunch')
-    const results = host.getByRole('list', { name: 'Résultats' })
+    await host.getByLabel(t('session.create.steps.name')).fill('E2E lunch')
+    const results = host.getByRole('list', { name: t('restaurants.catalog.label') })
     await results.getByRole('checkbox').nth(0).click()
     await results.getByRole('checkbox').nth(1).click()
-    await host.getByRole('button', { name: /créer la session · 2 restos/i }).click()
+    await host.getByRole('button', { name: t('session.create.submit', { count: 2 }) }).click()
     // URL lisible : le code d'invitation, pas d'uuid
     await expect(host).toHaveURL(/\/sessions\/[0-9A-HJKMNP-TV-Z]{6}$/)
     await expect(host.getByRole('heading', { name: 'E2E lunch' })).toBeVisible()
@@ -38,70 +47,78 @@ test.describe('Session de vote complète', () => {
     expect(code).toMatch(/^[0-9A-HJKMNP-TV-Z]{6}$/)
     const sessionUrl = host.url()
     // Le QR s'agrandit d'un geste : c'est ainsi qu'on le fait scanner à table
-    const qrTrigger = host.getByRole('button', { name: /agrandir le qr code/i })
+    const qrTrigger = host.getByRole('button', { name: t('session.invite.enlarge') })
     await expect(qrTrigger).toBeVisible()
     await qrTrigger.click()
-    await expect(host.getByRole('img', { name: /QR code du lien/i })).toBeVisible()
-    await host.getByRole('button', { name: /^fermer$/i }).click()
-    await expect(host.getByRole('img', { name: /QR code du lien/i })).toBeHidden()
+    const qr = host.getByRole('img', { name: t('session.invite.qrLabel') })
+    await expect(qr).toBeVisible()
+    await host.getByRole('button', { name: t('session.invite.close'), exact: true }).click()
+    await expect(qr).toBeHidden()
 
     // 2. Invité : lien → onboarding → salle d'attente
     await guest.goto('/join')
     await expect(guest).toHaveURL(/\/setup\?next=%2Fjoin/)
-    await guest.getByLabel('Ton pseudo').fill('Sam')
-    await guest.getByRole('button', { name: /c’est parti/i }).click()
+    await guest.getByLabel(t('onboarding.pseudo.label')).fill('Sam')
+    await guest.getByRole('button', { name: t('onboarding.pseudo.submit') }).click()
     await expect(guest).toHaveURL(/\/join$/)
-    await guest.getByLabel(/code ou lien/i).fill(code as string)
-    await guest.getByRole('button', { name: 'Rejoindre' }).click()
+    await guest.getByLabel(t('session.join.label')).fill(code as string)
+    await guest.getByRole('button', { name: t('common.actions.join') }).click()
     await expect(guest).toHaveURL(sessionUrl)
-    await expect(guest.getByText(/en attente du lancement par alex/i)).toBeVisible()
+    await expect(guest.getByText(t('session.waiting.waitingFor', { host: 'Alex' }))).toBeVisible()
 
     // Le host voit arriver Sam en temps réel
     await expect(host.getByText('Sam')).toBeVisible()
-    await expect(host.getByText('2 participants')).toBeVisible()
+    await expect(host.getByText(t('common.counts.participants', { count: 2 }))).toBeVisible()
 
     // 3. Sam apporte son resto — inviter et compléter le deck ne sont pas des
     // privilèges de host : il voit le code d'invitation et le bouton d'ajout.
     await expect(guest.getByTestId('invite-code')).toBeVisible()
-    await guest.getByRole('button', { name: /ajouter le mien/i }).click()
-    const guestResults = guest.getByRole('list', { name: 'Résultats' })
+    await guest.getByRole('button', { name: t('session.sessionRestaurants.addMine') }).click()
+    const guestResults = guest.getByRole('list', { name: t('restaurants.catalog.label') })
     await guestResults.getByRole('checkbox').nth(2).click()
-    await guest.getByRole('button', { name: /^ajouter 1 resto$/i }).click()
+    await guest
+      .getByRole('button', { name: t('session.sessionRestaurants.add', { count: 1 }), exact: true })
+      .click()
 
     // Le host voit le deck grossir sans recharger
-    await expect(host.getByText('3 restos à départager')).toBeVisible({ timeout: 15_000 })
+    await expect(host.getByText(t('session.sessionRestaurants.title', { count: 3 }))).toBeVisible({
+      timeout: 15_000,
+    })
 
     // 4. Lancement et votes
-    await host.getByRole('button', { name: /lancer le vote/i }).click()
-    await expect(host.getByRole('group', { name: 'Voter' })).toBeVisible()
-    await expect(guest.getByRole('group', { name: 'Voter' })).toBeVisible()
+    await host.getByRole('button', { name: t('session.waiting.launch') }).click()
+    await expect(host.getByRole('group', { name: t('session.vote.group') })).toBeVisible()
+    await expect(guest.getByRole('group', { name: t('session.vote.group') })).toBeVisible()
 
-    await host.getByRole('button', { name: /coup de cœur/i }).click()
-    await expect(host.getByRole('button', { name: /coup de cœur/i })).toBeDisabled()
-    await host.getByRole('button', { name: /bof/i }).click()
-    await host.getByRole('button', { name: /bof/i }).click()
-    await expect(host.getByText(/tu as tout voté/i)).toBeVisible()
+    const fav = match('session.vote.actions.fav')
+    const no = match('session.vote.actions.no')
+    const yes = match('session.vote.actions.yes')
+    await host.getByRole('button', { name: fav }).click()
+    await expect(host.getByRole('button', { name: fav })).toBeDisabled()
+    await host.getByRole('button', { name: no }).click()
+    await host.getByRole('button', { name: no }).click()
+    await expect(host.getByText(t('session.finished.allVoted'))).toBeVisible()
 
-    await guest.getByRole('button', { name: /ça me va/i }).click()
-    await guest.getByRole('button', { name: /veto/i }).click()
-    await guest.getByRole('button', { name: /ça me va/i }).click()
+    await guest.getByRole('button', { name: yes }).click()
+    await guest.getByRole('button', { name: match('session.vote.actions.veto') }).click()
+    await guest.getByRole('button', { name: yes }).click()
 
     // 5. Clôture automatique → classement pour les deux
     await expect(host).toHaveURL(/\/results$/, { timeout: 15_000 })
     await expect(guest).toHaveURL(/\/results$/, { timeout: 15_000 })
-    await expect(host.getByText(/on mange chez/i)).toBeVisible()
+    await expect(host.getByText(t('session.results.eyebrow.winner'), { exact: true })).toBeVisible()
     await expect(host.getByText('+3')).toBeVisible()
     await expect(guest.getByText('−2')).toBeVisible()
     const resultsUrl = host.url()
 
     // 6. Partage public : opt-in du host, puis lecture par un inconnu
-    const share = host.getByRole('switch', { name: /rendre le classement public/i })
+    const share = host.getByRole('switch', { name: t('session.sharing.makePublic') })
     await expect(share).toHaveAttribute('aria-checked', 'false')
     // L'invité n'est pas host : la bascule n'existe que chez Alex.
     await expect(guest.getByRole('switch')).toHaveCount(0)
 
     await share.click()
-    await expect(host.getByRole('switch', { name: /lien public actif/i })).toHaveAttribute(
+    await expect(host.getByRole('switch', { name: t('session.sharing.publicOn') })).toHaveAttribute(
       'aria-checked',
       'true'
     )
@@ -120,8 +137,10 @@ test.describe('Session de vote complète', () => {
     await expect(stranger.getByRole('heading', { name: 'E2E lunch' })).toBeVisible()
     await expect(stranger.getByRole('heading', { name: winnerName })).toBeVisible()
     // Texte exact : le titre de l'onglet reprend « On mange chez <resto> ».
-    await expect(stranger.getByText('On mange chez', { exact: true })).toBeVisible()
-    await expect(stranger.getByText('2 participants')).toBeVisible()
+    await expect(
+      stranger.getByText(t('session.results.eyebrow.winner'), { exact: true })
+    ).toBeVisible()
+    await expect(stranger.getByText(t('common.counts.participants', { count: 2 }))).toBeVisible()
     // Aucun pseudo sur la page publique — c'est tout l'enjeu.
     await expect(stranger.getByText('Alex')).toHaveCount(0)
     await expect(stranger.getByText('Sam')).toHaveCount(0)
@@ -137,8 +156,8 @@ test.describe('Session de vote complète', () => {
     await expect(host).toHaveURL(resultsUrl)
 
     await host.goto('/account')
-    await expect(host.getByRole('heading', { name: 'Mes statistiques' })).toBeVisible()
-    await expect(host.getByText('1 victoire')).toBeVisible()
+    await expect(host.getByRole('heading', { name: t('account.stats.title') })).toBeVisible()
+    await expect(host.getByText(t('account.stats.topRestaurantHint', { count: 1 }))).toBeVisible()
   })
 })
 

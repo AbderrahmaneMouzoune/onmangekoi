@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { getSessionConstraintConflicts } from '@/data-access/food-constraints'
 import {
   getSessionById,
   getSessionParticipants,
   getSessionRestaurants,
 } from '@/data-access/sessions'
 import { createBrowserClient } from '@/data-access/supabase/client'
+import { toConflictCounts, type ConstraintConflictCounts } from '@/domain/food-constraints'
 
 import type {
   ParticipantWithProfile,
@@ -23,6 +25,27 @@ interface UseSessionRoomOptions {
   initialSession: Session
   initialParticipants: ParticipantWithProfile[]
   initialRestaurants: SessionRestaurantWithRestaurant[]
+  /** Comptes de contraintes alimentaires par resto, lus avec la session (#60) */
+  initialConflicts: ConstraintConflictCounts
+}
+
+/**
+ * Ce dont dépendent les comptes de contraintes : qui est dans la salle, et
+ * ce qu'il y a à départager. Un vote terminé ne change ni l'un ni l'autre —
+ * inutile alors de redemander les comptes à chaque cycle.
+ */
+function participantsKey(participants: ParticipantWithProfile[]): string {
+  return participants
+    .map((participant) => participant.profile_id ?? '')
+    .sort()
+    .join(',')
+}
+
+function restaurantsKey(restaurants: SessionRestaurantWithRestaurant[]): string {
+  return restaurants
+    .map((row) => row.restaurant_id)
+    .sort()
+    .join(',')
 }
 
 /** Resynchronisation de secours quand le canal est en direct (filet, pas chemin principal). */
@@ -35,6 +58,8 @@ const OFFLINE_POLL_MS = 3000
  *  - UPDATE sur `sessions` → statut (waiting → voting → closed)
  *  - tout événement sur `session_participants` → arrivées, départs, votes terminés
  *  - tout événement sur `session_restaurants` → les restos apportés par les autres
+ *  - arrivée, départ ou resto apporté → les comptes de contraintes (#60) sont
+ *    relus ; le reste du temps, ils ne bougent pas
  *
  * Realtime est le chemin rapide ; un polling léger sert de filet dans tous les
  * cas (un événement manqué, un token appliqué tardivement, un canal qui se
@@ -47,11 +72,17 @@ export function useSessionRoom({
   initialSession,
   initialParticipants,
   initialRestaurants,
+  initialConflicts,
 }: UseSessionRoomOptions) {
   const [session, setSession] = useState<Session>(initialSession)
   const [participants, setParticipants] = useState<ParticipantWithProfile[]>(initialParticipants)
   const [restaurants, setRestaurants] =
     useState<SessionRestaurantWithRestaurant[]>(initialRestaurants)
+  const [conflicts, setConflicts] = useState<ConstraintConflictCounts>(initialConflicts)
+  const conflictKeysRef = useRef({
+    participants: participantsKey(initialParticipants),
+    restaurants: restaurantsKey(initialRestaurants),
+  })
   const [connection, setConnection] = useState<ConnectionState>('connecting')
   const connectionRef = useRef<ConnectionState>('connecting')
   /**
@@ -81,6 +112,27 @@ export function useSessionRoom({
       // est refusé en base — donc la même règle vaut pour le deck.
       if (nextParticipants.length > 0) setParticipants(nextParticipants)
       if (nextRestaurants.length > 0) setRestaurants(nextRestaurants)
+
+      // Les comptes ne se relisent que si la salle ou le deck ont changé.
+      // Les clés ne bougent qu'après une lecture réussie : un échec sera
+      // retenté au cycle suivant.
+      const keys = {
+        participants:
+          nextParticipants.length > 0
+            ? participantsKey(nextParticipants)
+            : conflictKeysRef.current.participants,
+        restaurants:
+          nextRestaurants.length > 0
+            ? restaurantsKey(nextRestaurants)
+            : conflictKeysRef.current.restaurants,
+      }
+      if (
+        keys.participants !== conflictKeysRef.current.participants ||
+        keys.restaurants !== conflictKeysRef.current.restaurants
+      ) {
+        setConflicts(toConflictCounts(await getSessionConstraintConflicts(supabase, sessionId)))
+        conflictKeysRef.current = keys
+      }
     } catch {
       // Réseau indisponible : on retentera au prochain événement / cycle
     }
@@ -180,5 +232,5 @@ export function useSessionRoom({
     }
   }, [sessionId, refresh])
 
-  return { session, participants, restaurants, connection, refresh, setSession }
+  return { session, participants, restaurants, conflicts, connection, refresh, setSession }
 }

@@ -1,6 +1,8 @@
 import { RiArrowLeftLine, RiArrowRightLine, RiHistoryLine } from '@remixicon/react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { VisitMemo } from '@/components/layout/visit-memo'
 import { SessionHistoryList } from '@/components/session/session-history-list'
@@ -32,7 +34,10 @@ export async function SessionHistorySection({
   ])
   if (!user) redirect(router.setup(router.sessions()))
 
-  const { entries, nextCursor } = await getMySessionHistory(supabase, { cursor })
+  const [{ entries, nextCursor }, t] = await Promise.all([
+    getMySessionHistory(supabase, { cursor }),
+    getTranslations('session.history'),
+  ])
   // Une page suivante vide ne veut pas dire « aucune session » : seule la
   // première page peut renseigner la silhouette de la prochaine visite.
   const isFirstPage = parseSessionCursor(cursor) === null
@@ -51,14 +56,14 @@ export async function SessionHistorySection({
     <>
       {isFirstPage && <VisitMemo account sessions />}
       <SessionHistoryList entries={entries} />
-      <nav aria-label="Pagination" className="flex flex-wrap justify-between gap-2">
+      <nav aria-label={t('pagination')} className="flex flex-wrap justify-between gap-2">
         {isFirstPage ? <span /> : <BackToTop />}
         {nextCursor && (
           <Link
             href={router.sessions({ cursor: nextCursor })}
             className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
           >
-            Sessions plus anciennes
+            {t('older')}
             <RiArrowRightLine aria-hidden="true" />
           </Link>
         )}
@@ -69,27 +74,29 @@ export async function SessionHistorySection({
 
 /** Retour à la première page : un curseur ne sait pas revenir en arrière. */
 function BackToTop() {
+  const t = useTranslations('session.history')
   return (
     <Link
       href={router.sessions()}
       className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
     >
       <RiArrowLeftLine aria-hidden="true" />
-      Les plus récentes
+      {t('newest')}
     </Link>
   )
 }
 
 /** Écran vide de l'historique — partagé avec la silhouette, qui sait le rendre. */
 function NoSessions() {
+  const t = useTranslations('session.history.empty')
   return (
     <EmptyState
       icon={<RiHistoryLine />}
-      title="Aucune session pour l’instant"
-      description="Lance une session ou rejoins celle d’un collègue : elle restera consultable ici, classement compris."
+      title={t('title')}
+      description={t('description')}
       action={
         <Link href={router.sessionNew()} className={cn(buttonVariants())}>
-          Créer une session
+          {t('action')}
         </Link>
       }
     />
@@ -98,11 +105,12 @@ function NoSessions() {
 
 /** Curseur périmé ou recopié à la main : on le dit, et on remonte. */
 function EndOfHistory() {
+  const t = useTranslations('session.history.end')
   return (
     <EmptyState
       icon={<RiHistoryLine />}
-      title="Fin de l’historique"
-      description="Il n’y a rien de plus ancien à afficher."
+      title={t('title')}
+      description={t('description')}
       action={<BackToTop />}
     />
   )

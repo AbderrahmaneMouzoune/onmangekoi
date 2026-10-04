@@ -39,7 +39,7 @@ export async function createSessionUseCase(
   const selected = [...new Set([...fromLists, ...input.restaurantIds])]
 
   if (selected.length === 0) {
-    throw new AppError('Sélectionne au moins un restaurant.')
+    throw new AppError('no_restaurant_selected')
   }
 
   const restaurantIds = input.excludeRecentWinners
@@ -47,9 +47,7 @@ export async function createSessionUseCase(
     : selected
 
   if (restaurantIds.length === 0) {
-    throw new AppError(
-      `Tous ces restos ont gagné dans les ${RECENT_WINNER_WINDOW_DAYS} derniers jours. Décoche l’anti-fatigue ou ajoute un autre resto.`
-    )
+    throw new AppError('all_recent_winners', { days: RECENT_WINNER_WINDOW_DAYS })
   }
 
   const session = await createSession(supabase, {

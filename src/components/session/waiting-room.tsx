@@ -1,6 +1,7 @@
 'use client'
 
 import { RiPlayLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useState, useTransition } from 'react'
 
 import { deleteSessionAction, launchSessionAction, leaveSessionAction } from '@/actions/sessions'
@@ -8,6 +9,7 @@ import { ConnectionIndicator } from '@/components/session/connection-indicator'
 import { InviteCard } from '@/components/session/invite-card'
 import { ParticipantList } from '@/components/session/participant-list'
 import { PendingInvitees } from '@/components/session/pending-invitees'
+import { PushOptIn } from '@/components/session/push-opt-in'
 import { RulesSummary } from '@/components/session/rules-summary'
 import { SessionRestaurantsPanel } from '@/components/session/session-restaurants-panel'
 import { Button } from '@/components/ui/button'
@@ -24,6 +26,7 @@ import type {
   SessionRestaurantWithRestaurant,
 } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { ConstraintConflictCounts, FoodConstraints } from '@/domain/food-constraints'
 import type { SessionRules } from '@/domain/session-rules'
 import type { ConnectionState } from '@/hooks/use-session-room'
 
@@ -47,6 +50,10 @@ interface WaitingRoomProps {
   invitations: InvitationWithProfile[]
   /** Groupes du host, pour en inviter un depuis la salle d'attente. */
   groups: GroupWithMembers[]
+  /** Par resto, combien de participants ne peuvent pas y manger (#60). */
+  conflicts: ConstraintConflictCounts
+  /** Ses propres contraintes, pour badger le sélecteur. */
+  myConstraints: FoodConstraints | null
   onLaunched: (session: Session) => void
   /** Resynchronise la salle après un ajout ou un retrait de restaurant */
   onRestaurantsChanged: () => void
@@ -70,11 +77,15 @@ export function WaitingRoom({
   connection,
   invitations,
   groups,
+  conflicts,
+  myConstraints,
   onLaunched,
   onRestaurantsChanged,
 }: WaitingRoomProps) {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const t = useTranslations('session.waiting')
+  const tCommon = useTranslations('common')
 
   const host = participants.find(
     (p) => session.host_id !== null && p.profile_id === session.host_id
@@ -137,6 +148,8 @@ export function WaitingRoom({
             participants={participants}
             meId={meId}
             isHost={isHost}
+            conflicts={conflicts}
+            myConstraints={myConstraints}
             initialPage={restaurantCatalog}
             onChanged={onRestaurantsChanged}
           />
@@ -168,17 +181,20 @@ export function WaitingRoom({
                 className="w-full"
               >
                 {isPending ? <Spinner /> : <RiPlayLine aria-hidden="true" />}
-                Lancer le vote
+                {t('launch')}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                {launchHint({ missingParticipants, missingRestaurants })}
+                {t(launchHint({ missingParticipants, missingRestaurants }), {
+                  participants: MIN_PARTICIPANTS,
+                  restaurants: MIN_RESTAURANTS,
+                })}
               </p>
               <TwoStepButton
                 variant="ghost"
                 size="sm"
                 className="mt-2 self-center text-muted-foreground hover:text-veto"
-                label="Supprimer la session"
-                confirmLabel="Confirmer la suppression"
+                label={t('delete')}
+                confirmLabel={t('confirmDelete')}
                 onConfirm={remove}
                 disabled={isPending}
               />
@@ -187,14 +203,19 @@ export function WaitingRoom({
             <div className="flex flex-col items-center gap-3">
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Spinner className="size-4" />
-                En attente du lancement par {displayPseudo(host?.profiles?.pseudo)}…
+                {t('waitingFor', {
+                  host: displayPseudo(host?.profiles?.pseudo, tCommon('people.guest')),
+                })}
               </p>
+              {/* Le Realtime ne sert que l'onglet ouvert : de quoi fermer celui-ci
+                  sans rater le lancement. */}
+              <PushOptIn sessionId={session.id} context="launch" />
               <TwoStepButton
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground hover:text-veto"
-                label="Quitter la session"
-                confirmLabel="Confirmer"
+                label={t('leave')}
+                confirmLabel={t('confirm')}
                 onConfirm={leave}
                 disabled={isPending}
               />
@@ -208,7 +229,7 @@ export function WaitingRoom({
 
 /**
  * Ce qui manque pour lancer, dit en une phrase — et ce que lancer implique
- * quand plus rien ne manque.
+ * quand plus rien ne manque (`session.waiting.hints.<clé>`).
  */
 function launchHint({
   missingParticipants,
@@ -216,15 +237,9 @@ function launchHint({
 }: {
   missingParticipants: boolean
   missingRestaurants: boolean
-}): string {
-  if (missingParticipants && missingRestaurants) {
-    return `Il faut au moins ${MIN_PARTICIPANTS} participants et ${MIN_RESTAURANTS} restos pour lancer.`
-  }
-  if (missingParticipants) {
-    return `Il faut au moins ${MIN_PARTICIPANTS} participants pour lancer.`
-  }
-  if (missingRestaurants) {
-    return 'Avec un seul resto, il n’y a rien à départager : chacun peut apporter le sien.'
-  }
-  return 'Une fois lancé, plus personne ne peut rejoindre.'
+}): `hints.${'both' | 'participants' | 'restaurants' | 'ready'}` {
+  if (missingParticipants && missingRestaurants) return 'hints.both'
+  if (missingParticipants) return 'hints.participants'
+  if (missingRestaurants) return 'hints.restaurants'
+  return 'hints.ready'
 }

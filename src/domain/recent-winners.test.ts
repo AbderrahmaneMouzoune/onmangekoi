@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest'
 
 import {
   RECENT_WINNER_WINDOW_DAYS,
-  lastWinLabel,
-  recentWinLabel,
   recentWinnerCount,
   recentWinnerDates,
   withoutRecentWinners,
@@ -27,25 +25,6 @@ describe('recentWinnerDates', () => {
     const dates = recentWinnerDates([])
     expect(recentWinnerCount(dates)).toBe(0)
     expect(dates[SAKURA]).toBeUndefined()
-  })
-})
-
-describe('recentWinLabel', () => {
-  const now = new Date('2026-09-18T12:00:00Z')
-
-  it('should count the days since the win', () => {
-    expect(recentWinLabel('2026-09-12T12:00:00Z', now)).toBe('Gagnant il y a 6 jours')
-  })
-
-  it('should say yesterday rather than a count of one', () => {
-    expect(recentWinLabel('2026-09-17T12:00:00Z', now)).toBe('Gagnant hier')
-  })
-})
-
-describe('lastWinLabel', () => {
-  it('should name the day of the last win', () => {
-    // Midi : la date est la même dans tous les fuseaux qui nous concernent.
-    expect(lastWinLabel('2026-08-28T12:00:00Z')).toBe('Déjà gagnant le 28 août')
   })
 })
 

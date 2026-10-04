@@ -16,6 +16,9 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
     exclude: ['node_modules', '.next', 'e2e'],
+    // next-intl importe `next/server` et `next/navigation` sans extension :
+    // Node refuse ces imports ESM, Vite les résout une fois le paquet inliné.
+    server: { deps: { inline: ['next-intl'] } },
     env: {
       NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54321',
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'test-key',

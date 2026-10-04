@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useMemo, useState } from 'react'
 
 import { Input } from '@/components/ui/input'
@@ -10,25 +11,36 @@ import { cn } from '@/lib/utils'
 
 type Choice = 'none' | 'at' | `in:${number}`
 
-const OPTIONS: { value: Choice; label: string }[] = [
-  { value: 'none', label: 'Sans limite' },
-  ...DEADLINE_PRESETS.map((minutes) => ({
-    value: `in:${minutes}` as Choice,
-    label: minutes >= 60 ? `dans ${minutes / 60} h` : `dans ${minutes} min`,
-  })),
-  { value: 'at', label: 'à une heure' },
+const OPTIONS: Choice[] = [
+  'none',
+  ...DEADLINE_PRESETS.map((minutes) => `in:${minutes}` as Choice),
+  'at',
 ]
 
-const HINTS = {
-  none: 'Sans échéance, la session se clôture quand tout le monde a voté — ou quand tu la clôtures.',
-  timed:
-    'À l’heure dite, le classement s’affiche : les votes manquants comptent 0. Tu pourras prolonger avant.',
+/** Sans « Sans limite » : une session ouverte ne se fermerait jamais. */
+const REQUIRED_OPTIONS = OPTIONS.filter((option) => option !== 'none')
+
+/** Le libellé d'un choix : « Sans limite », « dans 10 min », « dans 1 h », « à une heure ». */
+function useOptionLabel(): (choice: Choice) => string {
+  const t = useTranslations('session.deadline')
+  return (choice) => {
+    if (choice === 'none') return t('none')
+    if (choice === 'at') return t('at')
+    const minutes = Number(choice.slice(3))
+    return minutes >= 60 ? t('inHours', { hours: minutes / 60 }) : t('inMinutes', { minutes })
+  }
 }
 
-const LEGEND = 'Clôture automatique'
+/**
+ * Ce que prend l'échéance quand elle devient obligatoire alors que rien
+ * n'était choisi : la plus longue des durées proposées. Une session ouverte
+ * vit au rythme d'une conversation, pas d'une tablée.
+ */
+const REQUIRED_DEFAULT: Choice = `in:${Math.max(...DEADLINE_PRESETS)}`
 
 function DefaultLegend() {
-  return <span className="text-sm font-medium">{LEGEND}</span>
+  const t = useTranslations('session.deadline')
+  return <span className="text-sm font-medium">{t('legend')}</span>
 }
 
 function optionClassName(isSelected: boolean) {
@@ -49,16 +61,27 @@ function optionClassName(isSelected: boolean) {
 interface DeadlinePickerProps {
   /** Intitulé du bloc ; par défaut « Clôture automatique », en petit. */
   legend?: React.ReactNode
+  /**
+   * L'échéance est obligatoire (session ouverte) : « Sans limite » disparaît
+   * et, s'il était choisi, cède la place à une durée par défaut.
+   */
+  required?: boolean
 }
 
-export function DeadlinePicker({ legend }: DeadlinePickerProps = {}) {
-  const [choice, setChoice] = useState<Choice>('none')
+export function DeadlinePicker({ legend, required = false }: DeadlinePickerProps = {}) {
+  const [picked, setChoice] = useState<Choice>('none')
   const [time, setTime] = useState('')
+  const t = useTranslations('session.deadline')
+  const optionLabel = useOptionLabel()
+
+  // Dérivé plutôt que réécrit : décocher « ouverte » rend le choix d'avant.
+  const choice = required && picked === 'none' ? REQUIRED_DEFAULT : picked
+  const options = required ? REQUIRED_OPTIONS : OPTIONS
 
   const target = useMemo(() => (choice === 'at' ? nextOccurrence(time) : null), [choice, time])
   const minutes = choice.startsWith('in:') ? Number(choice.slice(3)) : null
   /** Les flèches passent d'une option à l'autre et la choisissent (radios). */
-  const onOptionsKeyDown = useRovingFocus((index) => setChoice(OPTIONS[index].value))
+  const onOptionsKeyDown = useRovingFocus((index) => setChoice(options[index]))
 
   return (
     <fieldset className="flex flex-col gap-2">
@@ -66,29 +89,29 @@ export function DeadlinePicker({ legend }: DeadlinePickerProps = {}) {
 
       <div
         role="radiogroup"
-        aria-label={LEGEND}
+        aria-label={t('legend')}
         onKeyDown={onOptionsKeyDown}
         className="flex flex-wrap gap-2"
       >
-        {OPTIONS.map((option) => (
+        {options.map((option) => (
           <button
-            key={option.value}
+            key={option}
             type="button"
             role="radio"
             data-roving
-            tabIndex={choice === option.value ? 0 : -1}
-            aria-checked={choice === option.value}
-            onClick={() => setChoice(option.value)}
-            className={cn(optionClassName(choice === option.value), 'hover:bg-surface-2')}
+            tabIndex={choice === option ? 0 : -1}
+            aria-checked={choice === option}
+            onClick={() => setChoice(option)}
+            className={cn(optionClassName(choice === option), 'hover:bg-surface-2')}
           >
-            {option.label}
+            {optionLabel(option)}
           </button>
         ))}
       </div>
 
       {choice === 'at' && (
         <div className="flex flex-col gap-2 pt-1">
-          <Label htmlFor="closes-time">Heure de clôture</Label>
+          <Label htmlFor="closes-time">{t('time')}</Label>
           <Input
             id="closes-time"
             type="time"
@@ -103,7 +126,7 @@ export function DeadlinePicker({ legend }: DeadlinePickerProps = {}) {
       {target && <input type="hidden" name="closesAt" value={target.toISOString()} />}
 
       <p className="text-xs text-muted-foreground">
-        {choice === 'none' ? HINTS.none : HINTS.timed}
+        {required ? t('hints.required') : choice === 'none' ? t('hints.none') : t('hints.timed')}
       </p>
     </fieldset>
   )
@@ -115,6 +138,8 @@ export function DeadlinePicker({ legend }: DeadlinePickerProps = {}) {
  * le formulaire arrive.
  */
 export function DeadlinePickerFallback({ legend }: DeadlinePickerProps = {}) {
+  const t = useTranslations('session.deadline')
+  const optionLabel = useOptionLabel()
   return (
     <div className="flex flex-col gap-2">
       <p className="mb-2">{legend ?? <DefaultLegend />}</p>
@@ -122,12 +147,12 @@ export function DeadlinePickerFallback({ legend }: DeadlinePickerProps = {}) {
           choix serait mentir le temps d'un battement de cil. */}
       <div aria-hidden="true" className="flex flex-wrap gap-2">
         {OPTIONS.map((option) => (
-          <span key={option.value} className={optionClassName(option.value === 'none')}>
-            {option.label}
+          <span key={option} className={optionClassName(option === 'none')}>
+            {optionLabel(option)}
           </span>
         ))}
       </div>
-      <p className="text-xs text-muted-foreground">{HINTS.none}</p>
+      <p className="text-xs text-muted-foreground">{t('hints.none')}</p>
     </div>
   )
 }

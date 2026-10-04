@@ -14,12 +14,12 @@ import {
   type RestaurantPage,
 } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
-import { toUserMessage } from '@/domain/errors'
 import {
   CreateRestaurantSchema,
   RESTAURANT_TAGS,
   SimilarRestaurantsSchema,
 } from '@/domain/schemas/restaurant'
+import { errorMessage, translateError, translateIssue } from '@/i18n/server'
 
 import type { ActionResult } from './types'
 import type { Restaurant } from '@/data-access/models'
@@ -51,7 +51,7 @@ export async function searchRestaurantsAction(
   input: SearchRestaurantsInput
 ): Promise<ActionResult<RestaurantPage>> {
   const parsed = SearchSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: 'Recherche invalide' }
+  if (!parsed.success) return { ok: false, error: await errorMessage('invalid_search') }
 
   try {
     const page = await getRestaurantCatalogPage({
@@ -59,8 +59,8 @@ export async function searchRestaurantsAction(
       origin: snapOrigin(parsed.data.origin),
     })
     return { ok: true, data: page }
-  } catch {
-    return { ok: false, error: 'La recherche a échoué. Réessaie.' }
+  } catch (error) {
+    return { ok: false, error: await translateError(error, 'restaurantSearch') }
   }
 }
 
@@ -78,11 +78,14 @@ export async function createRestaurantAction(input: {
 }): Promise<ActionResult<Restaurant>> {
   const parsed = CreateRestaurantSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Formulaire invalide' }
+    return {
+      ok: false,
+      error: await translateIssue(parsed.error.issues[0], await errorMessage('invalid_form')),
+    }
   }
 
   const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
-  if (!user) return { ok: false, error: 'Tu dois d’abord choisir un pseudo.' }
+  if (!user) return { ok: false, error: await errorMessage('not_authenticated') }
 
   try {
     const restaurant = await createManualRestaurant(supabase, parsed.data)
@@ -91,7 +94,7 @@ export async function createRestaurantAction(input: {
     revalidateTag(RESTAURANTS_CACHE_TAG, RESTAURANTS_CACHE_PROFILE)
     return { ok: true, data: restaurant }
   } catch (error) {
-    return { ok: false, error: toUserMessage(error) }
+    return { ok: false, error: await translateError(error) }
   }
 }
 

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { ResultsList } from './results-list'
 
@@ -30,13 +32,14 @@ function row(overrides: Partial<SessionResultRow>): SessionResultRow {
     votes_count: 0,
     rank: 1,
     tiebreak: null,
+    decided: false,
     ...overrides,
   }
 }
 
 describe('ResultsList', () => {
   it('should crown the first row and list the others with their rank', () => {
-    render(
+    renderWithIntl(
       <ResultsList
         participantCount={3}
         results={[
@@ -60,7 +63,7 @@ describe('ResultsList', () => {
   })
 
   it('should announce a perfect tie on rank 1', () => {
-    render(
+    renderWithIntl(
       <ResultsList
         participantCount={2}
         results={[
@@ -74,7 +77,7 @@ describe('ResultsList', () => {
   })
 
   it('should say when the draw picked the winner', () => {
-    render(
+    renderWithIntl(
       <ResultsList
         participantCount={2}
         results={[
@@ -89,7 +92,7 @@ describe('ResultsList', () => {
   })
 
   it('should say when a runoff is under way', () => {
-    render(
+    renderWithIntl(
       <ResultsList
         participantCount={2}
         results={[
@@ -102,7 +105,7 @@ describe('ResultsList', () => {
   })
 
   it('should offer directions and a map for a located winner', () => {
-    render(
+    renderWithIntl(
       <ResultsList
         participantCount={2}
         results={[
@@ -131,14 +134,92 @@ describe('ResultsList', () => {
   })
 
   it('should stay silent about a winner it cannot locate', () => {
-    render(<ResultsList participantCount={2} results={[row({ name: 'Burger & Co', rank: 1 })]} />)
+    renderWithIntl(
+      <ResultsList participantCount={2} results={[row({ name: 'Burger & Co', rank: 1 })]} />
+    )
     expect(screen.queryByRole('link', { name: /Itinéraire/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Le site/ })).not.toBeInTheDocument()
     expect(document.querySelectorAll('img')).toHaveLength(0)
   })
 
+  it('should put the host’s decision on the card and keep the vote below', () => {
+    renderWithIntl(
+      <ResultsList
+        participantCount={3}
+        results={[
+          row({ name: 'Burger & Co', score: 3, rank: 1 }),
+          row({ name: 'Chez Marcel', score: 1, rank: 2, decided: true }),
+        ]}
+      />
+    )
+    expect(screen.getByRole('heading', { name: 'Chez Marcel' })).toBeInTheDocument()
+    expect(screen.getByText(/C’est décidé · on mange chez/)).toBeInTheDocument()
+    expect(
+      screen.getByText('Choix du host : le vote plaçait Burger & Co en tête.')
+    ).toBeInTheDocument()
+    // Le premier du vote reste au classement, à son rang.
+    expect(screen.getByText('Burger & Co')).toBeInTheDocument()
+    expect(screen.getByText('1.')).toBeInTheDocument()
+  })
+
+  it('should not second-guess the vote when the host confirms the winner', () => {
+    renderWithIntl(
+      <ResultsList
+        participantCount={3}
+        results={[
+          row({ name: 'Burger & Co', score: 3, rank: 1, decided: true }),
+          row({ name: 'Curry House', score: 1, rank: 2 }),
+        ]}
+      />
+    )
+    expect(screen.getByRole('heading', { name: 'Burger & Co' })).toBeInTheDocument()
+    expect(screen.getByText(/C’est décidé/)).toBeInTheDocument()
+    expect(screen.queryByText(/Choix du host/)).not.toBeInTheDocument()
+  })
+
+  it('should say the host settled a tie by picking one of the tied', () => {
+    renderWithIntl(
+      <ResultsList
+        participantCount={2}
+        results={[
+          row({ name: 'A', score: 2, rank: 1, tiebreak: 'tied' }),
+          row({ name: 'B', score: 2, rank: 1, tiebreak: 'tied', decided: true }),
+        ]}
+      />
+    )
+    expect(screen.getByRole('heading', { name: 'B' })).toBeInTheDocument()
+    expect(screen.getByText('Retenu par le host, à égalité parfaite avec A.')).toBeInTheDocument()
+  })
+
   it('should render nothing without results', () => {
-    const { container } = render(<ResultsList participantCount={0} results={[]} />)
+    const { container } = renderWithIntl(<ResultsList participantCount={0} results={[]} />)
     expect(container).toBeEmptyDOMElement()
+  })
+
+  it('should show a duo agreement as one result, not a ranking', () => {
+    renderWithIntl(
+      <ResultsList
+        participantCount={2}
+        agreement
+        results={[
+          row({ name: 'Le Comptoir', score: 3, superlikes: 1, votes_count: 2, rank: 1 }),
+          row({
+            name: 'Chez Marcel',
+            score: 2,
+            superlikes: 1,
+            likes: 1,
+            votes_count: 2,
+            rank: 2,
+            decided: true,
+          }),
+        ]}
+      />
+    )
+    expect(screen.getByRole('heading', { name: 'Chez Marcel' })).toBeInTheDocument()
+    expect(screen.getByText(/C’est d’accord · on mange chez/)).toBeInTheDocument()
+    expect(screen.getByText(/Vous avez dit oui tous les deux/)).toBeInTheDocument()
+    expect(screen.queryByText('Le reste du classement')).toBeNull()
+    expect(screen.queryByText('Le Comptoir')).toBeNull()
+    expect(screen.queryByText(/Choix du host/)).toBeNull()
   })
 })

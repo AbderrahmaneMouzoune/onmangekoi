@@ -1,6 +1,7 @@
 'use client'
 
 import { RiGroupLine, RiPencilLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useActionState, useState, useTransition } from 'react'
 
 import { deleteGroupAction, leaveGroupAction, renameGroupAction } from '@/actions/groups'
@@ -13,7 +14,8 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { TwoStepButton } from '@/components/ui/two-step-button'
 import { GROUP_NAME_MAX } from '@/domain/schemas/group'
-import { countLabel, participantLabel } from '@/lib/format'
+import { usePeopleLabels } from '@/i18n/use-people-labels'
+import { participantLabel } from '@/lib/format'
 
 import type { GroupWithMembers } from '@/data-access/models'
 
@@ -29,6 +31,8 @@ interface GroupCardProps {
  * ils passent donc par une confirmation en deux temps.
  */
 export function GroupCard({ group, meId }: GroupCardProps) {
+  const t = useTranslations('groups.card')
+  const people = usePeopleLabels()
   const [renameState, renameAction, isRenaming] = useActionState(renameGroupAction, null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -61,19 +65,15 @@ export function GroupCard({ group, meId }: GroupCardProps) {
             {group.name}
           </h3>
           <p className="text-xs text-muted-foreground">
-            {countLabel(group.members.length, 'membre')}
+            {t('members', { count: group.members.length })}
           </p>
         </div>
-        {isOwner ? (
-          <Badge variant="outline">Propriétaire</Badge>
-        ) : (
-          <Badge variant="outline">Membre</Badge>
-        )}
+        <Badge variant="outline">{isOwner ? t('owner') : t('member')}</Badge>
       </div>
 
       <ul className="flex flex-wrap gap-2">
         {group.members.map((member) => {
-          const pseudo = participantLabel(member.profile_id, member.profiles?.pseudo)
+          const pseudo = participantLabel(member.profile_id, member.profiles?.pseudo, people)
           return (
             <li
               key={member.profile_id}
@@ -83,7 +83,7 @@ export function GroupCard({ group, meId }: GroupCardProps) {
               <span className="max-w-32 truncate">
                 {pseudo}
                 {member.profile_id === meId && (
-                  <span className="ml-1 text-xs text-muted-foreground">(toi)</span>
+                  <span className="ml-1 text-xs text-muted-foreground">{t('you')}</span>
                 )}
               </span>
             </li>
@@ -94,7 +94,7 @@ export function GroupCard({ group, meId }: GroupCardProps) {
       {isOwner && editing && (
         <form action={renameAction} className="flex flex-col gap-2">
           <input type="hidden" name="groupId" value={group.id} />
-          <Label htmlFor={`group-name-${group.id}`}>Nom du groupe</Label>
+          <Label htmlFor={`group-name-${group.id}`}>{t('nameLabel')}</Label>
           <div className="flex gap-2">
             <Input
               id={`group-name-${group.id}`}
@@ -106,7 +106,7 @@ export function GroupCard({ group, meId }: GroupCardProps) {
               className="flex-1"
             />
             <Button type="submit" variant="outline" disabled={isRenaming}>
-              {isRenaming ? <Spinner /> : 'Renommer'}
+              {isRenaming ? <Spinner /> : t('rename')}
             </Button>
           </div>
           <FormMessage error={renameState?.error} success={renameState?.success} />
@@ -125,14 +125,14 @@ export function GroupCard({ group, meId }: GroupCardProps) {
               onClick={() => setEditing((value) => !value)}
             >
               <RiPencilLine aria-hidden="true" />
-              {editing ? 'Fermer' : 'Renommer'}
+              {editing ? t('close') : t('rename')}
             </Button>
             <TwoStepButton
               variant="ghost"
               size="sm"
               className="text-muted-foreground hover:text-veto"
-              label="Supprimer le groupe"
-              confirmLabel="Confirmer — le groupe disparaît pour tout le monde"
+              label={t('delete')}
+              confirmLabel={t('confirmDelete')}
               onConfirm={remove}
               disabled={isPending}
             />
@@ -142,8 +142,8 @@ export function GroupCard({ group, meId }: GroupCardProps) {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-veto"
-            label="Quitter le groupe"
-            confirmLabel="Confirmer — tu ne seras plus invité"
+            label={t('leave')}
+            confirmLabel={t('confirmLeave')}
             onConfirm={leave}
             disabled={isPending}
           />

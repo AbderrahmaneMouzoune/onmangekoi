@@ -1,0 +1,24 @@
+{
+  "page": {
+    "eyebrow": "Release notes",
+    "title": "What’s new",
+    "description": "What changed in {site}, from the latest version back to the first.",
+    "contentLanguage": "Release notes are written in French."
+  },
+  "empty": {
+    "title": "Nothing to announce yet",
+    "description": "The first release note will show up here with the next release."
+  },
+  "kinds": {
+    "new": "New",
+    "improved": "Improved",
+    "fixed": "Fixed"
+  },
+  "kindPrefix": "{kind}: ",
+  "rss": "Follow via RSS",
+  "releases": "Technical release details",
+  "navLink": {
+    "label": "What’s new",
+    "unread": "What’s new — one unread release"
+  }
+}

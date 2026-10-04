@@ -238,7 +238,8 @@ select pg_temp.assert(
 );
 
 -- Aucun pseudo ne peut fuiter d'une colonne qui n'existe pas : on fige donc
--- la liste exacte de ce que la RPC est autorisée à renvoyer.
+-- la liste exacte de ce que la RPC est autorisée à renvoyer. `decided`
+-- (issue #55) ne dit que « c'est ici qu'on va », sur une ligne de restaurant.
 select pg_temp.assert(
   (select array_agg(p.parameter_name::text order by p.ordinal_position)
    from information_schema.routines r
@@ -248,7 +249,7 @@ select pg_temp.assert(
      and p.parameter_mode = 'OUT')
   = array[
       'session_name', 'closed_at', 'participant_count', 'rank', 'restaurant_name',
-      'cuisine_type', 'city', 'photo_url', 'score', 'votes_count'
+      'cuisine_type', 'city', 'photo_url', 'score', 'votes_count', 'decided'
     ],
   'la RPC ne renvoie que le podium et le décompte — aucune colonne de pseudo'
 );

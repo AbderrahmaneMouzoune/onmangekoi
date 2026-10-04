@@ -1,10 +1,11 @@
-import { RiTrophyLine } from '@remixicon/react'
+import { RiCheckboxCircleLine, RiTrophyLine } from '@remixicon/react'
 import Link from 'next/link'
+import { useLocale, useTranslations } from 'next-intl'
 
 import { SessionStatusBadge } from '@/components/session/session-status-badge'
 import { router } from '@/config/router.config'
 import { formatScore } from '@/domain/vote'
-import { countLabel, relativeDate } from '@/lib/format'
+import { relativeDate } from '@/lib/format'
 
 import type { SessionHistoryEntry } from '@/data-access/models'
 
@@ -12,9 +13,13 @@ import type { SessionHistoryEntry } from '@/data-access/models'
  * Les lignes de l'historique, sans aucune lecture : une session close mène à
  * son classement — c'est tout l'intérêt de la garder —, une session vivante à
  * sa salle. Le gagnant n'apparaît qu'une fois la session close : avant, il
- * n'existe pas.
+ * n'existe pas. Quand le host a confirmé où le groupe allait (« On y va »),
+ * c'est ce restaurant-là qui s'affiche, marqué comme décidé.
  */
 export function SessionHistoryList({ entries }: { entries: SessionHistoryEntry[] }) {
+  const locale = useLocale()
+  const t = useTranslations('session.history')
+  const tCommon = useTranslations('common')
   return (
     <ul className="flex flex-col gap-2">
       {entries.map((entry) => (
@@ -26,13 +31,27 @@ export function SessionHistoryList({ entries }: { entries: SessionHistoryEntry[]
             <div className="flex min-w-0 flex-col gap-1">
               <span className="truncate font-semibold">{entry.name}</span>
               <span className="text-xs text-muted-foreground">
-                {relativeDate(entry.created_at)} ·{' '}
-                {countLabel(entry.participant_count, 'participant')}
-                {entry.is_host && ' · organisée par toi'}
+                {[
+                  relativeDate(entry.created_at, locale),
+                  tCommon('counts.participants', { count: entry.participant_count }),
+                  entry.is_host && t('hostedByYou'),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </span>
               {entry.winner_name && (
                 <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium">
-                  <RiTrophyLine aria-hidden="true" className="size-3.5 shrink-0 text-brand" />
+                  {entry.winner_decided ? (
+                    <RiCheckboxCircleLine
+                      aria-hidden="true"
+                      className="size-3.5 shrink-0 text-yes"
+                    />
+                  ) : (
+                    <RiTrophyLine aria-hidden="true" className="size-3.5 shrink-0 text-brand" />
+                  )}
+                  <span className="sr-only">
+                    {entry.winner_decided ? t('decided') : t('leader')}{' '}
+                  </span>
                   <span className="truncate">{entry.winner_name}</span>
                   {entry.winner_score !== null && (
                     <span className="shrink-0 font-mono text-muted-foreground tabular">

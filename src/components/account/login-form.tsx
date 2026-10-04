@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useActionState } from 'react'
 
 import { loginAction } from '@/actions/auth'
@@ -10,13 +11,14 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 
 export function LoginForm({ next }: { next?: string }) {
+  const t = useTranslations('account.login')
   const [state, formAction, isPending] = useActionState(loginAction, null)
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
       {next && <input type="hidden" name="next" value={next} />}
       <div className="flex flex-col gap-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t('email')}</Label>
         <Input
           id="email"
           name="email"
@@ -28,7 +30,7 @@ export function LoginForm({ next }: { next?: string }) {
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="password">Mot de passe</Label>
+        <Label htmlFor="password">{t('password')}</Label>
         <Input
           id="password"
           name="password"
@@ -41,7 +43,7 @@ export function LoginForm({ next }: { next?: string }) {
       <FormMessage error={state?.error} />
 
       <Button type="submit" size="lg" disabled={isPending} className="w-full">
-        {isPending ? <Spinner /> : 'Se connecter'}
+        {isPending ? <Spinner /> : t('submit')}
       </Button>
     </form>
   )

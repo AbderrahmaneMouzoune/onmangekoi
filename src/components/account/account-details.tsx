@@ -1,5 +1,7 @@
 import { RiCheckLine, RiMailLine, RiShieldCheckLine } from '@remixicon/react'
 import { redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { LinkEmailForm } from '@/components/account/link-email-form'
 import { SetPasswordForm } from '@/components/account/set-password-form'
@@ -15,10 +17,20 @@ import { getProfile } from '@/data-access/profile'
 import { createServerClient } from '@/data-access/supabase/server'
 import { displayPseudo } from '@/lib/format'
 
-const AUTH_MESSAGES: Record<string, { error?: string; success?: string }> = {
-  invalid: { error: 'Ce lien de confirmation est invalide.' },
-  expired: { error: 'Ce lien de confirmation a expiré. Renvoie un email depuis cette page.' },
-  confirmed: { success: 'Adresse email confirmée.' },
+/**
+ * Retour du lien de confirmation (`?auth=…`, posé par `/auth/confirm`) : une
+ * erreur ou un succès, dont le texte vit dans `account.authLink`.
+ */
+const AUTH_OUTCOMES = {
+  invalid: 'error',
+  expired: 'error',
+  confirmed: 'success',
+} as const
+
+type AuthOutcome = keyof typeof AUTH_OUTCOMES
+
+function isAuthOutcome(value: string | undefined): value is AuthOutcome {
+  return value !== undefined && Object.hasOwn(AUTH_OUTCOMES, value)
 }
 
 /** Tout le contenu de `/account` dépend de l'utilisateur : un seul `<Suspense>`. */
@@ -34,13 +46,19 @@ export async function AccountDetails({
   ])
   if (!user) redirect(router.setup(router.account()))
 
-  const profile = await getProfile(supabase, user.id)
-  const pseudo = displayPseudo(profile?.pseudo)
+  const [profile, t, tCommon] = await Promise.all([
+    getProfile(supabase, user.id),
+    getTranslations('account'),
+    getTranslations('common'),
+  ])
+  const pseudo = displayPseudo(profile?.pseudo, tCommon('people.guest'))
   const isAnonymous = Boolean(user.is_anonymous)
   const emailConfirmed = Boolean(user.email_confirmed_at) && !isAnonymous
   const pendingEmail = user.new_email ?? (!emailConfirmed ? user.email : null)
   const hasPassword = emailConfirmed && Boolean(user.app_metadata?.providers?.includes('email'))
-  const authMessage = auth ? AUTH_MESSAGES[auth] : undefined
+  const authMessage = isAuthOutcome(auth)
+    ? { [AUTH_OUTCOMES[auth]]: t(`authLink.${auth}`) }
+    : undefined
 
   return (
     <>
@@ -53,36 +71,27 @@ export async function AccountDetails({
           {emailConfirmed ? (
             <Badge variant="yes">
               <RiShieldCheckLine aria-hidden="true" />
-              Compte lié · {user.email}
+              {t('identity.linked', { email: user.email ?? '' })}
             </Badge>
           ) : (
-            <Badge variant="outline">Invité · sans compte</Badge>
+            <Badge variant="outline">{t('identity.guest')}</Badge>
           )}
         </div>
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-display text-base font-semibold">Pseudo</h2>
+        <h2 className="font-display text-base font-semibold">{t('pseudo.title')}</h2>
         <UpdatePseudoForm currentPseudo={profile?.pseudo ?? ''} />
       </section>
 
       <section className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line">
-        <div className="flex flex-col gap-0.5">
-          <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <RiMailLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
-            Retrouver mes listes ailleurs
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Optionnel. Lier un email et un mot de passe permet de se reconnecter depuis un autre
-            appareil. Tout le reste fonctionne sans.
-          </p>
-        </div>
+        <LinkIntro />
 
         <ol className="flex flex-col gap-4">
           <li className="flex flex-col gap-2">
             <p className="flex items-center gap-2 text-sm font-medium">
               <StepMark done={emailConfirmed} index={1} />
-              Lier une adresse email
+              {t('link.emailStep')}
             </p>
             {emailConfirmed ? (
               <p className="pl-8 text-sm text-muted-foreground">{user.email}</p>
@@ -95,16 +104,14 @@ export async function AccountDetails({
           <li className="flex flex-col gap-2">
             <p className="flex items-center gap-2 text-sm font-medium">
               <StepMark done={hasPassword} index={2} />
-              Définir un mot de passe
+              {t('link.passwordStep')}
             </p>
             {emailConfirmed ? (
               <div className="pl-8">
                 <SetPasswordForm hasPassword={hasPassword} />
               </div>
             ) : (
-              <p className="pl-8 text-sm text-muted-foreground">
-                Disponible une fois l’email confirmé.
-              </p>
+              <p className="pl-8 text-sm text-muted-foreground">{t('link.afterConfirm')}</p>
             )}
           </li>
         </ol>
@@ -114,6 +121,20 @@ export async function AccountDetails({
         <SignOutButton isAnonymous={isAnonymous} />
       </div>
     </>
+  )
+}
+
+/** Le parcours de liaison, expliqué : le même pour tout le monde, silhouette comprise. */
+function LinkIntro() {
+  const t = useTranslations('account.link')
+  return (
+    <div className="flex flex-col gap-0.5">
+      <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+        <RiMailLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
+        {t('title')}
+      </h2>
+      <p className="text-sm text-muted-foreground">{t('description')}</p>
+    </div>
   )
 }
 
@@ -138,6 +159,7 @@ function StepMark({ done, index }: { done: boolean; index: number }) {
  * seules l'identité et l'avancée réelle des étapes attendent le serveur.
  */
 export function AccountDetailsFallback() {
+  const t = useTranslations('account')
   return (
     <>
       <section
@@ -152,8 +174,8 @@ export function AccountDetailsFallback() {
       </section>
 
       <section aria-busy="true" className="flex flex-col gap-3">
-        <h2 className="font-display text-base font-semibold">Pseudo</h2>
-        <p className="text-sm leading-none font-medium text-ink">Pseudo</p>
+        <h2 className="font-display text-base font-semibold">{t('pseudo.title')}</h2>
+        <p className="text-sm leading-none font-medium text-ink">{t('pseudo.label')}</p>
         <div className="flex gap-2">
           <Skeleton className="h-11 flex-1 rounded-md" />
           <Skeleton className="h-11 w-32 rounded-md" />
@@ -164,22 +186,13 @@ export function AccountDetailsFallback() {
         aria-busy="true"
         className="flex flex-col gap-3 rounded-lg bg-surface p-4 ring-1 ring-line"
       >
-        <div className="flex flex-col gap-0.5">
-          <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-            <RiMailLine aria-hidden="true" className="size-4.5 text-muted-foreground" />
-            Retrouver mes listes ailleurs
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Optionnel. Lier un email et un mot de passe permet de se reconnecter depuis un autre
-            appareil. Tout le reste fonctionne sans.
-          </p>
-        </div>
+        <LinkIntro />
 
         <ol className="flex flex-col gap-4">
           <li className="flex flex-col gap-2">
             <p className="flex items-center gap-2 text-sm font-medium">
               <Skeleton as="span" className="size-6 shrink-0 rounded-full" />
-              Lier une adresse email
+              {t('link.emailStep')}
             </p>
             <div className="pl-8">
               <Skeleton className="h-11 w-full rounded-md" />
@@ -188,7 +201,7 @@ export function AccountDetailsFallback() {
           <li className="flex flex-col gap-2">
             <p className="flex items-center gap-2 text-sm font-medium">
               <Skeleton as="span" className="size-6 shrink-0 rounded-full" />
-              Définir un mot de passe
+              {t('link.passwordStep')}
             </p>
             <div className="pl-8">
               <Skeleton className="h-5 w-64 max-w-full" />

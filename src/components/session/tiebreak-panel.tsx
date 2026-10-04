@@ -3,6 +3,7 @@
 import { RiDice5Line, RiRestartLine, RiScales3Line } from '@remixicon/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
 import { useState, useTransition } from 'react'
 
 import { createRunoffSessionAction, drawWinnerAction } from '@/actions/sessions'
@@ -11,7 +12,6 @@ import { FormMessage } from '@/components/ui/form-message'
 import { TwoStepButton } from '@/components/ui/two-step-button'
 import { router } from '@/config/router.config'
 import { joinNames } from '@/domain/tiebreak'
-import { useSessionWatch } from '@/hooks/use-session-watch'
 import { captureEvent } from '@/lib/analytics/client'
 import { cn } from '@/lib/utils'
 
@@ -33,8 +33,8 @@ interface TiebreakPanelProps {
  * le sort trancher. Les deux se décident en base — l'écran ne fait que
  * demander, puis relire.
  *
- * Tant que l'égalité tient, la ligne de session est suivie en direct : le
- * choix du host arrive sur l'écran des autres sans qu'ils rechargent.
+ * Le choix du host arrive sur l'écran des autres sans qu'ils rechargent : le
+ * classement suit la ligne de session en direct (`ResultsWatch`).
  */
 export function TiebreakPanel({
   sessionId,
@@ -46,10 +46,10 @@ export function TiebreakPanel({
   const navigation = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const t = useTranslations('session.tiebreak')
+  const locale = useLocale()
 
-  useSessionWatch(sessionId, method === null)
-
-  const names = joinNames(tiedNames)
+  const names = joinNames(tiedNames, locale)
 
   function runSecondRound() {
     setError(null)
@@ -97,23 +97,21 @@ export function TiebreakPanel({
         />
         <div className="flex flex-col gap-1">
           <h3 id="tiebreak-title" className="font-display text-base font-semibold">
-            {method === 'runoff' ? 'Second tour en cours' : 'Égalité parfaite'}
+            {method === 'runoff' ? t('runoffTitle') : t('title')}
           </h3>
           <p className="text-sm text-muted-foreground">
             {method === 'runoff'
-              ? `${names} se départagent dans une nouvelle session : mêmes participants, jokers remis à zéro.`
+              ? t('runoffText', { names })
               : isHost
-                ? `${names} terminent au même score, avec autant de coups de cœur. À toi de trancher.`
-                : `${names} terminent au même score, avec autant de coups de cœur. Le host va trancher.`}
+                ? t('hostText', { names })
+                : t('guestText', { names })}
           </p>
         </div>
       </div>
 
       {runoff && (
         <Link href={runoff.url} className={cn(buttonVariants(), 'w-full')}>
-          {runoff.status === 'closed'
-            ? 'Voir le classement du second tour'
-            : 'Rejoindre le second tour'}
+          {runoff.status === 'closed' ? t('seeRunoff') : t('joinRunoff')}
         </Link>
       )}
 
@@ -127,10 +125,10 @@ export function TiebreakPanel({
             label={
               <>
                 <RiRestartLine aria-hidden="true" />
-                Second tour
+                {t('runoff')}
               </>
             }
-            confirmLabel="Confirmer — on revote entre les ex æquo"
+            confirmLabel={t('confirmRunoff')}
             onConfirm={runSecondRound}
           />
           <TwoStepButton
@@ -140,10 +138,10 @@ export function TiebreakPanel({
             label={
               <>
                 <RiDice5Line aria-hidden="true" />
-                Tirage au sort
+                {t('draw')}
               </>
             }
-            confirmLabel="Confirmer — le sort désigne le gagnant"
+            confirmLabel={t('confirmDraw')}
             onConfirm={drawLots}
           />
         </div>

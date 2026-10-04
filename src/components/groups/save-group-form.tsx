@@ -1,6 +1,7 @@
 'use client'
 
 import { RiGroupLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { useActionState, useEffect, useState } from 'react'
 
 import { createGroupFromSessionAction } from '@/actions/groups'
@@ -11,7 +12,6 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { GROUP_NAME_MAX } from '@/domain/schemas/group'
 import { captureEvent } from '@/lib/analytics/client'
-import { countLabel } from '@/lib/format'
 
 interface SaveGroupFormProps {
   sessionId: string
@@ -26,6 +26,7 @@ interface SaveGroupFormProps {
  * code.
  */
 export function SaveGroupForm({ sessionId, memberCount }: SaveGroupFormProps) {
+  const t = useTranslations('groups.save')
   const [state, formAction, isPending] = useActionState(createGroupFromSessionAction, null)
   const [open, setOpen] = useState(false)
 
@@ -41,7 +42,7 @@ export function SaveGroupForm({ sessionId, memberCount }: SaveGroupFormProps) {
     return (
       <Button type="button" variant="outline" onClick={() => setOpen(true)}>
         <RiGroupLine aria-hidden="true" />
-        Sauvegarder ce groupe
+        {t('open')}
       </Button>
     )
   }
@@ -49,12 +50,12 @@ export function SaveGroupForm({ sessionId, memberCount }: SaveGroupFormProps) {
   return (
     <form action={formAction} className="flex w-full flex-col gap-2">
       <input type="hidden" name="sessionId" value={sessionId} />
-      <Label htmlFor="group-name">Nom du groupe</Label>
+      <Label htmlFor="group-name">{t('nameLabel')}</Label>
       <div className="flex gap-2">
         <Input
           id="group-name"
           name="name"
-          placeholder="L’équipe du déjeuner"
+          placeholder={t('placeholder')}
           autoFocus
           maxLength={GROUP_NAME_MAX}
           required
@@ -62,13 +63,10 @@ export function SaveGroupForm({ sessionId, memberCount }: SaveGroupFormProps) {
           className="flex-1"
         />
         <Button type="submit" disabled={isPending}>
-          {isPending ? <Spinner /> : 'Sauvegarder'}
+          {isPending ? <Spinner /> : t('submit')}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">
-        {countLabel(memberCount, 'participant')} de cette session. Tu pourras les réinviter d’un
-        clic à la prochaine.
-      </p>
+      <p className="text-xs text-muted-foreground">{t('hint', { count: memberCount })}</p>
       <FormMessage error={state?.error} />
     </form>
   )

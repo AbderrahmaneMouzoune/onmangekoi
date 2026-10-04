@@ -7,6 +7,7 @@
  */
 
 import type { SessionResultRow, TiebreakMethod } from '@/data-access/models'
+import type { Locale } from '@/i18n/config'
 
 export interface Tiebreak {
   /** Les restaurants à égalité en tête, dans l'ordre du classement. */
@@ -35,8 +36,10 @@ export function readTiebreak(results: SessionResultRow[]): Tiebreak | null {
   return { tied, method, drawn }
 }
 
-/** « A, B et C » — l'énumération telle qu'on la dit. */
-export function joinNames(names: string[]): string {
-  if (names.length <= 1) return names[0] ?? ''
-  return `${names.slice(0, -1).join(', ')} et ${names[names.length - 1]}`
+/**
+ * « A, B et C » — l'énumération telle qu'on la dit, dans la langue de la
+ * personne (« A, B, and C » en anglais).
+ */
+export function joinNames(names: string[], locale: Locale): string {
+  return new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(names)
 }

@@ -70,7 +70,7 @@ describe('seedNeighbourhoodUseCase', () => {
   it('should take the slot before spending anything at Google', async () => {
     claimNeighbourhoodImport.mockRejectedValue(new Error('omk:neighbourhood_quota_reached'))
 
-    await expect(seedNeighbourhoodUseCase(CLIENT, HERE)).rejects.toThrow(
+    await expect(seedNeighbourhoodUseCase(CLIENT, HERE, 'en')).rejects.toThrow(
       'omk:neighbourhood_quota_reached'
     )
     expect(searchNearbyPlaces).not.toHaveBeenCalled()
@@ -80,9 +80,9 @@ describe('seedNeighbourhoodUseCase', () => {
   it('should write one search, never twenty details', async () => {
     searchNearbyPlaces.mockResolvedValue(pageOf(3))
 
-    const seeded = await seedNeighbourhoodUseCase(CLIENT, HERE)
+    const seeded = await seedNeighbourhoodUseCase(CLIENT, HERE, 'en')
 
-    expect(searchNearbyPlaces).toHaveBeenCalledWith(HERE)
+    expect(searchNearbyPlaces).toHaveBeenCalledWith({ ...HERE, locale: 'en' })
     expect(getPlaceDetails).not.toHaveBeenCalled()
     expect(seeded.restaurants).toHaveLength(3)
     expect(seeded.remaining).toBe(2)
@@ -92,7 +92,7 @@ describe('seedNeighbourhoodUseCase', () => {
   it('should stop at the ceiling even when Google is generous', async () => {
     searchNearbyPlaces.mockResolvedValue(pageOf(NEIGHBOURHOOD_IMPORT_MAX + 5))
 
-    const seeded = await seedNeighbourhoodUseCase(CLIENT, HERE)
+    const seeded = await seedNeighbourhoodUseCase(CLIENT, HERE, 'en')
 
     expect(seeded.restaurants).toHaveLength(NEIGHBOURHOOD_IMPORT_MAX)
     expect(upsertRestaurantFromPlace).toHaveBeenCalledTimes(NEIGHBOURHOOD_IMPORT_MAX)
@@ -106,7 +106,7 @@ describe('seedNeighbourhoodUseCase', () => {
       return { id: `uuid-${one.placeId}`, name: one.name }
     })
 
-    const seeded = await seedNeighbourhoodUseCase(CLIENT, HERE)
+    const seeded = await seedNeighbourhoodUseCase(CLIENT, HERE, 'en')
 
     expect(seeded.restaurants.map((r) => r.id)).toEqual(['uuid-ChIJ0', 'uuid-ChIJ1', 'uuid-ChIJ3'])
     expect(seeded.failed).toBe(1)
@@ -115,7 +115,7 @@ describe('seedNeighbourhoodUseCase', () => {
   it('should refuse a neighbourhood where Google finds nothing', async () => {
     searchNearbyPlaces.mockResolvedValue(pageOf(0))
 
-    await expect(seedNeighbourhoodUseCase(CLIENT, HERE)).rejects.toBeInstanceOf(AppError)
+    await expect(seedNeighbourhoodUseCase(CLIENT, HERE, 'en')).rejects.toBeInstanceOf(AppError)
     expect(upsertRestaurantFromPlace).not.toHaveBeenCalled()
   })
 
@@ -124,6 +124,6 @@ describe('seedNeighbourhoodUseCase', () => {
     searchNearbyPlaces.mockResolvedValue(pageOf(2))
     upsertRestaurantFromPlace.mockRejectedValue(new Error('boom'))
 
-    await expect(seedNeighbourhoodUseCase(CLIENT, HERE)).rejects.toBeInstanceOf(AppError)
+    await expect(seedNeighbourhoodUseCase(CLIENT, HERE, 'en')).rejects.toBeInstanceOf(AppError)
   })
 })

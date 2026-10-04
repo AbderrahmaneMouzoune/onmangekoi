@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { RulesPicker } from './rules-picker'
 
@@ -18,19 +20,19 @@ function group(legend: string) {
 
 describe('RulesPicker', () => {
   it('should start on the historical rules', () => {
-    render(<RulesPicker />)
+    renderWithIntl(<RulesPicker />)
     expect(hidden('superlikes')).toHaveValue('1')
     expect(hidden('vetos')).toHaveValue('1')
     expect(hidden('closeAtRatio')).toHaveValue('1')
   })
 
   it('should keep the summary readable while folded', () => {
-    render(<RulesPicker />)
+    renderWithIntl(<RulesPicker />)
     expect(screen.getByText(/1 coup de cœur · 1 veto/)).toBeInTheDocument()
   })
 
   it('should send the quota and the threshold that were picked', async () => {
-    render(<RulesPicker />)
+    renderWithIntl(<RulesPicker />)
 
     await userEvent.click(within(group('Vetos par personne')).getByRole('radio', { name: '2' }))
     await userEvent.click(
@@ -47,9 +49,17 @@ describe('RulesPicker', () => {
   it('should submit its fields even while folded', () => {
     // Le contenu d'un `<details>` fermé reste dans le DOM : les champs cachés
     // partent avec le formulaire, déplié ou non.
-    const { container } = render(<RulesPicker />)
+    const { container } = renderWithIntl(<RulesPicker />)
     expect(container.querySelector('details')).not.toHaveAttribute('open')
     expect(hidden('superlikes')).toBeInTheDocument()
     expect(hidden('closeAtRatio')).toBeInTheDocument()
+  })
+
+  it('should drop the threshold of an open session, which has none', () => {
+    renderWithIntl(<RulesPicker open />)
+    expect(screen.queryByRole('radiogroup', { name: 'Seuil de clôture' })).toBeNull()
+    expect(hidden('closeAtRatio')).toBeNull()
+    expect(hidden('vetos')).toHaveValue('1')
+    expect(screen.getByText(/Session ouverte : chacun vote à son heure/)).toBeInTheDocument()
   })
 })

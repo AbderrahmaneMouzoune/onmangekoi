@@ -1,9 +1,11 @@
 import { notFound, redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 import { SessionRoom } from '@/components/session/session-room'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
 import { getCurrentUser } from '@/data-access/auth'
+import { getMyFoodConstraints, getSessionConstraintConflicts } from '@/data-access/food-constraints'
 import { getMyGroups, getSessionInvitations } from '@/data-access/groups'
 import { getRecentWinners } from '@/data-access/recent-winners'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
@@ -15,7 +17,9 @@ import {
 } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { getMyVotes } from '@/data-access/votes'
+import { toConflictCounts } from '@/domain/food-constraints'
 import { recentWinnerDates } from '@/domain/recent-winners'
+import { isOpenSession, parseSessionRules } from '@/domain/session-rules'
 import { qrCodeSvg } from '@/lib/qr'
 import { inviteUrl } from '@/lib/site'
 
@@ -41,13 +45,19 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
   // gagnants récents arrivent avec la session, une fois pour tout le deck —
   // aucune carte n'ira les redemander. Le premier tour n'est lu que si cette
   // session en est la suite.
-  const [participants, restaurants, votes, recentWinners, firstRound] = await Promise.all([
-    getSessionParticipants(supabase, session.id),
-    getSessionRestaurants(supabase, session.id),
-    getMyVotes(supabase, session.id),
-    getRecentWinners(supabase),
-    session.parent_session_id ? getSessionById(supabase, session.parent_session_id) : null,
-  ])
+  //
+  // Les comptes de contraintes alimentaires (#60) sont un signal : s'ils
+  // manquent — la RPC refuse un non-participant, qui sera redirigé juste en
+  // dessous —, la salle s'ouvre sans eux plutôt que de tomber en erreur.
+  const [participants, restaurants, votes, recentWinners, firstRound, conflicts] =
+    await Promise.all([
+      getSessionParticipants(supabase, session.id),
+      getSessionRestaurants(supabase, session.id),
+      getMyVotes(supabase, session.id),
+      getRecentWinners(supabase),
+      session.parent_session_id ? getSessionById(supabase, session.parent_session_id) : null,
+      getSessionConstraintConflicts(supabase, session.id).catch(() => []),
+    ])
 
   if (!participants.some((p) => p.profile_id === user.id)) {
     redirect(router.joinInvite(session))
@@ -62,18 +72,25 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
 
   const url = inviteUrl(session)
   const waiting = session.status === 'waiting'
+  // On entre encore : en salle d'attente, ou pendant le vote d'une session
+  // ouverte (#58), qui n'a pas de salle d'attente.
+  const joinable =
+    waiting || (session.status === 'voting' && isOpenSession(parseSessionRules(session.rules)))
   // Pré-inviter un groupe reste la main du host : c'est lui qui compose la
   // salle. Inviter par lien, lui, n'appartient à personne.
-  const waitingHost = waiting && session.host_id === user.id
+  const joinableHost = joinable && session.host_id === user.id
 
-  // Salle d'attente : chacun peut inviter et apporter un resto, donc le QR et
-  // le catalogue partent pour tout le monde — jamais pendant le vote, où ils
-  // ne serviraient qu'à alourdir la charge utile.
-  const [qrSvg, restaurantCatalog, invitations, groups] = await Promise.all([
-    waiting ? qrCodeSvg(url) : null,
+  // Tant qu'on entre, chacun peut inviter : le QR part pour tout le monde. Le
+  // catalogue, lui, ne sert qu'en salle d'attente — pendant le vote, même
+  // ouvert, le deck est figé et personne n'apporte plus de resto.
+  // Ses propres contraintes servent au même sélecteur : elles badgent les
+  // restos qu'on s'apprête à apporter.
+  const [qrSvg, restaurantCatalog, invitations, groups, myConstraints] = await Promise.all([
+    joinable ? qrCodeSvg(url) : null,
     waiting ? getRestaurantCatalogPage() : null,
-    waitingHost ? getSessionInvitations(supabase, session.id) : [],
-    waitingHost ? getMyGroups(supabase) : [],
+    joinableHost ? getSessionInvitations(supabase, session.id) : [],
+    joinableHost ? getMyGroups(supabase) : [],
+    waiting ? getMyFoodConstraints(supabase, user.id) : null,
   ])
 
   return (
@@ -91,6 +108,8 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
       firstRoundUrl={firstRound ? router.sessionResults(firstRound) : null}
       invitations={invitations}
       groups={groups}
+      constraintConflicts={toConflictCounts(conflicts)}
+      myConstraints={myConstraints}
     />
   )
 }
@@ -103,11 +122,12 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
  * ouvrent : la carte à gauche, les commandes à droite sur grand écran.
  */
 export function SessionRoomFallback() {
+  const t = useTranslations('session.room.eyebrow')
   return (
     <div aria-busy="true" className="flex flex-col gap-6 lg:gap-8">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="eyebrow">Session</p>
+          <p className="eyebrow">{t('session')}</p>
           <Skeleton className="h-8 w-48 sm:h-9 lg:h-10" />
         </div>
         <Skeleton className="h-6 w-24 rounded-full" />

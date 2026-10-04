@@ -1,0 +1,113 @@
+{
+  "page": {
+    "eyebrow": "Account",
+    "title": "My account"
+  },
+  "authLink": {
+    "invalid": "This confirmation link isn’t valid.",
+    "expired": "This confirmation link has expired. Send a new email from this page.",
+    "confirmed": "Email address confirmed."
+  },
+  "identity": {
+    "linked": "Linked account · {email}",
+    "guest": "Guest · no account"
+  },
+  "pseudo": {
+    "title": "Nickname",
+    "label": "Nickname",
+    "save": "Save",
+    "updated": "Nickname updated."
+  },
+  "link": {
+    "title": "Get my lists back on another device",
+    "description": "Optional. Linking an email and a password lets you sign back in from another device. Everything else works without it.",
+    "emailStep": "Link an email address",
+    "passwordStep": "Set a password",
+    "afterConfirm": "Available once the email is confirmed."
+  },
+  "email": {
+    "label": "Email address",
+    "placeholder": "you@example.com",
+    "link": "Link",
+    "resend": "Resend",
+    "pending": "A confirmation email was sent to <strong>{email}</strong>. Open the link to confirm.",
+    "sent": "A confirmation email was sent to {email}. Open the link to confirm."
+  },
+  "password": {
+    "label": "Password",
+    "newLabel": "New password",
+    "confirm": "Confirm",
+    "set": "Set the password",
+    "change": "Change the password",
+    "saved": "Password saved. You can now sign in from another device."
+  },
+  "signOut": {
+    "label": "Sign out",
+    "confirm": "Confirm sign-out",
+    "confirmAnonymous": "Confirm — with no linked email, your lists will be lost"
+  },
+  "login": {
+    "eyebrow": "Account",
+    "title": "Get my lists back",
+    "description": "Sign in with the email and password you set up on your other device.",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "noAccount": "No account? You don’t need one: <link>just pick a nickname</link>."
+  },
+  "stats": {
+    "title": "My stats",
+    "history": "History",
+    "empty": "Nothing to count yet. After your first session, you’ll find your votes here, your favourite cuisine and the restaurant that wins most often.",
+    "sessions": "Sessions",
+    "sessionsHint": "{count, plural, one {# hosted} other {# hosted}}",
+    "votes": "Votes",
+    "votesHint": "{count, plural, one {# veto} other {# vetoes}}",
+    "favourites": "Favourites",
+    "favouritesHint": "{count, plural, one {# vote} other {# votes}}",
+    "favoriteCuisine": "Favourite cuisine",
+    "favoriteCuisineHint": "{count, plural, one {# positive vote} other {# positive votes}}",
+    "topRestaurant": "Most often picked restaurant",
+    "topRestaurantHint": "{count, plural, one {# win} other {# wins}}",
+    "sessionsClosed": "Sessions finished",
+    "privacy": "These numbers only count your own votes — never the other participants’."
+  },
+  "groups": {
+    "title": "My groups",
+    "description": "Leaving a group means you’re no longer pre-invited to its sessions. The ones you’ve already joined stay as they are."
+  },
+  "foodConstraints": {
+    "title": "What I can’t eat",
+    "description": "Optional. A restaurant that doesn’t work for you gets flagged in your sessions, without ever saying who: “1 participant can’t eat there”. You keep your veto for choosing between two cravings.",
+    "diets": "Diet to respect",
+    "budget": "Maximum budget",
+    "noCap": "No limit",
+    "atMost": "At most {level}",
+    "save": "Save",
+    "saved": "Noted: your sessions will flag it.",
+    "cleared": "Nothing declared any more."
+  },
+  "analytics": {
+    "title": "Usage statistics",
+    "on": "On. They measure the journey (creating, inviting, voting, ranking) without ever sending your nickname, your email or your codes.",
+    "off": "Off. Nothing measuring is loaded: no script, no cookie, no identifier.",
+    "enable": "Turn on",
+    "disable": "Turn off"
+  },
+  "data": {
+    "title": "My data",
+    "description": "Get a copy of everything the app knows about you, or delete your account. What’s kept, and for how long, is on the <link>privacy page</link>.",
+    "export": "Export my data (JSON)",
+    "exportFailed": "The export failed. Try again in a moment.",
+    "exportFileName": "onmangekoi-my-data-{day}.json",
+    "deleteNote": "Deletion is immediate and permanent. A confirmation you have to type out spells out what disappears before anything happens."
+  },
+  "delete": {
+    "button": "Delete my account",
+    "title": "Delete my account?",
+    "description": "Your profile, nickname, email and lists will be erased for good. Votes already counted in a finished session stay in the ranking, but nothing will link them to you any more.",
+    "word": "delete",
+    "prompt": "Type <mono>{word}</mono> to confirm",
+    "submit": "Delete for good"
+  }
+}

@@ -94,7 +94,8 @@ src/content/changelog/types.ts      schéma Zod d'une note
 src/content/changelog/entries.ts    les notes, la plus récente en tête ← le seul fichier à éditer
 src/content/changelog/index.ts      tri par version, dernière version publiée
 src/components/changelog/           la carte d'une note, la pastille de l'en-tête, le marqueur de lecture
-src/app/(app)/nouveautes/           la page et son flux RSS
+src/app/[locale]/(app)/nouveautes/  la page
+src/app/nouveautes/rss.xml/         son flux RSS (hors du segment de langue)
 src/lib/changelog-seen.ts           le repère de lecture, côté navigateur
 src/lib/version.ts                  comparaison de versions sémantiques
 ```

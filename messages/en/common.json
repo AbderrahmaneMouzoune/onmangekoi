@@ -1,0 +1,21 @@
+{
+  "actions": {
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "seeAll": "See all",
+    "join": "Join",
+    "decline": "Decline",
+    "home": "Home",
+    "backHome": "Back to home",
+    "copied": "Copied"
+  },
+  "people": {
+    "guest": "Guest",
+    "deletedParticipant": "Deleted participant"
+  },
+  "counts": {
+    "restaurants": "{count, plural, one {# restaurant} other {# restaurants}}",
+    "participants": "{count, plural, one {# participant} other {# participants}}"
+  },
+  "copyPrompt": "Copy this link:"
+}

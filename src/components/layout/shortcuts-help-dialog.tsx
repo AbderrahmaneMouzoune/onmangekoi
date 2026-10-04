@@ -1,6 +1,7 @@
 'use client'
 
 import { RiCloseLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 import { Fragment } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -26,47 +27,20 @@ interface Group {
   rows: Row[]
 }
 
-const KEY_LABELS: Record<string, string> = {
+/** Flèches : des symboles, les mêmes dans toutes les langues. */
+const ARROWS: Record<string, string> = {
   ArrowLeft: '←',
   ArrowRight: '→',
   ArrowUp: '↑',
   ArrowDown: '↓',
-  Enter: 'Entrée',
-  Escape: 'Échap',
 }
 
-const GROUPS: Group[] = [
-  {
-    title: 'Créer',
-    rows: CREATE_SHORTCUTS.map((shortcut) => ({
-      keys: shortcut.keys,
-      sequence: true,
-      label: shortcut.label,
-    })),
-  },
-  {
-    title: 'Aller à',
-    rows: GO_SHORTCUTS.map((shortcut) => ({
-      keys: shortcut.keys,
-      sequence: true,
-      label: shortcut.label,
-    })),
-  },
-  {
-    title: 'Pendant le vote',
-    rows: VOTE_ACTIONS.map((action) => ({ keys: action.shortcuts, label: action.label })),
-  },
-  {
-    title: 'Partout',
-    rows: [
-      { keys: ['Tab'], label: 'Passer d’un élément au suivant' },
-      { keys: ['ArrowUp', 'ArrowDown'], label: 'Se déplacer dans une liste' },
-      { keys: [SEARCH_KEY], label: 'Chercher un resto' },
-      { keys: ['Escape'], label: 'Fermer, annuler' },
-      { keys: [HELP_KEY], label: 'Cette aide' },
-    ],
-  },
-]
+/** Touches dont le nom se traduit (`layout.shortcuts.keys`). */
+const NAMED_KEYS = ['Enter', 'Escape'] as const
+
+function isNamedKey(key: string): key is (typeof NAMED_KEYS)[number] {
+  return (NAMED_KEYS as readonly string[]).includes(key)
+}
 
 interface ShortcutsHelpDialogProps {
   open: boolean
@@ -75,27 +49,61 @@ interface ShortcutsHelpDialogProps {
 
 /** L'aide des raccourcis : la même liste que le README, dans l'app. */
 export function ShortcutsHelpDialog({ open, onOpenChange }: ShortcutsHelpDialogProps) {
+  const t = useTranslations('layout.shortcuts')
+  const tVote = useTranslations('session.vote.actions')
+
+  const groups: Group[] = [
+    {
+      title: t('groups.create'),
+      rows: CREATE_SHORTCUTS.map((shortcut) => ({
+        keys: shortcut.keys,
+        sequence: true,
+        label: t(`targets.${shortcut.id}`),
+      })),
+    },
+    {
+      title: t('groups.goTo'),
+      rows: GO_SHORTCUTS.map((shortcut) => ({
+        keys: shortcut.keys,
+        sequence: true,
+        label: t(`targets.${shortcut.id}`),
+      })),
+    },
+    {
+      title: t('groups.vote'),
+      rows: VOTE_ACTIONS.map((action) => ({ keys: action.shortcuts, label: tVote(action.kind) })),
+    },
+    {
+      title: t('groups.anywhere'),
+      rows: [
+        { keys: ['Tab'], label: t('anywhere.tab') },
+        { keys: ['ArrowUp', 'ArrowDown'], label: t('anywhere.arrows') },
+        { keys: [SEARCH_KEY], label: t('anywhere.search') },
+        { keys: ['Escape'], label: t('anywhere.escape') },
+        { keys: [HELP_KEY], label: t('anywhere.help') },
+      ],
+    },
+  ]
+
+  const keyLabel = (key: string) => ARROWS[key] ?? (isNamedKey(key) ? t(`keys.${key}`) : key)
+
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
       <DialogPopup className="max-w-lg">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <DialogTitle>Raccourcis clavier</DialogTitle>
-            <DialogDescription>
-              Deux touches à la suite pour créer ou naviguer, une seule pendant le vote.
-            </DialogDescription>
+            <DialogTitle>{t('title')}</DialogTitle>
+            <DialogDescription>{t('description')}</DialogDescription>
           </div>
           <DialogClose
-            render={
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Fermer l’aide" />
-            }
+            render={<Button type="button" variant="ghost" size="icon-sm" aria-label={t('close')} />}
           >
             <RiCloseLine aria-hidden="true" />
           </DialogClose>
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          {GROUPS.map((group) => (
+          {groups.map((group) => (
             <section key={group.title} className="flex flex-col gap-2">
               <h3 className="eyebrow">{group.title}</h3>
               <dl className="flex flex-col gap-1.5">
@@ -107,10 +115,10 @@ export function ShortcutsHelpDialog({ open, onOpenChange }: ShortcutsHelpDialogP
                         <Fragment key={key}>
                           {index > 0 && (
                             <span className="text-[0.65rem] text-muted-foreground">
-                              {row.sequence ? 'puis' : 'ou'}
+                              {row.sequence ? t('then') : t('or')}
                             </span>
                           )}
-                          <kbd>{KEY_LABELS[key] ?? key}</kbd>
+                          <kbd>{keyLabel(key)}</kbd>
                         </Fragment>
                       ))}
                     </dd>

@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CONSENT_STORAGE_KEY, resetConsentCache } from '@/lib/analytics/consent'
+import { renderWithIntl } from '@/test/render'
 
 import { ConsentBanner } from './consent-banner'
 
@@ -23,7 +24,7 @@ describe('ConsentBanner', () => {
   })
 
   it('should offer refusing as plainly as accepting', () => {
-    render(<ConsentBanner />)
+    renderWithIntl(<ConsentBanner />)
 
     expect(screen.getByRole('button', { name: 'Refuser' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Accepter' })).toBeVisible()
@@ -31,7 +32,7 @@ describe('ConsentBanner', () => {
 
   it('should store the refusal and disappear', async () => {
     const user = userEvent.setup()
-    render(<ConsentBanner />)
+    renderWithIntl(<ConsentBanner />)
 
     await user.click(screen.getByRole('button', { name: 'Refuser' }))
 
@@ -41,7 +42,7 @@ describe('ConsentBanner', () => {
 
   it('should store the consent and disappear', async () => {
     const user = userEvent.setup()
-    render(<ConsentBanner />)
+    renderWithIntl(<ConsentBanner />)
 
     await user.click(screen.getByRole('button', { name: 'Accepter' }))
 
@@ -51,14 +52,14 @@ describe('ConsentBanner', () => {
 
   it('should not ask again once the choice is made', () => {
     window.localStorage.setItem(CONSENT_STORAGE_KEY, 'denied')
-    render(<ConsentBanner />)
+    renderWithIntl(<ConsentBanner />)
 
     expect(screen.queryByRole('button', { name: 'Accepter' })).not.toBeInTheDocument()
   })
 
   it('should stay hidden when no PostHog key is configured', () => {
     isAnalyticsConfigured.mockReturnValue(false)
-    render(<ConsentBanner />)
+    renderWithIntl(<ConsentBanner />)
 
     expect(screen.queryByRole('button', { name: 'Accepter' })).not.toBeInTheDocument()
   })

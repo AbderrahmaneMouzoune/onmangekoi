@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { TiebreakPanel } from './tiebreak-panel'
 
@@ -14,13 +16,12 @@ const refresh = vi.hoisted(() => vi.fn())
 
 vi.mock('@/actions/sessions', () => ({ createRunoffSessionAction, drawWinnerAction }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push, refresh }) }))
-vi.mock('@/hooks/use-session-watch', () => ({ useSessionWatch: vi.fn() }))
 vi.mock('@/lib/analytics/client', () => ({ captureEvent: vi.fn() }))
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'
 
 function renderPanel(props: Partial<React.ComponentProps<typeof TiebreakPanel>> = {}) {
-  return render(
+  return renderWithIntl(
     <TiebreakPanel
       sessionId={SESSION_ID}
       tiedNames={['Gyoza Bar', 'Poké House']}
