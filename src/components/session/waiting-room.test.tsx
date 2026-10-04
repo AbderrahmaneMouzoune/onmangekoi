@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { DEFAULT_SESSION_RULES } from '@/domain/session-rules'
+import { renderWithIntl } from '@/test/render'
 
 import { WaitingRoom } from './waiting-room'
 
@@ -20,6 +21,7 @@ vi.mock('@/actions/sessions', () => ({
   launchSessionAction: vi.fn(),
   leaveSessionAction: vi.fn(),
 }))
+vi.mock('@/actions/push', () => ({ subscribePushAction: vi.fn(), unsubscribePushAction: vi.fn() }))
 
 // Le panneau des restos et les invités en attente ont leur propre couverture :
 // ici, seul le bouton de lancement est en jeu.
@@ -88,7 +90,7 @@ function renderRoom({
   participants?: ParticipantWithProfile[]
   restaurants?: SessionRestaurantWithRestaurant[]
 } = {}) {
-  return render(
+  return renderWithIntl(
     <WaitingRoom
       session={session}
       participants={participants}
@@ -102,6 +104,8 @@ function renderRoom({
       connection="live"
       invitations={[]}
       groups={[]}
+      conflicts={{}}
+      myConstraints={null}
       onLaunched={vi.fn()}
       onRestaurantsChanged={vi.fn()}
     />

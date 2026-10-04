@@ -1,6 +1,7 @@
 'use client'
 
 import { RiCheckLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 
 import { RestaurantThumb } from '@/components/restaurants/restaurant-thumb'
 import { Spinner } from '@/components/ui/spinner'
@@ -51,6 +52,7 @@ export function ResultRow({
   onToggle,
 }: ResultRowProps) {
   const openNow = useOpenNow(openingHours)
+  const t = useTranslations('restaurants.openNow')
 
   return (
     <button
@@ -94,7 +96,7 @@ export function ResultRow({
                 openNow ? 'bg-yes-soft text-yes' : 'bg-surface-2 text-muted-foreground'
               )}
             >
-              {openNow ? 'Ouvert' : 'Fermé'}
+              {openNow ? t('open') : t('closed')}
             </span>
           )}
         </span>

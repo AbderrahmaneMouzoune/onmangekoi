@@ -299,6 +299,24 @@ export async function hasFinishedVoting(
   return data?.has_finished_voting ?? false
 }
 
+/**
+ * Ce qu'un bulletin a pu changer à la session : son statut, la décision et
+ * les règles. Relu après un « ça me va », pour savoir s'il vient de sceller
+ * l'accord d'un duo (#61) — la base ferme et décide dans la même écriture.
+ */
+export async function getSessionClosure(
+  supabase: SupabaseClient<Database>,
+  sessionId: string
+): Promise<Pick<Session, 'status' | 'decided_restaurant_id' | 'rules'> | null> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('status, decided_restaurant_id, rules')
+    .eq('id', sessionId)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
 export async function getSessionRestaurants(
   supabase: SupabaseClient<Database>,
   sessionId: string

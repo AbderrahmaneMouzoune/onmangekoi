@@ -1,9 +1,10 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useActionState, useState } from 'react'
 
 import { createListAction } from '@/actions/lists'
-import { LIST_FORM, ListIdentityCard } from '@/components/lists/list-identity-card'
+import { ListIdentityCard } from '@/components/lists/list-identity-card'
 import { RestaurantPicker } from '@/components/restaurants/restaurant-picker'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
@@ -11,7 +12,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { LIST_NAME_MAX } from '@/domain/schemas/list'
-import { countLabel } from '@/lib/format'
 
 import type { RestaurantPage } from '@/data-access/restaurants'
 
@@ -21,13 +21,12 @@ import type { RestaurantPage } from '@/data-access/restaurants'
  * rien, et sa carte dorée le dit d'entrée.
  */
 export function CreateListForm({ initialPage }: { initialPage: RestaurantPage }) {
+  const t = useTranslations('lists.form')
   const [state, formAction, isPending] = useActionState(createListAction, null)
   const [restaurantIds, setRestaurantIds] = useState<string[]>([])
 
   const submitLabel =
-    restaurantIds.length > 0
-      ? `Enregistrer la liste · ${countLabel(restaurantIds.length, 'resto')}`
-      : LIST_FORM.submitEmpty
+    restaurantIds.length > 0 ? t('submit', { count: restaurantIds.length }) : t('submitEmpty')
 
   return (
     <form
@@ -36,11 +35,11 @@ export function CreateListForm({ initialPage }: { initialPage: RestaurantPage })
     >
       <ListIdentityCard>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="name">{LIST_FORM.name}</Label>
+          <Label htmlFor="name">{t('name')}</Label>
           <Input
             id="name"
             name="name"
-            placeholder="Restos du bureau"
+            placeholder={t('namePlaceholder')}
             required
             maxLength={LIST_NAME_MAX}
             autoComplete="off"
@@ -52,8 +51,8 @@ export function CreateListForm({ initialPage }: { initialPage: RestaurantPage })
 
       <section className="flex flex-col gap-3 lg:col-start-2 lg:row-span-3 lg:row-start-1">
         <div className="flex flex-col gap-1">
-          <h2 className="text-base font-semibold">{LIST_FORM.restaurants}</h2>
-          <p className="text-sm text-muted-foreground">{LIST_FORM.restaurantsHint}</p>
+          <h2 className="text-base font-semibold">{t('restaurants')}</h2>
+          <p className="text-sm text-muted-foreground">{t('restaurantsHint')}</p>
         </div>
         <RestaurantPicker
           initialPage={initialPage}

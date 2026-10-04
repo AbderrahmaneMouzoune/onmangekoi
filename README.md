@@ -27,20 +27,20 @@ Les quotas de jokers et le seuil de clôture se règlent **à la création** —
 
 ## Règles de session
 
-| Règle               | Comportement                                                                           |
-| ------------------- | -------------------------------------------------------------------------------------- |
-| Lancement           | Réservé au host, à partir de 2 participants et 2 restaurants                           |
-| Composition         | En attente, **chaque participant** ajoute ses restos et invite qui il veut             |
-| Retrait             | Chacun retire ce qu'il a apporté ; le host arbitre ; le dernier resto reste            |
-| Snapshot            | Les restaurants sont figés au lancement, pas à la création                             |
-| Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                         |
-| Clôture automatique | Déclenchée en base dès que le seuil de votants est atteint — 100 % par défaut          |
-| Clôture à l'heure   | Échéance optionnelle choisie à la création — le vote se ferme tout seul                |
-| Clôture forcée      | Le host peut clôturer à tout moment — les votes manquants comptent 0                   |
-| Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)                     |
-| Rejoindre           | Impossible une fois le vote lancé ; un participant existant retrouve sa session        |
-| Départage           | À égalité parfaite, le host choisit : second tour entre les ex æquo, ou tirage au sort |
-| Décision            | « On y va » : le host confirme où le groupe va — le gagnant, ou un autre resto du vote |
+| Règle               | Comportement                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Lancement           | Réservé au host, à partir de 2 participants et 2 restaurants — sauf session ouverte ou duo                         |
+| Composition         | En attente, **chaque participant** ajoute ses restos et invite qui il veut                                         |
+| Retrait             | Chacun retire ce qu'il a apporté ; le host arbitre ; le dernier resto reste                                        |
+| Snapshot            | Les restaurants sont figés au lancement, pas à la création                                                         |
+| Votes privés        | Chacun ne lit que ses votes ; le classement est une agrégation                                                     |
+| Clôture automatique | Déclenchée en base dès que le seuil de votants est atteint — jamais en session ouverte ; en duo, au premier accord |
+| Clôture à l'heure   | Échéance optionnelle choisie à la création — le vote se ferme tout seul                                            |
+| Clôture forcée      | Le host peut clôturer à tout moment — les votes manquants comptent 0                                               |
+| Vue host            | Qui a terminé, en temps réel (statut uniquement, jamais les votes)                                                 |
+| Rejoindre           | Impossible une fois le vote lancé, sauf session ouverte jusqu'à son échéance et duo (deux places)                  |
+| Départage           | À égalité parfaite, le host choisit : second tour entre les ex æquo, ou tirage au sort                             |
+| Décision            | « On y va » : le host confirme où le groupe va — le gagnant, ou un autre resto du vote                             |
 
 ## Groupes récurrents
 
@@ -57,7 +57,7 @@ Les mêmes collègues votent chaque midi et retapaient le code à chaque session
 
 Un groupe ne se crée **que depuis une session vécue** : impossible d'y ajouter quelqu'un qu'on n'a pas croisé. Seuls ses membres le voient, seul son propriétaire le renomme ou le supprime, et c'est la RLS qui le dit. Le propriétaire ne peut pas le quitter — il le supprime, sinon le groupe survivrait sans personne pour le tenir.
 
-Faute de notifications push (issue #7, qui attend le service worker de #11), l'invité est prévenu **dans l'app** : la session apparaît sur son accueil sous « On t'attend », avec un bouton pour la rejoindre ou la décliner. Le host, lui, voit les invités encore attendus dans la salle d'attente et garde son lien à copier.
+Faute de notifications push (issue #7, qui s'appuiera sur le service worker de #11), l'invité est prévenu **dans l'app** : la session apparaît sur son accueil sous « On t'attend », avec un bouton pour la rejoindre ou la décliner. Le host, lui, voit les invités encore attendus dans la salle d'attente et garde son lien à copier.
 
 ## Vote chronométré
 
@@ -75,6 +75,52 @@ La clôture par échéance emprunte **exactement** le chemin de la clôture manu
 Une durée (« dans 10 min ») est datée par l'horloge du serveur au moment de la création ; une heure précise (« à 12:00 ») est convertie en instant absolu par le navigateur, seul à connaître le fuseau de la personne. Le compte à rebours se relit sur l'horloge à chaque seconde plutôt que de se décrémenter : un onglet revenu au premier plan affiche le temps réellement restant, pas celui qu'il aurait compté s'il n'avait pas dormi.
 
 Une session **en attente** dont l'échéance tombe n'est jamais clôturée : sans un seul vote, le classement n'aurait aucun sens. `launch_session` refuse de la lancer et invite le host à prolonger — c'est la seule impasse possible, et elle a sa sortie.
+
+## Session ouverte
+
+Une session supposait tout le monde présent au même moment : le host lance à partir de deux participants, et plus personne n'entre ensuite. Un groupe se coordonne pourtant dans une conversation — le message part à 10 h, chacun le voit quand il le voit. La case **« Session ouverte »**, sous l'échéance du formulaire de création, supprime le rendez-vous.
+
+| Session ordinaire                                     | Session ouverte                                                         |
+| ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| Salle d'attente, puis « Lancer le vote »              | Le vote commence à la création : le host arrive directement sur le deck |
+| On rejoint tant que le vote n'est pas lancé           | On rejoint **pendant** le vote, jusqu'à l'échéance                      |
+| Échéance facultative                                  | Échéance **obligatoire** — « Sans limite » disparaît du formulaire      |
+| Clôture au seuil de votants (100 % par défaut)        | Pas de clôture au seuil : seules l'échéance et le host ferment          |
+| Chacun peut apporter un resto en salle d'attente      | Deux restos au moins dès la création, et le deck ne bouge plus          |
+| Code, QR et groupes à inviter dans la salle d'attente | Les mêmes, repliés au-dessus du deck — dépliés pour le host encore seul |
+
+Le mode vit dans les règles, sous la clé `rules.open` — pas dans une colonne à part. C'est une règle de session comme les jokers et le seuil : choisie à la création, annoncée sur l'écran d'invitation, recopiée dans l'export RGPD, et le paramètre `p_rules` de `create_session` suffit à la transmettre. Surtout, `open` et `close_at_ratio` se contraignent l'un l'autre : dans le même objet, une seule fonction (`rules_are_valid`) vérifie leur cohérence. La clé n'est écrite que lorsqu'elle vaut `true` — une session ordinaire garde exactement les règles d'avant.
+
+- **Pas de clôture à 100 %.** Le nombre de votants n'est pas connu d'avance : le premier qui termine « atteindrait 100 % » tout seul, au nez des suivants. Le seuil n'a pas d'objet et est ramené à 100 % dans les règles stockées, pour qu'elles ne racontent pas un seuil qui n'existe pas.
+- **L'échéance est obligatoire, et vérifiée à la création.** Sans elle, une session ouverte ne se fermerait jamais : `create_session` refuse avec `omk:open_session_needs_deadline`, et deux contraintes `check` interdisent qu'une autre route produise une session ouverte sans échéance ou en salle d'attente. Le compte à rebours et `extend_session()` restent ceux du vote chronométré.
+- **Le mode est figé à la création**, pas au lancement : c'est lui qui décide s'il y a une salle d'attente. Le trigger qui gèle les règles refuse tout changement de `open`, même sur une session encore en attente.
+- **Un arrivant tardif vote sur le même instantané** de restaurants : rien ne change au calcul, les votes manquants comptent déjà 0. Personne n'ajoute de resto en cours de route — il partirait avec des zéros qu'il n'a pas mérités.
+- **Rejoindre** : `join_session` accepte une arrivée pendant le vote d'une session ouverte, et la refuse dès l'échéance passée — même si le balayage à la minute ne l'a pas encore écrite. Une session ordinaire refuse toujours avec `omk:session_started`. L'aperçu d'invitation (`/join/<code>`, son image Open Graph, l'écran de pseudo) reste visible aux visiteurs anonymes jusqu'à l'échéance et annonce « Session ouverte ».
+- **Invitations** : un groupe s'invite pendant le vote, et l'invitation reste sous « On t'attend » jusqu'à l'échéance.
+- **Second tour** : il n'hérite pas du mode ouvert. Ses votants sont connus — ceux qui ont voté au premier tour, plus le host —, il n'a pas d'échéance et se clôt comme tout second tour, quand chacun a fini. Un participant entré sans jamais voter n'y est pas convié : il bloquerait un vote qui ne l'a pas attendu.
+- **Historique et purge** : rien de particulier. La session naît `voting` avec `launched_at` posé, se clôt à l'échéance, puis suit la rétention des sessions closes.
+
+## Mode duo
+
+À deux, tout le protocole de session — créer, inviter, attendre, lancer, classer — coûte plus cher que la décision qu'il sert. C'est aussi l'usage qui sort le plus naturellement du déjeuner d'équipe. `/duo` (`router.duo()`, lien « À deux » sur l'accueil et sur la création de session) le ramène à l'essentiel : choisir quelques restos, envoyer un lien, balayer.
+
+| Session ordinaire                              | Duo                                                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Nom, restos, échéance, règles, groupes         | Les restos seulement — sélection proposée d'après l'historique (#59), listes, carnet |
+| Code à dicter, QR, salle d'attente, « Lancer » | Un lien à envoyer (partage natif ou copie) ; le vote commence à la création          |
+| Autant de participants qu'on veut              | **Deux places** : un troisième est refusé (`omk:duo_full`)                           |
+| Clôture au seuil de votants                    | Clôture au **premier accord** : « ça me va » ou mieux des deux côtés sur un resto    |
+| Un classement, puis « On y va » du host        | « C'est d'accord : on mange chez X » — un résultat, la décision déjà posée           |
+
+- **Un mode de session, pas un second produit.** Aucune table nouvelle : le mode vit dans `sessions.rules` sous la clé `duo`, comme `open`, avec le même chemin — `rules_are_valid`, `normalize_rules`, le helper `session_is_duo`, le trigger qui gèle les règles dès la création, une contrainte `check` qui interdit un duo en salle d'attente. Duo et session ouverte s'excluent (`omk:invalid_rules`) ; l'échéance reste facultative. Les jokers restent ceux de toujours, le seuil vaut 100 %.
+- **Pas d'attente.** La session naît en `voting` ; le premier vote sans attendre, « Envoie ce lien » au-dessus du deck. Le second ouvre `/join/<code>` : sans pseudo, `/setup` reprend la destination et il arrive directement sur le deck. L'aperçu anonyme (écran de pseudo, image Open Graph) reste visible tant qu'une place est libre.
+- **Deux places, garanties par la table.** Un trigger `before insert` sur `session_participants` refuse une troisième ligne, quelle que soit la route ; les arrivées simultanées se sérialisent sur la ligne de session. `join_session` dit `omk:duo_full` avant d'essayer.
+- **Le premier accord ferme tout.** Un trigger sur `votes` (`handle_duo_agreement`), après chaque « ça me va » ou coup de cœur d'un duo : si l'autre a dit au moins « ça me va » au même resto, la session passe `closed` et la décision (#55) est posée dans le même UPDATE (`decided_restaurant_id`, `decided_at`). Il verrouille la ligne de session avant de relire le bulletin de l'autre : deux « oui » simultanés se sérialisent, le second voit le premier. « Bof » et veto ne font jamais accord. `submit_vote` reste celui de tout le monde.
+- **Pas d'impasse.** Sans accord, la clôture habituelle : quand les deux ont fini leur deck — les deux places occupées, le premier qui termine seul ne ferme rien —, le classement habituel s'affiche, avec départage et « On y va ». Le second tour d'un duo reste un duo. Le host peut aussi clôturer à la main, par exemple si l'autre n'ouvre jamais le lien.
+- **Pour les deux, sans recharger.** La clôture et la décision arrivent par l'événement Realtime qui sert déjà la clôture ; celui dont le vote scelle l'accord bascule sans l'attendre. La notification push (#7) part par le trigger existant et dit « C'est d'accord » à l'autre, jamais le nom du resto.
+- **Mesure** : `session_created` porte `duo`, `session_closed` la raison `agreement`, et `duo_matched` (rang de la carte qui a scellé l'accord) part une fois, du navigateur qui a voté en second.
+
+Scénario rejouable avec `bun run db:test` (`supabase/tests/duo.test.sql`).
 
 ## Départager une égalité
 
@@ -118,7 +164,7 @@ Un coup de cœur, un veto, classement quand tout le monde a voté : ces règles 
 | Vetos            | 0 à 5 par personne       | 1          |
 | Seuil de clôture | 50 % à 100 % des votants | 100 %      |
 
-Tout tient dans `sessions.rules`, un objet jsonb à trois clés dont le défaut reproduit exactement les règles d'avant : une session qui ne dit rien vit comme avant. Une contrainte `check` en borne les valeurs, et `create_session` complète les clés absentes — le formulaire n'envoie que ce qu'il change.
+Tout tient dans `sessions.rules`, un objet jsonb à trois clés (plus `open` et `duo`, voir « Session ouverte » et « Mode duo ») dont le défaut reproduit exactement les règles d'avant : une session qui ne dit rien vit comme avant. Une contrainte `check` en borne les valeurs, et `create_session` complète les clés absentes — le formulaire n'envoie que ce qu'il change.
 
 La base reste seule juge : `submit_vote` compte les jokers déjà posés au lieu de lire un booléen, et le trigger de clôture compare le nombre de votants arrivés au bout à `ceil(participants × seuil)`, jamais moins d'un. Sous 100 %, le classement tombe avant que tout le monde ait voté — les bulletins manquants comptent 0, comme lors d'une clôture forcée — et le deck de celui qui votait encore s'arrête proprement sur le classement.
 
@@ -141,6 +187,42 @@ Un classement où personne n'a dit oui (score nul ou négatif en tête) ne sacre
 L'exclusion est appliquée **côté serveur**, dans le use-case de création : une liste apporte des restaurants que l'écran n'a jamais montrés un par un. Si elle ne laisse rien, la session n'est pas créée — le formulaire le dit plutôt que de partir avec zéro resto.
 
 La fenêtre de 30 jours est une constante : `recent_winners_window()` en base, `RECENT_WINNER_WINDOW_DAYS` côté application, les deux figées par `supabase/tests/recent-winners.test.sql`.
+
+### Une sélection proposée à la création
+
+Composer la sélection est l'étape la plus lourde de la création, et elle retombe sur le host à chaque midi. Corriger une proposition coûte bien moins que partir d'une page blanche : qui a déjà un historique ouvre « Nouvelle session » avec **jusqu'à cinq restos déjà cochés**.
+
+| Ce qui est proposé           | D'où ça vient                                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Jusqu'à quatre vus récemment | Les restos des sessions où la personne était, les plus récentes d'abord — **sans les gagnants des 30 derniers jours** (décisions comprises) |
+| Un jamais proposé            | Jamais vu dans une de ses sessions : le dernier qu'elle a mis dans une de ses listes ou ajouté elle-même, sinon le dernier arrivé au carnet |
+
+Un bandeau au-dessus du panier dit d'où vient la sélection — « Vus récemment, sans les 3 gagnants des 30 derniers jours — plus un jamais proposé, le dernier arrivé au carnet. » — et **« Repartir de zéro »** la décoche d'un bloc, sans toucher à ce qu'on a pris soi-même. Tout le reste est inchangé : chaque resto se décoche au panier, les listes et le carnet s'y ajoutent comme d'habitude. La proposition est un point de départ, jamais une contrainte.
+
+**Sans historique, rien n'est proposé** : ni bandeau vide, ni resto tiré au hasard du catalogue — la page est exactement celle d'avant. Le jamais proposé n'accompagne qu'une vraie suggestion.
+
+La source est la RPC `suggest_restaurants(p_limit)` : **une seule requête** au chargement, restaurants compris — le panier nomme les pré-cochés même hors de la première page du carnet. Comme `recent_winners()`, elle ne prend pas d'identifiant et répond pour `auth.uid()` ; elle ne lit que des participations et des gagnants, jamais un vote. Chaque ligne porte sa raison (`recent`, `never_proposed`), sa source (`history`, `mine`, `catalog`) et le nombre de gagnants écartés : de quoi écrire la phrase sans seconde requête. Le comportement est figé par `supabase/tests/suggest-restaurants.test.sql`.
+
+## Ce que je ne peux pas manger
+
+Un veto dépensé pour dire « je ne peux pas manger là » est un joker gâché : ce n'est pas une préférence, c'est une contrainte, et elle ne change pas d'un midi à l'autre. Chacun la déclare **une fois**, depuis « Mon compte » — les régimes du carnet (végétarien, vegan, halal, casher, sans gluten) et un budget maximum — et les sessions la signalent d'elles-mêmes. Aucun réglage par session, aucun host qui devine.
+
+| Où                          | Ce qui s'affiche                                                                                                |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| « Mon compte »              | Section « Ce que je ne peux pas manger » : des cases, un budget, un bouton — tout décocher retire tout          |
+| Nouvelle session, le carnet | Ses **propres** contraintes : « Pas halal », « Hors budget », « Pas pour toi » sur la ligne, qui reste cochable |
+| Salle d'attente, restos     | « 2 participants ne peuvent pas y manger » sous le resto — le host garde ou retire, comme avant                 |
+| Carte de vote               | La même mention, discrète, en bas de carte                                                                      |
+
+**Signaler, jamais masquer ni interdire.** Aucune RPC de création, de lancement ou de vote ne lit ces contraintes : elles ne bloquent rien, et une session sans personne qui en déclare vit exactement comme avant.
+
+**Se taire plutôt que rassurer — ou accuser — à tort.** Un resto heurte une contrainte de régime seulement s'il a **déclaré** ses régimes (`restaurants.tags` non vide) et que celui exigé n'y est pas — un resto vegan sert végétarien. Il heurte le budget seulement si son `price_level` est **connu** et le dépasse. Des régimes non renseignés ou un prix inconnu ne comptent pour personne. La règle vit en un seul endroit, `restaurant_conflicts_with()` en base, et son équivalent pur `src/domain/food-constraints.ts` sert l'écran de composition ; les deux sont figés par les mêmes cas de test.
+
+**Jamais nominatif.** `profile_constraints (profile_id, tag)` et `profile_budgets (profile_id, max_price_level)` sont en RLS propriétaire stricte : personne d'autre, host compris, ne les lit. Le budget n'est pas dans `profiles`, que les co-participants lisent pour les pseudos. L'écriture passe par `save_my_constraints`, qui remplace l'ensemble d'un coup. L'agrégat passe par `session_constraint_conflicts(p_session_id)`, réservée aux participants, qui ne rend que `(restaurant_id, blocked_count)` pour les restos concernés. À deux dans une session, le compte peut trahir l'autre : c'est accepté, et l'interface ne met jamais un nom à côté. Le salon relit les comptes quand quelqu'un entre, sort ou apporte un resto — pas à chaque vote.
+
+**À la création, seulement soi.** Personne d'autre n'est encore dans la salle. Les membres d'un groupe pré-invité ne comptent pas avant d'entrer : une invitation n'est pas une présence, et une RPC qui compterait les contraintes d'un groupe sur une liste de restos choisie librement permettrait de les sonder resto par resto. Ils comptent dès qu'ils rejoignent la salle d'attente.
+
+**Donnée sensible.** Un régime halal ou casher peut dire une religion, un sans gluten une santé. La déclaration est volontaire et se retire d'un clic ; l'export RGPD la contient, la suppression du compte l'emporte en cascade. La mesure d'audience n'en reçoit qu'un compte (`constraints_updated`, `constraint_count`), jamais le détail. Scénario rejouable avec `bun run db:test` (`supabase/tests/profile-constraints.test.sql`).
 
 ## URLs, codes et liens de partage
 
@@ -345,12 +427,75 @@ Tout se fait au clavier, et `?` affiche l'aide dans l'app :
 
 Les séquences (`src/lib/shortcuts.ts`) ne se déclenchent jamais dans un champ de saisie ni dans une modale, et une lettre tenue avec `Ctrl`, `Alt` ou `⌘` reste au navigateur. Le focus est toujours visible (contour tomate, `:focus-visible` global), il revient sur le bouton qui a ouvert un panneau quand celui-ci se ferme, et chaque changement d'état de la session — lancement du vote, clôture — est annoncé aux lecteurs d'écran et reçoit le focus.
 
+## App installable et hors ligne
+
+onmangekoi s'installe sur l'écran d'accueil comme une app (PWA) : fenêtre plein écran, icône « k » à la craie, et une page dédiée quand le réseau manque plutôt que le dinosaure du navigateur.
+
+| Pièce                  | Où                                                                   | Rôle                                                                                                              |
+| ---------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Manifest               | `src/lib/pwa/manifest.ts`, servi par `[locale]/manifest.webmanifest` | `id`, `start_url`, `scope`, `display: standalone`, icônes 192 et 512 ; traduit, même `id` dans toutes les langues |
+| Icônes                 | `src/app/icon.tsx`, `src/app/icons/*/route.tsx`                      | un seul dessin (`components/og/app-icon.tsx`) ; la maskable réduit le glyphe à 80 %                               |
+| Service worker         | `/sw.js` ← `src/app/sw.js/route.ts`                                  | script maison, généré au build par `src/lib/pwa/service-worker.ts`                                                |
+| Page hors ligne        | `/offline`                                                           | précachée, style ardoise, se recharge seule au retour du réseau                                                   |
+| Enregistrement         | `PwaProvider` (layout racine), `src/lib/pwa/registration.ts`         | build de production uniquement ; `getServiceWorkerRegistration()` pour les notifications                          |
+| Bannière « Installer » | `InstallBanner` (accueil), `src/lib/pwa/install-offer.ts`            | après une première session réussie, « Plus tard » la fait taire 90 jours                                          |
+
+**Ce que le service worker cache, et rien d'autre.** À l'installation : la page `/offline`, ses scripts, sa feuille de style et ses polices (lus dans son HTML), le manifest et les icônes. Au fil de l'eau : les fichiers immuables de `/_next/static/` (cache d'abord). Les pages ne sont **jamais** mises en cache, puisqu'elles portent pseudo, sessions et listes : une navigation va au réseau et reçoit la page hors ligne s'il ne répond pas. Supabase, `/api/`, `/auth/`, les Server Actions (en-tête `Next-Action`) et les charges RSC passent sans être touchés. Les règles sont des fonctions pures (`src/lib/pwa/sw-routing.ts`) dont la source est recopiée dans le script ; les tests exécutent le script réellement servi contre un faux environnement de service worker.
+
+**Une mise à jour invalide l'ancien cache.** `next.config.mjs` calcule un identifiant de build (déploiement Vercel, sinon commit, sinon aléatoire) qui sert à la fois de `generateBuildId` et de nom aux caches (`omk-<build>-precache`, `omk-<build>-static`). Chaque déploiement change donc `/sw.js` ; le navigateur, qui le revalide à chaque navigation (`updateViaCache: 'none'`), installe la nouvelle version, qui prend la main aussitôt et efface les caches `omk-*` des builds précédents.
+
+**Pas de service worker en `next dev`** : les fichiers de `/_next/static/` y changent sans changer de nom. Un service worker laissé par un `next start` sur le même port est désinscrit au premier chargement en dev. Pour tester : `bun run build && bun run start`, puis l'onglet _Application_ des outils de développement (mode hors ligne compris) ; `e2e/pwa.spec.ts` rejoue le scénario hors ligne.
+
+**La bannière d'installation** n'existe que là où le navigateur émet `beforeinstallprompt` (Chrome, Edge, Android). L'événement part souvent avant l'hydratation : un court script en tête de `<body>` le retient (`INSTALL_PROMPT_SCRIPT`), et c'est l'app qui choisit le moment — sur l'accueil, une fois qu'un classement final avec un gagnant s'est affiché dans ce navigateur, jamais par-dessus le deck ni le classement. Sur iOS et Firefox, l'installation passe par le menu du navigateur (« Sur l'écran d'accueil »). Les réponses sont mesurées (`pwa_install_prompted`, `pwa_installed`, voir [`docs/analytics.md`](docs/analytics.md)).
+
+**Notifications push.** Le script est découpé en sections numérotées ; la dernière reçoit les gestionnaires `push` et `notificationclick` (voir [Notifications push](#notifications-push)). Côté page, `getServiceWorkerRegistration()` rend la registration active (`registration.pushManager`), ou `null` sans service worker.
+
+## Notifications push
+
+Le Realtime ne sert que l'onglet ouvert : un invité qui l'a fermé n'apprend ni que le vote est lancé, ni que le classement est prêt. Il peut désormais demander à être prévenu.
+
+| Quand                            | Qui est prévenu                            | Notification               | Au clic                                      |
+| -------------------------------- | ------------------------------------------ | -------------------------- | -------------------------------------------- |
+| Le host lance le vote            | les participants, sauf le host             | « Le vote est lancé »      | la salle de vote, `router.session(code)`     |
+| La session se clôt (host, seuil) | les participants, sauf l'auteur de clôture | « Le classement est prêt » | le classement, `router.sessionResults(code)` |
+| La session se clôt à l'échéance  | tous les participants                      | « Le classement est prêt » | le classement                                |
+| Un duo tombe d'accord            | l'autre, pas l'auteur du « oui » décisif   | « C'est d'accord »         | le résultat                                  |
+
+**Opt-in, jamais de demande surprise.** Le bouton « Me prévenir au lancement » apparaît en salle d'attente (invités), « Me prévenir du résultat » une fois ses votes faits. La permission du navigateur n'est demandée qu'au clic. L'abonnement est celui du **navigateur** : il vaut ensuite pour toutes les sessions auxquelles on participe, et « Ne plus me prévenir » le retire. Refusé, le bouton laisse place à une explication ; sur iPhone hors app installée, le Web Push n'existe pas, le bouton explique comment installer l'app (iOS 16.4+).
+
+**Le trajet.**
+
+1. `subscribePushAction` enregistre l'abonnement (`save_push_subscription`, un par navigateur, 10 appareils au plus par compte) dans `push_subscriptions`, en RLS propriétaire, avec la langue de l'interface (`locale`, `fr` ou `en`).
+2. Quand `sessions.status` passe à `voting` ou `closed`, le trigger `notify_session_status_change` appelle `POST /api/push/dispatch` par `pg_net`, après le commit, avec un secret partagé. Le corps ne porte que `{ session_id, status, actor_id }` ; `actor_id` (`auth.uid()`) est nul pour la clôture à l'échéance. Aucun appel si personne d'autre que l'auteur n'est abonné. Une erreur ne bloque jamais le changement de statut.
+3. La route vérifie le secret (comparaison à temps constant), relit la session avec la clé secrète Supabase — et se tait si son statut a bougé entre-temps —, écrit le titre et le corps dans la langue de chaque abonné, chiffre et signe (`web-push`, VAPID), envoie, puis purge les abonnements auxquels le service push répond 404 ou 410.
+4. Le service worker affiche la notification (une par session : la clôture remplace le lancement) et, au clic, donne le focus à l'onglet déjà ouvert sur la bonne page, y emmène un onglet de la même session, ou en ouvre un. L'adresse est revérifiée : jamais une autre origine.
+
+La charge utile se limite au titre, au nom de la session et au chemin à ouvrir ; elle est chiffrée de bout en bout, le service push du navigateur ne la lit pas. Seules les **mises à jour** de statut préviennent : une session ouverte naît en `voting` sans personne d'autre que le host, rien à annoncer. Un second tour naît lui aussi en `voting` et n'est pas annoncé pour l'instant — ses participants le découvrent en rouvrant le classement.
+
+**Désactivé par défaut.** Sans les secrets du Vault, le trigger ne fait rien ; sans clés VAPID ou sans `SUPABASE_SECRET_KEY`, la route répond 204 sans rien envoyer ; sans `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, le bouton ne s'affiche pas. C'est le cas en local, en CI et sur les previews. Pour activer, voir [Déployer](#déployer-vercel--supabase-cloud). Pour essayer en local : un build de production (`bun run build && bun run start`, le service worker n'existe pas en `next dev`), les variables de `.env.local.example`, et deux secrets Vault posés dans la base locale — l'URL doit viser l'hôte vu depuis le conteneur Postgres, `http://host.docker.internal:3000/api/push/dispatch`. Scénario rejouable avec `bun run db:test` (`supabase/tests/push.test.sql`).
+
+## Langues
+
+L'interface existe en français et en anglais ([#14](https://github.com/AbderrahmaneMouzoune/onmangekoi/issues/14)) : un collègue anglophone peut rejoindre la même session que le reste de l'équipe.
+
+- **À la première visite**, la langue suit le navigateur (`Accept-Language`) ; le français reste la langue par défaut.
+- **Le pied de page** propose FR / EN. Le choix est retenu un an dans le cookie `NEXT_LOCALE` et l'emporte ensuite sur le navigateur.
+- **Les liens ne changent pas** : pas de `/en/` dans l'URL. Un lien d'invitation, une liste partagée ou un classement public s'ouvre dans la langue de qui le reçoit.
+- `<html lang>`, le titre, les métadonnées Open Graph, les images de partage (accueil, invitation, classement public, liste publique, texte alternatif compris) et le manifest suivent la langue.
+- **Les notifications push** partent dans la langue de l'interface au moment de l'abonnement, retenue par navigateur.
+- **La recherche Google** répond dans la langue de la page (adresses, types de lieux) ; la région reste la France.
+
+Toute l'interface est traduite : parcours de session, carnet de restaurants, listes, groupes, compte, confidentialité, messages d'erreur. Restent en français, volontairement : les notes de version de `/nouveautes` et leur flux RSS (contenu éditorial, la page le signale), les cuisines du carnet (des données partagées) et les noms de session proposés, écrits dans la langue de qui crée la session. Une règle ESLint (`i18next/no-literal-string`, en `error`) refuse tout texte en dur dans le JSX de `src/`, et les tests de bout en bout tournent dans les deux langues.
+
+Le fonctionnement (`next-intl`, segment `[locale]` caché, messages par espace de noms, erreurs par code), comment ajouter un texte et comment ajouter une langue : [`docs/i18n.md`](docs/i18n.md).
+
 ## Stack
 
 | Couche     | Choix                                                                                    |
 | ---------- | ---------------------------------------------------------------------------------------- |
 | Frontend   | Next.js 16 (App Router, Cache Components, Turbopack, `proxy.ts`) · React 19 · TypeScript |
 | Routage    | `src/config/router.config.ts` — toutes les URL construites au même endroit               |
+| Langues    | next-intl 4 · `messages/<langue>/*.json` · langue en segment caché, sans préfixe d'URL   |
 | UI         | Tailwind CSS 4 · Base UI · Remix Icon · charte « L'ardoise »                             |
 | Données    | Supabase (PostgreSQL 17, RLS, RPC `security definer`)                                    |
 | Temps réel | Supabase Realtime (Postgres Changes, resync au retour au premier plan)                   |
@@ -373,34 +518,38 @@ Le détail (variables, tests e2e, régénération des types) est dans [`docs/loc
 
 ## Scripts
 
-| Script                    | Rôle                                                          |
-| ------------------------- | ------------------------------------------------------------- |
-| `bun run dev`             | serveur de développement                                      |
-| `bun run build`           | build de production                                           |
-| `bun run check`           | typecheck + lint + format + tests unitaires                   |
-| `bun run test`            | Vitest (unitaires + composants)                               |
-| `bun run test:e2e`        | Playwright, flow complet host + invité et audit axe (`E2E=1`) |
-| `bun run test:lighthouse` | Lighthouse Accessibilité sur les pages publiques              |
-| `bun run db:types`        | régénère les types TypeScript depuis la base locale           |
+| Script                    | Rôle                                                                                     |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| `bun run dev`             | serveur de développement                                                                 |
+| `bun run build`           | build de production                                                                      |
+| `bun run check`           | typecheck + lint + format + tests unitaires                                              |
+| `bun run test`            | Vitest (unitaires + composants)                                                          |
+| `bun run test:e2e`        | Playwright, flow complet host + invité et audit axe, en français et en anglais (`E2E=1`) |
+| `bun run test:lighthouse` | Lighthouse Accessibilité sur les pages publiques                                         |
+| `bun run db:types`        | régénère les types TypeScript depuis la base locale                                      |
 
 ## Architecture
 
 ```
-src/proxy.ts             rafraîchit la session, protège les routes (redirige vers /setup?next=…)
+src/proxy.ts             choisit la langue et réécrit vers app/[locale], rafraîchit la session, protège les routes (redirige vers /setup?next=…)
 src/config/              router.config.ts : préfixes protégés, longueurs de codes, `router.*()`
-src/app/                 routes App Router (setup, login, join/[code], sessions, sessions/[code], lists/[code], l/[code], groups, account, nouveautes, legal, auth, api/places)
-src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · groups/ · account/ · restaurants/ · onboarding/ · changelog/
+src/app/[locale]/        pages App Router, sous un segment de langue caché (setup, login, join/[code], sessions, sessions/[code], lists/[code], l/[code], groups, account, nouveautes, legal, auth, offline, manifest)
+src/app/                 hors langue : api/, sw.js, icons, robots, sitemap, flux RSS, global-error, global-not-found
+src/i18n/                next-intl : langues, routage, configuration de requête, erreurs traduites, revalidation par langue
+messages/                textes de l'interface, un fichier JSON par espace de noms et par langue (fr fait foi)
+src/components/          ui/ (primitives) · layout/ · home/ · session/ · lists/ · groups/ · account/ · restaurants/ · onboarding/ · changelog/ · pwa/
 src/content/changelog/   notes de version produit (schéma Zod + entrées), lues par /nouveautes et son flux RSS
-src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + recent-winners.ts (anti-fatigue) + stats.ts + models/ (types générés)
+src/data-access/         requêtes Supabase, un module par table + places.ts (Google) + recent-winners.ts (anti-fatigue) + suggestions.ts (sélection proposée) + stats.ts + models/ (types générés)
 src/use-cases/           logique métier composée (créer / rejoindre / voter / importer / onboarding)
-src/domain/              règles et vocabulaire métier : votes, codes de partage, curseur d'historique, erreurs, horaires, places, anti-fatigue, schemas/ (Zod)
+src/domain/              règles et vocabulaire métier : votes, codes de partage, curseur d'historique, erreurs, horaires, places, anti-fatigue, sélection proposée, contraintes alimentaires, schemas/ (Zod)
 src/actions/             Server Actions (validation Zod, auth, revalidate/redirect)
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
                          images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache, version (semver), changelog-seen
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
+src/lib/pwa/             service worker (source générée, règles de routage), enregistrement, icônes, bannière d'installation
 src/hooks/               Realtime de session, compte à rebours, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/add|remove_session_restaurant/submit_vote/close/extend/
-                         results/recent_winners/my_sessions/my_stats, départage, décision, groupes et invitations),
+                         results/recent_winners/suggest_restaurants/my_sessions/my_stats, départage, décision, groupes et invitations),
                          purge, RGPD
 supabase/tests/          scénarios SQL rejoués par `bun run db:test`
 e2e/                     Playwright
@@ -459,6 +608,7 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - **Liste publique** (`public_list`, `public_list_restaurants`, `public_lists`) : les seules lectures de liste ouvertes à `anon`. Elles ne répondent que pour une liste dont le propriétaire a ouvert le partage (`lists.is_public`), et ne rendent que son nom, ses restaurants et des compteurs — jamais le propriétaire, jamais ses autres listes. Refermer le partage purge le cache (`revalidateTag`) : la page redevient privée sur-le-champ.
 - `my_sessions` et `my_stats` refont le contrôle d'accès en clair (`session_participants.profile_id = auth.uid()`) plutôt que de s'en remettre à la RLS, qui reste inchangée. Le helper `session_winner` n'est exécutable ni par `anon` ni par `authenticated` : sans ça, le gagnant de n'importe quelle session se lirait en devinant un uuid.
 - **Anti-fatigue** (`recent_winners`) : la fonction ne prend aucun identifiant et se borne à `auth.uid()` — impossible de demander ce qui fatigue quelqu'un d'autre. Elle ne rend que le restaurant gagnant et la date de clôture : le reste du classement et le détail des votes n'en sortent pas.
+- **Sélection proposée** (`suggest_restaurants`) : même règle, `auth.uid()` et rien d'autre. Elle ne lit que les participations de l'appelant et `recent_winners()` — aucun score, aucun vote ; un resto vétoé revient comme un autre. Elle ne rend que des restaurants, déjà en lecture publique.
 - Un **groupe** n'est visible que de ses membres et modifiable que par son propriétaire (RLS) ; la création, l'invitation et le départ passent par des RPC (`create_group_from_session`, `invite_group_to_session`, `leave_group`) qui revérifient tout en base. Une invitation en attente n'ouvre aucun accès à la session : l'invité n'en lit que le nécessaire, via `my_session_invitations`.
 - L'ajout d'un restaurant passe par `create_manual_restaurant`, qui pose elle-même `created_by` et `source` : impossible de se faire passer pour quelqu'un d'autre ni de se faire passer pour du seed. Les policies RLS portent la même règle pour toute écriture directe, et la modification reste réservée au créateur.
 - La clé Google Places ne quitte jamais le serveur, et aucune policy RLS n'ouvre l'écriture en `source = 'google'` : `upsert_restaurant_from_place` est le seul chemin. Les corps d'erreur renvoyés par Google restent dans les logs serveur.
@@ -469,6 +619,8 @@ Le détail — seuils, façon de lire un échec, ce que l'automatique ne voit pa
 - **Aucune donnée personnelle n'est mise en cache.** Seul le catalogue public de restaurants est mémorisé, via un client Supabase sans cookie ; voir [Rendu et cache](#rendu-et-cache).
 - Aucun utilisateur Supabase n'est créé sur une simple visite : uniquement au choix du pseudo.
 - Les messages d'erreur Postgres ne remontent jamais tels quels : seuls les codes métier `omk:*` sont traduits.
+- **Contraintes alimentaires** : `profile_constraints` et `profile_budgets` ne sont lisibles et supprimables que par leur propriétaire, et ne s'écrivent que par `save_my_constraints`. Les contraintes des autres ne sortent de la base que par `session_constraint_conflicts`, réservée aux participants, et seulement en comptes par resto — jamais qui ni quoi. Voir [Ce que je ne peux pas manger](#ce-que-je-ne-peux-pas-manger).
+- **Notifications push** : `push_subscriptions` n'est lisible et supprimable que par son propriétaire, et ne s'écrit que par `save_push_subscription`. La clé secrète Supabase (`SUPABASE_SECRET_KEY`, client `src/data-access/supabase/admin.ts`, `server-only`) ne sert qu'à `/api/push/dispatch`, qui n'accepte que le secret partagé avec la base, comparé à temps constant. La route n'est pas sous le proxy, et le service worker ne la touche pas.
 
 ## Anti-abus
 
@@ -493,10 +645,10 @@ Le scénario est rejouable avec `bun run db:test` (`supabase/tests/join-rate-lim
 
 L'app est utilisable avec un simple pseudo, et les deux droits qui comptent au quotidien sont en libre-service depuis « Mon compte » :
 
-| Droit                | Chemin            | Effet                                                                                                                                                 |
-| -------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Export (portabilité) | `/account/export` | JSON téléchargeable — profil, listes, groupes, sessions hébergées, participations, restos apportés et votes — assemblé en base par `export_my_data()` |
-| Suppression          | « Mon compte »    | `delete_my_account()` : profil, listes, groupes et compte auth supprimés en une transaction                                                           |
+| Droit                | Chemin            | Effet                                                                                                                                                                                                                  |
+| -------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Export (portabilité) | `/account/export` | JSON téléchargeable — profil, contraintes alimentaires, listes, groupes, sessions hébergées, participations, restos apportés, votes et navigateurs abonnés aux notifications — assemblé en base par `export_my_data()` |
+| Suppression          | « Mon compte »    | `delete_my_account()` : profil, contraintes alimentaires, listes, groupes, abonnements aux notifications et compte auth supprimés en une transaction                                                                   |
 
 Supprimer un compte ne réécrit pas l'histoire des autres. Les votes déjà comptés dans une **session terminée** restent dans le classement mais perdent leur auteur (`Participant supprimé`) ; les sessions **en attente ou en cours** que le compte hébergeait sont supprimées, puisque sans host elles ne peuvent plus aboutir. La garantie est portée par le schéma (`on delete set null` sur `sessions.host_id` et `session_participants.profile_id`), pas seulement par la RPC : une suppression faite depuis le dashboard Supabase donne le même résultat.
 
@@ -520,7 +672,21 @@ Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adress
 1. Créer un projet Supabase, puis pousser le schéma : `supabase link --project-ref <ref>` et `supabase db push` (migrations, RLS, RPC, seed). Sans terminal sous la main, les mêmes opérations se pilotent depuis GitHub — voir [`docs/ci-database.md`](docs/ci-database.md).
 2. Dans Supabase → Authentication → URL Configuration : ajouter `https://<domaine>/auth/confirm` aux _Redirect URLs_ (compte optionnel).
 3. Dans Supabase → Database → Extensions : activer `pg_cron` si ce n'est pas déjà fait, puis rejouer les migrations de purge et de vote chronométré — sans l'extension elles s'appliquent quand même, mais leurs jobs ne sont pas planifiés (vérifier avec `select jobname, schedule from cron.job` : `omk-nightly-maintenance` et `omk-close-expired-sessions`).
-4. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
+4. Notifications push (optionnel) — voir [Notifications push](#notifications-push) :
+   - générer une paire VAPID : `bunx web-push generate-vapid-keys` (la clé publique va dans `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, la privée dans `VAPID_PRIVATE_KEY`) ; tirer un secret partagé, par exemple `openssl rand -hex 32` ;
+   - dans Supabase → Database → Extensions : activer `pg_net` (la migration le tente d'elle-même) ;
+   - dans le SQL Editor de Supabase, créer les deux secrets du Vault que lit le trigger :
+
+     ```sql
+     select vault.create_secret('https://<domaine>/api/push/dispatch', 'push_dispatch_url');
+     select vault.create_secret('<le secret partagé>', 'push_dispatch_secret');
+     ```
+
+     Pour changer une valeur : `select vault.update_secret(id, '<nouvelle valeur>') from vault.secrets where name = 'push_dispatch_url';`. Sans ces secrets, rien ne part — c'est l'état par défaut ;
+
+   - dans Vercel, les quatre variables serveur ci-dessous plus la clé publique. Les previews n'ont pas besoin de la route : le Vault ne pointe que vers la production.
+
+5. Dans Vercel → Settings → Environment Variables (Production **et** Preview) :
 
 | Variable                               | Valeur                                                    |
 | -------------------------------------- | --------------------------------------------------------- |
@@ -532,6 +698,11 @@ Un compte reste **toujours** joignable donc **jamais** purgé dès qu'une adress
 | `NEXT_PUBLIC_POSTHOG_HOST`             | optionnel — `https://eu.i.posthog.com` par défaut         |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`       | optionnel — active le captcha de l'onboarding             |
 | `TURNSTILE_SECRET_KEY`                 | optionnel — l'autre moitié du captcha (serveur seulement) |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`         | optionnel — clé VAPID publique ; affiche « Me prévenir »  |
+| `VAPID_PRIVATE_KEY`                    | optionnel — clé VAPID privée (serveur seulement)          |
+| `VAPID_SUBJECT`                        | optionnel — contact VAPID, `mailto:…` ou `https://…`      |
+| `PUSH_DISPATCH_SECRET`                 | optionnel — le même secret que `push_dispatch_secret`     |
+| `SUPABASE_SECRET_KEY`                  | optionnel — clé _secret_ Supabase, lue par la route push  |
 
 L'URL publique (`env.SITE_URL`, côté serveur) est résolue dans cet ordre : `NEXT_PUBLIC_SITE_URL` si définie et non locale, sinon les variables système Vercel — `VERCEL_PROJECT_PRODUCTION_URL` en production, `VERCEL_BRANCH_URL` / `VERCEL_URL` en preview — et enfin `http://localhost:3000` en développement. Un `localhost` copié par erreur dans les variables Vercel est ignoré.
 

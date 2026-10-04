@@ -76,11 +76,23 @@ describe('formatCountdown', () => {
 
 describe('formatDeadlineTime', () => {
   it('should show the closing hour', () => {
-    expect(formatDeadlineTime('2026-09-07T10:05:00.000Z')).toMatch(/\d{2}[:h]\d{2}/)
+    expect(formatDeadlineTime('2026-09-07T10:05:00.000Z', 'fr')).toMatch(/\d{2}[:h]\d{2}/)
+    expect(formatDeadlineTime('2026-09-07T10:05:00.000Z', 'en')).toMatch(/\d{2}:\d{2}/)
   })
 })
 
 describe('closeAttribution', () => {
+  it('should credit a duo agreement before anything else', () => {
+    expect(
+      closeAttribution({
+        everyoneFinished: false,
+        closesAt: null,
+        closedAt: '2026-09-07T10:00:30.000Z',
+        agreed: true,
+      })
+    ).toBe('agreement')
+  })
+
   it('should credit the completed vote first', () => {
     expect(
       closeAttribution({

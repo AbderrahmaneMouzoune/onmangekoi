@@ -44,6 +44,12 @@ describe('session entry handoff', () => {
     expect(takeSessionEntry(storage, 1_000)).toEqual({ kind: 'created', listCount: 2 })
   })
 
+  it('should carry what became of the proposed selection', () => {
+    const entry = { kind: 'created', listCount: 0, suggestedCount: 5, suggestedKept: 3 } as const
+    rememberSessionEntry(entry, storage, 1_000)
+    expect(takeSessionEntry(storage, 1_000)).toEqual(entry)
+  })
+
   it('should consume the intent only once', () => {
     rememberSessionEntry({ kind: 'joined', via: 'scan' }, storage, 1_000)
     expect(takeSessionEntry(storage, 1_000)).toEqual({ kind: 'joined', via: 'scan' })

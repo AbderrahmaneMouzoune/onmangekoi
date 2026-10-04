@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { AddRestaurantForm } from './add-restaurant-form'
 
@@ -46,14 +48,14 @@ describe('AddRestaurantForm', () => {
   })
 
   it('should prefill the name with what was being searched', () => {
-    render(
+    renderWithIntl(
       <AddRestaurantForm defaultName="Le petit libanais" onAdded={vi.fn()} onCancel={vi.fn()} />
     )
     expect(screen.getByLabelText(/nom du resto/i)).toHaveValue('Le petit libanais')
   })
 
   it('should keep the submit button disabled until the name is long enough', async () => {
-    render(<AddRestaurantForm onAdded={vi.fn()} onCancel={vi.fn()} />)
+    renderWithIntl(<AddRestaurantForm onAdded={vi.fn()} onCancel={vi.fn()} />)
     const submit = screen.getByRole('button', { name: /ajouter ce resto/i })
     expect(submit).toBeDisabled()
 
@@ -68,7 +70,7 @@ describe('AddRestaurantForm', () => {
     const created = restaurant({ cuisine_type: 'Libanais', price_level: 2 })
     createRestaurantAction.mockResolvedValue({ ok: true, data: created })
     const onAdded = vi.fn()
-    render(<AddRestaurantForm onAdded={onAdded} onCancel={vi.fn()} />)
+    renderWithIntl(<AddRestaurantForm onAdded={onAdded} onCancel={vi.fn()} />)
 
     await userEvent.type(screen.getByLabelText(/nom du resto/i), 'Le Petit Libanais')
     await userEvent.type(screen.getByLabelText(/cuisine/i), 'Libanais')
@@ -89,7 +91,9 @@ describe('AddRestaurantForm', () => {
 
   it('should let the budget be unset by pressing the same level twice', async () => {
     createRestaurantAction.mockResolvedValue({ ok: true, data: restaurant() })
-    render(<AddRestaurantForm defaultName="Wok Garden" onAdded={vi.fn()} onCancel={vi.fn()} />)
+    renderWithIntl(
+      <AddRestaurantForm defaultName="Wok Garden" onAdded={vi.fn()} onCancel={vi.fn()} />
+    )
 
     await userEvent.click(screen.getByRole('radio', { name: '€€€' }))
     await userEvent.click(screen.getByRole('radio', { name: '€€€' }))
@@ -103,7 +107,7 @@ describe('AddRestaurantForm', () => {
     const existing = restaurant({ name: 'Le Petit Libanais', source: 'seed' })
     findSimilarRestaurantsAction.mockResolvedValue({ ok: true, data: [existing] })
     const onAdded = vi.fn()
-    render(
+    renderWithIntl(
       <AddRestaurantForm defaultName="Le Petit Libanai" onAdded={onAdded} onCancel={vi.fn()} />
     )
 
@@ -121,7 +125,9 @@ describe('AddRestaurantForm', () => {
       error: 'Tu dois d’abord choisir un pseudo.',
     })
     const onAdded = vi.fn()
-    render(<AddRestaurantForm defaultName="Wok Garden" onAdded={onAdded} onCancel={vi.fn()} />)
+    renderWithIntl(
+      <AddRestaurantForm defaultName="Wok Garden" onAdded={onAdded} onCancel={vi.fn()} />
+    )
 
     await userEvent.click(screen.getByRole('button', { name: /ajouter ce resto/i }))
 

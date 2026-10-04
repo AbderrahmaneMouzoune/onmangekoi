@@ -1,6 +1,8 @@
 import { RiGlobalLine, RiGroupLine } from '@remixicon/react'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 
 import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
 import { ListRestaurantRows } from '@/components/lists/list-restaurant-rows'
@@ -17,7 +19,7 @@ import { getPublicList } from '@/data-access/public-lists'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
 import { parseSharedListParam } from '@/domain/share'
-import { countLabel, displayPseudo } from '@/lib/format'
+import { displayPseudo } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 /**
@@ -55,12 +57,14 @@ export async function SharedListDetail({ params }: { params: Promise<{ code: str
   // Cinq lectures indépendantes en parallèle. La carte de visite publique en
   // fait partie : une liste publique se présente de la même façon à tout le
   // monde, pseudo ou pas. Elle est nulle pour une liste privée.
-  const [preview, restaurants, showcase, initialPage, isOwner] = await Promise.all([
+  const [preview, restaurants, showcase, initialPage, isOwner, t, tCommon] = await Promise.all([
     getSharedListPreview(supabase, identifier.value),
     getSharedListRestaurants(supabase, identifier.value),
     getPublicList(identifier.value),
     getRestaurantCatalogPage(),
     ownsSharedList(supabase, identifier),
+    getTranslations('lists'),
+    getTranslations('common'),
   ])
   if (!preview) notFound()
 
@@ -76,10 +80,16 @@ export async function SharedListDetail({ params }: { params: Promise<{ code: str
   return (
     <>
       <PageHeader
-        eyebrow={showsOwner ? `Liste de ${displayPseudo(preview.owner_pseudo)}` : 'Liste publique'}
+        eyebrow={
+          showsOwner
+            ? t('shared.ownerEyebrow', {
+                owner: displayPseudo(preview.owner_pseudo, tCommon('people.guest')),
+              })
+            : t('public.eyebrow')
+        }
         title={preview.name}
-        description={countLabel(restaurants.length, 'resto')}
-        back={{ href: router.home(), label: 'Accueil' }}
+        description={t('shared.count', { count: restaurants.length })}
+        back={{ href: router.home(), label: tCommon('actions.home') }}
       />
 
       {/* Sous le titre plutôt qu'à côté : deux pastilles sur un téléphone
@@ -89,13 +99,13 @@ export async function SharedListDetail({ params }: { params: Promise<{ code: str
           {isOwner && preview.is_public && (
             <Badge variant="default">
               <RiGlobalLine aria-hidden="true" />
-              Publique
+              {t('shared.public')}
             </Badge>
           )}
           {preview.is_collaborative && (
             <Badge variant="brand">
               <RiGroupLine aria-hidden="true" />
-              Collaborative
+              {t('shared.collaborative')}
             </Badge>
           )}
         </div>
@@ -108,7 +118,7 @@ export async function SharedListDetail({ params }: { params: Promise<{ code: str
               href={router.list(preview)}
               className={cn(buttonVariants({ variant: 'outline' }), 'lg:self-start')}
             >
-              C’est ta liste — la modifier
+              {t('shared.yours')}
             </Link>
           )}
 
@@ -136,11 +146,12 @@ export async function SharedListDetail({ params }: { params: Promise<{ code: str
  * vers l'accueil est connu d'avance, et il est affiché comme tel.
  */
 export function SharedListDetailFallback() {
+  const tCommon = useTranslations('common')
   return (
     <>
       <PageHeaderFallback
         eyebrow={<Skeleton as="span" className="h-3 w-32" />}
-        back={{ href: router.home(), label: 'Accueil' }}
+        back={{ href: router.home(), label: tCommon('actions.home') }}
         description
       />
       <div aria-busy="true" className="flex flex-col gap-1.5">

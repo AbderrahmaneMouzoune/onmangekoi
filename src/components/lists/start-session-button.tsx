@@ -2,6 +2,7 @@
 
 import { RiPlayLine } from '@remixicon/react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { useState, useTransition } from 'react'
 
 import { startSessionFromListAction } from '@/actions/lists'
@@ -10,8 +11,6 @@ import { FormMessage } from '@/components/ui/form-message'
 import { Spinner } from '@/components/ui/spinner'
 import { rememberSessionEntry } from '@/lib/analytics/handoff'
 import { cn } from '@/lib/utils'
-
-const LABEL = 'Lancer une session depuis cette liste'
 
 interface StartSessionButtonProps {
   /** Code de partage de la liste. */
@@ -30,6 +29,7 @@ interface StartSessionButtonProps {
  * serveur relit la liste derrière son code.
  */
 export function StartSessionButton({ identifier, setupHref }: StartSessionButtonProps) {
+  const t = useTranslations('lists')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -37,7 +37,7 @@ export function StartSessionButton({ identifier, setupHref }: StartSessionButton
     return (
       <Link href={setupHref} className={cn(buttonVariants(), 'w-full')}>
         <RiPlayLine aria-hidden="true" />
-        {LABEL}
+        {t('start')}
       </Link>
     )
   }
@@ -57,7 +57,7 @@ export function StartSessionButton({ identifier, setupHref }: StartSessionButton
     <div className="flex flex-col gap-2">
       <Button type="button" onClick={start} disabled={isPending} className="w-full">
         {isPending ? <Spinner /> : <RiPlayLine aria-hidden="true" />}
-        {LABEL}
+        {t('start')}
       </Button>
       <FormMessage error={error} />
     </div>

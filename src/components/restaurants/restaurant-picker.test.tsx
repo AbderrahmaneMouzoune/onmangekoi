@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { RestaurantPicker } from './restaurant-picker'
 import { RestaurantSourcesProvider } from './restaurant-sources'
@@ -12,6 +14,7 @@ import { RestaurantSourcesProvider } from './restaurant-sources'
 import type { ListWithRestaurantIds } from '@/data-access/lists'
 import type { Restaurant } from '@/data-access/models'
 import type { RestaurantPage } from '@/data-access/restaurants'
+import type { FoodConstraints } from '@/domain/food-constraints'
 import type { PlaceResult } from '@/domain/places'
 import type { RecentWinnerDates } from '@/domain/recent-winners'
 import type { RestaurantFilters } from '@/domain/restaurant-filters'
@@ -139,6 +142,7 @@ function Harness({
   onFiltersChange,
   recentWinners,
   excludeRecent,
+  myConstraints,
   initialPage = PAGE,
 }: {
   lists?: ListWithRestaurantIds[]
@@ -147,6 +151,7 @@ function Harness({
   onFiltersChange?: (filters: RestaurantFilters) => void
   recentWinners?: RecentWinnerDates
   excludeRecent?: boolean
+  myConstraints?: FoodConstraints
   initialPage?: RestaurantPage
 }) {
   const [value, setValue] = useState<string[]>([])
@@ -162,6 +167,7 @@ function Harness({
         }}
         recentWinners={recentWinners}
         excludeRecent={excludeRecent}
+        myConstraints={myConstraints}
         inputName="restaurantIds"
         lists={lists}
         selectedListIds={listIds}
@@ -196,7 +202,7 @@ describe('RestaurantPicker', () => {
   })
 
   it('should put my lists, the address book and Google side by side, opening on my lists', () => {
-    render(<Harness lists={[list({ restaurant_ids: [MARCEL.id] })]} />)
+    renderWithIntl(<Harness lists={[list({ restaurant_ids: [MARCEL.id] })]} />)
 
     const tabs = within(
       screen.getByRole('tablist', { name: 'Source des restaurants' })
@@ -207,7 +213,7 @@ describe('RestaurantPicker', () => {
   })
 
   it('should drop the list source without lists, and the rail without a second source', () => {
-    render(<Harness google={false} />)
+    renderWithIntl(<Harness google={false} />)
 
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Mes listes' })).not.toBeInTheDocument()
@@ -217,7 +223,7 @@ describe('RestaurantPicker', () => {
   it('should mix a whole list with restaurants picked one by one, in a single basket', async () => {
     const bureau = list({ name: 'Restos du bureau', restaurant_ids: [MARCEL.id, SAKURA.id] })
     const onChange = vi.fn()
-    render(<Harness lists={[bureau]} onChange={onChange} />)
+    renderWithIntl(<Harness lists={[bureau]} onChange={onChange} />)
 
     await userEvent.click(screen.getByRole('checkbox', { name: /restos du bureau/i }))
     expect(hiddenValues('listIds')).toEqual([bureau.id])
@@ -255,7 +261,7 @@ describe('RestaurantPicker', () => {
   it('should open Google on the restaurants around you, without typing anything', async () => {
     grantPosition()
     googleAnswers([SUSHI_PLACE])
-    render(<Harness />)
+    renderWithIntl(<Harness />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
 
@@ -278,7 +284,7 @@ describe('RestaurantPicker', () => {
   it('should say so when the position is refused, and still search by name', async () => {
     refusePosition()
     googleAnswers([SUSHI_PLACE])
-    render(<Harness />)
+    renderWithIntl(<Harness />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
     expect(await screen.findByText(/position refusée/i)).toBeInTheDocument()
@@ -297,7 +303,7 @@ describe('RestaurantPicker', () => {
   it('should keep the Google results when leaving the tab and coming back', async () => {
     grantPosition()
     googleAnswers([SUSHI_PLACE])
-    render(<Harness />)
+    renderWithIntl(<Harness />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
     await screen.findByRole('checkbox', { name: /sushi bar sakura/i })
@@ -321,7 +327,7 @@ describe('RestaurantPicker', () => {
         json: async () => ({ results: [SUSHI_PLACE], nextPageToken: 'page-2' }),
       })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ results: [RAMEN_PLACE] }) })
-    render(<Harness />)
+    renderWithIntl(<Harness />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
     await screen.findByRole('checkbox', { name: /sushi bar sakura/i })
@@ -348,7 +354,7 @@ describe('RestaurantPicker', () => {
     let finishImport: (result: unknown) => void = () => {}
     importPlaceAction.mockReturnValue(new Promise((resolve) => (finishImport = resolve)))
     const onChange = vi.fn()
-    render(<Harness onChange={onChange} />)
+    renderWithIntl(<Harness onChange={onChange} />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
     const row = await screen.findByRole('checkbox', { name: /sushi bar sakura/i })
@@ -387,7 +393,7 @@ describe('RestaurantPicker', () => {
     googleAnswers([SUSHI_PLACE])
     importPlaceAction.mockResolvedValue({ ok: false, error: 'Ce lieu n’existe plus chez Google.' })
     const onChange = vi.fn()
-    render(<Harness onChange={onChange} />)
+    renderWithIntl(<Harness onChange={onChange} />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
     await userEvent.click(await screen.findByRole('checkbox', { name: /sushi bar sakura/i }))
@@ -401,7 +407,7 @@ describe('RestaurantPicker', () => {
   it('should let a restaurant be added by hand from any source, prefilled with the search', async () => {
     grantPosition()
     googleAnswers([])
-    render(<Harness />)
+    renderWithIntl(<Harness />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
     await userEvent.type(
@@ -418,7 +424,7 @@ describe('RestaurantPicker', () => {
   })
 
   it('should show each restaurant as an illustrated card with its facts', async () => {
-    render(<Harness />)
+    renderWithIntl(<Harness />)
 
     const marcel = screen.getByRole('checkbox', { name: /chez marcel/i })
     expect(marcel).toHaveTextContent('Français')
@@ -444,7 +450,7 @@ describe('RestaurantPicker', () => {
     const scrollTo = vi.fn()
     Object.defineProperty(Element.prototype, 'scrollTo', { value: scrollTo, configurable: true })
     const bureau = list({ name: 'Restos du bureau', restaurant_ids: [SAKURA.id] })
-    render(<Harness lists={[bureau]} />)
+    renderWithIntl(<Harness lists={[bureau]} />)
 
     await userEvent.click(screen.getByRole('checkbox', { name: /restos du bureau/i }))
     await userEvent.click(screen.getByRole('tab', { name: 'Le carnet' }))
@@ -474,7 +480,7 @@ describe('RestaurantPicker', () => {
     googleAnswers([
       { ...SUSHI_PLACE, openingHours: { periods: [{ day: 1, open: '11:30', close: '14:30' }] } },
     ])
-    render(<Harness />)
+    renderWithIntl(<Harness />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
     const row = await screen.findByRole('checkbox', { name: /sushi bar sakura/i })
@@ -493,7 +499,7 @@ describe('RestaurantPicker', () => {
       ok: true,
       data: { items: [SAKURA], hasMore: false, nextOffset: 1 },
     })
-    render(<Harness onFiltersChange={onFiltersChange} />)
+    renderWithIntl(<Harness onFiltersChange={onFiltersChange} />)
 
     await userEvent.click(screen.getByRole('checkbox', { name: 'Vegan' }))
 
@@ -519,7 +525,7 @@ describe('RestaurantPicker', () => {
       ok: true,
       data: { items: [SAKURA], hasMore: true, nextOffset: 1 },
     })
-    render(<Harness />)
+    renderWithIntl(<Harness />)
 
     await userEvent.click(screen.getByRole('radio', { name: 'Budget maximum €€' }))
     await screen.findByRole('button', { name: 'Afficher plus' })
@@ -545,7 +551,7 @@ describe('RestaurantPicker', () => {
       ok: true,
       data: { items: [], hasMore: false, nextOffset: 0 },
     })
-    render(<Harness />)
+    renderWithIntl(<Harness />)
 
     await userEvent.click(screen.getByRole('checkbox', { name: 'Casher' }))
 
@@ -558,7 +564,7 @@ describe('RestaurantPicker', () => {
   })
 
   it('should hide the distance filter until the position is known', async () => {
-    render(<Harness />)
+    renderWithIntl(<Harness />)
 
     expect(screen.queryByRole('radio', { name: /d’ici/ })).not.toBeInTheDocument()
 
@@ -587,7 +593,7 @@ describe('RestaurantPicker', () => {
   })
 
   it('should move between sources with the arrow keys', async () => {
-    render(<Harness lists={[list({ restaurant_ids: [MARCEL.id] })]} />)
+    renderWithIntl(<Harness lists={[list({ restaurant_ids: [MARCEL.id] })]} />)
 
     screen.getByRole('tab', { name: 'Mes listes' }).focus()
     await userEvent.keyboard('{ArrowRight}')
@@ -607,20 +613,20 @@ describe('RestaurantPicker', () => {
   const WON: RecentWinnerDates = { [MARCEL.id]: sixDaysAgo }
 
   it('should badge a restaurant that won lately', () => {
-    render(<Harness recentWinners={WON} />)
+    renderWithIntl(<Harness recentWinners={WON} />)
 
     expect(screen.getByText('Gagnant il y a 6 jours')).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: /chez marcel/i })).not.toBeDisabled()
   })
 
   it('should say nothing when nothing has won lately', () => {
-    render(<Harness />)
+    renderWithIntl(<Harness />)
     expect(screen.queryByText(/Gagnant/)).not.toBeInTheDocument()
   })
 
   it('should let a recent winner be picked while the anti-fatigue is off', async () => {
     const onChange = vi.fn()
-    render(<Harness recentWinners={WON} onChange={onChange} />)
+    renderWithIntl(<Harness recentWinners={WON} onChange={onChange} />)
 
     await userEvent.click(screen.getByRole('checkbox', { name: /chez marcel/i }))
 
@@ -629,7 +635,7 @@ describe('RestaurantPicker', () => {
 
   it('should set a recent winner aside once the anti-fatigue is on', async () => {
     const onChange = vi.fn()
-    render(<Harness recentWinners={WON} excludeRecent onChange={onChange} />)
+    renderWithIntl(<Harness recentWinners={WON} excludeRecent onChange={onChange} />)
 
     const row = screen.getByRole('checkbox', { name: /chez marcel/i })
     expect(row).not.toBeChecked()
@@ -644,13 +650,31 @@ describe('RestaurantPicker', () => {
 
   it('should leave the other restaurants alone', async () => {
     const onChange = vi.fn()
-    render(<Harness recentWinners={WON} excludeRecent onChange={onChange} />)
+    renderWithIntl(<Harness recentWinners={WON} excludeRecent onChange={onChange} />)
 
     await userEvent.click(screen.getByRole('checkbox', { name: /sakura/i }))
 
     expect(onChange).toHaveBeenCalledWith([SAKURA.id])
     const basket = screen.getByRole('region', { name: 'Ta sélection' })
     expect(within(basket).getByText('1 resto')).toBeInTheDocument()
+  })
+
+  // ─── Contraintes alimentaires (#60) ────────────────────────
+  it('should badge what I cannot eat, without hiding or locking it', async () => {
+    const onChange = vi.fn()
+    // Chez Marcel est à €€, Sakura sert vegan, Wok Garden ne dit rien.
+    renderWithIntl(
+      <Harness myConstraints={{ tags: ['vegan'], maxPriceLevel: 1 }} onChange={onChange} />
+    )
+
+    const marcel = screen.getByRole('checkbox', { name: /chez marcel/i })
+    expect(marcel).toHaveTextContent('Hors budget')
+    expect(screen.getByRole('checkbox', { name: /sakura/i })).not.toHaveTextContent(/Pas |Hors/)
+    // Rien n'est connu de Wok Garden : on se tait plutôt que d'accuser.
+    expect(screen.getByRole('checkbox', { name: /wok garden/i })).not.toHaveTextContent(/Pas |Hors/)
+
+    await userEvent.click(marcel)
+    expect(onChange).toHaveBeenCalledWith([MARCEL.id])
   })
 
   it('should say the same thing on the Google tab for a place the address book knows', async () => {
@@ -660,7 +684,7 @@ describe('RestaurantPicker', () => {
     })
     grantPosition()
     googleAnswers([SUSHI_PLACE])
-    render(
+    renderWithIntl(
       <Harness
         initialPage={{ items: [sakuraFromGoogle], hasMore: false, nextOffset: 1 }}
         recentWinners={{ [sakuraFromGoogle.id]: sixDaysAgo }}
@@ -680,7 +704,7 @@ describe('RestaurantPicker', () => {
   it('should not offer to seed the neighbourhood before a position is given', async () => {
     refusePosition()
     googleAnswers([SUSHI_PLACE])
-    render(<Harness />)
+    renderWithIntl(<Harness />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
 
@@ -701,7 +725,7 @@ describe('RestaurantPicker', () => {
       data: { restaurants: seeded, failed: 0, remaining: 2 },
     })
     const onChange = vi.fn()
-    render(<Harness onChange={onChange} />)
+    renderWithIntl(<Harness onChange={onChange} />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
     await userEvent.click(await screen.findByRole('button', { name: 'Amorcer' }))
@@ -731,7 +755,7 @@ describe('RestaurantPicker', () => {
         remaining: 0,
       },
     })
-    render(<Harness />)
+    renderWithIntl(<Harness />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
     await userEvent.click(await screen.findByRole('button', { name: 'Amorcer' }))
@@ -750,7 +774,7 @@ describe('RestaurantPicker', () => {
       ok: false,
       error: 'Tu as épuisé tes amorçages de quartier pour aujourd’hui. Réessaie demain.',
     })
-    render(<Harness />)
+    renderWithIntl(<Harness />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Google' }))
     await userEvent.click(await screen.findByRole('button', { name: 'Amorcer' }))

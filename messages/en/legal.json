@@ -1,0 +1,100 @@
+{
+  "privacy": {
+    "eyebrow": "Privacy",
+    "title": "Privacy",
+    "description": "What {site} knows about you, why, and how to take back control of it.",
+    "lastUpdated": "Last updated: {date}.",
+    "summary": {
+      "title": "In short",
+      "pseudo": "A nickname is all you need. Email and password are optional and only help you get your lists back on another device.",
+      "noTracking": "No ads, no reselling, no third-party trackers. Votes are never shown individually: only the combined ranking is displayed.",
+      "selfService": "Export and deletion are self-service from “My account”, no need to write to anyone."
+    },
+    "retention": {
+      "title": "What we keep",
+      "data": "Data",
+      "why": "Why",
+      "kept": "How long",
+      "rows": {
+        "pseudo": {
+          "data": "Nickname",
+          "why": "Identifying you to the other participants in a session",
+          "kept": "Until the account is deleted"
+        },
+        "credentials": {
+          "data": "Email and password",
+          "why": "Optional — getting your lists back on another device",
+          "kept": "Until the account is deleted"
+        },
+        "lists": {
+          "data": "Restaurant lists",
+          "why": "Reusing a selection from one session to the next",
+          "kept": "Until the account or the list is deleted"
+        },
+        "groups": {
+          "data": "Recurring groups",
+          "why": "Inviting the same crew back without typing the code every session",
+          "kept": "Until the account or the group is deleted, or until you leave it"
+        },
+        "sessions": {
+          "data": "Sessions and participation",
+          "why": "Running the vote and showing the ranking",
+          "kept": "As long as the session exists"
+        },
+        "votes": {
+          "data": "Votes",
+          "why": "Working out the ranking — never shown individually",
+          "kept": "Kept in aggregate, detached from their author when the account is deleted"
+        },
+        "constraints": {
+          "data": "Dietary constraints",
+          "why": "Optional — flagging in your sessions a restaurant where you can’t eat, without ever saying who",
+          "kept": "Until you remove them, or the account is deleted"
+        },
+        "push": {
+          "data": "Notification subscription",
+          "why": "Optional — letting you know when a vote starts or a ranking is ready, tab closed, in your language",
+          "kept": "Until “Stop notifying me”, account deletion, or the browser dropping it"
+        },
+        "guests": {
+          "data": "Guest account without email",
+          "why": "Letting you use the app without signing up",
+          "kept": "Deleted after 90 days of inactivity"
+        },
+        "attempts": {
+          "data": "Failed code attempts",
+          "why": "Stopping a script from guessing invitation codes",
+          "kept": "Purged within 24 hours — no IP address is stored"
+        }
+      }
+    },
+    "constraints": {
+      "title": "What you can’t eat",
+      "intro": "A halal or kosher diet can reveal a religion, gluten-free a health condition: this is sensitive data. Only you declare it, from “My account”, and only if you want to — declaring it means consenting to this use, and one click removes it.",
+      "nobody": "Nobody else can read it, not even the host of your sessions.",
+      "countOnly": "A session only shows a count per restaurant — “2 participants can’t eat there” —, never who or why. With just two people in a session, that count may be enough to guess: that’s the price of a useful signal.",
+      "noAnalytics": "It never goes to the audience measurement tool.",
+      "export": "The export includes it, deleting the account erases it."
+    },
+    "deletion": {
+      "title": "What happens on deletion",
+      "intro": "Deleting an account shouldn’t rewrite other people’s history. In practice:",
+      "erased": "The profile, nickname, email, password, lists, dietary constraints and notification subscriptions are deleted for good.",
+      "groups": "Groups the account owns disappear for all their members, and the account leaves the ones it had joined.",
+      "votes": "Votes already counted in a finished session stay in the ranking, but detached from their author: the other participants see “Deleted participant”.",
+      "sessions": "Sessions hosted by the account that are waiting or still voting are deleted: without a host, they can’t reach a result.",
+      "pendingVotes": "Votes in an unfinished session are deleted along with the participation."
+    },
+    "hosting": {
+      "title": "Who hosts this data",
+      "providers": "The database and authentication are run by <strong>Supabase</strong>, the app is hosted by <strong>Vercel</strong>, in the region chosen for the project. Both providers only use the data to deliver their service. No one else has access to it.",
+      "push": "If you turn on notifications, they go through your browser’s push service (Google for Chrome and Android, Mozilla for Firefox, Apple for Safari). Their content — the session name and the link to open — is end-to-end encrypted: that service carries it without being able to read it."
+    },
+    "rights": {
+      "title": "Your rights",
+      "text": "The GDPR gives you the right of access, rectification, portability and erasure. The last three are right in the app: you change your nickname from “My account”, the export gives you all of your data as JSON, and deletion is immediate and permanent.",
+      "account": "Go to “My account”",
+      "contact": "Ask a question"
+    }
+  }
+}

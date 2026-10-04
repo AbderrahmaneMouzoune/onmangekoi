@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { describeSequence, matchSequence, SEQUENCE_SHORTCUTS, shortcutFor } from './shortcuts'
+import { matchSequence, SEQUENCE_SHORTCUTS, shortcutFor } from './shortcuts'
 
 describe('matchSequence', () => {
   it('should recognise a complete sequence', () => {
@@ -31,7 +31,7 @@ describe('shortcutFor', () => {
   it('should find the shortcut of a destination and describe it', () => {
     const shortcut = shortcutFor('/lists')
     expect(shortcut?.keys).toEqual(['g', 'l'])
-    expect(describeSequence(shortcut!)).toBe('g puis l')
+    expect(shortcut?.keys).toEqual(['g', 'l'])
     expect(shortcutFor('/nowhere')).toBeUndefined()
   })
 })

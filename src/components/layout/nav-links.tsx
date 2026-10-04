@@ -2,17 +2,19 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 import { router } from '@/config/router.config'
 import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
-import { describeSequence, shortcutFor } from '@/lib/shortcuts'
+import { shortcutFor } from '@/lib/shortcuts'
 import { cn } from '@/lib/utils'
 
+/** `label` : clé du libellé dans `layout.nav` (messages). */
 export const NAV_ITEMS = [
-  { href: router.home(), label: 'Accueil', exact: true },
-  { href: router.sessionNew(), label: 'Nouvelle session', exact: true },
-  { href: router.join(), label: 'Rejoindre', exact: false },
-  { href: router.lists(), label: 'Mes listes', exact: false },
+  { href: router.home(), label: 'home', exact: true },
+  { href: router.sessionNew(), label: 'newSession', exact: true },
+  { href: router.join(), label: 'join', exact: false },
+  { href: router.lists(), label: 'lists', exact: false },
 ] as const
 
 function isCurrent(pathname: string, item: (typeof NAV_ITEMS)[number]): boolean {
@@ -40,6 +42,7 @@ export function NavLinks({ className }: { className?: string }) {
 export function StaticNavLinks({ pathname = null, className }: NavLinksProps) {
   // ← → passent d'un lien à l'autre, en plus de Tab.
   const onKeyDown = useArrowNavigation('horizontal')
+  const t = useTranslations('layout')
   return (
     <ul onKeyDown={onKeyDown} className={cn('flex items-center gap-1', className)}>
       {NAV_ITEMS.map((item) => {
@@ -50,14 +53,23 @@ export function StaticNavLinks({ pathname = null, className }: NavLinksProps) {
             <Link
               href={item.href}
               aria-current={current ? 'page' : undefined}
-              title={shortcut ? `Raccourci : ${describeSequence(shortcut)}` : undefined}
+              title={
+                shortcut
+                  ? t('nav.shortcutTitle', {
+                      sequence: t('shortcuts.sequence', {
+                        first: shortcut.keys[0],
+                        second: shortcut.keys[1],
+                      }),
+                    })
+                  : undefined
+              }
               aria-keyshortcuts={shortcut ? shortcut.keys.join(' ') : undefined}
               className={cn(
                 'inline-flex h-9 items-center rounded-md px-3 text-sm font-medium transition-colors',
                 current ? 'bg-surface-2 text-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
               )}
             >
-              {item.label}
+              {t(`nav.${item.label}`)}
             </Link>
           </li>
         )

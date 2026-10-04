@@ -1,9 +1,9 @@
 'use client'
 
 import { RiBookmarkLine, RiCheckLine } from '@remixicon/react'
+import { useTranslations } from 'next-intl'
 
 import { useArrowNavigation } from '@/hooks/use-arrow-navigation'
-import { countLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import type { ListWithRestaurantIds } from '@/data-access/lists'
@@ -22,9 +22,11 @@ interface ListSourcePanelProps {
  */
 export function ListSourcePanel({ lists, selectedIds, onToggle }: ListSourcePanelProps) {
   const onKeyDown = useArrowNavigation()
+  const t = useTranslations('restaurants.lists')
+  const tCommon = useTranslations('common')
   return (
     <div className="flex flex-col gap-2">
-      <ul onKeyDown={onKeyDown} className="flex flex-col gap-2" aria-label="Mes listes">
+      <ul onKeyDown={onKeyDown} className="flex flex-col gap-2" aria-label={t('label')}>
         {lists.map((list) => {
           const isSelected = selectedIds.includes(list.id)
           const isEmpty = list.restaurant_ids.length === 0
@@ -62,16 +64,16 @@ export function ListSourcePanel({ lists, selectedIds, onToggle }: ListSourcePane
                   </span>
                 </span>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground tabular">
-                  {isEmpty ? 'vide' : countLabel(list.restaurant_ids.length, 'resto')}
+                  {isEmpty
+                    ? t('empty')
+                    : tCommon('counts.restaurants', { count: list.restaurant_ids.length })}
                 </span>
               </button>
             </li>
           )
         })}
       </ul>
-      <p className="text-xs text-muted-foreground">
-        Coche autant de listes que tu veux, puis complète depuis le carnet ou Google.
-      </p>
+      <p className="text-xs text-muted-foreground">{t('hint')}</p>
     </div>
   )
 }

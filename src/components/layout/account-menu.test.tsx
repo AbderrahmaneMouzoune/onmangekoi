@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { renderWithIntl } from '@/test/render'
 
 import { AccountMenu } from './account-menu'
 
@@ -12,7 +14,7 @@ const signOutAction = vi.hoisted(() => vi.fn())
 vi.mock('@/actions/auth', () => ({ signOutAction }))
 
 async function openMenu(props?: { isAnonymous?: boolean }) {
-  render(<AccountMenu pseudo="Alex" isAnonymous={props?.isAnonymous ?? false} />)
+  renderWithIntl(<AccountMenu pseudo="Alex" isAnonymous={props?.isAnonymous ?? false} />)
   const trigger = screen.getByRole('button', { name: /alex/i })
   await userEvent.click(trigger)
   await screen.findByRole('menu')
@@ -26,7 +28,7 @@ describe('AccountMenu', () => {
   })
 
   it('should open the menu instead of leaving the page', async () => {
-    render(<AccountMenu pseudo="Alex" isAnonymous={false} />)
+    renderWithIntl(<AccountMenu pseudo="Alex" isAnonymous={false} />)
 
     // La pastille est un bouton, pas un lien : elle n'emmène nulle part.
     const trigger = screen.getByRole('button', { name: /alex/i })

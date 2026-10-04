@@ -16,7 +16,7 @@ export async function joinSessionUseCase(
 ): Promise<Session> {
   const identifier = parseInviteIdentifier(rawIdentifier)
   if (identifier.kind === 'invalid') {
-    throw new AppError('Ce code ou ce lien n’a pas le bon format.')
+    throw new AppError('invalid_identifier')
   }
   return joinSession(supabase, identifier.value)
 }

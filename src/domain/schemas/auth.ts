@@ -1,16 +1,18 @@
 import { z } from 'zod'
 
+import { omkMessage } from '@/domain/errors'
+
 export const EmailSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .max(254, 'Adresse email trop longue')
-  .pipe(z.email('Adresse email invalide'))
+  .max(254, omkMessage('email_too_long'))
+  .pipe(z.email(omkMessage('invalid_email')))
 
 export const PasswordSchema = z
   .string()
-  .min(8, 'Le mot de passe doit faire au moins 8 caractères')
-  .max(72, 'Le mot de passe est trop long')
+  .min(8, omkMessage('password_too_short'))
+  .max(72, omkMessage('password_too_long'))
 
 export const LinkEmailSchema = z.object({
   email: EmailSchema,
@@ -22,13 +24,13 @@ export const SetPasswordSchema = z
     confirm: z.string(),
   })
   .refine((data) => data.password === data.confirm, {
-    message: 'Les deux mots de passe ne correspondent pas',
+    message: omkMessage('password_mismatch'),
     path: ['confirm'],
   })
 
 export const LoginSchema = z.object({
   email: EmailSchema,
-  password: z.string().min(1, 'Mot de passe requis'),
+  password: z.string().min(1, omkMessage('password_required')),
   next: z.string().optional(),
 })
 

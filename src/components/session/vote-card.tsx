@@ -1,14 +1,16 @@
 'use client'
 
-import { RiHistoryLine, RiMapPin2Line, RiNavigationLine } from '@remixicon/react'
-import Image from 'next/image'
-
-import { lastWinLabel } from '@/domain/recent-winners'
 import {
-  PRICE_LEVEL_LABELS,
-  RESTAURANT_TAG_LABELS,
-  RESTAURANT_TAGS,
-} from '@/domain/schemas/restaurant'
+  RiErrorWarningLine,
+  RiHistoryLine,
+  RiMapPin2Line,
+  RiNavigationLine,
+} from '@remixicon/react'
+import Image from 'next/image'
+import { useFormatter, useLocale, useTranslations } from 'next-intl'
+
+import { blockedCount } from '@/domain/food-constraints'
+import { PRICE_LEVEL_LABELS, RESTAURANT_TAGS } from '@/domain/schemas/restaurant'
 import { useIsClient } from '@/hooks/use-is-client'
 import { useOpenNow } from '@/hooks/use-open-now'
 import { remoteImageUrl } from '@/lib/images'
@@ -27,6 +29,11 @@ interface VoteCardProps {
    * groupe. Absente quand il n'a rien gagné dans la fenêtre.
    */
   lastWonAt?: string | null
+  /**
+   * Contraintes alimentaires (#60) : combien de participants ne peuvent pas
+   * y manger. Un compte, jamais qui — c'est tout ce que la base en dit.
+   */
+  blockedCount?: number
   className?: string
   style?: React.CSSProperties
   /** Voile affiché pendant un swipe */
@@ -49,27 +56,39 @@ export function VoteCard({
   index,
   total,
   lastWonAt,
+  blockedCount: blockedCountProp,
   className,
   style,
   overlay,
   priority = false,
   position,
 }: VoteCardProps) {
+  const t = useTranslations('session.card')
+  const tSession = useTranslations('session')
+  const tRestaurants = useTranslations('restaurants')
+  const locale = useLocale()
+  const format = useFormatter()
   const place = [restaurant.address, restaurant.city].filter(Boolean).join(', ')
-  const distance = distanceLabel(position, restaurant.location)
+  const distance = distanceLabel(position, restaurant.location, locale)
   const photo = remoteImageUrl(restaurant.photo_url)
   const openNow = useOpenNow(restaurant.opening_hours)
   // Ordre du catalogue plutôt que celui de la base, qui range par ordre
   // alphabétique : « Végétarien » avant « Sans gluten », comme dans les filtres.
   const tags = RESTAURANT_TAGS.filter((tag) => restaurant.tags.includes(tag))
-  // Une date s'écrit dans le fuseau de qui la lit : la calculer au rendu
-  // serveur produirait une hydratation divergente, comme pour les horaires.
+  // La date ne s'écrit qu'une fois monté, comme les horaires : le rendu
+  // serveur n'a pas à trancher le jour d'un sacre survenu vers minuit.
   const isClient = useIsClient()
-  const lastWin = isClient && lastWonAt ? lastWinLabel(lastWonAt) : null
+  const lastWin =
+    isClient && lastWonAt
+      ? t('lastWin', {
+          date: format.dateTime(new Date(lastWonAt), { day: 'numeric', month: 'long' }),
+        })
+      : null
+  const blocked = blockedCount(blockedCountProp)
 
   return (
     <article
-      aria-label={`${restaurant.name}, restaurant ${index} sur ${total}`}
+      aria-label={t('label', { name: restaurant.name, index, total })}
       style={style}
       className={cn(
         'relative flex aspect-[4/5] w-full flex-col justify-between overflow-hidden rounded-xl chalkboard p-6 shadow-lg select-none sm:aspect-[5/6] lg:aspect-[4/5]',
@@ -108,7 +127,7 @@ export function VoteCard({
                 openNow ? 'border-yes/70 text-yes' : 'border-chalk/20 text-chalk-muted'
               )}
             >
-              {openNow ? 'Ouvert' : 'Fermé'}
+              {openNow ? tRestaurants('openNow.open') : tRestaurants('openNow.closed')}
             </span>
           )}
           {restaurant.cuisine_type && (
@@ -118,7 +137,7 @@ export function VoteCard({
           )}
           {restaurant.price_level && (
             <span
-              aria-label={`Budget ${PRICE_LEVEL_LABELS[restaurant.price_level]}`}
+              aria-label={t('budget', { level: PRICE_LEVEL_LABELS[restaurant.price_level] })}
               className="rounded-full border border-chalk/25 px-2.5 py-1 font-mono text-[0.68rem] tracking-wide text-chalk"
             >
               {PRICE_LEVEL_LABELS[restaurant.price_level]}
@@ -135,13 +154,13 @@ export function VoteCard({
           <p className="line-clamp-3 text-base text-chalk/80">{restaurant.description}</p>
         )}
         {tags.length > 0 && (
-          <ul aria-label="Régimes servis" className="flex flex-wrap gap-1.5">
+          <ul aria-label={t('diets')} className="flex flex-wrap gap-1.5">
             {tags.map((tag) => (
               <li
                 key={tag}
                 className="rounded-full bg-chalk/10 px-2.5 py-1 text-xs font-semibold text-chalk"
               >
-                {RESTAURANT_TAG_LABELS[tag]}
+                {tRestaurants(`tags.${tag}`)}
               </li>
             ))}
           </ul>
@@ -152,7 +171,7 @@ export function VoteCard({
               <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-chalk/15 px-2.5 py-1 font-mono text-xs text-chalk tabular">
                 <RiNavigationLine aria-hidden="true" className="size-3.5" />
                 {distance}
-                <span className="sr-only"> de toi</span>
+                <span className="sr-only"> {t('fromYou')}</span>
               </span>
             )}
             {place && (
@@ -167,6 +186,14 @@ export function VoteCard({
           <p className="flex items-center gap-1.5 text-sm text-chalk-muted">
             <RiHistoryLine aria-hidden="true" className="size-4 shrink-0" />
             <span className="line-clamp-1">{lastWin}</span>
+          </p>
+        )}
+        {/* Discret mais lisible : c'est ce qui évite de dépenser un veto pour
+            dire « je ne peux pas manger là ». */}
+        {blocked && (
+          <p className="flex items-center gap-1.5 self-start rounded-full border border-chalk/25 px-2.5 py-1 text-sm text-chalk">
+            <RiErrorWarningLine aria-hidden="true" className="size-4 shrink-0" />
+            <span>{tSession('constraints.blocked', { count: blocked })}</span>
           </p>
         )}
       </div>
@@ -185,7 +212,7 @@ export function VoteCard({
               overlay === 'yes' ? 'border-yes' : 'border-chalk-muted text-chalk-muted'
             )}
           >
-            {overlay === 'yes' ? 'Ça me va' : 'Bof'}
+            {overlay === 'yes' ? tSession('vote.actions.yes') : tSession('vote.actions.no')}
           </span>
         </div>
       )}

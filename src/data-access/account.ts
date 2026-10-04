@@ -17,6 +17,8 @@ export interface AccountExport {
     last_sign_in_at: string | null
   } | null
   profile: { pseudo: string | null; created_at: string; updated_at: string } | null
+  /** Ce que la personne a déclaré ne pas pouvoir manger (#60). Vide si rien. */
+  food_constraints: { tags: string[]; max_price_level: number | null }
   lists: {
     id: string
     name: string

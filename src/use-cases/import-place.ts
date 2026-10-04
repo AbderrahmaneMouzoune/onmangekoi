@@ -4,6 +4,7 @@ import { AppError } from '@/domain/errors'
 
 import type { Restaurant } from '@/data-access/models'
 import type { Database } from '@/data-access/models/database'
+import type { Locale } from '@/i18n/config'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
@@ -12,14 +13,16 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  * base via une RPC idempotente sur `place_id`.
  *
  * L'appelant ne fournit qu'un identifiant : aucun des champs enregistrés ne
- * vient du navigateur.
+ * vient du navigateur. La langue est celle de l'interface : c'est dans
+ * celle-là que Google rend l'adresse.
  */
 export async function importPlaceUseCase(
   supabase: SupabaseClient<Database>,
-  placeId: string
+  placeId: string,
+  locale: Locale
 ): Promise<Restaurant> {
-  const place = await getPlaceDetails(placeId)
-  if (!place) throw new AppError('Ce lieu n’existe plus chez Google.')
+  const place = await getPlaceDetails(placeId, locale)
+  if (!place) throw new AppError('place_gone')
 
   return upsertRestaurantFromPlace(supabase, place)
 }

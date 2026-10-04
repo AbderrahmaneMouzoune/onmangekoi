@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
 
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { LATEST_RELEASE_VERSION } from '@/content/changelog'
 import { CHANGELOG_SEEN_KEY } from '@/lib/changelog-seen'
+import { renderWithIntl } from '@/test/render'
 
 import { ChangelogNavLink } from './changelog-nav-link'
 
@@ -18,7 +19,7 @@ describe('ChangelogNavLink', () => {
   })
 
   it('should stay silent on a first visit, and remember the current release', () => {
-    render(<ChangelogNavLink />)
+    renderWithIntl(<ChangelogNavLink />)
 
     expect(screen.getByRole('link', { name: 'Nouveautés' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: UNREAD_LABEL })).not.toBeInTheDocument()
@@ -28,7 +29,7 @@ describe('ChangelogNavLink', () => {
   it('should light up when a release landed since the last visit', () => {
     window.localStorage.setItem(CHANGELOG_SEEN_KEY, '0.0.0')
 
-    render(<ChangelogNavLink />)
+    renderWithIntl(<ChangelogNavLink />)
 
     expect(screen.getByRole('link', { name: UNREAD_LABEL })).toBeInTheDocument()
   })
@@ -36,7 +37,7 @@ describe('ChangelogNavLink', () => {
   it('should stay silent once the latest release has been read', () => {
     window.localStorage.setItem(CHANGELOG_SEEN_KEY, LATEST_RELEASE_VERSION ?? '0.0.0')
 
-    render(<ChangelogNavLink />)
+    renderWithIntl(<ChangelogNavLink />)
 
     expect(screen.getByRole('link', { name: 'Nouveautés' })).toBeInTheDocument()
   })

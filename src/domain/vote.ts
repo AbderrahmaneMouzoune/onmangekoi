@@ -1,6 +1,9 @@
 /**
  * Les quatre actions de vote et leur valeur en base.
- * Les libellés sont ceux affichés dans l'interface.
+ *
+ * Aucun libellé ici : l'interface les traduit par `kind` —
+ * `session.vote.actions.<kind>` (le nom), `session.vote.short.<kind>` (le
+ * bouton compact), `session.vote.hints.<kind>` (ce que le vote compte).
  */
 
 export const VOTE_VALUES = [-2, 0, 1, 2] as const
@@ -11,12 +14,8 @@ export type VoteKind = 'veto' | 'no' | 'yes' | 'fav'
 export interface VoteAction {
   kind: VoteKind
   value: VoteValue
-  label: string
-  /** Libellé court pour les boutons compacts */
-  short: string
   /** Consomme un joker, en quota réglable par session (`sessions.rules`) */
   joker: boolean
-  hint: string
   /**
    * Raccourcis clavier du deck, écrits comme `KeyboardEvent.key` — c'est aussi
    * la forme attendue par `aria-keyshortcuts`, qui les annonce aux lecteurs
@@ -29,37 +28,25 @@ export const VOTE_ACTIONS: readonly VoteAction[] = [
   {
     kind: 'veto',
     value: -2,
-    label: 'Veto',
-    short: 'Veto',
     joker: true,
-    hint: 'Jamais. Compte −2, en quota limité.',
     shortcuts: ['1'],
   },
   {
     kind: 'no',
     value: 0,
-    label: 'Bof',
-    short: 'Bof',
     joker: false,
-    hint: 'Pas cette fois. Compte 0.',
     shortcuts: ['2', 'ArrowLeft'],
   },
   {
     kind: 'yes',
     value: 1,
-    label: 'Ça me va',
-    short: 'Oui',
     joker: false,
-    hint: 'Partant. Compte +1.',
     shortcuts: ['3', 'ArrowRight', 'Enter'],
   },
   {
     kind: 'fav',
     value: 2,
-    label: 'Coup de cœur',
-    short: 'Cœur',
     joker: true,
-    hint: 'Vraiment envie. Compte +2, en quota limité.',
     shortcuts: ['4'],
   },
 ] as const

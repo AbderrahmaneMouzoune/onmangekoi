@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { omkMessage } from '@/domain/errors'
+
 export const GROUP_NAME_MAX = 60
 /** Groupes invitables en une création de session (garde-fou d'interface). */
 export const GROUPS_PER_SESSION_MAX = 5
@@ -7,8 +9,8 @@ export const GROUPS_PER_SESSION_MAX = 5
 export const GroupNameSchema = z
   .string()
   .trim()
-  .min(1, 'Donne un nom au groupe')
-  .max(GROUP_NAME_MAX, `Le nom ne peut pas dépasser ${GROUP_NAME_MAX} caractères`)
+  .min(1, omkMessage('group_name_required'))
+  .max(GROUP_NAME_MAX, omkMessage('group_name_too_long'))
 
 export const CreateGroupSchema = z.object({
   name: GroupNameSchema,
