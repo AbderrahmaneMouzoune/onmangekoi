@@ -29,6 +29,7 @@ vi.mock('@/actions/restaurants', () => ({
   searchRestaurantsAction,
   createRestaurantAction,
   findSimilarRestaurantsAction,
+  suggestRestaurantDetailsAction: vi.fn().mockResolvedValue({ ok: true, data: null }),
 }))
 vi.mock('@/actions/places', () => ({ importPlaceAction, seedNeighbourhoodAction }))
 vi.mock('@/lib/analytics/client', () => ({ captureEvent: vi.fn() }))

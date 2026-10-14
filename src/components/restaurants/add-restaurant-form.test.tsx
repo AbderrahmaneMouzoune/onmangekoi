@@ -13,10 +13,12 @@ import type { Restaurant } from '@/data-access/models'
 
 const createRestaurantAction = vi.hoisted(() => vi.fn())
 const findSimilarRestaurantsAction = vi.hoisted(() => vi.fn())
+const suggestRestaurantDetailsAction = vi.hoisted(() => vi.fn())
 
 vi.mock('@/actions/restaurants', () => ({
   createRestaurantAction,
   findSimilarRestaurantsAction,
+  suggestRestaurantDetailsAction,
 }))
 
 function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
@@ -45,6 +47,7 @@ describe('AddRestaurantForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     findSimilarRestaurantsAction.mockResolvedValue({ ok: true, data: [] })
+    suggestRestaurantDetailsAction.mockResolvedValue({ ok: true, data: null })
   })
 
   it('should prefill the name with what was being searched', () => {
@@ -133,5 +136,61 @@ describe('AddRestaurantForm', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Tu dois d’abord choisir un pseudo.')
     expect(onAdded).not.toHaveBeenCalled()
+  })
+
+  describe('suggested details', () => {
+    const libanais = { cuisineType: 'Libanais', priceLevel: 2, tags: ['halal'] }
+
+    it('should fill the empty fields from the suggestion and say where it comes from', async () => {
+      suggestRestaurantDetailsAction.mockResolvedValue({ ok: true, data: libanais })
+      renderWithIntl(
+        <AddRestaurantForm defaultName="Le Petit Libanais" onAdded={vi.fn()} onCancel={vi.fn()} />
+      )
+
+      await waitFor(() => expect(screen.getByLabelText(/cuisine/i)).toHaveValue('Libanais'))
+      expect(screen.getByRole('radio', { name: '€€' })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('checkbox', { name: 'Halal' })).toHaveAttribute(
+        'aria-checked',
+        'true'
+      )
+      expect(screen.getByText(/trouvé en ligne/i)).toHaveTextContent('cuisine, budget et régime')
+      expect(suggestRestaurantDetailsAction).toHaveBeenCalledWith({
+        name: 'Le Petit Libanais',
+        address: null,
+      })
+    })
+
+    it('should never overwrite what the person already chose', async () => {
+      let resolve: (value: unknown) => void = () => {}
+      suggestRestaurantDetailsAction.mockReturnValue(new Promise((r) => (resolve = r)))
+      renderWithIntl(
+        <AddRestaurantForm defaultName="Le Petit Libanais" onAdded={vi.fn()} onCancel={vi.fn()} />
+      )
+
+      await userEvent.type(screen.getByLabelText(/cuisine/i), 'Mezze')
+      await userEvent.click(screen.getByRole('radio', { name: '€' }))
+      await waitFor(() => expect(suggestRestaurantDetailsAction).toHaveBeenCalled())
+      resolve({ ok: true, data: libanais })
+
+      await waitFor(() =>
+        expect(screen.getByRole('checkbox', { name: 'Halal' })).toHaveAttribute(
+          'aria-checked',
+          'true'
+        )
+      )
+      expect(screen.getByLabelText(/cuisine/i)).toHaveValue('Mezze')
+      expect(screen.getByRole('radio', { name: '€' })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByText(/trouvé en ligne/i)).toHaveTextContent(/: régime\./)
+    })
+
+    it('should stay silent when nothing is found', async () => {
+      renderWithIntl(
+        <AddRestaurantForm defaultName="Chez personne" onAdded={vi.fn()} onCancel={vi.fn()} />
+      )
+
+      await waitFor(() => expect(suggestRestaurantDetailsAction).toHaveBeenCalled())
+      await waitFor(() => expect(screen.queryByText(/en ligne/i)).not.toBeInTheDocument())
+      expect(screen.getByLabelText(/cuisine/i)).toHaveValue('')
+    })
   })
 })

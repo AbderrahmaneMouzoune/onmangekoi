@@ -1,15 +1,24 @@
 'use client'
 
-import { RiAlertLine } from '@remixicon/react'
-import { useTranslations } from 'next-intl'
+import { RiAlertLine, RiSparkling2Line } from '@remixicon/react'
+import { useFormatter, useTranslations } from 'next-intl'
 import { useEffect, useId, useRef, useState, useTransition } from 'react'
 
-import { createRestaurantAction, findSimilarRestaurantsAction } from '@/actions/restaurants'
+import {
+  createRestaurantAction,
+  findSimilarRestaurantsAction,
+  suggestRestaurantDetailsAction,
+} from '@/actions/restaurants'
 import { Button } from '@/components/ui/button'
 import { FormMessage } from '@/components/ui/form-message'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
+import {
+  applicableSuggestion,
+  suggestionCacheKey,
+  type RestaurantSuggestion,
+} from '@/domain/restaurant-suggestion'
 import {
   PRICE_LEVELS,
   PRICE_LEVEL_LABELS,
@@ -42,6 +51,9 @@ interface AddRestaurantFormProps {
  * formulaire imbriqué est du HTML invalide. La soumission passe donc par le
  * bouton et par la touche Entrée ; Échap annule, comme pour une modale.
  */
+/** En dessous, un nom ne désigne pas assez un resto pour valoir une recherche. */
+const SUGGESTION_NAME_MIN = 3
+
 export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRestaurantFormProps) {
   const fieldId = useId()
   const [name, setName] = useState(defaultName)
@@ -56,8 +68,21 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
     items: [],
   })
   const [isSubmitting, startSubmit] = useTransition()
+  /**
+   * Champs que la personne a modifiés elle-même. La proposition ne touche
+   * qu'aux autres : ce qu'elle a écrit — ou effacé — gagne toujours.
+   */
+  const [touched, setTouched] = useState({ cuisineType: false, priceLevel: false, tags: false })
+  /** Proposition affichée, gardée avec la clé (nom + adresse) qui l'a produite. */
+  const [suggestion, setSuggestion] = useState<{
+    key: string
+    filled: RestaurantSuggestion
+  } | null>(null)
+  const [pendingSuggestionKey, setPendingSuggestionKey] = useState<string | null>(null)
   const t = useTranslations('restaurants')
   const tCommon = useTranslations('common')
+  const format = useFormatter()
+  const formatList = (items: string[]) => format.list(items, { type: 'conjunction' })
   const optional = (chunks: React.ReactNode) => (
     <span className="text-muted-foreground">{chunks}</span>
   )
@@ -67,7 +92,10 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
   const canLookup = candidate.length >= RESTAURANT_NAME_MIN
   const lastLookup = useRef<string | null>(null)
   /** Les flèches passent d'un budget à l'autre et le sélectionnent (radios). */
-  const onBudgetKeyDown = useRovingFocus((index) => setPriceLevel(PRICE_LEVELS[index]))
+  const onBudgetKeyDown = useRovingFocus((index) => {
+    markTouched('priceLevel')
+    setPriceLevel(PRICE_LEVELS[index])
+  })
 
   useEffect(() => {
     if (!canLookup || candidate === lastLookup.current) return
@@ -84,6 +112,58 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
 
   const similarItems = similar.name === candidate ? similar.items : []
 
+  /**
+   * Proposition de fiche : une fois le nom posé (et l'adresse, si elle
+   * vient), le serveur cherche le resto et remplit ce qui est encore vide.
+   * Attente plus longue que pour les doublons — une recherche web coûte plus
+   * qu'une requête en base, et on attend que la personne ait fini de taper.
+   */
+  const settledName = useDebouncedValue(name, 900).trim()
+  const settledAddress = useDebouncedValue(address, 900).trim()
+  const canSuggest = settledName.length >= SUGGESTION_NAME_MIN
+  const suggestionKey = canSuggest ? suggestionCacheKey(settledName, settledAddress) : null
+  /** Copie lue par la réponse asynchrone, qui ne doit pas relancer la recherche. */
+  const touchedRef = useRef(touched)
+  const lastSuggestionKey = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!suggestionKey || suggestionKey === lastSuggestionKey.current) return
+    lastSuggestionKey.current = suggestionKey
+    setPendingSuggestionKey(suggestionKey)
+
+    let cancelled = false
+    suggestRestaurantDetailsAction({ name: settledName, address: settledAddress || null }).then(
+      (result) => {
+        if (cancelled) return
+        setPendingSuggestionKey(null)
+        const proposal = result.ok ? result.data : null
+        const filled = applicableSuggestion(
+          proposal ?? { cuisineType: null, priceLevel: null, tags: [] },
+          touchedRef.current
+        )
+        // Les champs non touchés suivent la proposition — y compris pour se
+        // vider quand le nom a changé et que le nouveau resto est introuvable :
+        // une cuisine trouvée pour un autre resto n'a rien à faire là.
+        if (!touchedRef.current.cuisineType) setCuisineType(filled.cuisineType ?? '')
+        if (!touchedRef.current.priceLevel) setPriceLevel(filled.priceLevel)
+        if (!touchedRef.current.tags) setTags(filled.tags)
+        setSuggestion({ key: suggestionKey, filled })
+      }
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [suggestionKey, settledName, settledAddress])
+
+  const isLookingUp = pendingSuggestionKey !== null && pendingSuggestionKey === suggestionKey
+  const filledLabels = suggestion
+    ? [
+        suggestion.filled.cuisineType && !touched.cuisineType ? t('add.suggested.cuisine') : null,
+        suggestion.filled.priceLevel && !touched.priceLevel ? t('add.suggested.budget') : null,
+        suggestion.filled.tags.length > 0 && !touched.tags ? t('add.suggested.diet') : null,
+      ].filter((label): label is string => label !== null)
+    : []
+
   function submit() {
     if (name.trim().length < RESTAURANT_NAME_MIN || isSubmitting) return
     setError(null)
@@ -97,7 +177,13 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
     })
   }
 
+  function markTouched(field: keyof typeof touched) {
+    touchedRef.current = { ...touchedRef.current, [field]: true }
+    setTouched(touchedRef.current)
+  }
+
   function toggleTag(tag: RestaurantTag) {
+    markTouched('tags')
     setTags((prev) => (prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]))
   }
 
@@ -167,7 +253,10 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
           <Input
             id={`${fieldId}-cuisine`}
             value={cuisineType}
-            onChange={(event) => setCuisineType(event.target.value)}
+            onChange={(event) => {
+              markTouched('cuisineType')
+              setCuisineType(event.target.value)
+            }}
             onKeyDown={submitOnEnter}
             placeholder={t('add.cuisinePlaceholder')}
             maxLength={RESTAURANT_CUISINE_MAX}
@@ -211,7 +300,10 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
                 tabIndex={isTabStop ? 0 : -1}
                 aria-checked={isSelected}
                 aria-label={PRICE_LEVEL_LABELS[level]}
-                onClick={() => setPriceLevel(isSelected ? null : level)}
+                onClick={() => {
+                  markTouched('priceLevel')
+                  setPriceLevel(isSelected ? null : level)
+                }}
                 className={cn(
                   'h-9 flex-1 rounded-md border text-sm font-semibold transition-colors',
                   isSelected
@@ -255,6 +347,23 @@ export function AddRestaurantForm({ defaultName = '', onAdded, onCancel }: AddRe
           })}
         </div>
       </fieldset>
+
+      {/* Une ligne discrète, jamais un badge : la fiche se remplit, et l'on
+          dit d'où ça vient pour que personne ne prenne un régime proposé
+          pour une certitude. */}
+      <p aria-live="polite" className="min-h-5 text-xs text-muted-foreground">
+        {isLookingUp ? (
+          <span className="inline-flex items-center gap-1.5">
+            <Spinner className="size-3" />
+            {t('add.suggested.looking')}
+          </span>
+        ) : filledLabels.length > 0 ? (
+          <span className="inline-flex items-start gap-1.5">
+            <RiSparkling2Line aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+            {t('add.suggested.filled', { fields: formatList(filledLabels) })}
+          </span>
+        ) : null}
+      </p>
 
       <FormMessage error={error} />
 

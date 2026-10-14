@@ -314,6 +314,20 @@ Le formulaire « Ajouter un resto à la main » est disponible partout où l'on 
 
 La déduplication est **souple** : un nom proche (recherche trigram) déclenche un avertissement et propose le resto existant en un clic, mais ne bloque jamais l'ajout — deux restos peuvent légitimement porter le même nom.
 
+### Une fiche qui se remplit toute seule
+
+Les contraintes alimentaires se taisent tant qu'un resto n'a déclaré ni régimes ni budget — et un resto ajouté à la main arrive presque toujours vide. Dans « Ajouter un resto à la main », une fois le nom posé (et l'adresse, si elle vient), le serveur cherche le resto en ligne et **propose** cuisine, budget et régimes.
+
+| Règle                          | Comment                                                                                                                  |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Proposer, jamais écrire        | Seuls les champs encore vides se remplissent ; la personne relit, corrige, et c'est elle qui clique « Ajouter ce resto » |
+| Ce qu'elle a touché gagne      | Un champ modifié à la main — ou vidé — n'est plus jamais réécrit                                                         |
+| Se taire plutôt que se tromper | Un régime n'est proposé que s'il est affiché par le resto ; introuvable ou ambigu, rien ne bouge                         |
+| Dire d'où ça vient             | Une ligne discrète sous le formulaire : « Complété d'après ce qu'on a trouvé en ligne : cuisine, budget. À vérifier… »   |
+| Rien sur les personnes         | Seuls le nom et l'adresse tapés partent chez Anthropic — ni pseudo, ni contraintes de qui que ce soit                    |
+
+Claude (`src/data-access/restaurant-suggestions.ts`) cherche avec l'outil `web_search` puis répond par un outil au schéma strict ; `normalizeSuggestion` (`src/domain/restaurant-suggestion.ts`) revérifie champ par champ. Les réponses sont gardées 24 h en mémoire et chaque personne est plafonnée à 20 propositions par heure. **Optionnel** : sans `ANTHROPIC_API_KEY`, le formulaire se remplit à la main, comme avant — une IA absente, plafonnée ou en panne ne s'affiche jamais en erreur.
+
 ### Choisir des restaurants
 
 Le sélecteur (`components/restaurants/restaurant-picker.tsx`) met les sources **au même niveau** — un onglet chacune, dans un rail commun — et les verse dans un **seul panier** :
