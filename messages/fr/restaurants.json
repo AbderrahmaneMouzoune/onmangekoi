@@ -118,7 +118,14 @@
     "budgetLabel": "Budget",
     "diet": "Régime <optional>(optionnel)</optional>",
     "dietLabel": "Régime alimentaire",
-    "submit": "Ajouter ce resto"
+    "submit": "Ajouter ce resto",
+    "suggested": {
+      "looking": "On cherche ce resto en ligne…",
+      "filled": "Complété d’après ce qu’on a trouvé en ligne : {fields}. À vérifier avant d’ajouter.",
+      "cuisine": "cuisine",
+      "budget": "budget",
+      "diet": "régime"
+    }
   },
   "map": {
     "attribution": "© OpenStreetMap"

@@ -73,6 +73,12 @@ export const env = createEnv({
      * d'envoi le compare. Sans lui, la route refuse tout appel.
      */
     PUSH_DISPATCH_SECRET: z.string().min(16).optional(),
+    /**
+     * Clé API Anthropic. **Optionnelle** : sans elle, l'ajout manuel d'un
+     * resto ne propose rien et se remplit à la main, comme avant. Serveur
+     * uniquement.
+     */
+    ANTHROPIC_API_KEY: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.url(),
@@ -103,6 +109,7 @@ export const env = createEnv({
     VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
     VAPID_SUBJECT: process.env.VAPID_SUBJECT,
     PUSH_DISPATCH_SECRET: process.env.PUSH_DISPATCH_SECRET,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,

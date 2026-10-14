@@ -118,7 +118,14 @@
     "budgetLabel": "Budget",
     "diet": "Diet <optional>(optional)</optional>",
     "dietLabel": "Dietary requirements",
-    "submit": "Add this restaurant"
+    "submit": "Add this restaurant",
+    "suggested": {
+      "looking": "Looking this place up online…",
+      "filled": "Filled in from what we found online: {fields}. Worth a check before adding.",
+      "cuisine": "cuisine",
+      "budget": "budget",
+      "diet": "diet"
+    }
   },
   "map": {
     "attribution": "© OpenStreetMap"
