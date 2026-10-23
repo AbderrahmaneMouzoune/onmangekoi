@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/AbderrahmaneMouzoune/onmangekoi/compare/v0.2.0...v0.2.1) (2026-10-23)
+
+
+### Performance
+
+* accueil prérendu, zod hors du bundle, traductions triées, getClaims, polices ([2bb1f83](https://github.com/AbderrahmaneMouzoune/onmangekoi/commit/2bb1f83d596929e8e00a69635b1bcd738527a5fd))
+
 ## [0.2.0](https://github.com/AbderrahmaneMouzoune/onmangekoi/compare/v0.1.0...v0.2.0) (2026-10-04)
 
 
