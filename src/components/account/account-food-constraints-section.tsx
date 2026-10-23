@@ -3,7 +3,7 @@ import { useTranslations } from 'next-intl'
 
 import { FoodConstraintsForm } from '@/components/account/food-constraints-form'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getMyFoodConstraints } from '@/data-access/food-constraints'
 import { createServerClient } from '@/data-access/supabase/server'
 
@@ -13,7 +13,7 @@ import { createServerClient } from '@/data-access/supabase/server'
  * Facultatives, réversibles, et jamais nominatives pour les autres.
  */
 export async function AccountFoodConstraintsSection() {
-  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentViewer()])
   if (!user) return null
 
   const constraints = await getMyFoodConstraints(supabase, user.id)

@@ -6,14 +6,14 @@ import { getTranslations } from 'next-intl/server'
 import { LoginForm } from '@/components/account/login-form'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { sanitizeNextPath } from '@/lib/routing'
 
 /** Formulaire de connexion : dépend de `?next=` et de la session en cours. */
 export async function LoginPanel({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const [{ next: rawNext }, user, t] = await Promise.all([
     searchParams,
-    getCurrentUser(),
+    getCurrentViewer(),
     getTranslations('account.login'),
   ])
   const next = sanitizeNextPath(rawNext, router.home())

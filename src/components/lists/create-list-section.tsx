@@ -7,7 +7,7 @@ import { RestaurantPickerFallback } from '@/components/restaurants/restaurant-pi
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import { cn } from '@/lib/utils'
 
@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
  * dynamique, la coquille de la page étant prérendue.
  */
 export async function CreateListSection() {
-  const user = await getCurrentUser()
+  const user = await getCurrentViewer()
   if (!user) redirect(router.setup(router.listNew()))
 
   const initialPage = await getRestaurantCatalogPage()

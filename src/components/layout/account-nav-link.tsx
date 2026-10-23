@@ -6,7 +6,7 @@ import { AccountMenu } from '@/components/layout/account-menu'
 import { VisitMemo } from '@/components/layout/visit-memo'
 import { buttonVariants } from '@/components/ui/button'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getProfile } from '@/data-access/profile'
 import { createServerClient } from '@/data-access/supabase/server'
 import { displayPseudo } from '@/lib/format'
@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils'
  * ou oublie, à la déconnexion — qu'un pseudo existe, pour les silhouettes.
  */
 export async function AccountNavLink() {
-  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentViewer()])
   const [profile, t] = await Promise.all([
     user ? getProfile(supabase, user.id) : null,
     getTranslations('common.people'),

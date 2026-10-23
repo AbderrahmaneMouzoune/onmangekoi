@@ -11,7 +11,7 @@ import { SessionStep, StepTitle } from '@/components/session/session-step'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getMyFoodConstraints } from '@/data-access/food-constraints'
 import { getMyGroups } from '@/data-access/groups'
 import { getListsWithRestaurantIds } from '@/data-access/lists'
@@ -44,7 +44,7 @@ interface CreateSessionSectionProps {
 export async function CreateSessionSection({ searchParams }: CreateSessionSectionProps) {
   const [supabase, user, params] = await Promise.all([
     createServerClient(),
-    getCurrentUser(),
+    getCurrentViewer(),
     searchParams,
   ])
   if (!user) redirect(router.setup(router.sessionNew()))

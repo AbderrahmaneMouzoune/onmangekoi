@@ -11,7 +11,7 @@ import { StatsPanel } from './account-stats'
 import type { MyStats } from '@/data-access/models'
 
 // Le panneau est pur ; seule sa variante serveur lit la base.
-vi.mock('@/data-access/auth', () => ({ getCurrentUser: vi.fn() }))
+vi.mock('@/data-access/auth', () => ({ getCurrentViewer: vi.fn() }))
 vi.mock('@/data-access/stats', () => ({ getMyStats: vi.fn() }))
 vi.mock('@/data-access/supabase/server', () => ({ createServerClient: vi.fn() }))
 
