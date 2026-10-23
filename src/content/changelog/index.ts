@@ -5,7 +5,9 @@ import { RELEASE_NOTES } from './entries'
 import type { ReleaseNote } from './types'
 import type { Locale } from '@/i18n/config'
 
-export { CHANGE_KINDS, ChangeSchema, ReleaseNoteSchema } from './types'
+// Les schémas zod restent dans `./types`, sans réexport : l'en-tête importe ce
+// module dans chaque page (`LATEST_RELEASE_VERSION`), et un réexport y
+// tirerait zod dans le JavaScript de toutes les pages.
 export type { Change, ChangeKind, ReleaseNote } from './types'
 
 /**

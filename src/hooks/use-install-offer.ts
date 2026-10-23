@@ -36,8 +36,11 @@ const noPrompt = () => null
 export function useInstallOffer(): InstallOffer {
   const state = useSyncExternalStore(subscribeInstallOffer, getInstallOffer, getServerInstallOffer)
   const prompt = useSyncExternalStore(subscribeInstallPrompt, getInstallPrompt, noPrompt)
-  // Le délai de refus se compte en mois : l'heure de montage suffit.
-  const [now] = useState(() => Date.now())
+  // Le délai de refus se compte en mois : l'heure de montage suffit. Jamais
+  // lue au prérendu : avec `cacheComponents`, `Date.now()` dans un rendu
+  // serveur sort toute la page de la coquille statique (elle n'arrivait plus
+  // qu'après l'hydratation). Côté serveur, `prompt` est nul de toute façon.
+  const [now] = useState(() => (typeof window === 'undefined' ? 0 : Date.now()))
 
   const visible =
     prompt !== null &&

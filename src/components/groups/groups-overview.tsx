@@ -10,14 +10,14 @@ import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getMyGroups } from '@/data-access/groups'
 import { createServerClient } from '@/data-access/supabase/server'
 import { cn } from '@/lib/utils'
 
 /** Groupes de la personne connectée : la RLS ne montre que les siens. */
 export async function GroupsOverview() {
-  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentViewer()])
   if (!user) redirect(router.setup(router.groups()))
 
   const [groups, t] = await Promise.all([getMyGroups(supabase), getTranslations('groups.page')])

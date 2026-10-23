@@ -9,7 +9,7 @@ import { SessionStatusBadge } from '@/components/session/session-status-badge'
 import { ArrowKeyList } from '@/components/ui/arrow-key-list'
 import { Skeleton, SkeletonRow } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getMyPendingInvitations } from '@/data-access/groups'
 import { getListsByOwner } from '@/data-access/lists'
 import { getMySessions } from '@/data-access/sessions'
@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils'
  * cache. Un visiteur sans pseudo n'affiche rien ici.
  */
 export async function HomeDashboard() {
-  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentViewer()])
   if (!user) return null
 
   // Les trois lectures sont indépendantes : un seul aller-retour de latence.

@@ -6,7 +6,7 @@ import { RestaurantPickerFallback } from '@/components/restaurants/restaurant-pi
 import { DuoCreateForm } from '@/components/session/duo-create-form'
 import { buttonVariants } from '@/components/ui/button'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getMyFoodConstraints } from '@/data-access/food-constraints'
 import { getListsWithRestaurantIds } from '@/data-access/lists'
 import { getRecentWinners } from '@/data-access/recent-winners'
@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
  * deux, on veut partir vite.
  */
 export async function DuoCreateSection() {
-  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentViewer()])
   if (!user) redirect(router.setup(router.duo()))
 
   const [lists, initialPage, recentWinners, suggestions, myConstraints, t, format] =

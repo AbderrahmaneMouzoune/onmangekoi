@@ -16,7 +16,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import {
   getRunoffSession,
   getSessionByParam,
@@ -36,7 +36,7 @@ export async function SessionResultsSection({ params }: { params: Promise<{ code
   const [{ code }, supabase, user, t, tCommon] = await Promise.all([
     params,
     createServerClient(),
-    getCurrentUser(),
+    getCurrentViewer(),
     getTranslations('session.results.page'),
     getTranslations('common'),
   ])

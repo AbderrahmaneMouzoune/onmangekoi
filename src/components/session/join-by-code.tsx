@@ -8,7 +8,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { parseInviteIdentifier } from '@/domain/share'
@@ -27,7 +27,7 @@ export async function JoinByCode({ params }: { params: Promise<{ code: string }>
   const [{ code }, supabase, user, t, tCommon] = await Promise.all([
     params,
     createServerClient(),
-    getCurrentUser(),
+    getCurrentViewer(),
     getTranslations('session.join'),
     getTranslations('common'),
   ])

@@ -7,7 +7,7 @@ import { PseudoForm } from '@/components/onboarding/pseudo-form'
 import { RulesSummary } from '@/components/session/rules-summary'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getSessionPreview } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { parseSessionRules } from '@/domain/session-rules'
@@ -27,7 +27,7 @@ export async function SetupPanel({ searchParams }: { searchParams: Promise<{ nex
 
   // L'utilisateur et l'aperçu d'invitation sont indépendants : en parallèle.
   // L'aperçu est décoratif, une erreur réseau ne doit pas bloquer l'onboarding.
-  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentViewer()])
   const preview = inviteIdentifier
     ? await getSessionPreview(supabase, decodeURIComponent(inviteIdentifier)).catch(() => null)
     : null

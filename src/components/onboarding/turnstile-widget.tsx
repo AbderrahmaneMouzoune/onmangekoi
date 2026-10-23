@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-import { env } from '@/env'
 import { TURNSTILE_FIELD, TURNSTILE_SCRIPT_SRC } from '@/lib/turnstile'
+import { publicEnv } from '@/public-env'
 
 /**
  * Captcha Cloudflare Turnstile, en mode `interaction-only` : invisible tant
@@ -70,7 +70,7 @@ interface TurnstileWidgetProps {
 }
 
 export function TurnstileWidget({ action, resetKey }: TurnstileWidgetProps) {
-  const siteKey = env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+  const siteKey = publicEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY
   const containerRef = useRef<HTMLDivElement>(null)
   const widgetId = useRef<string | null>(null)
   const [token, setToken] = useState('')

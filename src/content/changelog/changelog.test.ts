@@ -3,8 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { compareVersions } from '@/lib/version'
 
 import { RELEASE_NOTES } from './entries'
+import { ReleaseNoteSchema } from './types'
 
-import { getLatestRelease, getReleaseNotes, ReleaseNoteSchema } from './index'
+import { getLatestRelease, getReleaseNotes } from './index'
 
 describe('notes de version', () => {
   it('should hold at least one note', () => {

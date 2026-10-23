@@ -10,4 +10,5 @@ out/
 pnpm-lock.yaml
 package-lock.json
 yarn.lock
-.pnpm-store/
+.pnpm-store/# Généré par release-please à chaque version : son format ne dépend pas de nous.
+CHANGELOG.md

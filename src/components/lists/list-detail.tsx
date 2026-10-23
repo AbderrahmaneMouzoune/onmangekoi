@@ -6,7 +6,7 @@ import { PageHeader, PageHeaderFallback } from '@/components/layout/page-header'
 import { ListEditor } from '@/components/lists/list-editor'
 import { Skeleton, SkeletonRow } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getListByParam } from '@/data-access/lists'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
 import { createServerClient } from '@/data-access/supabase/server'
@@ -21,7 +21,7 @@ export async function ListDetail({ params }: { params: Promise<{ code: string }>
   const [{ code }, supabase, user] = await Promise.all([
     params,
     createServerClient(),
-    getCurrentUser(),
+    getCurrentViewer(),
   ])
   if (!user) redirect(router.setup(router.list(code)))
 

@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from 'next-intl'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getMyStats } from '@/data-access/stats'
 import { createServerClient } from '@/data-access/supabase/server'
 import { favoriteRate } from '@/domain/history'
@@ -22,7 +22,7 @@ import type { MyStats } from '@/data-access/models'
  * participants voient déjà.
  */
 export async function AccountStats() {
-  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentViewer()])
   if (!user) return null
 
   const stats = await getMyStats(supabase)

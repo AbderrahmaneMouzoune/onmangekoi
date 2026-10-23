@@ -10,7 +10,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonRow } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getMySessionHistory } from '@/data-access/sessions'
 import { createServerClient } from '@/data-access/supabase/server'
 import { parseSessionCursor } from '@/domain/history'
@@ -30,7 +30,7 @@ export async function SessionHistorySection({
   const [{ cursor }, supabase, user] = await Promise.all([
     searchParams,
     createServerClient(),
-    getCurrentUser(),
+    getCurrentViewer(),
   ])
   if (!user) redirect(router.setup(router.sessions()))
 

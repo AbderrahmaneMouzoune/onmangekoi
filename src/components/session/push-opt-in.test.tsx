@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
   captureEvent: vi.fn(),
 }))
 
-vi.mock('@/env', () => ({ env: mocks.env }))
+vi.mock('@/public-env', () => ({ publicEnv: mocks.env }))
 // Le service worker n'est voulu qu'en production : ici, on fait comme si.
 vi.mock('@/lib/pwa/registration', () => ({ isServiceWorkerEnabled: () => true }))
 vi.mock('@/lib/pwa/push-subscription', () => ({

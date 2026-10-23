@@ -11,7 +11,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonRow } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getListsByOwner } from '@/data-access/lists'
 import { createServerClient } from '@/data-access/supabase/server'
 import { relativeDate } from '@/lib/format'
@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils'
 
 /** Listes de la personne connectée : partie personnalisée de `/lists`. */
 export async function ListsOverview() {
-  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentViewer()])
   if (!user) redirect(router.setup(router.lists()))
 
   const [lists, locale, t] = await Promise.all([

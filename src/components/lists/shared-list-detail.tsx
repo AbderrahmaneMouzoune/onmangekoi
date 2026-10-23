@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton, SkeletonRow } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getSharedListPreview, getSharedListRestaurants, ownsSharedList } from '@/data-access/lists'
 import { getPublicList } from '@/data-access/public-lists'
 import { getRestaurantCatalogPage } from '@/data-access/restaurants'
@@ -36,7 +36,7 @@ import { cn } from '@/lib/utils'
  * catalogue du sélecteur, lui, vient du cache partagé.
  */
 export async function SharedListDetail({ params }: { params: Promise<{ code: string }> }) {
-  const [{ code }, user] = await Promise.all([params, getCurrentUser()])
+  const [{ code }, user] = await Promise.all([params, getCurrentViewer()])
   const identifier = parseSharedListParam(code)
   if (identifier.kind === 'invalid') notFound()
 

@@ -4,7 +4,7 @@ import { getTranslations } from 'next-intl/server'
 
 import { GroupCard } from '@/components/groups/group-card'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getMyGroups } from '@/data-access/groups'
 import { createServerClient } from '@/data-access/supabase/server'
 
@@ -19,7 +19,7 @@ const PREVIEW = 3
  * à qui n'en a jamais créé — c'est le rôle de l'écran vide de `/groups`.
  */
 export async function AccountGroupsSection() {
-  const [supabase, user] = await Promise.all([createServerClient(), getCurrentUser()])
+  const [supabase, user] = await Promise.all([createServerClient(), getCurrentViewer()])
   if (!user) return null
 
   const [groups, t, tCommon] = await Promise.all([

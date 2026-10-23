@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl'
 import { SessionRoom } from '@/components/session/session-room'
 import { Skeleton } from '@/components/ui/skeleton'
 import { router } from '@/config/router.config'
-import { getCurrentUser } from '@/data-access/auth'
+import { getCurrentViewer } from '@/data-access/auth'
 import { getMyFoodConstraints, getSessionConstraintConflicts } from '@/data-access/food-constraints'
 import { getMyGroups, getSessionInvitations } from '@/data-access/groups'
 import { getRecentWinners } from '@/data-access/recent-winners'
@@ -28,7 +28,7 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
   const [{ code }, supabase, user] = await Promise.all([
     params,
     createServerClient(),
-    getCurrentUser(),
+    getCurrentViewer(),
   ])
   if (!user) redirect(router.setup(router.session(code)))
 
@@ -41,23 +41,55 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
   const canonical = router.session(session)
   if (`/sessions/${code}` !== canonical) redirect(canonical)
 
-  // Les lectures restantes sont indépendantes : un seul aller-retour. Les
-  // gagnants récents arrivent avec la session, une fois pour tout le deck —
-  // aucune carte n'ira les redemander. Le premier tour n'est lu que si cette
-  // session en est la suite.
+  const url = inviteUrl(session)
+  const waiting = session.status === 'waiting'
+  // On entre encore : en salle d'attente, ou pendant le vote d'une session
+  // ouverte (#58), qui n'a pas de salle d'attente.
+  const joinable =
+    waiting || (session.status === 'voting' && isOpenSession(parseSessionRules(session.rules)))
+  // Pré-inviter un groupe reste la main du host : c'est lui qui compose la
+  // salle. Inviter par lien, lui, n'appartient à personne.
+  const joinableHost = joinable && session.host_id === user.id
+
+  // Toutes les lectures restantes ne dépendent que de la session : un seul
+  // aller-retour. Les gagnants récents arrivent avec la session, une fois pour
+  // tout le deck — aucune carte n'ira les redemander. Le premier tour n'est lu
+  // que si cette session en est la suite.
   //
   // Les comptes de contraintes alimentaires (#60) sont un signal : s'ils
   // manquent — la RPC refuse un non-participant, qui sera redirigé juste en
   // dessous —, la salle s'ouvre sans eux plutôt que de tomber en erreur.
-  const [participants, restaurants, votes, recentWinners, firstRound, conflicts] =
-    await Promise.all([
-      getSessionParticipants(supabase, session.id),
-      getSessionRestaurants(supabase, session.id),
-      getMyVotes(supabase, session.id),
-      getRecentWinners(supabase),
-      session.parent_session_id ? getSessionById(supabase, session.parent_session_id) : null,
-      getSessionConstraintConflicts(supabase, session.id).catch(() => []),
-    ])
+  //
+  // Tant qu'on entre, chacun peut inviter : le QR part pour tout le monde. Le
+  // catalogue, lui, ne sert qu'en salle d'attente — pendant le vote, même
+  // ouvert, le deck est figé et personne n'apporte plus de resto.
+  // Ses propres contraintes servent au même sélecteur : elles badgent les
+  // restos qu'on s'apprête à apporter.
+  const [
+    participants,
+    restaurants,
+    votes,
+    recentWinners,
+    firstRound,
+    conflicts,
+    qrSvg,
+    restaurantCatalog,
+    invitations,
+    groups,
+    myConstraints,
+  ] = await Promise.all([
+    getSessionParticipants(supabase, session.id),
+    getSessionRestaurants(supabase, session.id),
+    getMyVotes(supabase, session.id),
+    getRecentWinners(supabase),
+    session.parent_session_id ? getSessionById(supabase, session.parent_session_id) : null,
+    getSessionConstraintConflicts(supabase, session.id).catch(() => []),
+    joinable ? qrCodeSvg(url) : null,
+    waiting ? getRestaurantCatalogPage() : null,
+    joinableHost ? getSessionInvitations(supabase, session.id) : [],
+    joinableHost ? getMyGroups(supabase) : [],
+    waiting ? getMyFoodConstraints(supabase, user.id) : null,
+  ])
 
   if (!participants.some((p) => p.profile_id === user.id)) {
     redirect(router.joinInvite(session))
@@ -69,29 +101,6 @@ export async function SessionRoomSection({ params }: { params: Promise<{ code: s
     fav: votes.filter((vote) => vote.value === 2).length,
     veto: votes.filter((vote) => vote.value === -2).length,
   }
-
-  const url = inviteUrl(session)
-  const waiting = session.status === 'waiting'
-  // On entre encore : en salle d'attente, ou pendant le vote d'une session
-  // ouverte (#58), qui n'a pas de salle d'attente.
-  const joinable =
-    waiting || (session.status === 'voting' && isOpenSession(parseSessionRules(session.rules)))
-  // Pré-inviter un groupe reste la main du host : c'est lui qui compose la
-  // salle. Inviter par lien, lui, n'appartient à personne.
-  const joinableHost = joinable && session.host_id === user.id
-
-  // Tant qu'on entre, chacun peut inviter : le QR part pour tout le monde. Le
-  // catalogue, lui, ne sert qu'en salle d'attente — pendant le vote, même
-  // ouvert, le deck est figé et personne n'apporte plus de resto.
-  // Ses propres contraintes servent au même sélecteur : elles badgent les
-  // restos qu'on s'apprête à apporter.
-  const [qrSvg, restaurantCatalog, invitations, groups, myConstraints] = await Promise.all([
-    joinable ? qrCodeSvg(url) : null,
-    waiting ? getRestaurantCatalogPage() : null,
-    joinableHost ? getSessionInvitations(supabase, session.id) : [],
-    joinableHost ? getMyGroups(supabase) : [],
-    waiting ? getMyFoodConstraints(supabase, user.id) : null,
-  ])
 
   return (
     <SessionRoom
