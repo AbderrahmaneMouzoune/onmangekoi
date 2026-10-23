@@ -11,7 +11,9 @@ import { KeyboardShortcuts } from '@/components/layout/keyboard-shortcuts'
 import { SkipLink } from '@/components/layout/skip-link'
 import { PwaProvider } from '@/components/pwa/pwa-provider'
 import { ThemeProvider } from '@/components/theme-provider'
+import { pickClientMessages } from '@/i18n/client-messages'
 import { isLocale, LOCALES, OG_LOCALES, type Locale } from '@/i18n/config'
+import { MESSAGES } from '@/i18n/messages'
 import { INSTALL_PROMPT_SCRIPT } from '@/lib/pwa/install-prompt'
 import { SITE_NAME, siteUrl } from '@/lib/site'
 import { VISIT_HINT_SCRIPT } from '@/lib/visit-hint'
@@ -92,9 +94,10 @@ export default async function RootLayout({ children, params }: Props) {
         {/* L'invitation à installer l'app part souvent avant l'hydratation :
             on la retient dès maintenant (voir `lib/pwa/install-prompt.ts`). */}
         <script dangerouslySetInnerHTML={{ __html: INSTALL_PROMPT_SCRIPT }} />
-        {/* Messages, langue et fuseau hérités de `i18n/request.ts` : les
-            Client Components en ont besoin pour `useTranslations`. */}
-        <NextIntlClientProvider>
+        {/* Langue et fuseau hérités de `i18n/request.ts` ; des messages,
+            seulement ceux que lisent les Client Components (voir
+            `i18n/client-messages.ts`) — pas tout le catalogue à chaque page. */}
+        <NextIntlClientProvider messages={pickClientMessages(MESSAGES[locale])}>
           <SkipLink />
           <ThemeProvider>{children}</ThemeProvider>
           <KeyboardShortcuts />
