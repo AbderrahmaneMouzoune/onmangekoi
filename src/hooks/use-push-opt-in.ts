@@ -4,7 +4,6 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState, useTransition } from 'react'
 
 import { subscribePushAction, unsubscribePushAction } from '@/actions/push'
-import { env } from '@/env'
 import { captureEvent } from '@/lib/analytics/client'
 import {
   currentPushSubscription,
@@ -14,6 +13,7 @@ import {
   unsubscribeFromPush,
 } from '@/lib/pwa/push-subscription'
 import { isServiceWorkerEnabled } from '@/lib/pwa/registration'
+import { publicEnv } from '@/public-env'
 
 import type { PushOptInContext } from '@/domain/push'
 
@@ -64,7 +64,7 @@ export function usePushOptIn({
   sessionId: string
   context: PushOptInContext
 }): PushOptIn {
-  const publicKey = env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  const publicKey = publicEnv.NEXT_PUBLIC_VAPID_PUBLIC_KEY
   const enabled = Boolean(publicKey) && isServiceWorkerEnabled()
 
   const [state, setState] = useState<PushOptInState>('checking')

@@ -11,8 +11,8 @@
  * visiteur qui refuse ne paie jamais son poids.
  */
 
-import { env } from '@/env'
 import { sanitizeProperties } from '@/lib/analytics/sanitize'
+import { publicEnv } from '@/public-env'
 
 import type { AnalyticsEvent, AnalyticsEventMap } from '@/lib/analytics/events'
 import type { PostHog } from 'posthog-js'
@@ -30,7 +30,7 @@ let identified: string | null = null
 
 /** La mesure est-elle possible sur ce déploiement ? */
 export function isAnalyticsConfigured(): boolean {
-  return Boolean(env.NEXT_PUBLIC_POSTHOG_KEY)
+  return Boolean(publicEnv.NEXT_PUBLIC_POSTHOG_KEY)
 }
 
 function syncIdentity(): void {
@@ -52,7 +52,7 @@ function syncIdentity(): void {
  * consentement obtenu.
  */
 export function startAnalytics(): Promise<PostHog | null> {
-  const key = env.NEXT_PUBLIC_POSTHOG_KEY
+  const key = publicEnv.NEXT_PUBLIC_POSTHOG_KEY
   if (!key || typeof window === 'undefined') return Promise.resolve(null)
 
   if (client) {
@@ -69,7 +69,7 @@ export function startAnalytics(): Promise<PostHog | null> {
   loading = import('posthog-js')
     .then(({ default: posthog }) => {
       posthog.init(key, {
-        api_host: env.NEXT_PUBLIC_POSTHOG_HOST,
+        api_host: publicEnv.NEXT_PUBLIC_POSTHOG_HOST,
         // Profils uniquement pour les personnes identifiées (issue #18).
         person_profiles: 'identified_only',
         // Une vue par changement d'historique — donc aussi en navigation
