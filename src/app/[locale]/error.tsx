@@ -9,6 +9,7 @@ import { Shell } from '@/components/layout/shell'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { router } from '@/config/router.config'
+import { captureError } from '@/lib/analytics/client'
 import { cn } from '@/lib/utils'
 
 export default function ErrorPage({
@@ -22,8 +23,11 @@ export default function ErrorPage({
   const tCommon = useTranslations('common.actions')
 
   useEffect(() => {
-    // Journalisation côté client uniquement ; le message brut n'est jamais affiché.
+    // Le message brut n'est jamais affiché : il part dans la console et, si la
+    // mesure est active, dans l'error tracking (le `digest` relie l'erreur
+    // navigateur à sa remontée serveur).
     console.error(error)
+    captureError(error, { boundary: 'route', digest: error.digest })
   }, [error])
 
   return (

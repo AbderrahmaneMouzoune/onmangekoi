@@ -90,4 +90,40 @@ describe('sanitizeProperties', () => {
       restaurant_count: 6,
     })
   })
+
+  it('should sanitize URLs nested in objects and arrays, like web vitals and exceptions', () => {
+    const properties = sanitizeProperties({
+      $web_vitals_LCP_value: 1800,
+      $web_vitals_LCP_event: {
+        $current_url: 'https://onmangekoi.fr/sessions/7K3M9P/results',
+        $pathname: '/sessions/7K3M9P/results',
+      },
+      $exception_list: [
+        {
+          type: 'TypeError',
+          value: 'oops',
+          stacktrace: {
+            frames: [{ filename: 'app.js', abs_path: 'https://onmangekoi.fr/join/7K3M9P?x=1' }],
+          },
+        },
+      ],
+    })
+
+    expect(properties).toEqual({
+      $web_vitals_LCP_value: 1800,
+      $web_vitals_LCP_event: {
+        $current_url: 'https://onmangekoi.fr/sessions/[code]/results',
+        $pathname: '/sessions/[code]/results',
+      },
+      $exception_list: [
+        {
+          type: 'TypeError',
+          value: 'oops',
+          stacktrace: {
+            frames: [{ filename: 'app.js', abs_path: 'https://onmangekoi.fr/join/[code]' }],
+          },
+        },
+      ],
+    })
+  })
 })

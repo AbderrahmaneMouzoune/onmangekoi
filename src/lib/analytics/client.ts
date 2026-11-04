@@ -80,7 +80,12 @@ export function startAnalytics(): Promise<PostHog | null> {
         autocapture: false,
         disable_session_recording: true,
         disable_surveys: true,
-        capture_performance: false,
+        // Error tracking : erreurs non rattrapées et promesses rejetées. Leur
+        // pile et l'URL de la page passent par le même masquage (`before_send`).
+        capture_exceptions: true,
+        // Web Vitals (LCP, INP, CLS, FCP) uniquement : le minutage réseau ne
+        // sert qu'au replay, désactivé ici.
+        capture_performance: { web_vitals: true, network_timing: false },
         mask_personal_data_properties: true,
         cross_subdomain_cookie: false,
         // Dernier filet : aucune URL ne part sans passer par le masquage.
@@ -136,6 +141,15 @@ export function captureEvent<E extends AnalyticsEvent>(
   properties: AnalyticsEventMap[E]
 ): void {
   enqueue(event, properties)
+}
+
+/**
+ * Envoie une erreur rattrapée (error boundary) à l'error tracking. Sans mesure
+ * active — clé absente, consentement refusé ou SDK pas encore chargé —,
+ * l'appel ne fait rien : une erreur n'est jamais une raison de charger le SDK.
+ */
+export function captureError(error: unknown, properties?: Record<string, unknown>): void {
+  client?.captureException(error, properties)
 }
 
 /**

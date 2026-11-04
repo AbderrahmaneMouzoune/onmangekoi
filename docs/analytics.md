@@ -1,6 +1,6 @@
 # Mesure d'audience
 
-Objectif : savoir **où les groupes décrochent** entre la création d'une session et le classement, et combien de sessions vont jusqu'au bout. Rien d'autre.
+Objectif : savoir **où les groupes décrochent** entre la création d'une session et le classement, combien de sessions vont jusqu'au bout, et **ce qui casse** (erreurs, lenteurs). Rien d'autre.
 
 Outil : [PostHog](https://posthog.com) sur sa région **européenne** (`https://eu.i.posthog.com`), chargé côté navigateur uniquement.
 
@@ -30,6 +30,8 @@ Le retrait du consentement (« Mon compte » → _Statistiques d'usage_) appelle
   | `/setup?next=%2Fjoin%2F7K3M9P`   | `/setup`                   |
 
   Le masquage passe par `before_send`, donc il s'applique à **toutes** les propriétés d'URL, y compris celles que PostHog ajoute lui-même (`$current_url`, `$referrer`, `$initial_*`…). Une route inconnue voit ses segments identifiants remplacés par `[id]` : une route ajoutée plus tard ne fuite pas par oubli.
+
+- **Les mêmes règles valent pour les erreurs et les traces** : piles d'appel, Web Vitals et spans serveur passent par le même masquage, y compris dans leurs objets imbriqués (voir [Erreurs, performances et traces](#erreurs-performances-et-traces)).
 
 - **Pas d'autocapture** (`autocapture: false`) : elle enverrait le texte des éléments cliqués, donc des pseudos. Pas d'enregistrement de session non plus.
 
@@ -73,6 +75,20 @@ Les Cache Components prérendent la coquille de chaque route : la mesure ne doit
 Créer ou rejoindre une session se termine par un `redirect()` serveur : la Server Action ne rend jamais la main au composant qui l'a appelée. Un événement émis au moment du clic compterait donc aussi les échecs.
 
 L'intention est déposée dans `sessionStorage` avant la navigation (`rememberSessionEntry`), puis consommée **une seule fois** à l'arrivée par `SessionRoom` (`takeSessionEntry`). Une création qui échoue n'est jamais consommée et expire au bout de cinq minutes. Sans intention retrouvée, une arrivée qui n'est pas celle du host est comptée comme une entrée par lien — le cas d'un `/join/<token>` ouvert directement.
+
+## Erreurs, performances et traces
+
+| Quoi                     | Où                                                                    | Consentement                                |
+| ------------------------ | --------------------------------------------------------------------- | ------------------------------------------- |
+| Erreurs navigateur       | `capture_exceptions: true` + error boundaries (`captureError`)        | oui, comme le reste du SDK navigateur       |
+| Web Vitals               | `capture_performance: { web_vitals: true }` → événement `$web_vitals` | oui                                         |
+| Erreurs serveur          | `onRequestError` (`src/instrumentation.ts`) → `posthog-node`          | non requis : anonyme, sans cookie ni profil |
+| Traces serveur (tracing) | `@vercel/otel` → OTLP `/i/v1/traces`, service `onmangekoi-web`        | non requis : aucun identifiant de personne  |
+
+- **Erreurs serveur** : Next n'envoie au navigateur qu'un `digest` opaque ; `onRequestError` remonte l'erreur réelle dans l'error tracking, avec le motif de route (`route`), le chemin masqué (`$pathname`), `runtime`, `route_type` et `environment`. L'événement est anonyme (`$process_person_profile: false`) et porte le `$trace_id` de la requête : depuis une erreur, on ouvre sa trace. Limite connue : le **message** d'une erreur part tel quel ; une erreur dont le message citerait une donnée saisie l'enverrait aussi.
+- **Traces** : Next émet ses propres spans (requête, rendu, Server Action, `fetch` sortants vers Supabase et Google Places). Avant l'export, `SanitizingSpanExporter` (`src/lib/observability/span-sanitizer.ts`) masque les URLs du nom et des attributs, retire query strings, cookies et en-têtes d'autorisation.
+- Les deux sont inertes sans `NEXT_PUBLIC_POSTHOG_KEY`, donc absents en local, en CI et sur les previews.
+- Côté PostHog, l'error tracking est activé dans _Project Settings → Error tracking_ (`autocapture_exceptions_opt_in`).
 
 ## Tableau de bord à créer dans PostHog
 

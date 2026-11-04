@@ -1,10 +1,12 @@
 'use client'
 
 import { createTranslator } from 'next-intl'
+import { useEffect } from 'react'
 
 import { useIsClient } from '@/hooks/use-is-client'
 import { readClientLocale } from '@/i18n/client-locale'
 import { DEFAULT_LOCALE } from '@/i18n/config'
+import { captureError } from '@/lib/analytics/client'
 
 import enLayout from '../../messages/en/layout.json'
 import frLayout from '../../messages/fr/layout.json'
@@ -16,7 +18,17 @@ import frLayout from '../../messages/fr/layout.json'
  */
 const LAYOUT_MESSAGES = { fr: frLayout, en: enLayout }
 
-export default function GlobalError({ reset }: { error: Error; reset: () => void }) {
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string }
+  reset: () => void
+}) {
+  useEffect(() => {
+    captureError(error, { boundary: 'global', digest: error.digest })
+  }, [error])
+
   const locale = useIsClient() ? readClientLocale() : DEFAULT_LOCALE
   const t = createTranslator({
     locale,
