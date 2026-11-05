@@ -76,6 +76,32 @@
     "title": "Mes groupes",
     "description": "Quitter un groupe, c’est ne plus être pré-invité à ses sessions. Celles déjà rejointes ne bougent pas."
   },
+  "ai": {
+    "title": "Connecter ton IA",
+    "description": "Branche Claude, ChatGPT ou Cursor sur tes listes : raconte-lui où tu as mangé, il cherche le resto, l’ajoute s’il n’existe pas encore et le range dans la bonne liste.",
+    "example": "« J’ai mangé à La Ba, c’était bon. »",
+    "form": {
+      "label": "Nom du jeton (facultatif)",
+      "placeholder": "Claude, ChatGPT, mon ordi…",
+      "submit": "Créer un jeton"
+    },
+    "created": {
+      "warning": "Copie-le maintenant : ce jeton ne s’affichera plus. Il donne accès à tes listes, garde-le pour toi.",
+      "urlTitle": "URL du connecteur",
+      "urlHint": "Claude.ai ou ChatGPT : ajoute un connecteur personnalisé et colle cette adresse.",
+      "claudeCodeTitle": "Claude Code",
+      "jsonTitle": "Configuration JSON",
+      "jsonHint": "Cursor, Claude Desktop, VS Code et la plupart des clients MCP.",
+      "copy": "Copier"
+    },
+    "tokens": {
+      "title": "Jetons actifs",
+      "lastUsed": "Utilisé {when}",
+      "neverUsed": "Jamais utilisé",
+      "revoke": "Révoquer",
+      "confirmRevoke": "Confirmer"
+    }
+  },
   "foodConstraints": {
     "title": "Ce que je ne peux pas manger",
     "description": "Optionnel. Un resto qui ne te convient pas est signalé dans tes sessions, sans jamais dire qui : « 1 participant ne peut pas y manger ». Tu gardes ton veto pour trancher entre deux envies.",

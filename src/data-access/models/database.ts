@@ -28,6 +28,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          last_used_at: string | null
+          owner_id: string
+          token_hash: string
+          token_hint: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          last_used_at?: string | null
+          owner_id: string
+          token_hash: string
+          token_hint: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          owner_id?: string
+          token_hash?: string
+          token_hint?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'api_tokens_owner_id_fkey'
+            columns: ['owner_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       group_members: {
         Row: {
           added_at: string
@@ -794,6 +832,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_api_token: {
+        Args: { p_label?: string }
+        Returns: {
+          created_at: string
+          id: string
+          label: string
+          token: string
+          token_hint: string
+        }[]
+      }
       create_group_from_session: {
         Args: { p_name: string; p_session_id: string }
         Returns: {
@@ -1135,6 +1183,89 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      mcp_act_as: { Args: { p_token: string }; Returns: string }
+      mcp_add_to_list: {
+        Args: { p_list_id: string; p_restaurant_id: string; p_token: string }
+        Returns: Json
+      }
+      mcp_create_list: {
+        Args: { p_name: string; p_token: string }
+        Returns: Json
+      }
+      mcp_create_restaurant: {
+        Args: {
+          p_address?: string
+          p_city?: string
+          p_cuisine_type?: string
+          p_name: string
+          p_price_level?: number
+          p_tags?: string[]
+          p_token: string
+        }
+        Returns: Json
+      }
+      mcp_find_restaurants: {
+        Args: {
+          p_city?: string
+          p_limit?: number
+          p_query: string
+          p_token: string
+        }
+        Returns: Json
+      }
+      mcp_import_place: {
+        Args: {
+          p_address?: string
+          p_city?: string
+          p_cuisine_type?: string
+          p_description?: string
+          p_location?: Json
+          p_name: string
+          p_opening_hours?: Json
+          p_photo_url?: string
+          p_place_id: string
+          p_price_level?: number
+          p_tags?: string[]
+          p_token: string
+          p_website?: string
+        }
+        Returns: Json
+      }
+      mcp_list: { Args: { p_list_id: string; p_token: string }; Returns: Json }
+      mcp_list_json: {
+        Args: { l: Database['public']['Tables']['lists']['Row'] }
+        Returns: Json
+      }
+      mcp_lists: { Args: { p_token: string }; Returns: Json }
+      mcp_owned_list: {
+        Args: { p_list_id: string; p_uid: string }
+        Returns: {
+          created_at: string
+          id: string
+          is_collaborative: boolean
+          is_public: boolean
+          name: string
+          owner_id: string
+          share_code: string
+          share_token: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'lists'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      mcp_remove_from_list: {
+        Args: { p_list_id: string; p_restaurant_id: string; p_token: string }
+        Returns: Json
+      }
+      mcp_restaurant_json: {
+        Args: { r: Database['public']['Tables']['restaurants']['Row'] }
+        Returns: Json
+      }
+      mcp_whoami: { Args: { p_token: string }; Returns: Json }
       my_session_invitations: {
         Args: never
         Returns: {
