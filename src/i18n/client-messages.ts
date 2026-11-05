@@ -15,6 +15,7 @@ import type { AppMessages } from './messages'
  * nouveau dans un composant client demande de l'ajouter ici.
  */
 export const CLIENT_NAMESPACES = [
+  'account.ai',
   'account.analytics',
   'account.delete',
   'account.email',

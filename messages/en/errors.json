@@ -105,7 +105,10 @@
     "weak_password": "The password is too weak.",
     "email_not_confirmed": "Confirm your email address first.",
     "anonymous_sign_ins_disabled": "Anonymous sign-ins are turned off on this project.",
-    "invalid_food_constraints": "These constraints aren’t valid."
+    "invalid_food_constraints": "These constraints aren’t valid.",
+    "restaurant_not_found": "This restaurant doesn’t exist.",
+    "invalid_api_token": "This AI access token is invalid or has been revoked.",
+    "too_many_api_tokens": "You’ve reached the limit of 10 AI access tokens. Revoke one to create another."
   },
   "fallback": {
     "profileSave": "Couldn’t save your nickname. Try again.",

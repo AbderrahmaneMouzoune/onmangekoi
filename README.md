@@ -474,6 +474,19 @@ La charge utile se limite au titre, au nom de la session et au chemin à ouvrir 
 
 **Désactivé par défaut.** Sans les secrets du Vault, le trigger ne fait rien ; sans clés VAPID ou sans `SUPABASE_SECRET_KEY`, la route répond 204 sans rien envoyer ; sans `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, le bouton ne s'affiche pas. C'est le cas en local, en CI et sur les previews. Pour activer, voir [Déployer](#déployer-vercel--supabase-cloud). Pour essayer en local : un build de production (`bun run build && bun run start`, le service worker n'existe pas en `next dev`), les variables de `.env.local.example`, et deux secrets Vault posés dans la base locale — l'URL doit viser l'hôte vu depuis le conteneur Postgres, `http://host.docker.internal:3000/api/push/dispatch`. Scénario rejouable avec `bun run db:test` (`supabase/tests/push.test.sql`).
 
+## Connecter une IA (MCP)
+
+L'app est pilotable par une IA : **Mon compte → Connecter ton IA** crée un jeton personnel à coller dans Claude, ChatGPT, Cursor ou tout client MCP. Ensuite, « j'ai mangé à La Ba, c'était bon » suffit — l'IA cherche le resto dans le catalogue, l'importe de Google s'il manque, et le range dans la bonne liste, sans doublon.
+
+| Élément                  | Où                                                                                  |
+| ------------------------ | ----------------------------------------------------------------------------------- |
+| Serveur MCP              | `/api/mcp` (Streamable HTTP, sans état) — `Authorization: Bearer omk_…` ou `?key=`  |
+| Outil principal          | `remember_restaurant` — chercher, importer, ranger, ou demander en cas de doute     |
+| Autorisation             | RPC `mcp_*` en base : le jeton (empreinte SHA-256 seulement) dit au nom de qui agir |
+| Présentation pour les IA | `/llms.txt`                                                                         |
+
+Détails, outils et modèle de sécurité : [`docs/mcp.md`](docs/mcp.md).
+
 ## Langues
 
 L'interface existe en français et en anglais ([#14](https://github.com/AbderrahmaneMouzoune/onmangekoi/issues/14)) : un collègue anglophone peut rejoindre la même session que le reste de l'équipe.

@@ -2,6 +2,7 @@ import { useTranslations } from 'next-intl'
 import { getTranslations } from 'next-intl/server'
 import { Suspense } from 'react'
 
+import { AccountAiFallback, AccountAiSection } from '@/components/account/account-ai-section'
 import { AccountDataSection } from '@/components/account/account-data-section'
 import { AccountDetails, AccountDetailsFallback } from '@/components/account/account-details'
 import {
@@ -48,6 +49,10 @@ export default function AccountPage({ searchParams }: Props) {
 
           <Suspense fallback={<AccountStatsFallback />}>
             <AccountStats />
+          </Suspense>
+
+          <Suspense fallback={<AccountAiFallback />}>
+            <AccountAiSection />
           </Suspense>
 
           {/* Une personne sans groupe ne voit rien ici : rien à réserver non plus. */}

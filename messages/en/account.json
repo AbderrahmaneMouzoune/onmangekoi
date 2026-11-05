@@ -76,6 +76,32 @@
     "title": "My groups",
     "description": "Leaving a group means you’re no longer pre-invited to its sessions. The ones you’ve already joined stay as they are."
   },
+  "ai": {
+    "title": "Connect your AI",
+    "description": "Plug Claude, ChatGPT or Cursor into your lists: tell it where you ate, it finds the restaurant, adds it if it’s new, and files it in the right list.",
+    "example": "“I ate at La Ba, it was great.”",
+    "form": {
+      "label": "Token name (optional)",
+      "placeholder": "Claude, ChatGPT, my laptop…",
+      "submit": "Create a token"
+    },
+    "created": {
+      "warning": "Copy it now: this token won’t be shown again. It gives access to your lists, keep it to yourself.",
+      "urlTitle": "Connector URL",
+      "urlHint": "Claude.ai or ChatGPT: add a custom connector and paste this address.",
+      "claudeCodeTitle": "Claude Code",
+      "jsonTitle": "JSON configuration",
+      "jsonHint": "Cursor, Claude Desktop, VS Code and most MCP clients.",
+      "copy": "Copy"
+    },
+    "tokens": {
+      "title": "Active tokens",
+      "lastUsed": "Used {when}",
+      "neverUsed": "Never used",
+      "revoke": "Revoke",
+      "confirmRevoke": "Confirm"
+    }
+  },
   "foodConstraints": {
     "title": "What I can’t eat",
     "description": "Optional. A restaurant that doesn’t work for you gets flagged in your sessions, without ever saying who: “1 participant can’t eat there”. You keep your veto for choosing between two cravings.",
