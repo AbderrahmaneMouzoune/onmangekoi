@@ -1,0 +1,48 @@
+{
+  "consent": {
+    "eyebrow": "Autorisation",
+    "title": "{client} veut accéder à ton compte",
+    "titleFallback": "Une app veut accéder à ton compte",
+    "intro": "En autorisant, {client} pourra agir sur onmangekoi en ton nom, depuis la conversation où tu l’utilises.",
+    "website": "Site de l’app : {host}",
+    "redirect": "Après ta réponse, tu seras renvoyé vers <strong>{target}</strong>.",
+    "canTitle": "Ce que l’app pourra faire",
+    "can": {
+      "read": "Lire tes sessions, tes listes et leurs classements.",
+      "create": "Créer des sessions et des listes pour toi.",
+      "act": "Voter, lancer ou clôturer une session et valider un choix en ton nom."
+    },
+    "trustTitle": "À savoir avant d’autoriser",
+    "trust": "L’app agira avec les mêmes droits que toi sur onmangekoi, et pourra connaître l’email lié à ton compte. Elle ne verra jamais ton mot de passe. N’autorise que les apps que tu connais et que tu as toi-même ajoutées.",
+    "accountTitle": "Compte connecté",
+    "anonymous": "Compte anonyme",
+    "anonymousHint": "Ce compte n’est lié à aucun email. Lie-en un depuis ta page compte pour ne pas perdre l’accès : les comptes anonymes inactifs sont supprimés au bout de 90 jours.",
+    "linkEmail": "Lier un email",
+    "revokeHint": "Tu pourras déconnecter cette app à tout moment depuis ta page compte.",
+    "approve": "Autoriser",
+    "deny": "Refuser",
+    "logoAlt": "Logo de {client}",
+    "errors": {
+      "missingTitle": "Demande incomplète",
+      "missing": "Ce lien ne contient pas de demande d’autorisation. Relance la connexion depuis l’app qui t’a envoyé ici.",
+      "invalidTitle": "Demande expirée",
+      "invalid": "Cette demande d’autorisation a expiré ou n’est plus valable. Relance la connexion depuis l’app qui t’a envoyé ici.",
+      "decisionFailed": "La réponse n’a pas pu être envoyée. La demande a peut-être expiré : relance la connexion depuis l’app."
+    }
+  },
+  "connectedApps": {
+    "title": "Apps connectées",
+    "description": "Les assistants que tu as autorisés à utiliser ton compte.",
+    "empty": "Aucune app connectée pour le moment.",
+    "howTo": "Dans Claude ou ChatGPT, ajoute cette adresse comme connecteur personnalisé, puis autorise l’accès quand il te le demande. Pas de clé à copier : tout passe par ta connexion.",
+    "copy": "Copier l’adresse",
+    "grantedAt": "Autorisée le {date}",
+    "scopes": "Accès accordés",
+    "disconnect": "Déconnecter",
+    "confirmDisconnect": "Confirmer la déconnexion",
+    "disconnectLabel": "Déconnecter {client}",
+    "disconnectFailed": "La déconnexion a échoué. Réessaie dans un instant.",
+    "unavailable": "La liste des apps connectées est indisponible pour le moment.",
+    "unnamed": "App sans nom"
+  }
+}

@@ -8,6 +8,7 @@ import enLayout from '../../messages/en/layout.json'
 import enLegal from '../../messages/en/legal.json'
 import enLists from '../../messages/en/lists.json'
 import enMetadata from '../../messages/en/metadata.json'
+import enOauth from '../../messages/en/oauth.json'
 import enOg from '../../messages/en/og.json'
 import enOnboarding from '../../messages/en/onboarding.json'
 import enPwa from '../../messages/en/pwa.json'
@@ -23,6 +24,7 @@ import frLayout from '../../messages/fr/layout.json'
 import frLegal from '../../messages/fr/legal.json'
 import frLists from '../../messages/fr/lists.json'
 import frMetadata from '../../messages/fr/metadata.json'
+import frOauth from '../../messages/fr/oauth.json'
 import frOg from '../../messages/fr/og.json'
 import frOnboarding from '../../messages/fr/onboarding.json'
 import frPwa from '../../messages/fr/pwa.json'
@@ -54,6 +56,7 @@ export const FR_MESSAGES = {
   legal: frLegal,
   lists: frLists,
   metadata: frMetadata,
+  oauth: frOauth,
   og: frOg,
   onboarding: frOnboarding,
   pwa: frPwa,
@@ -79,6 +82,7 @@ const EN_MESSAGES: AppMessages = {
   legal: enLegal,
   lists: enLists,
   metadata: enMetadata,
+  oauth: enOauth,
   og: enOg,
   onboarding: enOnboarding,
   pwa: enPwa,

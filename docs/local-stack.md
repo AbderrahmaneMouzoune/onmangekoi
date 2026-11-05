@@ -45,6 +45,21 @@ bun run dev
 
 L'app démarre sur `http://localhost:3000`.
 
+## Serveur MCP (optionnel)
+
+Le serveur OAuth de Supabase est activé dans `supabase/config.toml`, mais le MCP (`http://localhost:3000/api/mcp`) exige en plus des clés de signature asymétriques, qui ne se commitent pas :
+
+```bash
+# la commande imprime une seule JWK ; le fichier attend un tableau de clés
+echo "[$(supabase gen signing-key --algorithm ES256 2>/dev/null)]" > supabase/signing_keys.json
+# décommenter `signing_keys_path = "./signing_keys.json"` dans supabase/config.toml
+supabase stop && supabase start
+```
+
+`supabase/signing_keys.json` contient une clé privée : vérifier avec `git check-ignore supabase/signing_keys.json` qu'il n'entrera pas dans un commit.
+
+Brancher un client et déboguer le parcours OAuth : voir [`mcp.md`](mcp.md).
+
 ## Commandes utiles
 
 | Commande            | Effet                                                               |

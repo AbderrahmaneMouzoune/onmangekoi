@@ -159,6 +159,12 @@ jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to the local API URL (http://127.0.0.1:<port>/auth/v1).
 # jwt_issuer = ""
 # Path to JWT signing key. DO NOT commit your signing keys file to git.
+# Le serveur MCP (`/api/mcp`) exige des clés asymétriques : avec la clé HS256
+# par défaut, `getClaims` retombe sur `/auth/v1/user`, qui refuse les jetons
+# OAuth. Pour tester le MCP en local :
+#   echo "[$(supabase gen signing-key --algorithm ES256 2>/dev/null)]" > supabase/signing_keys.json
+# puis décommenter la ligne ci-dessous et relancer (`supabase stop && supabase start`).
+# Voir docs/mcp.md.
 # signing_keys_path = "./signing_keys.json"
 # If disabled, the refresh token will never expire.
 enable_refresh_token_rotation = true
@@ -356,13 +362,19 @@ enabled = false
 # domain = "example.clerk.accounts.dev"
 
 # OAuth server configuration
+# Supabase Auth sert de serveur d'autorisation OAuth 2.1 au serveur MCP
+# (`/api/mcp`) : Claude, ChatGPT ou Cursor s'y enregistrent eux-mêmes (DCR),
+# l'utilisateur consent sur `/oauth/consent` (relatif à `site_url`), et le
+# client reçoit un jeton Supabase ordinaire, soumis à la RLS. Voir docs/mcp.md.
 [auth.oauth_server]
 # Enable OAuth server functionality
-enabled = false
+enabled = true
 # Path for OAuth consent flow UI
 authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
-allow_dynamic_registration = false
+# Indispensable : les clients MCP ne connaissent pas onmangekoi à l'avance et
+# s'enregistrent au premier branchement (RFC 7591).
+allow_dynamic_registration = true
 
 [edge_runtime]
 enabled = true

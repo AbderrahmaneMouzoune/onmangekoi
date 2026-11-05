@@ -6,3 +6,6 @@
 .env.keys
 .env.local
 .env.*.local
+
+# Clés de signature JWT locales (MCP / serveur OAuth) — privées
+signing_keys.json

@@ -2,6 +2,7 @@ import { useTranslations } from 'next-intl'
 import { getTranslations } from 'next-intl/server'
 import { Suspense } from 'react'
 
+import { AccountAiFallback, AccountAiSection } from '@/components/account/account-ai-section'
 import { AccountDataSection } from '@/components/account/account-data-section'
 import { AccountDetails, AccountDetailsFallback } from '@/components/account/account-details'
 import {
@@ -39,7 +40,7 @@ export default function AccountPage({ searchParams }: Props) {
 
       {/* Sur grand écran : l'identité, le compte et les groupes à gauche, les
           réglages qui ne dépendent de personne — ce qu'on ne peut pas manger,
-          mesure d'usage, données — à droite. */}
+          assistants IA, mesure d'usage, données — à droite. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
         <div className="flex flex-col gap-6">
           <Suspense fallback={<AccountDetailsFallback />}>
@@ -58,6 +59,12 @@ export default function AccountPage({ searchParams }: Props) {
         <div className="flex flex-col gap-6">
           <Suspense fallback={<AccountFoodConstraintsFallback />}>
             <AccountFoodConstraintsSection />
+          </Suspense>
+          {/* Assistants IA : la connexion OAuth recommandée et ses apps
+              connectées, puis, repliés, les jetons personnels des clients
+              sans OAuth. */}
+          <Suspense fallback={<AccountAiFallback />}>
+            <AccountAiSection />
           </Suspense>
           <AnalyticsPreference />
           <AccountDataSection />

@@ -19,6 +19,11 @@
  * partagée. Ce sont les deux pages que quelqu'un sans pseudo est censé
  * pouvoir ouvrir. La première l'est toujours ; la seconde tranche elle-même,
  * liste par liste, et renvoie vers l'onboarding quand la liste est privée.
+ *
+ * `/oauth` en fait partie : consentir à une app tierce (Claude, ChatGPT…)
+ * engage un compte. Sans utilisateur, le proxy envoie vers l'onboarding avec
+ * la demande complète dans `?next=` (query `authorization_id` comprise), et
+ * l'onboarding y ramène une fois le pseudo choisi.
  */
 export const PROTECTED_PREFIXES = [
   '/sessions',
@@ -27,6 +32,7 @@ export const PROTECTED_PREFIXES = [
   '/lists',
   '/groups',
   '/account',
+  '/oauth',
 ] as const
 
 /** Longueur d'un code de partage de liste (Crockford base32). */
@@ -121,6 +127,17 @@ export const router = {
   publicResults: (target: ResultsTarget) => `/r/${resultsSegment(target)}`,
 
   authConfirm: () => '/auth/confirm',
+
+  /**
+   * Écran de consentement OAuth : le serveur d'autorisation Supabase y renvoie
+   * la personne avec `?authorization_id=…` quand une app (client MCP) demande
+   * l'accès à son compte. Le chemin est déclaré tel quel dans la configuration
+   * OAuth du projet Supabase (« Authorization path »).
+   */
+  oauthConsent: (authorizationId?: string | null) =>
+    authorizationId
+      ? `/oauth/consent?authorization_id=${encodeURIComponent(authorizationId)}`
+      : '/oauth/consent',
 
   privacy: () => '/legal/privacy',
 

@@ -21,7 +21,8 @@
     "groups": "My groups",
     "account": "My account",
     "privacy": "Privacy",
-    "changelog": "What’s new"
+    "changelog": "What’s new",
+    "oauthConsent": "Authorize an app"
   },
   "duo": {
     "description": "Decide where to eat, just the two of you: one link to send, the same restaurants to swipe, and the first shared “works for me” settles it."

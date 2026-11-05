@@ -1,7 +1,6 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
-import { z } from 'zod'
 
 import { getCurrentUser } from '@/data-access/auth'
 import {
@@ -16,32 +15,16 @@ import {
 import { createServerClient } from '@/data-access/supabase/server'
 import {
   CreateRestaurantSchema,
-  RESTAURANT_TAGS,
+  RestaurantSearchSchema,
   SimilarRestaurantsSchema,
 } from '@/domain/schemas/restaurant'
 import { errorMessage, translateError, translateIssue } from '@/i18n/server'
 
 import type { ActionResult } from './types'
 import type { Restaurant } from '@/data-access/models'
+import type { z } from 'zod'
 
-const SearchSchema = z.object({
-  query: z.string().trim().max(80).default(''),
-  offset: z.number().int().min(0).max(10_000).default(0),
-  priceMax: z.number().int().min(1).max(4).nullable().default(null),
-  tags: z.array(z.enum(RESTAURANT_TAGS)).max(RESTAURANT_TAGS.length).default([]),
-  withinKm: z.number().positive().max(50).nullable().default(null),
-  /**
-   * Position du navigateur. Elle sert à cette requête et à rien d'autre :
-   * jamais stockée, jamais mesurée, arrondie avant même de servir de clé de
-   * cache.
-   */
-  origin: z
-    .object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })
-    .nullable()
-    .default(null),
-})
-
-export type SearchRestaurantsInput = z.input<typeof SearchSchema>
+export type SearchRestaurantsInput = z.input<typeof RestaurantSearchSchema>
 
 /**
  * Recherche du `RestaurantPicker`. Le catalogue est public : la lecture passe
@@ -50,7 +33,7 @@ export type SearchRestaurantsInput = z.input<typeof SearchSchema>
 export async function searchRestaurantsAction(
   input: SearchRestaurantsInput
 ): Promise<ActionResult<RestaurantPage>> {
-  const parsed = SearchSchema.safeParse(input)
+  const parsed = RestaurantSearchSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: await errorMessage('invalid_search') }
 
   try {
