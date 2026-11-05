@@ -2,6 +2,10 @@ import { useTranslations } from 'next-intl'
 import { getTranslations } from 'next-intl/server'
 import { Suspense } from 'react'
 
+import {
+  AccountConnectedAppsFallback,
+  AccountConnectedAppsSection,
+} from '@/components/account/account-connected-apps-section'
 import { AccountDataSection } from '@/components/account/account-data-section'
 import { AccountDetails, AccountDetailsFallback } from '@/components/account/account-details'
 import {
@@ -39,7 +43,7 @@ export default function AccountPage({ searchParams }: Props) {
 
       {/* Sur grand écran : l'identité, le compte et les groupes à gauche, les
           réglages qui ne dépendent de personne — ce qu'on ne peut pas manger,
-          mesure d'usage, données — à droite. */}
+          apps connectées, mesure d'usage, données — à droite. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
         <div className="flex flex-col gap-6">
           <Suspense fallback={<AccountDetailsFallback />}>
@@ -58,6 +62,9 @@ export default function AccountPage({ searchParams }: Props) {
         <div className="flex flex-col gap-6">
           <Suspense fallback={<AccountFoodConstraintsFallback />}>
             <AccountFoodConstraintsSection />
+          </Suspense>
+          <Suspense fallback={<AccountConnectedAppsFallback />}>
+            <AccountConnectedAppsSection />
           </Suspense>
           <AnalyticsPreference />
           <AccountDataSection />

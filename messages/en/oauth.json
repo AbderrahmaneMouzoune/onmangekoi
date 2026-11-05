@@ -1,0 +1,48 @@
+{
+  "consent": {
+    "eyebrow": "Authorization",
+    "title": "{client} wants to access your account",
+    "titleFallback": "An app wants to access your account",
+    "intro": "If you allow it, {client} will be able to act on onmangekoi on your behalf, from the conversation where you use it.",
+    "website": "App website: {host}",
+    "redirect": "After you answer, you will be sent back to <strong>{target}</strong>.",
+    "canTitle": "What the app will be able to do",
+    "can": {
+      "read": "Read your sessions, your lists and their rankings.",
+      "create": "Create sessions and lists for you.",
+      "act": "Vote, launch or close a session and confirm a choice on your behalf."
+    },
+    "trustTitle": "Before you allow it",
+    "trust": "The app will act with the same rights as you on onmangekoi, and can learn the email linked to your account. It will never see your password. Only allow apps you know and added yourself.",
+    "accountTitle": "Signed-in account",
+    "anonymous": "Anonymous account",
+    "anonymousHint": "This account is not linked to any email. Link one from your account page so you don’t lose access: inactive anonymous accounts are deleted after 90 days.",
+    "linkEmail": "Link an email",
+    "revokeHint": "You can disconnect this app at any time from your account page.",
+    "approve": "Allow",
+    "deny": "Deny",
+    "logoAlt": "{client} logo",
+    "errors": {
+      "missingTitle": "Incomplete request",
+      "missing": "This link does not contain an authorization request. Start the connection again from the app that sent you here.",
+      "invalidTitle": "Request expired",
+      "invalid": "This authorization request has expired or is no longer valid. Start the connection again from the app that sent you here.",
+      "decisionFailed": "Your answer could not be sent. The request may have expired: start the connection again from the app."
+    }
+  },
+  "connectedApps": {
+    "title": "Connected apps",
+    "description": "The AI assistants (Claude, ChatGPT…) you have allowed to use your account.",
+    "empty": "No connected apps yet.",
+    "howTo": "To connect an assistant, add this MCP server to its connectors, then allow access when it asks:",
+    "copy": "Copy address",
+    "grantedAt": "Allowed on {date}",
+    "scopes": "Granted access",
+    "disconnect": "Disconnect",
+    "confirmDisconnect": "Confirm disconnect",
+    "disconnectLabel": "Disconnect {client}",
+    "disconnectFailed": "Disconnecting failed. Try again in a moment.",
+    "unavailable": "The list of connected apps is unavailable right now.",
+    "unnamed": "Unnamed app"
+  }
+}

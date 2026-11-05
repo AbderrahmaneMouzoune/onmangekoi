@@ -82,7 +82,7 @@ export async function proxy(request: NextRequest) {
  */
 export const config = {
   matcher: [
-    '/((?!api/|_next/|_vercel/|icons/|icon|apple-icon|sw\\.js|.*opengraph-image|.*\\.(?:ico|png|jpe?g|gif|svg|webp|avif|txt|xml|js|map|json|webmanifest|woff2?)$).*)',
+    '/((?!api/|\\.well-known/|_next/|_vercel/|icons/|icon|apple-icon|sw\\.js|.*opengraph-image|.*\\.(?:ico|png|jpe?g|gif|svg|webp|avif|txt|xml|js|map|json|webmanifest|woff2?)$).*)',
     '/manifest.webmanifest',
   ],
 }

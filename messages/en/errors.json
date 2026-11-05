@@ -105,7 +105,8 @@
     "weak_password": "The password is too weak.",
     "email_not_confirmed": "Confirm your email address first.",
     "anonymous_sign_ins_disabled": "Anonymous sign-ins are turned off on this project.",
-    "invalid_food_constraints": "These constraints aren’t valid."
+    "invalid_food_constraints": "These constraints aren’t valid.",
+    "forbidden_for_connected_apps": "This can only be done in the app, not from a connected app."
   },
   "fallback": {
     "profileSave": "Couldn’t save your nickname. Try again.",

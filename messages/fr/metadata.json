@@ -21,7 +21,8 @@
     "groups": "Mes groupes",
     "account": "Mon compte",
     "privacy": "Confidentialité",
-    "changelog": "Nouveautés"
+    "changelog": "Nouveautés",
+    "oauthConsent": "Autoriser une app"
   },
   "duo": {
     "description": "Décider à deux où manger : un lien à envoyer, les mêmes restos à balayer, et le premier « ça me va » commun tranche."

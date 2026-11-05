@@ -71,6 +71,28 @@ export const CreateRestaurantSchema = z.object({
   tags: RestaurantTagsSchema,
 })
 
+/**
+ * Recherche dans le catalogue : texte, budget, régimes, rayon. Partagée par le
+ * `RestaurantPicker` (Server Action) et le serveur MCP — ce sont les mêmes
+ * bornes, et la RPC `search_restaurants` les revérifie.
+ */
+export const RestaurantSearchSchema = z.object({
+  query: z.string().trim().max(80).default(''),
+  offset: z.number().int().min(0).max(10_000).default(0),
+  priceMax: z.number().int().min(1).max(4).nullable().default(null),
+  tags: z.array(z.enum(RESTAURANT_TAGS)).max(RESTAURANT_TAGS.length).default([]),
+  withinKm: z.number().positive().max(50).nullable().default(null),
+  /**
+   * Position du navigateur. Elle sert à cette requête et à rien d'autre :
+   * jamais stockée, jamais mesurée, arrondie avant même de servir de clé de
+   * cache.
+   */
+  origin: z
+    .object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })
+    .nullable()
+    .default(null),
+})
+
 /** Recherche de doublons : au moins deux caractères, sinon rien à comparer. */
 export const SimilarRestaurantsSchema = z.object({
   name: z.string().trim().min(RESTAURANT_NAME_MIN).max(RESTAURANT_NAME_MAX),

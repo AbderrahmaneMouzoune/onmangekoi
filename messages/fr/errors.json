@@ -105,7 +105,8 @@
     "weak_password": "Le mot de passe est trop faible.",
     "email_not_confirmed": "Confirme d’abord ton adresse email.",
     "anonymous_sign_ins_disabled": "Les connexions anonymes sont désactivées sur ce projet.",
-    "invalid_food_constraints": "Ces contraintes ne sont pas valides."
+    "invalid_food_constraints": "Ces contraintes ne sont pas valides.",
+    "forbidden_for_connected_apps": "Cette action se fait uniquement dans l’app, pas depuis une app connectée."
   },
   "fallback": {
     "profileSave": "Impossible d’enregistrer le pseudo. Réessaie.",
