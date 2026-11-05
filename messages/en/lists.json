@@ -80,5 +80,8 @@
     "add": "Add",
     "save": "Save to my lists"
   },
-  "start": "Start a session from this list"
+  "start": "Start a session from this list",
+  "ai": {
+    "defaultListName": "My favourite spots"
+  }
 }

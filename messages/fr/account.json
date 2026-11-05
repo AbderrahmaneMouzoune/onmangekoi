@@ -76,6 +76,41 @@
     "title": "Mes groupes",
     "description": "Quitter un groupe, c’est ne plus être pré-invité à ses sessions. Celles déjà rejointes ne bougent pas."
   },
+  "ai": {
+    "title": "Assistants IA",
+    "description": "Branche Claude, ChatGPT ou Cursor sur ton compte : raconte-lui où tu as mangé, il range le resto dans la bonne liste ; demande-lui de préparer une session, il s’en charge.",
+    "example": "« J’ai mangé à La Ba, c’était bon. »",
+    "recommended": {
+      "title": "Connexion recommandée"
+    },
+    "token": {
+      "title": "Pour les clients sans OAuth : jeton personnel",
+      "summary": "Si ton client ne propose pas de se connecter à onmangekoi.",
+      "scope": "Un jeton personnel ne couvre que le catalogue de restos et tes listes. Les sessions, les votes, l’historique et ton profil demandent la connexion recommandée."
+    },
+    "form": {
+      "label": "Nom du jeton (facultatif)",
+      "placeholder": "Claude, ChatGPT, mon ordi…",
+      "submit": "Créer un jeton"
+    },
+    "created": {
+      "warning": "Copie-le maintenant : ce jeton ne s’affichera plus. Il donne accès à tes listes, garde-le pour toi.",
+      "urlTitle": "URL avec jeton",
+      "urlHint": "Pour un client qui n’accepte qu’une adresse : le jeton y est inclus, ne la partage pas.",
+      "claudeCodeTitle": "Claude Code",
+      "jsonTitle": "Configuration JSON",
+      "jsonHint": "Cursor, Claude Desktop, VS Code et la plupart des clients MCP.",
+      "copy": "Copier"
+    },
+    "tokens": {
+      "title": "Jetons actifs",
+      "lastUsed": "Utilisé {when}",
+      "neverUsed": "Jamais utilisé",
+      "revoke": "Révoquer",
+      "confirmRevoke": "Confirmer",
+      "revokeLabel": "Révoquer le jeton {label}"
+    }
+  },
   "foodConstraints": {
     "title": "Ce que je ne peux pas manger",
     "description": "Optionnel. Un resto qui ne te convient pas est signalé dans tes sessions, sans jamais dire qui : « 1 participant ne peut pas y manger ». Tu gardes ton veto pour trancher entre deux envies.",

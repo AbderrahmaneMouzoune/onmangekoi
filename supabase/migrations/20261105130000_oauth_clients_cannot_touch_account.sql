@@ -7,10 +7,13 @@
 -- telles quelles, et c'est voulu — un agent ne peut rien de plus que
 -- l'utilisateur.
 --
--- Deux gestes doivent pourtant rester à la personne, dans l'app :
+-- Quelques gestes doivent pourtant rester à la personne, dans l'app :
 --   * `delete_my_account()` — irréversible, il efface tout ;
 --   * `export_my_data()`    — il sortirait d'un coup toutes ses données vers
---                             un service tiers.
+--                             un service tiers ;
+--   * les jetons personnels (`api_tokens`) — une app connectée ne doit ni en
+--     créer (refusé dans `create_api_token` même), ni les lire, ni les
+--     révoquer : ils sont l'autre porte d'entrée du MCP.
 --
 -- Plutôt que de recopier leur corps (et de risquer de le désynchroniser), on
 -- renomme chaque fonction en `*_unguarded`, on la retire des rôles de l'API,
@@ -88,3 +91,12 @@ comment on function public.export_my_data() is
 
 revoke execute on function public.export_my_data() from public, anon;
 grant execute on function public.export_my_data() to authenticated;
+
+-- ─── api_tokens : hors de portée des apps connectées ─────────
+-- Politique restrictive : elle s'ajoute (AND) aux politiques « les siens ».
+create policy api_tokens_not_for_connected_apps
+  on public.api_tokens
+  as restrictive
+  for all
+  to authenticated
+  using (not public.is_oauth_client_request());

@@ -2,6 +2,7 @@ import 'server-only'
 
 import { createPublicClient } from '@/data-access/supabase/public'
 import { env } from '@/env'
+import { MCP_KEY_PARAM } from '@/lib/mcp/endpoint'
 
 import type { AuthInfo } from '@modelcontextprotocol/server'
 
@@ -23,12 +24,26 @@ export function authServerUrl(): string {
   return `${env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/+$/, '')}/auth/v1`
 }
 
-/** Ce qu'un tool sait de l'appelant une fois le jeton vérifié. */
-export interface McpCaller {
-  userId: string
-  isAnonymous: boolean
-  clientId: string
-}
+/**
+ * Ce qu'un tool sait de l'appelant une fois le jeton vérifié.
+ *
+ * Deux façons de se connecter, un seul serveur :
+ *  - **OAuth** (recommandé) : le client MCP obtient un vrai jeton Supabase ;
+ *    l'appelant est connu ici, et tous les tools sont ouverts ;
+ *  - **jeton personnel** `omk_…`, créé dans « Mon compte » pour les clients
+ *    qui ne gèrent pas OAuth : il n'est résolu qu'en base, par les RPC
+ *    `mcp_*` (migration `ai_access_mcp`), et n'ouvre que les tools qui
+ *    passent par elles — catalogue et listes.
+ */
+export type McpCaller =
+  | { mode: 'oauth'; userId: string; isAnonymous: boolean; clientId: string }
+  | { mode: 'token'; token: string }
+
+/** Forme d'un jeton personnel ; sa validité, elle, se vérifie en base. */
+export const PERSONAL_TOKEN_PATTERN = /^omk_[0-9a-f]{48}$/
+
+/** Identifiant client affiché pour un appel par jeton personnel. */
+export const PERSONAL_TOKEN_CLIENT_ID = 'onmangekoi-personal-token'
 
 type Claims = Record<string, unknown>
 
@@ -50,6 +65,14 @@ export async function verifyMcpToken(
   bearerToken?: string
 ): Promise<AuthInfo | undefined> {
   if (!bearerToken) return undefined
+
+  // Jeton personnel : sa forme suffit ici. La base le résout (empreinte
+  // SHA-256) à chaque appel de tool et refuse un jeton inventé ou révoqué
+  // avec `omk:invalid_api_token`, que l'IA lit et transmet.
+  if (PERSONAL_TOKEN_PATTERN.test(bearerToken)) {
+    const caller: McpCaller = { mode: 'token', token: bearerToken }
+    return { token: bearerToken, clientId: PERSONAL_TOKEN_CLIENT_ID, scopes: [], extra: { caller } }
+  }
 
   let claims: Claims | undefined
   try {
@@ -74,6 +97,7 @@ export function authInfoFromClaims(token: string, claims: Claims): AuthInfo | un
   if (claims.role !== 'authenticated') return undefined
 
   const caller: McpCaller = {
+    mode: 'oauth',
     userId: sub,
     isAnonymous: claims.is_anonymous === true,
     clientId,
@@ -91,5 +115,21 @@ export function authInfoFromClaims(token: string, claims: Claims): AuthInfo | un
 /** L'appelant d'un tool, lu dans l'`AuthInfo` posé par `withMcpAuth`. */
 export function callerFromAuthInfo(authInfo: AuthInfo | undefined): McpCaller | null {
   const caller = authInfo?.extra?.caller as McpCaller | undefined
-  return caller?.userId ? caller : null
+  if (caller?.mode === 'oauth' && caller.userId) return caller
+  if (caller?.mode === 'token' && caller.token) return caller
+  return null
+}
+
+/**
+ * Recopie un jeton personnel passé en `?key=` (voir `src/lib/mcp/endpoint.ts`) dans l'en-tête `Authorization`,
+ * seul endroit où `withMcpAuth` le cherche. Un en-tête déjà présent l'emporte ;
+ * un jeton OAuth ne voyage jamais dans l'URL.
+ */
+export function withKeyParamAsBearer(request: Request): Request {
+  if (request.headers.get('authorization')) return request
+  const key = new URL(request.url).searchParams.get(MCP_KEY_PARAM)?.trim()
+  if (!key || !PERSONAL_TOKEN_PATTERN.test(key)) return request
+  const headers = new Headers(request.headers)
+  headers.set('authorization', `Bearer ${key}`)
+  return new Request(request, { headers })
 }

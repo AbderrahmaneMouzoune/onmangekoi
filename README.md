@@ -476,9 +476,18 @@ La charge utile se limite au titre, au nom de la session et au chemin à ouvrir 
 
 ## Assistants IA (MCP)
 
-onmangekoi se branche sur Claude, ChatGPT, Claude Code ou Cursor : un **serveur MCP distant** sur `/api/mcp` permet à un assistant de chercher des restos, gérer ses listes, lancer une session, voter ou lire un classement — au nom de l'utilisateur et avec exactement ses droits, puisque le jeton OAuth délivré par Supabase passe par la même RLS que l'app. Les gestes qui engagent le groupe (voter, lancer, clôturer, décider, publier) sont annotés comme destructifs, et les consignes du serveur imposent à l'assistant de les faire confirmer par l'utilisateur.
+onmangekoi se branche sur Claude, ChatGPT, Claude Code ou Cursor : un **serveur MCP distant** sur `/api/mcp` permet à un assistant de chercher des restos, tenir ses listes, lancer une session, voter ou lire un classement — au nom de l'utilisateur et avec exactement ses droits. « J'ai mangé à La Ba, c'était bon » suffit : l'IA cherche le resto dans le catalogue, l'importe de Google s'il manque, et le range dans la bonne liste, sans doublon. Les gestes qui engagent le groupe (voter, lancer, clôturer, décider, publier) sont annotés comme destructifs, et les consignes du serveur imposent à l'assistant de les faire confirmer par l'utilisateur.
 
-Les agents trouvent l'essentiel — concepts, pages publiques, liste des tools — sur `/llms.txt`. Architecture, activation (Supabase OAuth Server, clés ES256), connexion de chaque client et modèle de sécurité : [`docs/mcp.md`](docs/mcp.md).
+| Élément                  | Où                                                                                                                                  |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Serveur MCP              | `/api/mcp` (Streamable HTTP, sans état)                                                                                             |
+| Connexion recommandée    | **OAuth** : l'URL seule comme connecteur ; le jeton Supabase délivré passe par la même RLS que l'app. Tous les tools                |
+| Repli sans OAuth         | **Jeton personnel** `omk_…` (**Mon compte › Assistants IA**), en `Authorization: Bearer` ou `?key=` : catalogue et listes seulement |
+| Autorisation en base     | RPC `mcp_*` (`mcp_act_as`) : jeton personnel par son empreinte SHA-256, ou `auth.uid()` en OAuth                                    |
+| Outil phare              | `remember_restaurant` — chercher, importer, ranger, ou demander en cas de doute                                                     |
+| Présentation pour les IA | `/llms.txt` : concepts, pages publiques, tools par connexion, prompts                                                               |
+
+Architecture, activation (Supabase OAuth Server, clés ES256), connexion de chaque client, jetons personnels et modèle de sécurité : [`docs/mcp.md`](docs/mcp.md).
 
 ## Langues
 
@@ -552,7 +561,7 @@ src/actions/             Server Actions (validation Zod, auth, revalidate/redire
 src/lib/                 utilitaires transverses : Crockford (`codeFromSegment`), format, routing, site (URL absolues), qr,
                          images (hôtes autorisés), maps (itinéraire, tuiles), ttl-cache, version (semver), changelog-seen
 src/lib/analytics/       consentement, masquage des URL, catalogue d'événements, chargement de PostHog
-src/lib/mcp/             serveur MCP distant (/api/mcp) : vérification du jeton OAuth, contexte des tools, tools/ par domaine — voir docs/mcp.md
+src/lib/mcp/             serveur MCP distant (/api/mcp) : vérification du jeton (OAuth ou personnel), contexte des tools, tools/ par domaine — voir docs/mcp.md
 src/lib/pwa/             service worker (source générée, règles de routage), enregistrement, icônes, bannière d'installation
 src/hooks/               Realtime de session, compte à rebours, debounce, `useCanShare`, `useIsClient`, `useOpenNow`
 supabase/migrations/     schéma, RLS, RPC (create/join/launch/add|remove_session_restaurant/submit_vote/close/extend/

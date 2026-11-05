@@ -72,6 +72,21 @@ $$;
 
 do $$
 begin
+  perform public.create_api_token('Agent');
+  raise exception 'ÉCHEC — create_api_token aurait dû être refusé';
+exception when others then
+  if sqlerrm not like 'omk:forbidden_for_connected_apps%' then raise; end if;
+  raise notice 'ok — une app connectée ne se crée pas de jeton personnel';
+end;
+$$;
+
+select pg_temp.assert(
+  (select count(*) from public.api_tokens) = 0,
+  'une app connectée ne voit pas les jetons personnels'
+);
+
+do $$
+begin
   perform public.delete_my_account_unguarded();
   raise exception 'ÉCHEC — la fonction interne ne doit pas être appelable';
 exception when insufficient_privilege then
@@ -84,6 +99,14 @@ $$;
 select set_config('request.jwt.claims', '{"sub":"' || :'alice' || '","role":"authenticated"}', true);
 
 select pg_temp.assert(not public.is_oauth_client_request(), 'le jeton web n''est pas un client OAuth');
+select pg_temp.assert(
+  (select count(*) from public.create_api_token('Claude')) = 1,
+  'depuis l''app, la personne crée ses jetons personnels'
+);
+select pg_temp.assert(
+  (select count(*) from public.api_tokens) = 1,
+  'et les voit'
+);
 select pg_temp.assert(public.export_my_data() is not null, 'l''export reste possible depuis l''app');
 select public.delete_my_account();
 

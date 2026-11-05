@@ -9,14 +9,20 @@ vi.mock('server-only', () => ({}))
 /**
  * Tools du catalogue. L'accès aux données est bouchonné : on vérifie ce que
  * la couche MCP ajoute — schémas JSON sans coercition, sorties minimisées
- * (jamais `created_by`), identifiants collés sous forme de lien, et la même
- * invalidation de cache que la Server Action.
+ * (jamais `created_by`), identifiants collés sous forme de lien, la même
+ * invalidation de cache que la Server Action, et l'ouverture aux jetons
+ * personnels de tout sauf les suggestions.
  */
 
 const mocks = vi.hoisted(() => ({
   revalidateTag: vi.fn(),
   getRestaurantCatalogPage: vi.fn(),
-  createManualRestaurant: vi.fn(),
+  mcpCreateRestaurant: vi.fn(),
+  mcpFindRestaurants: vi.fn(),
+  mcpImportPlace: vi.fn(),
+  getPlaceDetails: vi.fn(),
+  searchPlaces: vi.fn(),
+  placesEnabled: true,
   getRestaurantsByIds: vi.fn(),
   getRestaurantSuggestions: vi.fn(),
   getRecentWinners: vi.fn(),
@@ -24,6 +30,17 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('next/cache', () => ({ revalidateTag: mocks.revalidateTag }))
+vi.mock('next-intl/server', () => ({ getLocale: async () => 'fr' }))
+vi.mock('@/data-access/mcp', () => ({
+  mcpCreateRestaurant: mocks.mcpCreateRestaurant,
+  mcpFindRestaurants: mocks.mcpFindRestaurants,
+  mcpImportPlace: mocks.mcpImportPlace,
+}))
+vi.mock('@/data-access/places', () => ({
+  isPlacesSearchEnabled: () => mocks.placesEnabled,
+  getPlaceDetails: mocks.getPlaceDetails,
+  searchPlaces: mocks.searchPlaces,
+}))
 vi.mock('@/i18n/server', () => ({
   translateError: async (error: unknown) =>
     error instanceof Error ? error.message.replace(/^omk:/, '') : 'error',
@@ -37,7 +54,6 @@ vi.mock('@/data-access/restaurants', () => ({
       ? { lat: Math.round(origin.lat * 1000) / 1000, lng: Math.round(origin.lng * 1000) / 1000 }
       : null,
   getRestaurantCatalogPage: mocks.getRestaurantCatalogPage,
-  createManualRestaurant: mocks.createManualRestaurant,
   getRestaurantsByIds: mocks.getRestaurantsByIds,
 }))
 vi.mock('@/data-access/suggestions', () => ({
@@ -55,7 +71,15 @@ const AUTH: AuthInfo = {
   token: 'token',
   clientId: 'client',
   scopes: [],
-  extra: { caller: { userId: USER_ID, isAnonymous: false, clientId: 'client' } },
+  extra: { caller: { mode: 'oauth', userId: USER_ID, isAnonymous: false, clientId: 'client' } },
+}
+
+const PERSONAL_TOKEN = `omk_${'b'.repeat(48)}`
+const TOKEN_AUTH: AuthInfo = {
+  token: PERSONAL_TOKEN,
+  clientId: 'onmangekoi-personal-token',
+  scopes: [],
+  extra: { caller: { mode: 'token', token: PERSONAL_TOKEN } },
 }
 
 interface Registered {
@@ -74,10 +98,10 @@ function registerAll(): Map<string, Registered> {
 }
 
 /** Appel tel que le SDK le fait : entrée validée, puis sortie vérifiée. */
-async function call(name: string, args: unknown) {
+async function call(name: string, args: unknown, authInfo: AuthInfo = AUTH) {
   const tool = registerAll().get(name)
   if (!tool) throw new Error(`unknown tool ${name}`)
-  const result = await tool.cb(tool.config.inputSchema.parse(args), { http: { authInfo: AUTH } })
+  const result = await tool.cb(tool.config.inputSchema.parse(args), { http: { authInfo } })
   if (!result.isError) tool.config.outputSchema.parse(result.structuredContent)
   return result
 }
@@ -106,6 +130,7 @@ function restaurant(overrides: Partial<Restaurant> = {}): Restaurant {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mocks.placesEnabled = true
 })
 
 describe('toRestaurantOutput', () => {
@@ -210,26 +235,97 @@ describe('search_restaurants', () => {
   })
 })
 
+describe('find_restaurant', () => {
+  it('cherche pour le porteur du jeton et minimise la sortie', async () => {
+    mocks.mcpFindRestaurants.mockResolvedValue([
+      {
+        id: 'r-1',
+        name: 'La Ba',
+        city: 'Paris',
+        source: 'google',
+        google_place_id: 'ChIJ123',
+        in_my_lists: [{ id: 'l-1', name: 'Le midi' }],
+      },
+    ])
+
+    const result = await call('find_restaurant', { query: 'la ba', city: null }, TOKEN_AUTH)
+
+    expect(mocks.mcpFindRestaurants).toHaveBeenCalledWith(
+      expect.objectContaining({ token: PERSONAL_TOKEN }),
+      { query: 'la ba', city: null, limit: 8 }
+    )
+    expect(result.structuredContent).toEqual({
+      restaurants: [
+        {
+          id: 'r-1',
+          name: 'La Ba',
+          cuisine_type: null,
+          address: null,
+          city: 'Paris',
+          price_level: null,
+          tags: [],
+          website: null,
+          in_my_lists: [{ id: 'l-1', name: 'Le midi' }],
+        },
+      ],
+    })
+  })
+})
+
+describe('search_google_places', () => {
+  it("n'existe pas sans clé Google", () => {
+    mocks.placesEnabled = false
+    expect(registerAll().has('search_google_places')).toBe(false)
+    mocks.placesEnabled = true
+    expect(registerAll().has('search_google_places')).toBe(true)
+  })
+
+  it('cherche dans la langue de la requête', async () => {
+    mocks.searchPlaces.mockResolvedValue({
+      places: [
+        {
+          placeId: 'ChIJ1',
+          name: 'La Ba',
+          address: '1 rue X',
+          city: 'Paris',
+          cuisineType: 'Vietnamien',
+          rating: 4.5,
+          photoUrl: 'https://example.com/p.jpg',
+        },
+      ],
+    })
+    const result = await call('search_google_places', { query: 'La Ba Paris' }, TOKEN_AUTH)
+    expect(mocks.searchPlaces).toHaveBeenCalledWith({ locale: 'fr', query: 'La Ba Paris' })
+    expect(result.structuredContent).toMatchObject({
+      places: [{ google_place_id: 'ChIJ1', name: 'La Ba', rating: 4.5 }],
+    })
+    expect(JSON.stringify(result)).not.toContain('photo')
+  })
+})
+
 describe('add_restaurant', () => {
-  it('crée le restaurant et purge le cache du catalogue', async () => {
-    mocks.createManualRestaurant.mockResolvedValue(restaurant({ name: 'Sushi' }))
+  it('crée le restaurant à la main et purge le cache du catalogue', async () => {
+    mocks.mcpCreateRestaurant.mockResolvedValue({ id: 'r-1', name: 'Sushi' })
 
     const result = await call('add_restaurant', { name: ' Sushi ', priceLevel: 3, tags: ['vegan'] })
 
-    expect(mocks.createManualRestaurant).toHaveBeenCalledWith(expect.anything(), {
-      name: 'Sushi',
-      cuisineType: null,
-      address: null,
-      city: null,
-      priceLevel: 3,
-      tags: ['vegan'],
-    })
+    expect(mocks.mcpCreateRestaurant).toHaveBeenCalledWith(
+      expect.objectContaining({ token: null }),
+      {
+        name: 'Sushi',
+        cuisineType: null,
+        address: null,
+        city: null,
+        priceLevel: 3,
+        tags: ['vegan'],
+      }
+    )
     expect(mocks.revalidateTag).toHaveBeenCalledWith('restaurants', 'hours')
     expect(result.isError).toBeFalsy()
   })
 
   it('accepte `null` pour un champ inconnu, comme un agent l’envoie souvent', async () => {
-    mocks.createManualRestaurant.mockResolvedValue(restaurant({ name: 'Sushi' }))
+    mocks.mcpCreateRestaurant.mockResolvedValue({ id: 'r-1', name: 'Sushi' })
 
     const result = await call('add_restaurant', {
       name: 'Sushi',
@@ -240,7 +336,7 @@ describe('add_restaurant', () => {
       tags: null,
     })
 
-    expect(mocks.createManualRestaurant).toHaveBeenCalledWith(expect.anything(), {
+    expect(mocks.mcpCreateRestaurant).toHaveBeenCalledWith(expect.anything(), {
       name: 'Sushi',
       cuisineType: null,
       address: null,
@@ -251,8 +347,31 @@ describe('add_restaurant', () => {
     expect(result.isError).toBeFalsy()
   })
 
+  it('importe depuis Google la fiche relue côté serveur', async () => {
+    const place = { placeId: 'ChIJ1', name: 'La Ba', tags: [] }
+    mocks.getPlaceDetails.mockResolvedValue(place)
+    mocks.mcpImportPlace.mockResolvedValue({ id: 'r-2', name: 'La Ba', google_place_id: 'ChIJ1' })
+
+    const result = await call('add_restaurant', { googlePlaceId: 'ChIJ1' }, TOKEN_AUTH)
+
+    expect(mocks.getPlaceDetails).toHaveBeenCalledWith('ChIJ1', 'fr')
+    expect(mocks.mcpImportPlace).toHaveBeenCalledWith(
+      expect.objectContaining({ token: PERSONAL_TOKEN }),
+      place
+    )
+    expect(mocks.revalidateTag).toHaveBeenCalledWith('restaurants', 'hours')
+    expect(result.structuredContent).toMatchObject({ restaurant: { id: 'r-2', name: 'La Ba' } })
+    expect(JSON.stringify(result)).not.toContain('google_place_id')
+  })
+
+  it('exige un nom sans lieu Google', async () => {
+    const result = await call('add_restaurant', {})
+    expect(result.isError).toBe(true)
+    expect(mocks.mcpCreateRestaurant).not.toHaveBeenCalled()
+  })
+
   it('ne purge rien quand la base refuse', async () => {
-    mocks.createManualRestaurant.mockRejectedValue(new Error('omk:invalid_restaurant'))
+    mocks.mcpCreateRestaurant.mockRejectedValue(new Error('omk:invalid_restaurant'))
     const result = await call('add_restaurant', { name: 'Sushi' })
     expect(result.isError).toBe(true)
     expect(mocks.revalidateTag).not.toHaveBeenCalled()
@@ -277,6 +396,21 @@ describe('suggest_restaurants', () => {
       suggestions: [{ reason: 'recent', source: 'history', restaurant: { name: 'Chez Mamie' } }],
       recentWinners: [{ id: 'w1', name: 'Le Gagnant', lastWonAt: '2026-10-30T12:00:00Z' }],
     })
+  })
+})
+
+describe('mode jeton personnel', () => {
+  it('ouvre la recherche du catalogue', async () => {
+    mocks.getRestaurantCatalogPage.mockResolvedValue({ items: [], hasMore: false, nextOffset: 0 })
+    const result = await call('search_restaurants', { query: '' }, TOKEN_AUTH)
+    expect(result.isError).toBeFalsy()
+  })
+
+  it('refuse les suggestions, tirées de l’historique', async () => {
+    const result = await call('suggest_restaurants', {}, TOKEN_AUTH)
+    expect(result.isError).toBe(true)
+    expect(result.content[0]).toMatchObject({ text: expect.stringMatching(/^requires_oauth:/) })
+    expect(mocks.getRestaurantSuggestions).not.toHaveBeenCalled()
   })
 })
 

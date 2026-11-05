@@ -80,5 +80,8 @@
     "add": "Ajouter",
     "save": "Enregistrer dans mes listes"
   },
-  "start": "Lancer une session depuis cette liste"
+  "start": "Lancer une session depuis cette liste",
+  "ai": {
+    "defaultListName": "Mes bonnes adresses"
+  }
 }

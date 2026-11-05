@@ -32,9 +32,9 @@
   },
   "connectedApps": {
     "title": "Connected apps",
-    "description": "The AI assistants (Claude, ChatGPT…) you have allowed to use your account.",
+    "description": "The assistants you have allowed to use your account.",
     "empty": "No connected apps yet.",
-    "howTo": "To connect an assistant, add this MCP server to its connectors, then allow access when it asks:",
+    "howTo": "In Claude or ChatGPT, add this address as a custom connector, then allow access when it asks. No key to copy: it all goes through your sign-in.",
     "copy": "Copy address",
     "grantedAt": "Allowed on {date}",
     "scopes": "Granted access",

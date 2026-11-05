@@ -1,9 +1,9 @@
 import 'server-only'
 
+import { MCP_PATH } from '@/lib/mcp/endpoint'
 import { absoluteUrl } from '@/lib/site'
 
-/** Chemin du serveur MCP. */
-export const MCP_PATH = '/api/mcp'
+export { MCP_PATH }
 
 /**
  * Métadonnées de ressource protégée (RFC 9728), sous la forme suffixée par le

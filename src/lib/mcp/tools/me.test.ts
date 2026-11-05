@@ -15,7 +15,7 @@ vi.mock('server-only', () => ({}))
 
 const mocks = vi.hoisted(() => ({
   revalidateLocalizedPath: vi.fn(),
-  getProfile: vi.fn(),
+  mcpWhoami: vi.fn(),
   getMySessionHistory: vi.fn(),
   getMyStats: vi.fn(),
   getMyFoodConstraints: vi.fn(),
@@ -32,7 +32,7 @@ vi.mock('@/data-access/restaurants', () => ({}))
 vi.mock('@/data-access/suggestions', () => ({}))
 vi.mock('@/data-access/recent-winners', () => ({}))
 vi.mock('@/data-access/public-results', () => ({}))
-vi.mock('@/data-access/profile', () => ({ getProfile: mocks.getProfile }))
+vi.mock('@/data-access/mcp', () => ({ mcpWhoami: mocks.mcpWhoami }))
 vi.mock('@/data-access/sessions', () => ({ getMySessionHistory: mocks.getMySessionHistory }))
 vi.mock('@/data-access/stats', () => ({ getMyStats: mocks.getMyStats }))
 vi.mock('@/data-access/food-constraints', () => ({
@@ -49,7 +49,15 @@ const AUTH: AuthInfo = {
   token: 'token',
   clientId: 'client',
   scopes: [],
-  extra: { caller: { userId: USER_ID, isAnonymous: true, clientId: 'client' } },
+  extra: { caller: { mode: 'oauth', userId: USER_ID, isAnonymous: true, clientId: 'client' } },
+}
+
+const PERSONAL_TOKEN = `omk_${'a'.repeat(48)}`
+const TOKEN_AUTH: AuthInfo = {
+  token: PERSONAL_TOKEN,
+  clientId: 'onmangekoi-personal-token',
+  scopes: [],
+  extra: { caller: { mode: 'token', token: PERSONAL_TOKEN } },
 }
 
 interface Registered {
@@ -67,10 +75,10 @@ function registerAll(): Map<string, Registered> {
   return tools
 }
 
-async function call(name: string, args: unknown) {
+async function call(name: string, args: unknown, authInfo: AuthInfo = AUTH) {
   const tool = registerAll().get(name)
   if (!tool) throw new Error(`unknown tool ${name}`)
-  const result = await tool.cb(tool.config.inputSchema.parse(args), { http: { authInfo: AUTH } })
+  const result = await tool.cb(tool.config.inputSchema.parse(args), { http: { authInfo } })
   if (!result.isError) tool.config.outputSchema.parse(result.structuredContent)
   return result
 }
@@ -150,16 +158,31 @@ describe('schémas', () => {
 })
 
 describe('whoami', () => {
-  it('rend le pseudo et le type de compte, sans email', async () => {
-    mocks.getProfile.mockResolvedValue({ id: USER_ID, pseudo: 'Sam' })
+  it('rend le pseudo, le mode et le type de compte, sans email', async () => {
+    mocks.mcpWhoami.mockResolvedValue({ pseudo: 'Sam', list_count: 2 })
     const result = await call('whoami', {})
-    expect(mocks.getProfile).toHaveBeenCalledWith(expect.anything(), USER_ID)
+    // En OAuth, la RPC agit pour `auth.uid()` : aucun jeton personnel.
+    expect(mocks.mcpWhoami).toHaveBeenCalledWith(expect.objectContaining({ token: null }))
     expect(result.structuredContent).toMatchObject({
+      mode: 'oauth',
       pseudo: 'Sam',
+      listCount: 2,
       isAnonymous: true,
       accountUrl: 'https://onmangekoi.test/account',
     })
     expect(JSON.stringify(result)).not.toContain(USER_ID)
+  })
+
+  it('répond aussi à un jeton personnel, sans rien inventer du compte', async () => {
+    mocks.mcpWhoami.mockResolvedValue({ pseudo: 'Sam', list_count: 0 })
+    const result = await call('whoami', {}, TOKEN_AUTH)
+    expect(mocks.mcpWhoami).toHaveBeenCalledWith(expect.objectContaining({ token: PERSONAL_TOKEN }))
+    expect(result.structuredContent).toMatchObject({
+      mode: 'token',
+      listCount: 0,
+      isAnonymous: null,
+    })
+    expect(JSON.stringify(result)).not.toContain(PERSONAL_TOKEN)
   })
 })
 
@@ -181,6 +204,17 @@ describe('my_sessions', () => {
       limit: 12,
       cursor: null,
     })
+  })
+})
+
+describe('mode jeton personnel', () => {
+  it('refuse les tools réservés à OAuth avec requires_oauth', async () => {
+    for (const name of ['my_sessions', 'my_stats', 'get_food_constraints']) {
+      const result = await call(name, {}, TOKEN_AUTH)
+      expect(result.isError).toBe(true)
+      expect(result.content[0]).toMatchObject({ text: expect.stringMatching(/^requires_oauth:/) })
+    }
+    expect(mocks.getMyStats).not.toHaveBeenCalled()
   })
 })
 

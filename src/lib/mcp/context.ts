@@ -2,11 +2,13 @@ import 'server-only'
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
+import { createPublicClient } from '@/data-access/supabase/public'
 import { omkCode } from '@/domain/errors'
 import { env } from '@/env'
 import { translateError } from '@/i18n/server'
 import { callerFromAuthInfo, type McpCaller } from '@/lib/mcp/auth'
 
+import type { McpAccess } from '@/data-access/mcp'
 import type { Database } from '@/data-access/models/database'
 import type { AuthInfo, CallToolResult } from '@modelcontextprotocol/server'
 
@@ -15,11 +17,24 @@ import type { AuthInfo, CallToolResult } from '@modelcontextprotocol/server'
  * agit en son nom, et la mise en forme des réponses.
  */
 
-/** Contexte d'exécution d'un tool authentifié. */
+type OAuthCaller = Extract<McpCaller, { mode: 'oauth' }>
+
+/** Contexte d'exécution d'un tool réservé aux connexions OAuth. */
 export interface McpToolContext {
-  caller: McpCaller
+  caller: OAuthCaller
   /** Client Supabase qui porte le jeton de l'utilisateur : RLS et RPC s'appliquent. */
   supabase: SupabaseClient<Database>
+}
+
+/**
+ * Contexte d'un tool ouvert aux deux modes de connexion. `access` sert aux
+ * RPC `mcp_*` (catalogue et listes) : avec un jeton personnel, client public +
+ * jeton résolu en base ; en OAuth, client de l'utilisateur + jeton nul,
+ * `auth.uid()` fait foi (voir `mcp_act_as`).
+ */
+export interface McpSharedContext {
+  caller: McpCaller
+  access: McpAccess
 }
 
 /**
@@ -35,11 +50,22 @@ export function createCallerClient(token: string): SupabaseClient<Database> {
   )
 }
 
-/** Contexte du tool, ou `null` si la requête n'a pas d'appelant vérifié. */
+/** Contexte d'un tool OAuth, ou `null` si l'appelant n'est pas connecté en OAuth. */
 export function toolContext(authInfo: AuthInfo | undefined): McpToolContext | null {
   const caller = callerFromAuthInfo(authInfo)
-  if (!caller || !authInfo) return null
+  if (!caller || caller.mode !== 'oauth' || !authInfo) return null
   return { caller, supabase: createCallerClient(authInfo.token) }
+}
+
+/** Contexte d'un tool partagé, ou `null` sans appelant vérifié. */
+export function sharedToolContext(authInfo: AuthInfo | undefined): McpSharedContext | null {
+  const caller = callerFromAuthInfo(authInfo)
+  if (!caller || !authInfo) return null
+  const access: McpAccess =
+    caller.mode === 'token'
+      ? { client: createPublicClient(), token: caller.token }
+      : { client: createCallerClient(authInfo.token), token: null }
+  return { caller, access }
 }
 
 /**
@@ -77,14 +103,46 @@ export function unauthenticated(): CallToolResult {
 }
 
 /**
- * Enveloppe le corps d'un tool authentifié : contexte résolu, erreurs
+ * Refus d'un tool réservé à OAuth quand l'IA est branchée par jeton
+ * personnel : le message dit comment débloquer, pour que l'IA le relaie.
+ */
+export function requiresOAuth(): CallToolResult {
+  return {
+    isError: true,
+    content: [
+      {
+        type: 'text',
+        text: 'requires_oauth: this tool (sessions, votes, history, profile) needs the OAuth connection. Ask the user to add onmangekoi as a connector with the URL alone (no ?key=) and sign in; personal tokens only cover the catalogue and lists.',
+      },
+    ],
+  }
+}
+
+/**
+ * Enveloppe le corps d'un tool réservé à OAuth : contexte résolu, erreurs
  * converties. Le corps renvoie directement la sortie structurée.
  */
 export async function runTool<T extends Record<string, unknown>>(
   authInfo: AuthInfo | undefined,
   body: (context: McpToolContext) => Promise<T>
 ): Promise<CallToolResult> {
+  const caller = callerFromAuthInfo(authInfo)
+  if (!caller) return unauthenticated()
   const context = toolContext(authInfo)
+  if (!context) return requiresOAuth()
+  try {
+    return toolResult(await body(context))
+  } catch (error) {
+    return toolError(error)
+  }
+}
+
+/** Enveloppe le corps d'un tool ouvert aux deux modes de connexion. */
+export async function runSharedTool<T extends Record<string, unknown>>(
+  authInfo: AuthInfo | undefined,
+  body: (context: McpSharedContext) => Promise<T>
+): Promise<CallToolResult> {
+  const context = sharedToolContext(authInfo)
   if (!context) return unauthenticated()
   try {
     return toolResult(await body(context))

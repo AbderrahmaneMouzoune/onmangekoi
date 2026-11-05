@@ -76,6 +76,41 @@
     "title": "My groups",
     "description": "Leaving a group means you’re no longer pre-invited to its sessions. The ones you’ve already joined stay as they are."
   },
+  "ai": {
+    "title": "AI assistants",
+    "description": "Plug Claude, ChatGPT or Cursor into your account: tell it where you ate, it files the restaurant in the right list; ask it to set up a session, it takes care of it.",
+    "example": "“I ate at La Ba, it was great.”",
+    "recommended": {
+      "title": "Recommended connection"
+    },
+    "token": {
+      "title": "For clients without OAuth: personal token",
+      "summary": "If your client doesn’t offer to sign in to onmangekoi.",
+      "scope": "A personal token only covers the restaurant catalogue and your lists. Sessions, votes, history and your profile need the recommended connection."
+    },
+    "form": {
+      "label": "Token name (optional)",
+      "placeholder": "Claude, ChatGPT, my laptop…",
+      "submit": "Create a token"
+    },
+    "created": {
+      "warning": "Copy it now: this token won’t be shown again. It gives access to your lists, keep it to yourself.",
+      "urlTitle": "URL with token",
+      "urlHint": "For a client that only accepts an address: the token is in it, don’t share it.",
+      "claudeCodeTitle": "Claude Code",
+      "jsonTitle": "JSON configuration",
+      "jsonHint": "Cursor, Claude Desktop, VS Code and most MCP clients.",
+      "copy": "Copy"
+    },
+    "tokens": {
+      "title": "Active tokens",
+      "lastUsed": "Used {when}",
+      "neverUsed": "Never used",
+      "revoke": "Revoke",
+      "confirmRevoke": "Confirm",
+      "revokeLabel": "Revoke the {label} token"
+    }
+  },
   "foodConstraints": {
     "title": "What I can’t eat",
     "description": "Optional. A restaurant that doesn’t work for you gets flagged in your sessions, without ever saying who: “1 participant can’t eat there”. You keep your veto for choosing between two cravings.",

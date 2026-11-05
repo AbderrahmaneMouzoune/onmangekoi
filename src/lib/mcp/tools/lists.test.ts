@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
-import type { List, ListWithRestaurants, Restaurant } from '@/data-access/models'
+import type { McpList } from '@/data-access/mcp'
+import type { Restaurant } from '@/data-access/models'
 import type { AuthInfo, CallToolResult, McpServer } from '@modelcontextprotocol/server'
 
 vi.mock('server-only', () => ({}))
 
 /**
  * Tools des listes. L'accès aux données est bouchonné : on vérifie qu'une
- * liste s'adresse par code ou lien, qu'on n'écrit que dans les siennes,
- * qu'aucun uuid de liste ni de propriétaire ne sort, et que les écritures
+ * liste s'adresse par id, code ou lien, que les RPC `mcp_*` reçoivent le
+ * jeton personnel — ou rien en OAuth —, qu'aucun `owner_id` ni jeton ne
+ * sort, que « j'ai mangé à… » rend une forme stable, et que les écritures
  * purgent la page publique par `revalidateTag` — jamais `updateTag`, qui
  * lève dans un route handler.
  */
@@ -18,34 +20,44 @@ const mocks = vi.hoisted(() => ({
   revalidateTag: vi.fn(),
   updateTag: vi.fn(),
   revalidateLocalizedPath: vi.fn(),
-  getListsByOwner: vi.fn(),
-  getListByParam: vi.fn(),
-  addRestaurantsToList: vi.fn(),
-  removeRestaurantFromList: vi.fn(),
+  mcpLists: vi.fn(),
+  mcpList: vi.fn(),
+  mcpCreateList: vi.fn(),
+  mcpAddToList: vi.fn(),
+  mcpRemoveFromList: vi.fn(),
+  mcpFindRestaurants: vi.fn(),
   getSharedListPreview: vi.fn(),
   getSharedListRestaurants: vi.fn(),
   ownsSharedList: vi.fn(),
   getPublicList: vi.fn(),
   getPublicListRestaurants: vi.fn(),
-  createListUseCase: vi.fn(),
-  getRestaurantsByIds: vi.fn(),
 }))
 
 vi.mock('next/cache', () => ({ revalidateTag: mocks.revalidateTag, updateTag: mocks.updateTag }))
+vi.mock('next-intl/server', () => ({
+  getLocale: async () => 'fr',
+  getTranslations: async () => (key: string) =>
+    key === 'defaultListName' ? 'Mes bonnes adresses' : key,
+}))
 vi.mock('@/i18n/server', () => ({
   translateError: async (error: unknown) =>
     error instanceof Error ? error.message.replace(/^omk:/, '') : 'error',
   revalidateLocalizedPath: mocks.revalidateLocalizedPath,
 }))
-vi.mock('@/data-access/restaurants', () => ({ getRestaurantsByIds: mocks.getRestaurantsByIds }))
+vi.mock('@/data-access/restaurants', () => ({}))
 vi.mock('@/data-access/suggestions', () => ({}))
 vi.mock('@/data-access/recent-winners', () => ({}))
 vi.mock('@/data-access/public-results', () => ({}))
+vi.mock('@/data-access/places', () => ({ isPlacesSearchEnabled: () => false }))
+vi.mock('@/data-access/mcp', () => ({
+  mcpLists: mocks.mcpLists,
+  mcpList: mocks.mcpList,
+  mcpCreateList: mocks.mcpCreateList,
+  mcpAddToList: mocks.mcpAddToList,
+  mcpRemoveFromList: mocks.mcpRemoveFromList,
+  mcpFindRestaurants: mocks.mcpFindRestaurants,
+}))
 vi.mock('@/data-access/lists', () => ({
-  getListsByOwner: mocks.getListsByOwner,
-  getListByParam: mocks.getListByParam,
-  addRestaurantsToList: mocks.addRestaurantsToList,
-  removeRestaurantFromList: mocks.removeRestaurantFromList,
   getSharedListPreview: mocks.getSharedListPreview,
   getSharedListRestaurants: mocks.getSharedListRestaurants,
   ownsSharedList: mocks.ownsSharedList,
@@ -55,7 +67,6 @@ vi.mock('@/data-access/public-lists', () => ({
   getPublicListRestaurants: mocks.getPublicListRestaurants,
   publicListCacheTag: (code: string) => `public-list:${code}`,
 }))
-vi.mock('@/use-cases/create-list', () => ({ createListUseCase: mocks.createListUseCase }))
 
 const { registerListTools, toListSummary } = await import('./lists')
 
@@ -64,12 +75,20 @@ const OTHER_ID = '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d'
 const LIST_ID = '1c6b1a4e-58f1-4b8d-9e0a-6a2e3f5d7c11'
 const R1 = '3b241101-e2bb-4255-8caf-4136c566a962'
 const R2 = '6ec0bd7f-11c0-43da-975e-2a8ad9ebae0b'
+const PERSONAL_TOKEN = `omk_${'c'.repeat(48)}`
 
 const AUTH: AuthInfo = {
   token: 'token',
   clientId: 'client',
   scopes: [],
-  extra: { caller: { userId: USER_ID, isAnonymous: false, clientId: 'client' } },
+  extra: { caller: { mode: 'oauth', userId: USER_ID, isAnonymous: false, clientId: 'client' } },
+}
+
+const TOKEN_AUTH: AuthInfo = {
+  token: PERSONAL_TOKEN,
+  clientId: 'onmangekoi-personal-token',
+  scopes: [],
+  extra: { caller: { mode: 'token', token: PERSONAL_TOKEN } },
 }
 
 interface Registered {
@@ -87,13 +106,16 @@ function registerAll(): Map<string, Registered> {
   return tools
 }
 
-async function call(name: string, args: unknown) {
+async function call(name: string, args: unknown, authInfo: AuthInfo = AUTH) {
   const tool = registerAll().get(name)
   if (!tool) throw new Error(`unknown tool ${name}`)
-  const result = await tool.cb(tool.config.inputSchema.parse(args), { http: { authInfo: AUTH } })
+  const result = await tool.cb(tool.config.inputSchema.parse(args), { http: { authInfo } })
   if (!result.isError) tool.config.outputSchema.parse(result.structuredContent)
   return result
 }
+
+/** Les RPC `mcp_*` ont reçu le jeton personnel. */
+const withToken = expect.objectContaining({ token: PERSONAL_TOKEN })
 
 function restaurant(id: string): Restaurant {
   return {
@@ -116,37 +138,31 @@ function restaurant(id: string): Restaurant {
   } as Restaurant
 }
 
-function list(overrides: Partial<ListWithRestaurants> = {}): ListWithRestaurants {
+function mcpList(overrides: Partial<McpList> = {}): McpList {
   return {
     id: LIST_ID,
     name: 'Près du bureau',
-    owner_id: USER_ID,
     share_code: '7K3M9P2QWX',
-    share_token: 'a'.repeat(32),
     is_public: false,
     is_collaborative: false,
-    created_at: '2026-10-01T12:00:00Z',
+    restaurant_count: 1,
     updated_at: '2026-10-02T12:00:00Z',
-    restaurants: [restaurant(R1)],
     ...overrides,
-  } as ListWithRestaurants
+  }
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  // Par défaut, tout id demandé existe au catalogue.
-  mocks.getRestaurantsByIds.mockImplementation(async (_client: unknown, ids: string[]) =>
-    ids.map(restaurant)
-  )
+  mocks.mcpLists.mockResolvedValue([mcpList()])
 })
 
 describe('toListSummary', () => {
-  it("rend le code et les liens, jamais l'uuid ni le propriétaire", () => {
-    const summary = toListSummary(list(), 3)
-    expect(summary).toEqual({
+  it('rend id, code et liens absolus', () => {
+    expect(toListSummary(mcpList())).toEqual({
+      id: LIST_ID,
       code: '7K3M9P2QWX',
       name: 'Près du bureau',
-      restaurantCount: 3,
+      restaurantCount: 1,
       isPublic: false,
       isCollaborative: false,
       updatedAt: '2026-10-02T12:00:00Z',
@@ -164,129 +180,197 @@ describe('schémas', () => {
     }
   })
 
-  it('plafonnent un ajout à 100 restaurants', () => {
-    const schema = registerAll().get('add_restaurants_to_list')!.config.inputSchema
-    expect(() =>
-      schema.parse({ list: '7K3M9P2QWX', restaurantIds: Array.from({ length: 101 }, () => R1) })
-    ).toThrow()
-  })
-
-  it('marquent le retrait comme destructif', () => {
+  it('annotent honnêtement lectures et écritures', () => {
     const tools = registerAll()
-    expect(tools.get('remove_restaurant_from_list')!.config.annotations.destructiveHint).toBe(true)
-    expect(tools.get('list_my_lists')!.config.annotations.readOnlyHint).toBe(true)
+    expect(tools.get('my_lists')!.config.annotations.readOnlyHint).toBe(true)
+    expect(tools.get('remove_from_list')!.config.annotations.destructiveHint).toBe(true)
+    expect(tools.get('add_to_list')!.config.annotations.destructiveHint).toBe(false)
+    expect(tools.get('remember_restaurant')!.config.annotations.readOnlyHint).toBe(false)
+    // Sans Google configuré, « j'ai mangé à… » reste dans l'app.
+    expect(tools.get('remember_restaurant')!.config.annotations.openWorldHint).toBe(false)
   })
 })
 
-describe('list_my_lists', () => {
-  it("lit les listes de l'appelant", async () => {
-    mocks.getListsByOwner.mockResolvedValue([{ ...list(), restaurant_count: 4 }])
-    const result = await call('list_my_lists', {})
-    expect(mocks.getListsByOwner).toHaveBeenCalledWith(expect.anything(), USER_ID)
-    expect(result.structuredContent).toMatchObject({ lists: [{ restaurantCount: 4 }] })
-    expect(JSON.stringify(result)).not.toContain(LIST_ID)
-    expect(JSON.stringify(result)).not.toContain(USER_ID)
+describe('my_lists', () => {
+  it('lit les listes du porteur du jeton', async () => {
+    const result = await call('my_lists', {}, TOKEN_AUTH)
+    expect(mocks.mcpLists).toHaveBeenCalledWith(withToken)
+    expect(result.structuredContent).toMatchObject({ lists: [{ id: LIST_ID, code: '7K3M9P2QWX' }] })
+  })
+
+  it("passe un jeton nul en OAuth : la base s'en tient à auth.uid()", async () => {
+    await call('my_lists', {})
+    expect(mocks.mcpLists).toHaveBeenCalledWith(expect.objectContaining({ token: null }))
   })
 })
 
 describe('get_list', () => {
-  it('accepte un lien collé', async () => {
-    mocks.getListByParam.mockResolvedValue(list())
-    const result = await call('get_list', { list: 'https://onmangekoi.test/fr/lists/7K3M9P2QWX' })
-    expect(mocks.getListByParam).toHaveBeenCalledWith(expect.anything(), '7K3M9P2QWX')
+  it('accepte un id sans chercher parmi les listes', async () => {
+    mocks.mcpList.mockResolvedValue({ ...mcpList(), restaurants: [{ id: R1, name: 'Sushi' }] })
+    const result = await call('get_list', { list: LIST_ID }, TOKEN_AUTH)
+    expect(mocks.mcpLists).not.toHaveBeenCalled()
+    expect(mocks.mcpList).toHaveBeenCalledWith(withToken, LIST_ID)
     expect(result.structuredContent).toMatchObject({
-      restaurantCount: 1,
-      restaurants: [{ id: R1 }],
+      id: LIST_ID,
+      restaurants: [{ id: R1, name: 'Sushi', tags: [] }],
     })
-    expect(JSON.stringify(result)).not.toContain(OTHER_ID)
   })
 
-  it("refuse la liste d'un autre", async () => {
-    mocks.getListByParam.mockResolvedValue(list({ owner_id: OTHER_ID }))
-    const result = await call('get_list', { list: '7K3M9P2QWX' })
+  it('retrouve une liste par le lien collé', async () => {
+    mocks.mcpList.mockResolvedValue({ ...mcpList(), restaurants: [] })
+    await call('get_list', { list: 'https://onmangekoi.test/lists/7k3m9p2qwx' })
+    expect(mocks.mcpList).toHaveBeenCalledWith(expect.anything(), LIST_ID)
+  })
+
+  it('refuse un code qui ne désigne aucune de ses listes', async () => {
+    const result = await call('get_list', { list: 'ZZZZZZZZZZ' })
     expect(result.isError).toBe(true)
     expect(result.content[0]).toMatchObject({ text: expect.stringContaining('list_not_found') })
+    expect(mocks.mcpList).not.toHaveBeenCalled()
   })
 })
 
 describe('create_list', () => {
   it('crée la liste, revalide `/lists` et rend ses liens', async () => {
-    mocks.createListUseCase.mockResolvedValue(list() as List)
-    const result = await call('create_list', { name: '  Près du bureau ', restaurantIds: [R1, R1] })
-    expect(mocks.createListUseCase).toHaveBeenCalledWith(expect.anything(), USER_ID, {
-      name: 'Près du bureau',
-      restaurantIds: [R1],
-    })
+    mocks.mcpCreateList.mockResolvedValue(mcpList({ name: 'Brunchs', restaurant_count: 0 }))
+    const result = await call('create_list', { name: ' Brunchs ' }, TOKEN_AUTH)
+    expect(mocks.mcpCreateList).toHaveBeenCalledWith(withToken, 'Brunchs')
     expect(mocks.revalidateLocalizedPath).toHaveBeenCalledWith('/lists')
-    expect(result.structuredContent).toMatchObject({ code: '7K3M9P2QWX', restaurantCount: 1 })
-  })
-
-  it('accepte une liste vide, avec ou sans `null`', async () => {
-    mocks.createListUseCase.mockResolvedValue(list() as List)
-    const result = await call('create_list', { name: 'Vide', restaurantIds: null })
-    expect(mocks.createListUseCase).toHaveBeenCalledWith(expect.anything(), USER_ID, {
-      name: 'Vide',
-      restaurantIds: [],
-    })
-    expect(result.structuredContent).toMatchObject({ restaurantCount: 0 })
-  })
-
-  it("ne crée rien quand un restaurant n'existe pas", async () => {
-    mocks.getRestaurantsByIds.mockResolvedValue([restaurant(R1)])
-    const result = await call('create_list', { name: 'Près du bureau', restaurantIds: [R1, R2] })
-    expect(result.isError).toBe(true)
-    expect(result.content[0]).toMatchObject({ text: expect.stringContaining('invalid_request') })
-    expect(mocks.createListUseCase).not.toHaveBeenCalled()
-    expect(mocks.revalidateLocalizedPath).not.toHaveBeenCalled()
+    expect(result.structuredContent).toMatchObject({ name: 'Brunchs', restaurantCount: 0 })
   })
 })
 
-describe('add_restaurants_to_list / remove_restaurant_from_list', () => {
+describe('add_to_list / remove_from_list', () => {
   it('ajoute et purge la page publique par revalidateTag', async () => {
-    mocks.getListByParam.mockResolvedValue(list())
-    const result = await call('add_restaurants_to_list', {
-      list: '7K3M9P2QWX',
-      restaurantIds: [R1, R2],
+    mocks.mcpAddToList.mockResolvedValue({
+      added: true,
+      already_in_list: false,
+      list: mcpList({ restaurant_count: 2 }),
+      restaurant: { id: R2, name: 'La Ba', source: 'manual' },
     })
-    expect(mocks.addRestaurantsToList).toHaveBeenCalledWith(expect.anything(), LIST_ID, [R1, R2])
+    const result = await call('add_to_list', { list: '7K3M9P2QWX', restaurantId: R2 }, TOKEN_AUTH)
+
+    expect(mocks.mcpAddToList).toHaveBeenCalledWith(withToken, LIST_ID, R2)
     expect(mocks.revalidateTag).toHaveBeenCalledWith('public-list:7K3M9P2QWX', { expire: 0 })
     expect(mocks.updateTag).not.toHaveBeenCalled()
-    expect(mocks.revalidateLocalizedPath).toHaveBeenCalledWith('/lists/[code]', 'page')
-    expect(result.structuredContent).toMatchObject({ restaurantCount: 2 })
+    expect(result.structuredContent).toMatchObject({
+      added: true,
+      alreadyInList: false,
+      list: { restaurantCount: 2 },
+      restaurant: { id: R2 },
+    })
+    expect(JSON.stringify(result)).not.toContain('manual')
   })
 
-  it("n'ajoute rien quand un restaurant n'existe pas", async () => {
-    mocks.getListByParam.mockResolvedValue(list())
-    mocks.getRestaurantsByIds.mockResolvedValue([])
-    const result = await call('add_restaurants_to_list', {
-      list: '7K3M9P2QWX',
-      restaurantIds: [R2],
+  it('ne purge rien quand le resto y était déjà', async () => {
+    mocks.mcpAddToList.mockResolvedValue({
+      added: false,
+      already_in_list: true,
+      list: mcpList(),
+      restaurant: { id: R1, name: 'Sushi' },
     })
-    expect(result.isError).toBe(true)
-    expect(mocks.addRestaurantsToList).not.toHaveBeenCalled()
-    expect(mocks.revalidateTag).not.toHaveBeenCalled()
-  })
-
-  it("n'écrit pas dans la liste d'un autre", async () => {
-    mocks.getListByParam.mockResolvedValue(null)
-    const result = await call('remove_restaurant_from_list', {
-      list: '7K3M9P2QWX',
-      restaurantId: R1,
-    })
-    expect(result.isError).toBe(true)
-    expect(mocks.removeRestaurantFromList).not.toHaveBeenCalled()
+    await call('add_to_list', { list: LIST_ID, restaurantId: R1 })
     expect(mocks.revalidateTag).not.toHaveBeenCalled()
   })
 
   it('retire et purge', async () => {
-    mocks.getListByParam.mockResolvedValue(list())
-    const result = await call('remove_restaurant_from_list', {
-      list: '7K3M9P2QWX',
-      restaurantId: R1,
+    mocks.mcpRemoveFromList.mockResolvedValue({
+      removed: true,
+      list: mcpList({ restaurant_count: 0 }),
     })
-    expect(mocks.removeRestaurantFromList).toHaveBeenCalledWith(expect.anything(), LIST_ID, R1)
+    const result = await call('remove_from_list', { list: LIST_ID, restaurantId: R1 }, TOKEN_AUTH)
+    expect(mocks.mcpRemoveFromList).toHaveBeenCalledWith(withToken, LIST_ID, R1)
     expect(mocks.revalidateTag).toHaveBeenCalledWith('public-list:7K3M9P2QWX', { expire: 0 })
-    expect(result.structuredContent).toMatchObject({ restaurantCount: 0 })
+    expect(result.structuredContent).toMatchObject({ removed: true, list: { restaurantCount: 0 } })
+  })
+})
+
+describe('remember_restaurant', () => {
+  it('range un resto connu dans la seule liste et purge sa page', async () => {
+    mocks.mcpFindRestaurants.mockResolvedValue([
+      { id: R1, name: 'La Ba', city: 'Paris', in_my_lists: [] },
+    ])
+    mocks.mcpAddToList.mockResolvedValue({
+      added: true,
+      already_in_list: false,
+      list: mcpList({ restaurant_count: 2 }),
+      restaurant: { id: R1, name: 'La Ba', city: 'Paris' },
+    })
+
+    const result = await call('remember_restaurant', { name: 'la ba' }, TOKEN_AUTH)
+
+    expect(mocks.mcpAddToList).toHaveBeenCalledWith(withToken, LIST_ID, R1)
+    expect(mocks.revalidateTag).toHaveBeenCalledWith('public-list:7K3M9P2QWX', { expire: 0 })
+    expect(result.structuredContent).toMatchObject({
+      status: 'added',
+      restaurantSource: 'catalog',
+      listCreated: false,
+      list: { id: LIST_ID, shareUrl: 'https://onmangekoi.test/l/7K3M9P2QWX' },
+      restaurant: { id: R1, city: 'Paris' },
+    })
+  })
+
+  it('crée la liste par défaut, dans la langue de la requête', async () => {
+    mocks.mcpLists.mockResolvedValue([])
+    mocks.mcpFindRestaurants.mockResolvedValue([{ id: R1, name: 'La Ba', in_my_lists: [] }])
+    mocks.mcpCreateList.mockResolvedValue(mcpList({ name: 'Mes bonnes adresses' }))
+    mocks.mcpAddToList.mockResolvedValue({
+      added: true,
+      already_in_list: false,
+      list: mcpList({ name: 'Mes bonnes adresses' }),
+      restaurant: { id: R1, name: 'La Ba' },
+    })
+
+    const result = await call('remember_restaurant', { name: 'La Ba' })
+
+    expect(mocks.mcpCreateList).toHaveBeenCalledWith(expect.anything(), 'Mes bonnes adresses')
+    expect(result.structuredContent).toMatchObject({ status: 'added', listCreated: true })
+  })
+
+  it('ne fait rien en cas de doute et rend les candidats', async () => {
+    mocks.mcpFindRestaurants.mockResolvedValue([
+      { id: R1, name: 'La Baraka', in_my_lists: [] },
+      { id: R2, name: 'La Bastide', in_my_lists: [{ id: LIST_ID, name: 'Près du bureau' }] },
+    ])
+
+    const result = await call('remember_restaurant', { name: 'la ba' })
+
+    expect(mocks.mcpAddToList).not.toHaveBeenCalled()
+    expect(mocks.mcpCreateList).not.toHaveBeenCalled()
+    expect(mocks.revalidateTag).not.toHaveBeenCalled()
+    expect(result.structuredContent).toMatchObject({
+      status: 'ambiguous',
+      catalogCandidates: [{ id: R1 }, { id: R2, in_my_lists: [{ id: LIST_ID }] }],
+      googleCandidates: [],
+    })
+  })
+
+  it('demande la liste quand il y en a plusieurs', async () => {
+    mocks.mcpLists.mockResolvedValue([mcpList(), mcpList({ id: R2, name: 'Le soir' })])
+    mocks.mcpFindRestaurants.mockResolvedValue([{ id: R1, name: 'La Ba', in_my_lists: [] }])
+
+    const result = await call('remember_restaurant', { name: 'La Ba' })
+
+    expect(mocks.mcpAddToList).not.toHaveBeenCalled()
+    expect(result.structuredContent).toMatchObject({
+      status: 'choose_list',
+      lists: [{ id: LIST_ID }, { id: R2, name: 'Le soir' }],
+    })
+  })
+
+  it('range dans la liste désignée par son code', async () => {
+    mocks.mcpLists.mockResolvedValue([mcpList(), mcpList({ id: R2, share_code: 'ABCDEFGHJK' })])
+    mocks.mcpFindRestaurants.mockResolvedValue([{ id: R1, name: 'La Ba', in_my_lists: [] }])
+    mocks.mcpAddToList.mockResolvedValue({
+      added: true,
+      already_in_list: false,
+      list: mcpList({ id: R2, share_code: 'ABCDEFGHJK' }),
+      restaurant: { id: R1, name: 'La Ba' },
+    })
+
+    await call('remember_restaurant', { name: 'La Ba', list: 'ABCDEFGHJK' })
+
+    expect(mocks.mcpAddToList).toHaveBeenCalledWith(expect.anything(), R2, R1)
   })
 })
 
@@ -314,6 +398,13 @@ describe('get_shared_list', () => {
       shareUrl: 'https://onmangekoi.test/l/7K3M9P2QWX',
     })
     expect(JSON.stringify(result)).not.toContain(LIST_ID)
+  })
+
+  it('exige OAuth : la lecture se fait avec les droits de l’utilisateur', async () => {
+    const result = await call('get_shared_list', { list: '7K3M9P2QWX' }, TOKEN_AUTH)
+    expect(result.isError).toBe(true)
+    expect(result.content[0]).toMatchObject({ text: expect.stringMatching(/^requires_oauth:/) })
+    expect(mocks.getSharedListPreview).not.toHaveBeenCalled()
   })
 
   it('retombe sur la vitrine publique', async () => {

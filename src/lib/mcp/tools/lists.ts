@@ -1,73 +1,79 @@
 import 'server-only'
 
 import { revalidateTag } from 'next/cache'
+import { getTranslations } from 'next-intl/server'
 import { z } from 'zod'
 
 import { ROUTE_PATTERNS, router } from '@/config/router.config'
+import { getSharedListPreview, getSharedListRestaurants, ownsSharedList } from '@/data-access/lists'
 import {
-  addRestaurantsToList,
-  getListByParam,
-  getListsByOwner,
-  getSharedListPreview,
-  getSharedListRestaurants,
-  ownsSharedList,
-  removeRestaurantFromList,
-} from '@/data-access/lists'
+  mcpAddToList,
+  mcpCreateList,
+  mcpList,
+  mcpLists,
+  mcpRemoveFromList,
+} from '@/data-access/mcp'
+import { isPlacesSearchEnabled } from '@/data-access/places'
 import {
   getPublicList,
   getPublicListRestaurants,
   publicListCacheTag,
 } from '@/data-access/public-lists'
-import { getRestaurantsByIds } from '@/data-access/restaurants'
 import { AppError } from '@/domain/errors'
-import { CreateListSchema, LIST_NAME_MAX, ListNameSchema } from '@/domain/schemas/list'
-import { parseSharedListParam } from '@/domain/share'
+import { LIST_NAME_MAX, ListNameSchema } from '@/domain/schemas/list'
+import { RESTAURANT_CITY_MAX } from '@/domain/schemas/restaurant'
+import { parseListParam, parseSharedListParam } from '@/domain/share'
 import { revalidateLocalizedPath } from '@/i18n/server'
-import { runTool } from '@/lib/mcp/context'
+import { runSharedTool, runTool } from '@/lib/mcp/context'
 import {
+  CatalogRestaurantOutputSchema,
+  FoundRestaurantOutputSchema,
+  GooglePlaceOutputSchema,
+  importGooglePlace,
   lastPathSegment,
-  parseInput,
   RestaurantOutputSchema,
+  searchGooglePlaces,
+  toCatalogRestaurant,
+  toFoundRestaurant,
   toRestaurantOutput,
 } from '@/lib/mcp/tools/catalog'
 import { absoluteUrl, listShareUrl } from '@/lib/site'
-import { createListUseCase } from '@/use-cases/create-list'
+import {
+  rememberRestaurantDeps,
+  rememberRestaurantUseCase,
+  type RememberRestaurantResult,
+} from '@/use-cases/remember-restaurant'
 
-import type { List, ListWithRestaurants } from '@/data-access/models'
-import type { Database } from '@/data-access/models/database'
+import type { McpAccess, McpList } from '@/data-access/mcp'
 import type { McpServer } from '@modelcontextprotocol/server'
-import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * Tools des listes : celles de l'utilisateur (lecture, création, contenu) et
- * celles qu'on lui a partagées par lien.
+ * Tools des listes : celles de l'utilisateur (lecture, création, contenu, et
+ * « j'ai mangé à… » en un appel), et celles qu'on lui a partagées par lien.
  *
- * Une liste s'adresse par son code de partage (10 caractères) ou par le lien
- * collé, jamais par son uuid : c'est ce que l'utilisateur voit et recopie.
- * L'uuid ne sort pas, pas plus que `owner_id`.
+ * Les listes de l'utilisateur passent par les RPC `mcp_*` : elles ne rendent
+ * que ses propres listes et n'écrivent que dedans, avec un jeton personnel
+ * comme en OAuth (`runSharedTool`). Une liste s'adresse par son id, son code
+ * de partage (10 caractères) ou le lien collé : l'agent recopie ce qu'il a
+ * sous la main. `owner_id` et `share_token` ne sortent jamais.
+ *
+ * Une liste partagée par quelqu'un d'autre (`get_shared_list`) se lit avec
+ * les droits de l'utilisateur connecté : réservée à OAuth.
  */
 
-/** Même plafond que la Server Action (`RestaurantIdsSchema`). */
-const MAX_RESTAURANTS_PER_CALL = 100
-
-const ListIdentifierSchema = z
+const ListRefSchema = z
   .string()
   .trim()
   .min(1)
   .max(200)
-  .describe('The 10-character list code (e.g. 7K3M9P2QWX) or a list link (…/lists/<code>).')
-
-const RestaurantIdsSchema = z
-  .array(z.uuid())
-  .min(1)
-  .max(MAX_RESTAURANTS_PER_CALL)
-  .describe('Restaurant ids (uuid) from search_restaurants or suggest_restaurants.')
+  .describe('List id (from my_lists), its 10-character code (e.g. 7K3M9P2QWX) or its link.')
 
 // ─── Sorties ──────────────────────────────────────────────────────
 
-/** Ce qu'un agent sait d'une de ses listes : de quoi la nommer et l'ouvrir. */
+/** Ce qu'un agent sait d'une de ses listes : de quoi la nommer, l'ouvrir et la partager. */
 const ListSummarySchema = z.object({
-  code: z.string().describe('List code: pass it to the other list tools.'),
+  id: z.string().describe('List id: pass it to the other list tools.'),
+  code: z.string().describe('10-character list code, as shown in its links.'),
   name: z.string(),
   restaurantCount: z.number().int(),
   isPublic: z
@@ -78,20 +84,18 @@ const ListSummarySchema = z.object({
     .describe('Collaborative lists let people with the link add restaurants.'),
   updatedAt: z.string(),
   url: z.string().describe("Owner's page of the list in the app."),
-  shareUrl: z.string().describe('Link to share the list with other people.'),
+  shareUrl: z.string().describe('Link to send to friends.'),
 })
 
 type ListSummaryOutput = z.infer<typeof ListSummarySchema>
 
-/** Ligne `lists` → résumé MCP. Liste blanche : ni `id`, ni `owner_id`, ni `share_token`. */
-export function toListSummary(
-  list: Pick<List, 'share_code' | 'name' | 'is_public' | 'is_collaborative' | 'updated_at'>,
-  restaurantCount: number
-): ListSummaryOutput {
+/** Liste rendue par une RPC `mcp_*` → résumé MCP, liens absolus compris. */
+export function toListSummary(list: McpList): ListSummaryOutput {
   return {
+    id: list.id,
     code: list.share_code,
     name: list.name,
-    restaurantCount,
+    restaurantCount: list.restaurant_count,
     isPublic: list.is_public,
     isCollaborative: list.is_collaborative,
     updatedAt: list.updated_at,
@@ -101,8 +105,74 @@ export function toListSummary(
 }
 
 const ListDetailSchema = ListSummarySchema.extend({
-  restaurants: z.array(RestaurantOutputSchema).describe('In the order they were added.'),
+  restaurants: z.array(CatalogRestaurantOutputSchema).describe('In the order they were added.'),
 })
+
+const AddToListOutputSchema = z.object({
+  added: z.boolean(),
+  alreadyInList: z
+    .boolean()
+    .describe('True when the restaurant was already there: nothing changed.'),
+  list: ListSummarySchema,
+  restaurant: CatalogRestaurantOutputSchema,
+})
+
+const RemoveFromListOutputSchema = z.object({
+  removed: z.boolean().describe('False when the restaurant was not in the list.'),
+  list: ListSummarySchema,
+})
+
+/**
+ * Sortie de `remember_restaurant`. Un objet plat plutôt qu'une union : le
+ * schéma de sortie d'un tool doit être un objet JSON, et `status` dit quels
+ * champs sont remplis.
+ */
+const RememberOutputSchema = z.object({
+  status: z
+    .enum(['added', 'already_in_list', 'ambiguous', 'choose_list', 'not_found'])
+    .describe(
+      '"added" / "already_in_list": done, see `list` and `restaurant`. "ambiguous": ask the ' +
+        'user which candidate. "choose_list": ask which of `lists` (or offer a new one). ' +
+        '"not_found": ask for the city or a detail, or offer add_restaurant by hand.'
+    ),
+  restaurant: CatalogRestaurantOutputSchema.optional(),
+  list: ListSummarySchema.optional(),
+  restaurantSource: z
+    .enum(['catalog', 'google'])
+    .optional()
+    .describe('"google": imported into the app just now.'),
+  listCreated: z.boolean().optional(),
+  catalogCandidates: z.array(FoundRestaurantOutputSchema).optional(),
+  googleCandidates: z.array(GooglePlaceOutputSchema).optional(),
+  lists: z.array(ListSummarySchema).optional(),
+  googleSearched: z.boolean().optional(),
+})
+
+export function toRememberOutput(
+  result: RememberRestaurantResult
+): z.infer<typeof RememberOutputSchema> {
+  switch (result.status) {
+    case 'added':
+    case 'already_in_list':
+      return {
+        status: result.status,
+        restaurant: toCatalogRestaurant(result.restaurant),
+        list: toListSummary(result.list),
+        restaurantSource: result.restaurant_source,
+        listCreated: result.list_created,
+      }
+    case 'ambiguous':
+      return {
+        status: result.status,
+        catalogCandidates: result.catalog_candidates.map(toFoundRestaurant),
+        googleCandidates: result.google_candidates,
+      }
+    case 'choose_list':
+      return { status: result.status, lists: result.lists.map(toListSummary) }
+    case 'not_found':
+      return { status: result.status, googleSearched: result.google_searched }
+  }
+}
 
 const SharedListSchema = z.object({
   code: z.string(),
@@ -125,61 +195,47 @@ const SharedListSchema = z.object({
 // ─── Effets de bord ───────────────────────────────────────────────
 
 /**
- * Purge la page publique d'une liste après une écriture, comme
- * `revalidatePublicList` dans `actions/lists.ts`. L'action appelle
- * `updateTag`, qui lève hors d'une Server Action ; `{ expire: 0 }` donne la
- * même expiration immédiate depuis un route handler — sans quoi une liste
- * publique montrerait encore une visite l'état d'avant.
+ * Purge les pages d'une liste après une écriture, comme `revalidatePublicList`
+ * dans `actions/lists.ts`. L'action appelle `updateTag`, qui lève hors d'une
+ * Server Action ; `{ expire: 0 }` donne la même expiration immédiate depuis un
+ * route handler — sans quoi une liste publique montrerait encore une visite
+ * l'état d'avant.
  */
 function revalidateListPages(shareCode: string): void {
   revalidateTag(publicListCacheTag(shareCode), { expire: 0 })
   revalidateLocalizedPath(ROUTE_PATTERNS.list, 'page')
+  revalidateLocalizedPath(router.lists())
 }
 
 /**
- * Une liste de l'utilisateur, par code ou lien. La RLS ne rend visibles que
- * ses propres listes ; le filtre sur le propriétaire le redit, pour qu'une
- * future policy plus large n'ouvre pas l'écriture par ce chemin.
+ * Id d'une liste de l'utilisateur à partir de ce que l'agent a recopié : un
+ * id se passe tel quel (la RPC refusera une liste qui n'est pas à lui), un
+ * code ou un lien se cherche parmi ses listes.
  */
-async function requireOwnList(
-  supabase: SupabaseClient<Database>,
-  ownerId: string,
-  raw: string
-): Promise<ListWithRestaurants> {
-  const list = await getListByParam(supabase, lastPathSegment(raw))
-  if (!list || list.owner_id !== ownerId) throw new AppError('list_not_found')
-  return list
-}
-
-/**
- * Vérifie que chaque restaurant existe avant d'écrire, et rend les ids
- * dédoublonnés. Sans ça, un id inventé par le modèle ferait échouer
- * l'insertion sur la clé étrangère avec un message technique — et, pour
- * `create_list`, après que la liste a déjà été créée : l'agent réessaierait et
- * laisserait derrière lui des listes vides en double.
- */
-async function requireKnownRestaurants(
-  supabase: SupabaseClient<Database>,
-  ids: readonly string[]
-): Promise<string[]> {
-  const unique = [...new Set(ids)]
-  if (unique.length === 0) return unique
-  const found = await getRestaurantsByIds(supabase, unique)
-  if (found.length !== unique.length) throw new AppError('invalid_request')
-  return unique
+export async function resolveListId(access: McpAccess, raw: string): Promise<string> {
+  const identifier = parseListParam(lastPathSegment(raw))
+  if (identifier.kind === 'id') return identifier.value
+  if (identifier.kind === 'invalid') throw new AppError('list_not_found')
+  const list = (await mcpLists(access)).find(
+    (candidate) => candidate.share_code === identifier.value
+  )
+  if (!list) throw new AppError('list_not_found')
+  return list.id
 }
 
 // ─── Enregistrement ───────────────────────────────────────────────
 
 export function registerListTools(server: McpServer): void {
+  const placesEnabled = isPlacesSearchEnabled()
+
   server.registerTool(
-    'list_my_lists',
+    'my_lists',
     {
-      title: 'List my restaurant lists',
+      title: 'My restaurant lists',
       description:
-        'List the user\'s own saved restaurant lists (e.g. "Near the office", "Date night"), ' +
-        'most recently updated first, with their codes and links. Use a code with get_list, ' +
-        'add_restaurants_to_list or remove_restaurant_from_list.',
+        'List the user\'s own restaurant lists (e.g. "Near the office", "Date night"), most ' +
+        'recently updated first, with their id, size and links (shareUrl is the one to send ' +
+        'to friends).',
       inputSchema: z.object({}),
       outputSchema: z.object({ lists: z.array(ListSummarySchema) }),
       annotations: {
@@ -190,21 +246,20 @@ export function registerListTools(server: McpServer): void {
       },
     },
     async (_args, ctx) =>
-      runTool(ctx.http?.authInfo, async ({ caller, supabase }) => {
-        const lists = await getListsByOwner(supabase, caller.userId)
-        return { lists: lists.map((list) => toListSummary(list, list.restaurant_count)) }
-      })
+      runSharedTool(ctx.http?.authInfo, async ({ access }) => ({
+        lists: (await mcpLists(access)).map(toListSummary),
+      }))
   )
 
   server.registerTool(
     'get_list',
     {
-      title: 'Get one of my lists',
+      title: 'Open one of my lists',
       description:
-        "Read one of the user's own lists with all its restaurants, from its code or link. " +
+        "Read one of the user's own lists with all its restaurants, from its id, code or link. " +
         'Fails with list_not_found for a list owned by someone else: use get_shared_list for ' +
         'a list someone shared with the user.',
-      inputSchema: z.object({ list: ListIdentifierSchema }),
+      inputSchema: z.object({ list: ListRefSchema }),
       outputSchema: ListDetailSchema,
       annotations: {
         readOnlyHint: true,
@@ -214,12 +269,11 @@ export function registerListTools(server: McpServer): void {
       },
     },
     async (args, ctx) =>
-      runTool(ctx.http?.authInfo, async ({ caller, supabase }) => {
-        const list = await requireOwnList(supabase, caller.userId, args.list)
-        const now = new Date()
+      runSharedTool(ctx.http?.authInfo, async ({ access }) => {
+        const list = await mcpList(access, await resolveListId(access, args.list))
         return {
-          ...toListSummary(list, list.restaurants.length),
-          restaurants: list.restaurants.map((restaurant) => toRestaurantOutput(restaurant, now)),
+          ...toListSummary(list),
+          restaurants: list.restaurants.map(toCatalogRestaurant),
         }
       })
   )
@@ -229,16 +283,11 @@ export function registerListTools(server: McpServer): void {
     {
       title: 'Create a list',
       description:
-        'Create a new restaurant list for the user, optionally filled with restaurants right ' +
-        'away. The list starts private (not public, not collaborative): only people given its ' +
-        'link can see it. Fails with invalid_request, creating nothing, if a restaurant id is ' +
-        'unknown. Returns its code and links.',
+        'Create a new, empty restaurant list for the user ("Brunchs", "Near the office"…). It ' +
+        'starts private: only people given its link can see it. Check my_lists first to avoid ' +
+        'a duplicate name. Fill it with add_to_list.',
       inputSchema: z.object({
         name: ListNameSchema.describe(`List name (1 to ${LIST_NAME_MAX} characters).`),
-        restaurantIds: RestaurantIdsSchema.min(0)
-          .nullable()
-          .optional()
-          .describe('Restaurant ids (uuid) to put in the list from the start.'),
       }),
       outputSchema: ListSummarySchema,
       annotations: {
@@ -249,29 +298,27 @@ export function registerListTools(server: McpServer): void {
       },
     },
     async (args, ctx) =>
-      runTool(ctx.http?.authInfo, async ({ caller, supabase }) => {
-        const input = parseInput(CreateListSchema, {
-          name: args.name,
-          restaurantIds: args.restaurantIds ?? [],
-        })
-        const restaurantIds = await requireKnownRestaurants(supabase, input.restaurantIds)
-        const list = await createListUseCase(supabase, caller.userId, { ...input, restaurantIds })
+      runSharedTool(ctx.http?.authInfo, async ({ access }) => {
+        const list = await mcpCreateList(access, args.name)
         // Comme l'action, sans la redirection : l'URL est rendue à l'agent.
         revalidateLocalizedPath(router.lists())
-        return toListSummary(list, restaurantIds.length)
+        return toListSummary(list)
       })
   )
 
   server.registerTool(
-    'add_restaurants_to_list',
+    'add_to_list',
     {
-      title: 'Add restaurants to a list',
+      title: 'Add a restaurant to a list',
       description:
-        "Add restaurants to one of the user's own lists, by list code or link. Restaurants " +
-        'already in the list are ignored. Get restaurant ids from search_restaurants first: ' +
-        'an unknown id fails the whole call with invalid_request and adds nothing.',
-      inputSchema: z.object({ list: ListIdentifierSchema, restaurantIds: RestaurantIdsSchema }),
-      outputSchema: ListSummarySchema,
+        "File a catalog restaurant in one of the user's own lists. A restaurant already in the " +
+        'list stays as is (alreadyInList). Get the restaurant id from find_restaurant, ' +
+        'search_restaurants or add_restaurant: never invent one.',
+      inputSchema: z.object({
+        list: ListRefSchema,
+        restaurantId: z.uuid().describe('Catalog restaurant id (uuid).'),
+      }),
+      outputSchema: AddToListOutputSchema,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -280,30 +327,31 @@ export function registerListTools(server: McpServer): void {
       },
     },
     async (args, ctx) =>
-      runTool(ctx.http?.authInfo, async ({ caller, supabase }) => {
-        const list = await requireOwnList(supabase, caller.userId, args.list)
-        const restaurantIds = await requireKnownRestaurants(supabase, args.restaurantIds)
-        await addRestaurantsToList(supabase, list.id, restaurantIds)
-        revalidateListPages(list.share_code)
-
-        const ids = new Set(list.restaurants.map((restaurant) => restaurant.id))
-        for (const id of restaurantIds) ids.add(id)
-        return toListSummary(list, ids.size)
+      runSharedTool(ctx.http?.authInfo, async ({ access }) => {
+        const listId = await resolveListId(access, args.list)
+        const result = await mcpAddToList(access, listId, args.restaurantId)
+        if (result.added) revalidateListPages(result.list.share_code)
+        return {
+          added: result.added,
+          alreadyInList: result.already_in_list,
+          list: toListSummary(result.list),
+          restaurant: toCatalogRestaurant(result.restaurant),
+        }
       })
   )
 
   server.registerTool(
-    'remove_restaurant_from_list',
+    'remove_from_list',
     {
       title: 'Remove a restaurant from a list',
       description:
-        "Remove one restaurant from one of the user's own lists, by list code or link. The " +
-        'restaurant stays in the catalog; it can be added back with add_restaurants_to_list.',
+        "Take a restaurant out of one of the user's own lists. The restaurant stays in the " +
+        'catalog; it can be added back with add_to_list.',
       inputSchema: z.object({
-        list: ListIdentifierSchema,
+        list: ListRefSchema,
         restaurantId: z.uuid().describe('Id (uuid) of the restaurant to remove.'),
       }),
-      outputSchema: ListSummarySchema,
+      outputSchema: RemoveFromListOutputSchema,
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -312,15 +360,72 @@ export function registerListTools(server: McpServer): void {
       },
     },
     async (args, ctx) =>
-      runTool(ctx.http?.authInfo, async ({ caller, supabase }) => {
-        const list = await requireOwnList(supabase, caller.userId, args.list)
-        await removeRestaurantFromList(supabase, list.id, args.restaurantId)
-        revalidateListPages(list.share_code)
+      runSharedTool(ctx.http?.authInfo, async ({ access }) => {
+        const listId = await resolveListId(access, args.list)
+        const result = await mcpRemoveFromList(access, listId, args.restaurantId)
+        if (result.removed) revalidateListPages(result.list.share_code)
+        return { removed: result.removed, list: toListSummary(result.list) }
+      })
+  )
 
-        const remaining = list.restaurants.filter(
-          (restaurant) => restaurant.id !== args.restaurantId
+  server.registerTool(
+    'remember_restaurant',
+    {
+      title: 'Remember a restaurant I liked',
+      description:
+        'One call for "I ate at X, it was good": finds X in the catalog (or on Google), adds it ' +
+        'to the app if missing, and files it in a list without duplicates. When in doubt it ' +
+        'changes nothing and returns what to ask: status "ambiguous" (candidates to choose ' +
+        'from), "choose_list" (several lists), "not_found". Call it again with `list` or ' +
+        '`listName` once the user chose; for a chosen candidate, use add_to_list (catalog id) ' +
+        'or add_restaurant (googlePlaceId) then add_to_list.',
+      inputSchema: z.object({
+        name: z.string().trim().min(2).max(100).describe('Restaurant name as the user said it.'),
+        city: z
+          .string()
+          .trim()
+          .max(RESTAURANT_CITY_MAX)
+          .nullable()
+          .optional()
+          .describe('City, if the user said it.'),
+        list: ListRefSchema.nullable().optional().describe('Target list, once the user chose one.'),
+        listName: ListNameSchema.nullable()
+          .optional()
+          .describe('Target list by name; created if the user has none by that name.'),
+      }),
+      outputSchema: RememberOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: placesEnabled,
+      },
+    },
+    async (args, ctx) =>
+      runSharedTool(ctx.http?.authInfo, async ({ access }) => {
+        const t = await getTranslations('lists.ai')
+        const result = await rememberRestaurantUseCase(
+          rememberRestaurantDeps(
+            access,
+            placesEnabled
+              ? {
+                  searchPlaces: searchGooglePlaces,
+                  importPlace: (placeId) => importGooglePlace(access, placeId),
+                }
+              : null
+          ),
+          {
+            name: args.name,
+            city: args.city ?? null,
+            listId: args.list ? await resolveListId(access, args.list) : null,
+            listName: args.listName ?? null,
+            defaultListName: t('defaultListName'),
+          }
         )
-        return toListSummary(list, remaining.length)
+        // Une liste créée en chemin l'est toujours pour y ranger le resto :
+        // `added` couvre aussi la page `/lists`.
+        if (result.status === 'added') revalidateListPages(result.list.share_code)
+        return toRememberOutput(result)
       })
   )
 

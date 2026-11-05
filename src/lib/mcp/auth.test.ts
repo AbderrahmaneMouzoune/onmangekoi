@@ -14,8 +14,15 @@ vi.mock('@/data-access/supabase/public', () => ({
   createPublicClient: () => ({ auth: { getClaims: mocks.getClaims } }),
 }))
 
-const { authInfoFromClaims, authServerUrl, callerFromAuthInfo, verifyMcpToken } =
-  await import('./auth')
+const {
+  authInfoFromClaims,
+  authServerUrl,
+  callerFromAuthInfo,
+  verifyMcpToken,
+  withKeyParamAsBearer,
+} = await import('./auth')
+
+const PERSONAL = `omk_${'a1'.repeat(24)}`
 
 const ISSUER = 'http://127.0.0.1:54321/auth/v1'
 
@@ -49,6 +56,7 @@ describe('authInfoFromClaims', () => {
       expiresAt: 1_900_000_000,
     })
     expect(callerFromAuthInfo(info)).toEqual({
+      mode: 'oauth',
       userId: '0f8fad5b-d9cb-469f-a165-70867728950e',
       isAnonymous: true,
       clientId: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
@@ -93,6 +101,34 @@ describe('verifyMcpToken', () => {
     mocks.getClaims.mockResolvedValue({ data: { claims: claims() }, error: null })
     const info = await verifyMcpToken(new Request('https://x'), 'good')
     expect(mocks.getClaims).toHaveBeenCalledWith('good')
-    expect(callerFromAuthInfo(info)?.userId).toBe('0f8fad5b-d9cb-469f-a165-70867728950e')
+    const caller = callerFromAuthInfo(info)
+    expect(caller?.mode === 'oauth' && caller.userId).toBe('0f8fad5b-d9cb-469f-a165-70867728950e')
+  })
+})
+
+describe('personal tokens', () => {
+  beforeEach(() => mocks.getClaims.mockReset())
+
+  it('should accept a well-formed personal token without asking Supabase Auth', async () => {
+    const info = await verifyMcpToken(new Request('https://x'), PERSONAL)
+    expect(mocks.getClaims).not.toHaveBeenCalled()
+    expect(callerFromAuthInfo(info)).toEqual({ mode: 'token', token: PERSONAL })
+  })
+
+  it('should copy a ?key= personal token into the Authorization header', () => {
+    const request = withKeyParamAsBearer(new Request(`https://x/api/mcp?key=${PERSONAL}`))
+    expect(request.headers.get('authorization')).toBe(`Bearer ${PERSONAL}`)
+  })
+
+  it('should leave an explicit header, or anything that is not a personal token, alone', () => {
+    const withHeader = new Request(`https://x/api/mcp?key=${PERSONAL}`, {
+      headers: { authorization: 'Bearer other' },
+    })
+    expect(withKeyParamAsBearer(withHeader).headers.get('authorization')).toBe('Bearer other')
+    expect(
+      withKeyParamAsBearer(new Request('https://x/api/mcp?key=eyJhbGciOi')).headers.get(
+        'authorization'
+      )
+    ).toBeNull()
   })
 })

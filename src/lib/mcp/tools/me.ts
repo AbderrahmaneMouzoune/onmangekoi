@@ -4,14 +4,14 @@ import { z } from 'zod'
 
 import { router } from '@/config/router.config'
 import { getMyFoodConstraints, saveMyFoodConstraints } from '@/data-access/food-constraints'
-import { getProfile } from '@/data-access/profile'
+import { mcpWhoami } from '@/data-access/mcp'
 import { getMySessionHistory } from '@/data-access/sessions'
 import { getMyStats } from '@/data-access/stats'
 import { SESSION_HISTORY_PAGE_SIZE } from '@/domain/history'
 import { FoodConstraintsSchema } from '@/domain/schemas/food-constraints'
 import { RESTAURANT_TAGS } from '@/domain/schemas/restaurant'
 import { revalidateLocalizedPath } from '@/i18n/server'
-import { runTool } from '@/lib/mcp/context'
+import { runSharedTool, runTool } from '@/lib/mcp/context'
 import { parseInput } from '@/lib/mcp/tools/catalog'
 import { absoluteUrl } from '@/lib/site'
 
@@ -24,6 +24,10 @@ import type { McpServer } from '@modelcontextprotocol/server'
  * contraintes alimentaires. Tout se lit pour `auth.uid()` — les RPC ne
  * prennent pas d'identifiant, et `caller.userId` ne sert qu'à filtrer ce que
  * la RLS limite déjà. Jamais d'email : il n'apporte rien à un agent.
+ *
+ * `whoami` est ouvert aux deux modes de connexion (il passe par `mcp_whoami`) :
+ * c'est par lui qu'un agent branché par jeton personnel découvre qu'il lui
+ * manque OAuth pour les sessions. Le reste exige OAuth.
  */
 
 /** Plafond d'une page d'historique demandée par un agent. */
@@ -32,11 +36,19 @@ const HISTORY_LIMIT_MAX = 30
 // ─── Sorties ──────────────────────────────────────────────────────
 
 const WhoamiOutputSchema = z.object({
+  mode: z
+    .enum(['oauth', 'token'])
+    .describe(
+      '"oauth": every tool is available. "token": personal token, catalogue and lists only — ' +
+        'sessions, votes, history and profile need the OAuth connection.'
+    ),
   pseudo: z.string().nullable().describe('Nickname shown to other participants.'),
+  listCount: z.number().int().describe('Number of restaurant lists the user owns.'),
   isAnonymous: z
     .boolean()
+    .nullable()
     .describe(
-      'True for a nickname-only account without email: it can be lost after 90 days of inactivity. Suggest linking an email from the account page.'
+      'True for a nickname-only account without email: it can be lost after 90 days of inactivity. Suggest linking an email from the account page. Null with a personal token (unknown).'
     ),
   accountUrl: z.string(),
   links: z.object({
@@ -198,9 +210,9 @@ export function registerMeTools(server: McpServer): void {
     {
       title: 'Who am I',
       description:
-        'Identify the onmangekoi user this connection acts for: nickname and account type, ' +
-        'with links to the main pages of the app. Call it to greet the user or before ' +
-        'explaining what other participants will see.',
+        'Identify the onmangekoi user this connection acts for: nickname, number of lists, ' +
+        'connection mode and account type, with links to the main pages of the app. Call it ' +
+        'to greet the user, or to know which tools the connection allows (`mode`).',
       inputSchema: z.object({}),
       outputSchema: WhoamiOutputSchema,
       annotations: {
@@ -211,11 +223,14 @@ export function registerMeTools(server: McpServer): void {
       },
     },
     async (_args, ctx) =>
-      runTool(ctx.http?.authInfo, async ({ caller, supabase }) => {
-        const profile = await getProfile(supabase, caller.userId)
+      runSharedTool(ctx.http?.authInfo, async ({ caller, access }) => {
+        // `mcp_whoami` sert les deux modes : en OAuth, `auth.uid()` fait foi.
+        const me = await mcpWhoami(access)
         return {
-          pseudo: profile?.pseudo ?? null,
-          isAnonymous: caller.isAnonymous,
+          mode: caller.mode,
+          pseudo: me.pseudo || null,
+          listCount: me.list_count,
+          isAnonymous: caller.mode === 'oauth' ? caller.isAnonymous : null,
           accountUrl: absoluteUrl(router.account()),
           links: {
             newSession: absoluteUrl(router.sessionNew()),
